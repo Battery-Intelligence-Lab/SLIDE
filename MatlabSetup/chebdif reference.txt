@@ -1,0 +1,15 @@
+This is a software package consisting of seventeen MATLAB functions for solving differential equations on bounded, periodic, and infinite intervals by the spectral collocation (pseudospectral) method. Additional functions are included for incorporating boundary conditions, performing interpolation using barycentric formulas, and computing roots of orthogonal polynomials. Additional programs demonstrate how to use the package by solving eigenvalue, boundary value, and initial value problems arising in the fields of special functions, quantum mechanics, nonlinear waves, and hydrodynamic stability.
+
+Details are in the accompanying paper, published in 
+JAC Weideman, SC Reddy, A MATLAB differentiation 
+matrix suite, ACM Transactions of Mathematical Software, 
+Vol 26, pp 465-519 (2000). url: https://dl.acm.org/citation.cfm?id=365727
+
+Web Site: 
+http://dip.sun.ac.za/~weideman/research/differ.html
+http://appliedmaths.sun.ac.za/~weideman/research/differ.html
+
+Tested under MATLAB R13.
+
+Available at:
+https://uk.mathworks.com/matlabcentral/fileexchange/29-dmsuite
