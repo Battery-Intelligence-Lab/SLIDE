@@ -1,7 +1,7 @@
 About _Slide_
 ===========================
 
-To cite this code, check the lastest release DOI [https://zenodo.org/badge/latestdoi/185216614] [1].
+To cite this code, check the lastest release DOI at https://zenodo.org/badge/latestdoi/185216614.
 
 _Slide_ (simulator of lithium-ion degradation) is a code project mainly written in C++ to do fast simulations of degradation of lithium-ion batteries.
 Simulating 5000 1C CC cycles should take less than 1 minute; adding a CV phase doubles the calculation time to below 2 minutes.
@@ -97,8 +97,6 @@ please read `LICENSE.txt` file for more information.
 Two Matlab functions used by the code to produce the spatial discretisation have been developped by others.
 They come with their own lisence, see 'license chebdif.txt' and 'lisence cumsummat.txt'.
 
-
-[1]: https://zenodo.org/badge/latestdoi/185216614
 [2]: https://github.com/davidhowey/Spectral_li-ion_SPM
 [3]: http://epg.eng.ox.ac.uk/howey/
 [4]: mailto:david.howey@eng.ox.ac.uk
