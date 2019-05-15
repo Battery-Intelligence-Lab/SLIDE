@@ -15,7 +15,14 @@
 
 #include "BasicCycler.hpp"
 #include "ReadCSVfiles.h"
-#include <direct.h>
+//#include <direct.h>
+
+// Include a header file to interact with the operating system to make directories
+#ifdef _WIN32
+	#include <direct.h> 		// this is the header file for a Windows machine
+#elif defined __linux__
+	#include <sys/stat.h>		// this is the header file for a Linux machine
+#endif
 
 using namespace std;
 
@@ -93,7 +100,14 @@ BasicCycler::BasicCycler(Cell& ci, string IDi, int verbosei, int CyclingDataTime
 	if(CyclingDataTimeIntervali >= 0){
 		if(verbose >= printCyclerDetail)
 			cout<<"BasicCycler::BasicCycler is making a subfolder to store the results"<<endl;
-		int s = mkdir((ID).c_str());
+
+		int s;
+		#ifdef _WIN32
+		s = mkdir((ID).c_str()); 											// make a directory for a Windows machine
+		#elif defined __linux__
+		s = mkdir((ID).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);		// make a directory file for a Linux machine
+		#endif
+
 		if (s != 0){
 			cerr<<"ERROR in BasicCycler::BasicCycler. The subfolder "<<ID<<" for the data could not be created. "<<endl;
 			cout<<"This might have two reasons: either the directory already exists, or you are using some forbidden characters in the name."<<endl;
@@ -180,7 +194,14 @@ void BasicCycler::writeCyclingData(){
 
 		// Make the name of the results file. It is 'CyclingData_, followed by the index in the correct subfolder.
 		string name = "CyclingData_" + to_string(fileIndex) + ".csv";			// name of the csv file
-		string fullName = ".\\"+ID+"\\"+name;									// include the subfolder in the full name
+		// We want to write the file in the subfolder of this cell, but Windows and Linux use the opposite subfolder separation symbol
+		string fol;
+		#ifdef _WIN32
+			fol = ".\\"+ID+"\\"; 												// Windows: parent\child
+		#elif defined __linux__
+			fol = "./"+ID+"/"; 													// Linux: parent/child
+		#endif
+		string fullName = fol+name;												// include the subfolder in the full name
 		ofstream output(fullName);												// open the file
 
 		if (output.is_open()){
@@ -278,8 +299,15 @@ void BasicCycler::writeCyclingData(string name, bool clear){
 	if(CyclingDataTimeInterval != 0 && index > 0){
 
 		// Open the file
-		string fullName = ".\\"+ID+"\\"+name; 									// append the subfolder to the name to write the file in the subfolder
-		ofstream output(fullName);
+		// We want to write the file in the subfolder of this cell, but Windows and Linux use the opposite subfolder separation symbol
+		string fol;
+		#ifdef _WIN32
+			fol = ".\\"+ID+"\\"; 												// Windows: parent\child
+		#elif defined __linux__
+			fol = "./"+ID+"/"; 													// Linux: parent/child
+		#endif
+		string fullName = fol+name;												// include the subfolder in the full name
+		ofstream output(fullName);												// open the file
 		if (output.is_open()){
 
 			if(verbose >= printCyclerDetail)
@@ -1975,13 +2003,6 @@ int BasicCycler::CC_t_CV_t(double I, double dt, bool blockDegradation, double ti
 
 	// check if we need to do a CV part or not
 	if (end1 == 1){												// no voltage limit was hit, so we should have completed the full cycle
-
-		//todo
-		if (!(abs(tt1- time)<pow(10,-3))){
-			cout<<"cc_t_cv_t error with time. CC time was "<<tt1<<" \t while total time was "<<time<<" giving an error of "<<abs(tt1- time)<<endl;
-		}
-
-
 		assert(abs(tt1- time)<pow(10,-3));						// double check we have indeed completed the full period, allow a small margin of error (this should never fail, if it does, there is a mistake in the code of CC_t)
 	}
 	else{														// we haven't completed the full time, so we need to do a CV for the remaining time
