@@ -405,7 +405,14 @@ double Cycler::checkUp_batteryStates(bool blockDegradation, bool checkCap, int c
 	// Write the results to the csv file
 	if(verbose >= printCyclerHighLevel)
 		cout<<"Cycler::checkUp_batteryStates is writing the capacity to the csv file"<<endl;
-	string fullName = ".\\"+ID+"\\"+nameState;										// we want to write the file in a subfolder, so append the name of the subfolder before the name of the csv file
+	// We want to write the file in the subfolder of this cell, but Windows and Linux use the opposite subfolder separation symbol
+	string fol;
+	#ifdef _WIN32
+		fol = ".\\"+ID+"\\"; 														// Windows: parent\child
+	#elif defined __linux__
+		fol = "./"+ID+"/"; 															// Linux: parent/child
+	#endif
+	string fullName = fol+nameState;												// we want to write the file in a subfolder, so append the name of the subfolder before the name of the csv file
 	ofstream output(fullName,std::ios_base::app);									// open the csv file and append the new data after the already existing data
 	if (output.is_open()){
 		output<<cumCycle<<","<<cumTime<<","<<cumAh<<","<<cumWh; 					// write the data points for where the cell is in it's life
@@ -490,7 +497,14 @@ void Cycler::checkUp_OCVcurves(bool blockDegradation, double ocvpini, double ocv
 	// Write the curves to the csv file
 	if(verbose >= printCyclerHighLevel)
 		cout<<"Cycler::checkUp_OCVcurves is writing the OCV curves to a csv file"<<endl;
-	string fullName = ".\\"+ID+"\\"+nameOCV;										// we want to write the file in a subfolder, so append the name of the subfolder before the name of the csv file
+	// We want to write the file in the subfolder of this cell, but Windows and Linux use the opposite subfolder separation symbol
+	string fol;
+	#ifdef _WIN32
+		fol = ".\\"+ID+"\\"; 											// Windows: parent\child
+	#elif defined __linux__
+		fol = "./"+ID+"/"; 												// Linux: parent/child
+	#endif
+	string fullName = fol+nameOCV;										// we want to write the file in a subfolder, so append the name of the subfolder before the name of the csv file
 	ofstream output(fullName,std::ios_base::app);									// open the csv file and append the new data after the already existing data
 	if (output.is_open()){
 
