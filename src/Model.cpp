@@ -31,15 +31,15 @@ void Model_initialise(Model& M){
 	try{
 
 		// Read the data which have one column (arrays)
-		loadCSV_1col("cheb_Nodes.csv", nch, M.xch);
-		loadCSV_1col("cheb_An.csv", nch, M.An);
-		loadCSV_1col("cheb_Ap.csv", nch, M.Ap);
-		loadCSV_1col("cheb_Bn.csv", nch, M.Bn);
-		loadCSV_1col("cheb_Bp.csv", nch, M.Bp);
-		loadCSV_1col("cheb_Cc.csv", nch+1, M.Cc);
-		loadCSV_1col("cheb_Dn.csv", nch, M.Dn);
-		loadCSV_1col("cheb_Dp.csv", nch, M.Dp);
-		loadCSV_1col("cheb_input.csv", 4, M.Input);
+		loadCSV_1col("Cheb_Nodes.csv", nch, M.xch);
+		loadCSV_1col("Cheb_An.csv", nch, M.An);
+		loadCSV_1col("Cheb_Ap.csv", nch, M.Ap);
+		loadCSV_1col("Cheb_Bn.csv", nch, M.Bn);
+		loadCSV_1col("Cheb_Bp.csv", nch, M.Bp);
+		loadCSV_1col("Cheb_Cc.csv", nch+1, M.Cc);
+		loadCSV_1col("Cheb_Dn.csv", nch, M.Dn);
+		loadCSV_1col("Cheb_Dp.csv", nch, M.Dp);
+		loadCSV_1col("Cheb_input.csv", 4, M.Input);
 
 		// Read the data which have multiple columns (matrices)
 		// In C++ you can't pass variable-size matrices, so we make a matrix A which is larger than what we need.
