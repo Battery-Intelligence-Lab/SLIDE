@@ -3,6 +3,9 @@ About _Slide_
 
 To cite this code, check the lastest release DOI at https://zenodo.org/badge/latestdoi/185216614.
 
+![](slide_logo.png)
+
+
 _Slide_ (simulator for lithium-ion degradation) is a code project mainly written in C++ to do fast simulations of degradation of lithium-ion batteries.
 Simulating 5000 1C CC cycles should take less than 1 minute; adding a CV phase doubles the calculation time to below 2 minutes.
 The project uses object oriented programming in C++, have a look at the pdf document '7 appendices; debugging, basics of C++, object oriented programming.pdf' if you 
