@@ -51,20 +51,20 @@ zer = find(abs(d) < 10^(-10));      % the location of the 0 eigenvalue
 matrices_spm.Ap(zer,zer) = 0;       % Set the values to exactly 0;
 matrices_spm.An(zer,zer) = 0;
 % 
-% % Write the parameters
-% csvwrite('Cheb_input.csv',[nch ; Rp ; Rn ; zer-1]); % write the input parameters for use in C++
+%% Write the parameters
+ csvwrite('Cheb_input.csv',[nch ; Rp ; Rn ; zer-1]); % write the input parameters for use in C++
 %     % write zer-1 because C++ indices start at 0 while Matlab indices start
 %     % at 1
-% dlmwrite('Cheb_Ap.csv',diag(matrices_spm.Ap),'delimiter', ',', 'precision', 16);  
-% dlmwrite('Cheb_An.csv',diag(matrices_spm.An),'delimiter', ',', 'precision', 16);    
-% dlmwrite('Cheb_Bp.csv',matrices_spm.Bp,'delimiter', ',', 'precision', 16);   
-% dlmwrite('Cheb_Bn.csv',matrices_spm.Bn,'delimiter', ',', 'precision', 16);     
-% dlmwrite('Cheb_Cp.csv',matrices_spm.Cp,'delimiter', ',', 'precision', 16);   
-% dlmwrite('Cheb_Cn.csv',matrices_spm.Cn,'delimiter', ',', 'precision', 16);     
-% dlmwrite('Cheb_Cc.csv',Ccentre,'delimiter', ',', 'precision', 16);   
-% dlmwrite('Cheb_Dp.csv',matrices_spm.Dp,'delimiter', ',', 'precision', 16);   
-% dlmwrite('Cheb_Dn.csv',matrices_spm.Dn,'delimiter', ',', 'precision', 16);   
-% dlmwrite('Cheb_Q.csv',matrices_spm.Q,'delimiter', ',', 'precision', 16);      
-% 
-% dlmwrite('Cheb_Vn.csv',VN,'delimiter', ',', 'precision', 16);       
-% dlmwrite('Cheb_Vp.csv',VP,'delimiter', ',', 'precision', 16);   
+ dlmwrite('Cheb_Ap.csv',diag(matrices_spm.Ap),'delimiter', ',', 'precision', 16);  
+ dlmwrite('Cheb_An.csv',diag(matrices_spm.An),'delimiter', ',', 'precision', 16);    
+ dlmwrite('Cheb_Bp.csv',matrices_spm.Bp,'delimiter', ',', 'precision', 16);   
+ dlmwrite('Cheb_Bn.csv',matrices_spm.Bn,'delimiter', ',', 'precision', 16);     
+ dlmwrite('Cheb_Cp.csv',matrices_spm.Cp,'delimiter', ',', 'precision', 16);   
+ dlmwrite('Cheb_Cn.csv',matrices_spm.Cn,'delimiter', ',', 'precision', 16);     
+ dlmwrite('Cheb_Cc.csv',Ccentre,'delimiter', ',', 'precision', 16);   
+ dlmwrite('Cheb_Dp.csv',matrices_spm.Dp,'delimiter', ',', 'precision', 16);   
+ dlmwrite('Cheb_Dn.csv',matrices_spm.Dn,'delimiter', ',', 'precision', 16);   
+ dlmwrite('Cheb_Q.csv',matrices_spm.Q,'delimiter', ',', 'precision', 16);      
+ 
+ dlmwrite('Cheb_Vn.csv',VN,'delimiter', ',', 'precision', 16);       
+ dlmwrite('Cheb_Vp.csv',VP,'delimiter', ',', 'precision', 16);   
