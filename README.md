@@ -83,5 +83,5 @@ License
 This open-source C++ and Matlab code is published under the BSD 3-clause License,
 please read `LICENSE.txt` file for more information.
 
-Two Matlab functions used by the code to produce the spatial discretisation have been developped by others.
-They come with their own lisence, see 'license chebdif.txt' and 'lisence cumsummat.txt'.
+Two Matlab functions used by the code to produce the spatial discretisation have been developed by others.
+They come with their own licence, see 'license chebdif.txt' and 'licence cumsummat.txt'.
