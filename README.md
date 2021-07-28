@@ -48,12 +48,12 @@ If you do change the discretisation, please read the license files attached to t
  
 Installation
 ============
-###Option 1 - Downloading a .zip file###
+### Option 1 - Downloading a .zip file ###
 [Download a .zip file of the code](https://github.com/davidhowey/SLIDE/archive/master.zip)
 
 Then, unzip the folder in a chosen directory on your computer.
 
-###Option 2 - Cloning the repository with Git###
+### Option 2 - Cloning the repository with Git ###
 To clone the repository, you will first need to have [Git][6] installed on 
 your computer. Then, navigate to the directory where you want to clone the 
 repository in a terminal, and type:
