@@ -28,7 +28,7 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::fixed_data<doub
 						 slide::fixed_data<double> kp_space, slide::fixed_data<double> kn_space,
 						 std::vector<slide::vec_XYdata> &Vdata_all, double weights[],
 						 double Crates[], double Ccuts[], double Tref, const struct OCVparam &ocvfit,
-						 double *err, std::array<double, 5> &par, std::array<int, 5> &parindex);
+						 double *err, std::array<double, 5> &par);
 
 void hierarchicalCharacterisationFit(int hmax, slide::fixed_data<double> r_space, slide::fixed_data<double> Dp_space,
 									 slide::fixed_data<double> Dn_space, slide::fixed_data<double> kp_space,

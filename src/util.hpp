@@ -1,5 +1,5 @@
 /*
- * Util.hpp
+ * util.hpp
  *
  * All utility functions. So the code is less verbose. 
  *

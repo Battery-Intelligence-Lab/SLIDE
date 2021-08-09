@@ -139,7 +139,7 @@ int main(int argv, char *argc[])
 
 	// *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
 	estimateOCVparameters(); // OCV parametrisation
-	// estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
+	//estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
 
 	// *********************************************** CYCLING FUNCTION CALLS ********************************************************
 	// CCCV(M, pref, deg, cellType, settings::verbose); // a cell does a few CCCV cycles

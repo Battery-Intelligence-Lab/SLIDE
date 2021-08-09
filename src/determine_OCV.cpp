@@ -640,10 +640,10 @@ auto hierarchicalOCVfit(int hmax, slide::fixed_data<double> AMp_space, slide::fi
 
 		const auto [AMp, AMn, sp, sn] = par; // the best fit parameters in this level of the hierarchy
 
-		AMp_space = slide::linspace_fix(AMp - AMp_space.dstep(), AMp + AMp_space.dstep(), AMp_space.size());
-		AMn_space = slide::linspace_fix(AMn - AMn_space.dstep(), AMn + AMn_space.dstep(), AMn_space.size());
-		sp_space = slide::linspace_fix(std::max(sp - sp_space.dstep(), 0.0), std::min(sp + sp_space.dstep(), 1.0), sp_space.size()); // min to limit it to 1<.
-		sn_space = slide::linspace_fix(std::max(sn - sn_space.dstep(), 0.0), std::min(sn + sn_space.dstep(), 1.0), sn_space.size()); // max to limit it to >0
+		AMp_space = slide::linspace_fix(AMp_space.prev(AMp), AMp_space.next(AMp), AMp_space.size());
+		AMn_space = slide::linspace_fix(AMn_space.prev(AMn), AMn_space.next(AMn), AMn_space.size());
+		sp_space = slide::linspace_fix(std::max(sp_space.prev(sp), 0.0), std::min(sp_space.next(sp), 1.0), sp_space.size()); // min to limit it to 1<.
+		sn_space = slide::linspace_fix(std::max(sn_space.prev(sn), 0.0), std::min(sn_space.next(sn), 1.0), sn_space.size()); // max to limit it to >0
 	}
 
 	return std::pair(par, err); // Return parameters and error.

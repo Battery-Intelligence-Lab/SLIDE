@@ -344,7 +344,7 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::fixed_data<doub
 						 slide::fixed_data<double> kp_space, slide::fixed_data<double> kn_space,
 						 std::vector<slide::vec_XYdata> &Vdata_all, double weights[],
 						 double Crates[], double Ccuts[], double Tref, const struct OCVparam &ocvfit,
-						 double *err, std::array<double, 5> &par, std::array<int, 5> &parindex)
+						 double *err, std::array<double, 5> &par)
 {
 	/*
 	 * Function which goes trough the specified search space for Dp, Dn, kp and kn, for a constant value of the DC resistance R.
@@ -375,11 +375,7 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::fixed_data<doub
 	 * OUT
 	 * err 		error of the best fit
 	 * par 		values of r, Dp, Dn, kp and kn which achieved the best fit
-	 * parindex indices in the search space for r, Dp, Dn, kp and kn which achieved the best fit
 	 *
-	 * THROWS
-	 * 10000 	an input file is in the wrong format
-	 * 10001 	the arrays for the data are too short, you have to increase the value of 'n'
 	 */
 
 	// *********************************************************** 1 variables ***********************************************************************
@@ -408,22 +404,11 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::fixed_data<doub
 
 	// *********************************************************** 2 loop through the search space ***********************************************************************
 
-	for (int idp = 0; idp < Dp_space.size(); idp++) // scan the search space for Dp
-	{
-		const auto Dp = Dp_space[idp];
-
-		for (int idn = 0; idn < Dn_space.size(); idn++) // scan the search space for Dn
-		{
-			const auto Dn = Dn_space[idn];
-
-			for (int ikp = 0; ikp < kp_space.size(); ikp++) // scan the search space for kp
-			{
-				const auto kp = kp_space[ikp];
-
-				for (int ikn = 0; ikn < kn_space.size(); ikn++) // scan the search space for kn
+	for (const auto Dp : Dp_space)			   // scan the search space for Dp
+		for (const auto Dn : Dn_space)		   // scan the search space for Dn
+			for (const auto kp : kp_space)	   // scan the search space for kp
+				for (const auto kn : kn_space) // scan the search space for kn
 				{
-					const auto kn = kn_space[ikn];
-
 					// Calculate the error for this set of parameters
 					double errcomb = 0; // initialise the combined error of all CCCV experiments for this combination of Dp, Dn, kp and kn to 0
 					for (size_t i = 0; i < Vdata_all.size(); i++)
@@ -450,13 +435,10 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::fixed_data<doub
 					if (errcomb < errmin)
 					{ // check if the error of this combination is better than the best fit so far
 						par = {R, Dp, Dn, kp, kn};
-						parindex = {ir, idp, idn, ikp, ikn};
 						errmin = errcomb;
 					}
-				}  // loop for kn
-			}	   // loop for kp
-		}		   // loop for Dn
-	}			   // loop for Dp
+				} // loop for kn
+
 	*err = errmin; // return the lowest error
 }
 
@@ -508,8 +490,7 @@ void hierarchicalCharacterisationFit(int hmax, slide::fixed_data<double> r_space
 	 */
 
 	// variables
-	std::vector<std::array<int, 5>> parindex_arr(r_space.size()); // array of indices for parameters [R Dp Dn kp kn] giving the lowest error for that resistance
-	std::vector<std::array<double, 5>> par_arr(r_space.size());	  // array of parameters [R Dp Dn kp kn] giving the lowest error for that resistance
+	std::vector<std::array<double, 5>> par_arr(r_space.size()); // array of parameters [R Dp Dn kp kn] giving the lowest error for that resistance
 	std::vector<double> err_arr(r_space.size());
 
 	// Loop for each level in the search
@@ -529,7 +510,7 @@ void hierarchicalCharacterisationFit(int hmax, slide::fixed_data<double> r_space
 		auto task_indv = [&](int i)
 		{
 			fitDiffusionAndRate(h, i, r_space[i], Dp_space, Dn_space, kp_space, kn_space, Vdata_all, weights,
-								Crates, Ccuts, Tref, ocvfit, &err_arr[i], par_arr[i], parindex_arr[i]);
+								Crates, Ccuts, Tref, ocvfit, &err_arr[i], par_arr[i]);
 		};
 
 		slide::run(task_indv, r_space.size());
@@ -543,12 +524,13 @@ void hierarchicalCharacterisationFit(int hmax, slide::fixed_data<double> r_space
 		// then the new search space has as minimum value the value of p at i-1 and as maximum the value of p at i+1
 
 		// only the first search level is logarithmic, afterwards the search has linear steps
-		const auto [ir, idp, idn, ikp, ikn] = parindex_arr[minIndex]; // Get parameter indices
-		r_space = slide::linspace_fix(r_space[ir - 1], r_space[ir + 1], r_space.size());
-		Dp_space = slide::linspace_fix(Dp_space[idp - 1], Dp_space[idp + 1], Dp_space.size());
-		Dn_space = slide::linspace_fix(Dn_space[idn - 1], Dn_space[idn + 1], Dn_space.size());
-		kp_space = slide::linspace_fix(kp_space[ikp - 1], kp_space[ikp + 1], kp_space.size());
-		kn_space = slide::linspace_fix(kn_space[ikn - 1], kn_space[ikn + 1], kn_space.size());
+		const auto [r, Dp, Dn, kp, kn] = par_arr[minIndex];
+
+		r_space = slide::linspace_fix(r_space.prev(r), r_space.next(r), r_space.size());
+		Dp_space = slide::linspace_fix(Dp_space.prev(Dp), Dp_space.next(Dp), Dp_space.size());
+		Dn_space = slide::linspace_fix(Dn_space.prev(Dn), Dn_space.next(Dn), Dn_space.size());
+		kp_space = slide::linspace_fix(kp_space.prev(kp), kp_space.next(kp), kp_space.size());
+		kn_space = slide::linspace_fix(kn_space.prev(kn), kn_space.next(kn), kn_space.size());
 
 		// Make the output parameters
 		*err = err_arr[minIndex];

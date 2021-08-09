@@ -122,10 +122,11 @@ namespace slide
     template <typename T, bool extrapolation>
     class fixed_data
     {
+        using size_type = int;
         T x_min{};
         T dx{};
-        int n{};
-        std::function<T(T, T, int)> F = [](T x_min, T dx, int i)
+        size_type n{};
+        std::function<T(T, T, int)> F = [](T x_min, T dx, size_type i)
         { return x_min + i * dx; };
 
     public:
@@ -163,6 +164,22 @@ namespace slide
         T back() const { return operator[](n - 1); }
         T front() const { return operator[](0); }
         T dstep() const { return dx; }
+
+        T prev(T x_current)
+        {
+            // Gets previous point compared to the current point x_current
+            auto temp_data = *this;
+            temp_data.x_min = x_current;
+            return temp_data(-1);
+        }
+
+        T next(T x_current)
+        {
+            // Gets next point compared to the current point x_current
+            auto temp_data = *this;
+            temp_data.x_min = x_current;
+            return temp_data(+1);
+        }
 
         void reserve(int n) {}
         void clear()
