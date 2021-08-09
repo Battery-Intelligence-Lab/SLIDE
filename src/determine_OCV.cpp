@@ -649,30 +649,6 @@ auto hierarchicalOCVfit(int hmax, slide::fixed_data<double> AMp_space, slide::fi
 	return std::pair(par, err); // Return parameters and error.
 }
 
-template <typename... TupleArgs>
-class CartesianProd
-{
-	std::tuple<TupleArgs...> myTuple;
-	size_t n = 0;
-
-public:
-	CartesianProd(TupleArgs... args) : myTuple{args...}, n{(args.size() * ... * 1)} {}
-
-	auto get_at()
-
-		auto
-		operator[](size_t i)
-	{
-		constexpr auto Nargs = sizeof...(TupleArgs);
-		std::array<double, Nargs> x;
-	}
-
-	auto size()
-	{
-		return n;
-	}
-};
-
 void estimateOCVparameters()
 {
 	/*
@@ -772,9 +748,6 @@ void estimateOCVparameters()
 	auto sn_space = slide::range_fix(fmin, fmax, df);
 
 	// ***************************************************** 3 Fit the parameters ***********************************************************************
-
-	CartesianProd test{AMp_space, AMn_space, sp_space, sn_space};
-	auto abc = test[0];
 
 	// Call the hierarchical search algorithm, which does the fitting
 	const int hmax = 2;																													  // number of levels in the hierarchy to consider.
