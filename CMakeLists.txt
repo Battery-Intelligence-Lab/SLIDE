@@ -86,6 +86,6 @@ add_executable (slide src/main.cpp
     )
 
 target_include_directories (slide PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-TARGET_LINK_LIBRARIES(slide) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
+TARGET_LINK_LIBRARIES(slide -pthread) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
 
 # 1F15CC8FAF2E004105282ADDDC78DC21098DFF10
