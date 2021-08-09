@@ -2,7 +2,6 @@
 slide.exe
 slide.pdb
 .idea/*
-build/*
 Debug/*
 slide.ilk
 cmake-build-debug/*
