@@ -9,16 +9,24 @@
  * See the licence file LICENCE.txt for more information.
  */
 
-
 // Include header files
-#include "determineOCV.h"
-#include "determineCharacterisation.h"
-#include "Cycling.h"
-#include "Degradation.h"
+#include <ctime>
+#include <thread>
+#include <array>
+#include <tuple>
 
-using namespace std;
+#include "util.hpp"
+#include "determine_OCV.h"
+#include "determine_characterisation.h"
+#include "cycling.h"
+#include "degradation.h"
+#include "constants.hpp"
+#include "cell.hpp"
+#include "cell_KokamNMC.hpp"
+#include "slide_aux.hpp"
 
-int main(int argv, char* argc[]){
+int main(int argv, char *argc[])
+{
 	/*
 	 * This function decides what will be simulated.
 	 * In the code below, you have to uncomment the line which you want to execute (to uncomment, remove the // in front of the line)
@@ -26,52 +34,42 @@ int main(int argv, char* argc[]){
 	 */
 
 	// print that you start simulations
-	cout<<"start simulations "<<endl;
+	std::cout << "Start simulations" << std::endl;
 
 	// Make a clock to measure how long the simulation takes
 	std::clock_t tstart;
 	double duration;
+
 	tstart = std::clock();
 
 	// Read the values for the matrices for the spatial discretisation of the solid diffusion PDE.
 	// these values are calculated by the Matlab-script 'modelSetup.m', which writes them to csv files.
 	// Here, we only need to read these csv files
-	Model M;
-	Model_initialise(M);
 
-	// Choose how much messages should be printed to the terminal
-	int verbose = 1;				// integer deciding how verbose the simulation should be
-									// The higher the number, the more output there is.
-									// Recommended value is 1, only use higher value for debugging
-									// From 4 (and above) there will be too much info printed to follow what is going on, but this might be useful for debugging to find where the error is and why it is happening
-									// 	0 	almost no messages are printed, only in case of critical errors related to illegal parameters
-									// 	1 	error messages are printed in case of critical errors which might crash the simulation
-									// 	2 	all error messages are printed, whether the simulation can recover from the errors or not
-									// 	3 	on top of the output from 2, a message is printed every time a function in the Cycler and BasicCycler is started and terminated
-									// 	4 	on top of the output from 3, the high-level flow of the program in the Cycler is printed (e.g. 'we are going to discharge the cell')
-									// 	5 	on top of the output from 4, the low-level flow of the program in the BasicCycler is printed (e.g. 'in time step 101, the voltage is 3.65V')
-									// 	6 	on top of the output from 5, we also print details of the nonlinear search for the current needed to do a CV phase
-									// 	7 	on top of the output from 6, a message is printed every time a function in the Cell is started and terminated
+	slide::Model M; // Initialised at constructor.
+	// Look for extra settings at Constants.hpp (such as verbosity)
 
 	// Choose the prefix, a string with which the names of all subfolders with the outputfiles will start (the folders will be called prefix_xxxx).
 	// This is typically a number, and the reason why we use it is that results of previous simulations are not overwritten.
 	// i.e. for one simulation, use pref "0", then the next simulation could have pref "1".
 	// this ensures the results of the second simulation are written in different files and folders, rather than overwriting the files from the first simulation
-	string pref = "0";//todo				// will be used to name a folder with the results, so must comply with the naming convention on your operating system
-									// letters, numbers, underscores and dots are fine
-									// don't use spaces
-									// don't use forbidden characters, e.g. for Windows the following are not allowed < > : " \ | / ? *
-									// https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
+	const std::string pref = "0"; //todo
+								  // will be used to name a folder with the results, so must comply with the naming convention on your operating system
+								  // letters, numbers, underscores and dots are fine
+								  // don't use spaces
+								  // don't use forbidden characters, e.g. for Windows the following are not allowed < > : " \ | / ? *
+								  // https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
 
 	// Choose which cell should be used for the simulations
-	int cellType = 0; 				// which cell to use for the simulation.
-									// 0 	high power Kokam NMC cell (18650)
-									// 1 	high energy LG Chem NMC cell (18650)
-	   								// 2 	user cell (template class provided for where the user can define his own parameters)
+	const int cellType = slide::cellType::KokamNMC;
+	// which cell to use for the simulation.
+	// 0 	high power Kokam NMC cell (18650)
+	// 1 	high energy LG Chem NMC cell (18650)
+	// 2 	user cell (template class provided for where the user can define his own parameters)
 
 	// Choose which degradation models to use for the simulations
 	// The models are identified by a number, see DEG_ID in Cell.hpp and below
-		/* SEI_id 		identification for which model(s) to use for SEI growth
+	/* SEI_id 		identification for which model(s) to use for SEI growth
 		 * 					0	no SEI growth
 		 * 					1 	kinetic model only (Tafel kinetics)
 		 * 							ref: Ning & Popov, Journal of the Electrochemical Society 151 (10), 2004
@@ -118,41 +116,42 @@ int main(int argv, char* argc[]){
 		 */
 	// For now, assume we want to include 'Pinson&Bazant'-SEI growth, 'Delacourt'-LAM, 'Kindermann'-LAM and 'Yang'-lithium plating
 	DEG_ID deg;
-		deg.SEI_n = 1;										// there is 1 SEI model
-		deg.SEI_id[0] = 2;									// Pinson & Bazant SEI growth
-		deg.SEI_porosity = 0;								// don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+	deg.SEI_n = 1;		  // there is 1 SEI model
+	deg.SEI_id[0] = 2;	  // Pinson & Bazant SEI growth
+	deg.SEI_porosity = 0; // don't decrease the porosity (set to 1 if you do want to decrease the porosity)
 
-		deg.CS_n = 1;										// there is 1 model (that there are no cracks)
-		deg.CS_id[0] = 0;									// no surface cracks
-		deg.CS_diffusion = 0;								// don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+	deg.CS_n = 1;		  // there is 1 model (that there are no cracks)
+	deg.CS_id[0] = 0;	  // no surface cracks
+	deg.CS_diffusion = 0; // don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
 
-		deg.LAM_n = 2;										// there are 2 LAM models (Delacourt and Kindermann)
-		deg.LAM_id[0] = 2;									// Delacourt LAM
-		deg.LAM_id[1] = 3;									// Kindermann LAM
+	deg.LAM_n = 2;	   // there are 2 LAM models (Delacourt and Kindermann)
+	deg.LAM_id[0] = 2; // Delacourt LAM
+	deg.LAM_id[1] = 3; // Kindermann LAM
 
-		deg.pl_id = 1;										// Yang litihium plating
+	deg.pl_id = 1; // Yang lithium plating
 
 	// Then the user has to choose what is simulated.
 	// In the code below, uncomment the line which calls the function you want to execute (uncommenting means removing the // in front of the line)
 	// and comment all the other lines (commenting means putting // in front of the line)
 
-	// *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
+	auto numThreads = std::thread::hardware_concurrency(); // asd
+	std::cout << "Available number of threads : " << numThreads << '\n';
 
-//	estimateOCVparameters();								// OCV parametrisation
-//	estimateCharacterisation(); 							// parametrisation of diffusion constant, rate constant and DC resistance
+	// *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
+	estimateOCVparameters(); // OCV parametrisation
+	// estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
 
 	// *********************************************** CYCLING FUNCTION CALLS ********************************************************
-	CCCV(M, pref, deg, cellType, verbose);				// a cell does a few CCCV cycles
-//	FollowCurrent(M, pref, deg, cellType, verbose); 		// a cell follows the current profile specified in a csv file
+	// CCCV(M, pref, deg, cellType, settings::verbose); // a cell does a few CCCV cycles
+	// FollowCurrent(M, pref, deg, cellType, settings::verbose); // a cell follows the current profile specified in a csv file
 
 	// *********************************************** DEGRADATION FUNCTION CALLS ********************************************************
-
-//	CalendarAgeig(M, pref, deg,cellType, verbose);		// simulates a bunch of calendar degradation experiments
-//	CycleAgeing(M, pref, deg, cellType, verbose);			// simulates a bunch of cycle degradation experiments
-//	ProfileAgeing(M, pref, deg, cellType, verbose);		// simulates a bunch of drive cycle degradation experiments
+	// CalendarAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of calendar degradation experiments
+	//CycleAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of cycle degradation experiments
+	//ProfileAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of drive cycle degradation experiments
 
 	// *********************************************** END ********************************************************
 	// Now all the simulations have finished. Print this message, as well as how long it took to do the simulations
-	duration = ( std::clock() - tstart ) / (double) CLOCKS_PER_SEC;
-	cout<<"finished all simulations in "<<floor(duration/60)<<":"<<duration - floor(duration/60)*60<<endl;
+	duration = (std::clock() - tstart) / (double)CLOCKS_PER_SEC;
+	std::cout << "finished all simulations in " << floor(duration / 60) << ":" << duration - floor(duration / 60) * 60 << ".\n";
 }

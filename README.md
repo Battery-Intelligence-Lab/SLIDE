@@ -1,3 +1,7 @@
+# Information about develop version of this library: 
+
+- SLIDE_v2 development is in progress. Documentation and some functionalities may still be missing. 
+
 About _Slide_
 ===========================
 

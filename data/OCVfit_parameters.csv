@@ -1,0 +1,36 @@
+AMp,3.94883e-06
+AMn,8.95184e-06
+start pos,0.38
+start neg,0.4
+cathode volume fraction ep,0.5
+anode volume fraction en,0.5
+electrode surface ele_surf,0.0982
+cathode thickness thickp,8.04242e-05
+anode thickness thickn,0.000182319
+cathode lithium fraction at 100% SoC,0.38
+anode lithium fraction at 100% SoC,0.4
+cathode lithium fraction at 50% SoC,0.630313
+anode lithium fraction at 50% SoC,0.214308
+cathode lithium fraction at 0% SoC,0.880625
+anode lithium fraction at 0% SoC,0.0286165
+capacity of the cell in Ah2.7192
+maximum voltage of the cell4.2
+minimum voltage of the cell2.7
+The error on the OCV curve with this fit is,0.0287949
+
+Below are the settings which produced this result
+maximum li-concentration in the cathode,51385
+maximum li-concentration in the anode,30555
+name of the file with the cathode OCV curve,OCVfit_cathode.csv
+name of the file with the anode OCV curve,OCVfit_anode.csv
+name of the file with the cell's OCV curve,OCVfit_cell.csv
+capacity of the cell,2.7192
+
+Below are the settings of the initial search space
+relative step size in the search for active material,0.1
+relative minimum amount of active material,0
+relative maximum amount of active material,5
+step size in the search for the starting li-fraction,0.1
+minimum li-fraction,0
+maximum li-fraction,1
+number of levels in the search hierarchy,2
