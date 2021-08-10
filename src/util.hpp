@@ -83,26 +83,26 @@ namespace slide::util
     //    }
     // }
 
-    struct Counter // Counts how many times it is called.
-    {
+    // struct Counter // Counts how many times it is called.
+    // {
 
-        // To use counter create a static Counter object in the function you would like to measure
-        // slide::util::Counter myCounterName(printEveryXiter);  Then just call it
-        // myCounterName();
-        std::atomic_ullong count{0};
-        long long printEveryXiter{500000};
+    //     // To use counter create a static Counter object in the function you would like to measure
+    //     // slide::util::Counter myCounterName(printEveryXiter);  Then just call it
+    //     // myCounterName();
+    //     static count{0};
+    //     long long printEveryXiter{500000};
 
-        Counter() = default;
-        Counter(unsigned long long printEveryXiter) : printEveryXiter(printEveryXiter){};
+    //     Counter() = default;
+    //     Counter(unsigned long long printEveryXiter) : printEveryXiter(printEveryXiter){};
 
-        void operator()()
-        {
-            count++;
+    //     void operator()()
+    //     {
+    //         count++;
 
-            if (count % printEveryXiter == 0)
-                std::cout << "Counter: " << count << '\n';
-        }
-    };
+    //         if (count % printEveryXiter == 0)
+    //             std::cout << "Counter: " << count << '\n';
+    //     }
+    // };
 
 } // namespace slide::util
 

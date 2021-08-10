@@ -13,7 +13,6 @@
 #pragma once
 
 #include <string>
-#include <execution>
 #include <filesystem>
 
 inline std::filesystem::path operator+(const std::filesystem::path &lhs, const std::string &rhs) // To make path type compatible with strings.
