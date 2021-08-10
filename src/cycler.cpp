@@ -1296,7 +1296,7 @@ void Cycler::calendarAgeing(double dt, double V, double Ti, int Time, int timeCh
 			// recharge every day
 			else if (mode == 1)
 			{
-				for (int j = 0; j < timeCheck; i++) // #CHECK
+				for (int j = 0; j < timeCheck; j++) // #CHECK
 				{									// a loop for every day
 					if constexpr (settings::verbose >= printLevel::printCyclerHighLevel)
 						std::cout << "Cycler::calendarAgeing is resting the cell in day " << j << " of period " << i << ".\n";

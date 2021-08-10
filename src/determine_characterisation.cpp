@@ -381,8 +381,8 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::fixed_data<doub
 	// *********************************************************** 1 variables ***********************************************************************
 
 	// Variables
-	slide::Model M;				  // structure with the matrices for the spatial discretisation for the solid diffusion PDE
-	constexpr double dt = 2;	  // time step to be used for the simulation
+	slide::Model M; // structure with the matrices for the spatial discretisation for the solid diffusion PDE
+	//constexpr double dt = 2;	  // time step to be used for the simulation
 	slide::vec_XYdata Vsim, Tsim; // arrays to store the simulation results #CHECK -> static thread_local
 	double errmin = 10000000000;  // lowest error encountered so far
 

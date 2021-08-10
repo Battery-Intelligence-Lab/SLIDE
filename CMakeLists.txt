@@ -10,6 +10,20 @@ set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+#default build type. 
+
+set(default_build_type "Release")
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
+      STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+
 #export compiler flags for code completion engines
 set (CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
@@ -34,6 +48,7 @@ else ()
 endif ()
 
 message(STATUS "Host system: ${CMAKE_HOST_SYSTEM}")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 

@@ -254,7 +254,7 @@ auto discharge_noexcept(const slide::vec_XYdata &OCVp, const slide::vec_XYdata &
 	fp[1] = (fp[0] + fp[2]) / 2.0;
 	fn[1] = (fn[0] + fn[2]) / 2.0;
 
-	return flag;
+	return flag; // Flag is never false.
 }
 
 auto discharge_noexcept(const slide::vec_XYdata &OCVp, const slide::vec_XYdata &OCVn, double cap, const double AMp, const double AMn, const double cmaxp,
@@ -318,11 +318,11 @@ auto discharge_noexcept(const slide::vec_XYdata &OCVp, const slide::vec_XYdata &
 
 	auto interpolate = [&]()
 	{
-		bool flag_ocvpi, flag_ocvni;
-		std::tie(ocvpi, flag_ocvpi) = linInt_noexcept(bound, OCVp.x, OCVp.y, OCVp.size(), sp);
-		std::tie(ocvni, flag_ocvni) = linInt_noexcept(bound, OCVn.x, OCVn.y, OCVn.size(), sn);
+		bool status_ocvpi, status_ocvni;
+		std::tie(ocvpi, status_ocvpi) = linInt_noexcept(bound, OCVp.x, OCVp.y, OCVp.size(), sp);
+		std::tie(ocvni, status_ocvni) = linInt_noexcept(bound, OCVn.x, OCVn.y, OCVn.size(), sn);
 
-		if (flag_ocvpi || flag_ocvni)
+		if (status_ocvpi || status_ocvni)
 		{
 			std::cout << "Error in deterimineOCV::discharge from linInt when getting the voltage. positive li-fraction is "
 					  << sp << " negative li-fraction is " << sn << ". Both should be between 0 and 1.\n";
@@ -497,6 +497,63 @@ double calculateError(bool bound, slide::vec_XYdata &OCVcell, slide::vec_XYdata 
 	return rmse;
 }
 
+auto cost_OCV(const slide::vec_XYdata &OCVp, const slide::vec_XYdata &OCVn, const double AMp, const double AMn, double sp, double sn, const double cmaxp,
+			  const double cmaxn, const slide::vec_XYdata &OCVcell)
+{
+
+	using namespace PhyConst;
+	// Variables
+	const double n = 1.0; // number of electrons involved in the reaction
+	double Ah = 0;		  // discharged charge up to now
+	bool bound = true;	  // check the surface concentration is within the allowed limits when doing linear interpolation.
+	bool end = false;	  // boolean to check if we have reached the end voltage
+
+	const auto Vend = OCVcell.y.back();
+
+	double sqr_err = 0; // square error
+	double V = 0;		// Simulation OCV.
+
+	for (size_t i = 0; i < OCVcell.size(); i++)
+	{
+		// Original equations:
+		// Ah += I * dt / 3600;  -> I*dt = dAs
+		// sp += I * dt / (n * F) / AMp / cmaxp;
+		// sn -= I * dt / (n * F) / AMn / cmaxn;
+
+		if (!end)
+		{
+
+			const auto Ah_cell = OCVcell.x[i];
+
+			const auto dAh = Ah_cell - Ah; // Ah need to be added to reach cell's Ah.
+			const auto dAs = dAh * 3600.0; // Ah += I * dt / 3600;  I*dt = dAs, Amper seconds
+
+			Ah = Ah_cell;
+			sp += dAs / (n * F) / AMp / cmaxp;
+			sn -= dAs / (n * F) / AMn / cmaxn;
+
+			const auto [ocvpi, status_ocvpi] = linInt_noexcept(bound, OCVp.x, OCVp.y, OCVp.size(), sp);
+			const auto [ocvni, status_ocvni] = linInt_noexcept(bound, OCVn.x, OCVn.y, OCVn.size(), sn);
+
+			if (status_ocvpi || status_ocvni)
+				V = 0;
+			else
+				V = ocvpi - ocvni; // OCV = OCV_cathode - OCV_anode, cell voltage in this time step
+		}
+		else
+		{
+			V = 0;
+		}
+
+		const double err = OCVcell.y[i] - V; // Calculate the error
+		sqr_err += err * err;				 // sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
+
+		end = V <= Vend || sp < 0 || sp > 1 || sn < 0 || sn > 1;
+	}
+
+	return sqr_err;
+}
+
 void fitAMnAndStartingPoints(int hierarchy, int ap, double AMp, slide::fixed_data<double> AMn_space, slide::fixed_data<double> sp_space,
 							 slide::fixed_data<double> sn_space, double cmaxp, double cmaxn, double *err, std::array<double, 4> &par,
 							 slide::vec_XYdata &OCVp, slide::vec_XYdata &OCVn, slide::vec_XYdata &OCVcell)
@@ -522,46 +579,26 @@ void fitAMnAndStartingPoints(int hierarchy, int ap, double AMp, slide::fixed_dat
 	// *********************************************************** 1 variables ***********************************************************************
 
 	// variables
-	double erri;									  // error of this combination of parameters
-	double errmin = 10000000000;					  // lowest error encountered so far
-	double Vend = OCVcell.y.back();					  // minimum voltage of the measured OCV curve, i.e. the voltage until which the OCV curve should be simulated
-	double cap = OCVcell.x.back();					  // capacity of the cell [Ah] (the discharge Ah at the last point on the OCV curve)
-	static thread_local slide::vec_XYdata OCVsim;	  // array for the simulated OCV curve
-	static thread_local slide::vec_XYdata ocvn, ocvp; // array for the simulated voltage of each electrode
-
-	double lifp[3], lifn[3]; // array to store the lithium fractions at 100% SoC, 50% SoC and 0% SoC (not needed here)
+	double errmin = 1e10; // lowest error encountered so far
 
 	// *********************************************************** 2 loop through the search space ***********************************************************************
 	for (const auto AMn : AMn_space)	   // loop for the search space of AMn
 		for (const auto sp : sp_space)	   // loop through the search space of sp / avoid that the starting points go out of range (the lithium fraction has to be between 0 and 1)
 			for (const auto sn : sn_space) // loop through the search space of sn / avoid that the starting points go out of range (the lithium fraction has to be between 0 and 1)
 			{
-				// Simulate the OCV curve with these parameters
-				OCVsim.clear(), ocvn.clear(), ocvp.clear(); // Clear vectors.
+				// Simulate the OCV curve with these parameters and calculate the error between the simulated and measured OCV curve
+				const auto erri = cost_OCV(OCVp, OCVn, AMp, AMn, sp, sn, cmaxp, cmaxn, OCVcell); // calculates total squared error.
 
-				const auto flag = discharge_noexcept(OCVp, OCVn, cap, AMp, AMn, cmaxp, cmaxn, sp, sn, Vend, OCVsim, ocvn, ocvp, lifp, lifn);
-
-				if (flag)
-				{
-					// calculate the error between the simulated and measured OCV curve
-					erri = calculateError(true, OCVcell, OCVsim);
-
-					// Store the minimum error & parameters leading to this error
-					if (erri < errmin)
-					{ // check if the error of this combination is lower than the best fit so far
-						par = {AMp, AMn, sp, sn};
-						errmin = erri;
-					}
-				}
-				else
-				{ // infeasible parameters:
-					std::cout << "Error in determineOCV::fitAMnAndStartingPoints: " << 1 << " for AMp = " << AMp
-							  << ", AMn = " << AMn << ", sp = " << sp << ", sn = " << sn << ".\n";
+				// Store the minimum error & parameters leading to this error
+				if (erri < errmin)
+				{ // check if the error of this combination is lower than the best fit so far
+					par = {AMp, AMn, sp, sn};
+					errmin = erri;
 				}
 			}
 
 	// Return the minimum error
-	*err = errmin;
+	*err = std::sqrt(errmin / OCVcell.size()); // RMSE error.
 }
 
 auto hierarchicalOCVfit(int hmax, slide::fixed_data<double> AMp_space, slide::fixed_data<double> AMn_space, slide::fixed_data<double> sp_space,

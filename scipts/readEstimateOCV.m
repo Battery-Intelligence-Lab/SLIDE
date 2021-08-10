@@ -28,7 +28,7 @@ pathVar;
 OCVcell = csvread( fullfile(pathvar.data_folder, namecell) );   % the user-supplied measured OCV curve of the cell (supplied by the user)
 OCVn = csvread( fullfile(pathvar.data_folder, nameneg) );       % the user-supplied anode OCV curve
 OCVp = csvread( fullfile(pathvar.data_folder, namepos) );       % the user-supplied cathode OCV curve
-OCVsim = csvread( fullfile(pathvar.data_folder, nameOCV) );     % the simulated OCV curve (simulated by the code)
+OCVsim = csvread( fullfile(pathvar.results_folder, nameOCV) );     % the simulated OCV curve (simulated by the code)
     % discharged charge [Ah]
     % cell OCV [V]
     % anode li-fraction [-]
