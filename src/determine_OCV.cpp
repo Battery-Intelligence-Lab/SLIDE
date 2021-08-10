@@ -780,7 +780,7 @@ void estimateOCVparameters()
 	output.open(PathVar::results + nameOCV);
 	for (size_t i = 0; i < OCVsim.x.size(); i++)
 		output << OCVsim.x[i] << ',' << OCVsim.y[i] << ',' << OCVnsim.x[i] << ','
-			   << OCVnsim.y[i] << ',' << OCVpsim.x[i] << ',' << OCVpsim.y[i] << ".\n";
+			   << OCVnsim.y[i] << ',' << OCVpsim.x[i] << ',' << OCVpsim.y[i] << '\n';
 	output.close();
 
 	// From the 4 fitted values, we need to determine the following parameters, needed by the single particle model implemented in Cell
