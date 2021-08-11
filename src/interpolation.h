@@ -24,7 +24,7 @@
 //#include "util.hpp"
 
 template <typename Tx, typename Ty>
-auto linInt_noexcept(bool bound, const Tx &xdat, const Ty &ydat, int nin, double x, bool is_fixed = false)
+auto linInt_noexcept(bool bound, Tx &xdat, const Ty &ydat, int nin, double x, bool is_fixed = false)
 {
     /*
 	 * function for linear interpolation with the data points provided as two arrays
@@ -96,19 +96,21 @@ auto linInt_noexcept(bool bound, const Tx &xdat, const Ty &ydat, int nin, double
     return std::make_pair(yy, status);
 }
 
-template <typename Ty>
-auto linInt_noexcept(bool bound, const slide::fixed_data<double> &xdat, const Ty &ydat, int nin, double x, bool is_fixed = false)
-{
-    // Not implemented yet. This specialisation is here to prevent error in calling the generic version with slide::fixed_data<double> &xdat
+// template <typename Ty>
+// auto linInt_noexcept(bool bound, const slide::fixed_data<double> &xdat, const Ty &ydat, int nin, double x, bool is_fixed = false)
+// {
+//     // Not implemented yet. This specialisation is here to prevent error in calling the generic version with slide::fixed_data<double> &xdat
 
-    double yy{0.0}; // Some programs depend on 0.0 initial condition when status != 0, do not change.
-    int status = 0; // Set the status as inverse of bound. So that first two branches of if are invalid if bound is true.
+//     double yy{0.0}; // Some programs depend on 0.0 initial condition when status != 0, do not change.
+//     int status = 0; // Set the status as inverse of bound. So that first two branches of if are invalid if bound is true.
 
-    return std::make_pair(yy, status);
-}
+//     std::cout << "ERROR! NOT IMPLEMENTED FUNCTION IS CALLED!\n";
+
+//     return std::make_pair(yy, status);
+// }
 
 template <typename Tx, typename Ty>
-double linInt(bool verbose, bool bound, const Tx &xdat, const Ty &ydat, int nin, double x, bool is_fixed = false)
+double linInt(bool verbose, bool bound, Tx &xdat, const Ty &ydat, int nin, double x, bool is_fixed = false)
 {
     /*
 	 * function for linear interpolation with the data points provided as two arrays

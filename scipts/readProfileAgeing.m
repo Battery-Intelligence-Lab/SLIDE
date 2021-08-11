@@ -15,7 +15,8 @@ clear
 % main()-function in Main.cpp
 
 % The value of the prefix (pref in c++)
-pref = '0';                   
+pref = '0';
+pathVar; % get necessary paths. 
 
 % The vlaue of the struct which defined which degradation models were used
 % (deg in c++). Note that in Matlab we can directly input the arrays (e.g.

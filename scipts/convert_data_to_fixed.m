@@ -1,6 +1,8 @@
 % This file takes non-constantly sampled data to make fixed-sampled data
 % for faster interpolation! 
 
+% NOT IMPLEMENTED YET.
+
 data_folder = fullfile('..', 'data');
 file_name = 'Kokam_OCV_C.csv'; %Kokam_OCV_NMC
 data_path = fullfile(data_folder, file_name);

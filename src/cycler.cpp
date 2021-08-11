@@ -153,6 +153,9 @@ void Cycler::getOCV(slide::fixed_data<double> &Ah_fixed, std::vector<double> &OC
 	// Data collection: we don't want to store a point every time step because that leads to very large arrays.
 	constexpr int nStore = 750; // store a value every 750 time steps
 	//constexpr int nin2 = static_cast<int>(1 / Crate * 3600 / dt * 2); // expected duration 1/Crate [hours] * 3600/dt [time steps], *2 such that the arrays are for sure long enough // 90k elements
+
+	//std::cout << "OCVni_vec size: " << OCVni_vec.size() << "OCVpi_vec size: " << OCVpi_vec.size() << '\n'; // 50k and 79k elements respectively.
+
 	OCVni_vec.clear(); // clear elements of vectors.
 	OCVpi_vec.clear();
 

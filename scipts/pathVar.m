@@ -8,5 +8,5 @@
 pathvar.results_folder = fullfile('..','results'); %, 'SLIDE_DH'
 pathvar.data_folder = fullfile('..','data');
 
-pathvar.orig_results_folder = fullfile('..','results', 'SLIDE_DH');
+pathvar.orig_results_folder = fullfile('..','results', 'last_results'); % enter here the folder holding the results for comparison. 
 

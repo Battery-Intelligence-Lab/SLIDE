@@ -5,6 +5,8 @@
 % of Oxford, VITO nv, and the 'Slide' Developers.
 % See the licence file LICENCE.txt for more information.
 
+% THIS FILE IS FOR UNIT TESTS PURPOSE.
+
 clear all; close all; clc;
 
 pathVar;
