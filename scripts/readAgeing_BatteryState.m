@@ -74,7 +74,7 @@ for i=1:length(IDs)
 end
 
 % Make legend, labels & title
-legend(IDs);
+legend(IDs,'Interpreter','none');
 if FECx
     xlabel('full equivalent cycles [-]');
 else

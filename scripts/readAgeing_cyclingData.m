@@ -116,7 +116,7 @@ for i=1:length(IDs)
             end
             ylabel('[V]')
         legend('current','voltage')
-        title(strcat('cell current and voltage of ', IDs{i})) 
+        title(strcat('cell current and voltage of', " ", IDs{i}),'Interpreter', 'none') 
     subplot(2,1,2)
         if FECx
             plot(cycdat.FEC,cycdat.T-273)
@@ -126,7 +126,7 @@ for i=1:length(IDs)
             xlabel('time [hour]')
         end
         ylabel('[degrees]')
-        title(strcat('cell temperature of ', IDs{i}))    
+        title(strcat('cell temperature of', " ", IDs{i}), 'Interpreter', 'none')    
         
         clear('cycdat');               % clear the struct with the data to free up memory
 end

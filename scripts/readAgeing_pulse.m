@@ -114,7 +114,7 @@ for i=1:length(IDs)
     xlabel('[Ah]')
     ylabel('[V]')
     tit = strcat(IDs{i});
-    title(tit)
+    title(tit,'Interpreter', 'none')
  
     % try to make a legend giving the full equivalent cycles of when
     % the check-up was done. this will only work if you have previously

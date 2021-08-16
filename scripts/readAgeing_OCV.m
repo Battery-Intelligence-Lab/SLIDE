@@ -138,5 +138,5 @@ for i=1:length(IDs)
     ylim([0 5])
     xlabel('[Ah]')
     ylabel('[V]')
-    title(IDs{i})
+    title(IDs{i},'Interpreter', 'none')
 end

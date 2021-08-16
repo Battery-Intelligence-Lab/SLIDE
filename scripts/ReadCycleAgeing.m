@@ -36,7 +36,7 @@ pl_id = [1];                            % which li-plating model(s) was (were) u
 % which the results are written.
 % These identifiers are defined in the variable name, which is redefined
 % for every simulated experiment in CycleAgeing in Degradation.cpp in
-% the c++ code (note: the line says e.g. name = pref + "T45_1C1D_SoC0-100"; In
+% the C++ code (note: the line says e.g. name = pref + "T45_1C1D_SoC0-100"; In
 % that case, the identifier is T45_1C1D_SoC0-100 (while pref has the prefix and
 % degradation model identification)
 % In Matlab we can make a cell array with all the identifiers at once
@@ -79,8 +79,7 @@ readAgeing_CCCV
 
 %% Read and plot the voltage during the pulse charge
 % makes one figure with the simulated voltage when a pulse profile is
-% applied to the cell
-%   the figure has one subplot per cycle regime
+% applied to the cell  the figure has one subplot per cycle regime
 % Each plot shows how the voltage curve changes, due to changes in the OCV
 % curve, resistance increase, and other degradation effects.
 readAgeing_pulse

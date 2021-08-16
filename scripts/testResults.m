@@ -25,12 +25,17 @@ for i= 1:n
     file_diff_now = 0;
     if(exist(origPath,'file')==2)
         filePath = fullfile(fileList(i).folder, fileList(i).name);
-        
+        try
         testFile = csvread(filePath);
         origFile = csvread(origPath);
         
         file_diff_now = norm(origFile-testFile,1);
         file_diff = [file_diff, file_diff_now];
+        catch
+            continue;
+        end
+        
+
         
     else
         fprintf('%s\n', [origPath, ' is skipped.']);

@@ -171,8 +171,8 @@ for i=1:length(IDs)
         end
         xlabel('[Ah]')
         ylabel('[V]')
-        tit = strcat(IDs{i}, ', cycle at ',cr,'C');
-        title(tit)
+        tit = strcat(IDs{i}, ', cycle at', " ", cr,'C');
+        title(tit,'Interpreter', 'none')
     end
         
     % try to make a legend giving the full equivalent cycles of when
