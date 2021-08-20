@@ -1,6 +1,8 @@
 About _Slide_
 ===========================
 
+In this `readme.md` a summary is given. You may find the detailed documentation [here](https://davidhowey.github.io/SLIDE/).  
+
 To cite this code, check the lastest release DOI at https://zenodo.org/badge/latestdoi/185216614.
 
 ![](slide_logo.png)
