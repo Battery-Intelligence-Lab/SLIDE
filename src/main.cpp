@@ -136,19 +136,20 @@ int main(int argv, char *argc[])
 
 	auto numThreads = std::thread::hardware_concurrency(); // asd
 	std::cout << "Available number of threads : " << numThreads << '\n';
+	std::cout << "Used threads : " << (settings::isParallel ? std::min(settings::numMaxParallelWorkers, numThreads) : 1) << '\n';
 
 	// *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
-	estimateOCVparameters(); // OCV parametrisation
+	// estimateOCVparameters(); // OCV parametrisation
 	// estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
 
 	// *********************************************** CYCLING FUNCTION CALLS ********************************************************
-	// CCCV(M, pref, deg, cellType, settings::verbose); // a cell does a few CCCV cycles
-	// FollowCurrent(M, pref, deg, cellType, settings::verbose); // a cell follows the current profile specified in a csv file
+	CCCV(M, pref, deg, cellType, settings::verbose);		  // a cell does a few CCCV cycles
+	FollowCurrent(M, pref, deg, cellType, settings::verbose); // a cell follows the current profile specified in a csv file
 
 	// *********************************************** DEGRADATION FUNCTION CALLS ********************************************************
 	// CalendarAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of calendar degradation experiments
-	//CycleAgeing(M, pref, deg, cellType, settings::verbose);	  // simulates a bunch of cycle degradation experiments
-	//ProfileAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of drive cycle degradation experiments
+	// CycleAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of cycle degradation experiments
+	// ProfileAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of drive cycle degradation experiments
 
 	// *********************************************** END ********************************************************
 	// Now all the simulations have finished. Print this message, as well as how long it took to do the simulations

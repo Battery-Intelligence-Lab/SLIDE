@@ -87,11 +87,11 @@ struct ProfileAgeingConfig
 
 // Auxiliary functions for multi-threaded simulations
 void Calendar_one(const struct slide::Model &M, const struct DEG_ID &degid, int cellType, int verbose, // simulate one calendar ageing experiment
-				  double V, double Ti, int Time, int mode, int timeCycleData, int timeCheck, struct checkUpProcedure proc, std::string name);
+				  double V, double Ti, int Time, int mode, int timeCycleData, int timeCheck, struct checkUpProcedure &proc, std::string name);
 void Cycle_one(const struct slide::Model &M, const struct DEG_ID &degid, int cellType, int verbose, double Vma, double Vmi, // simulate one cycle ageing experiment
-			   double Ccha, bool CVcha, double Icutcha, double Cdis, bool CVdis, double Icutdis, double Ti, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure proc, std::string name);
+			   double Ccha, bool CVcha, double Icutcha, double Cdis, bool CVdis, double Icutdis, double Ti, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, std::string name);
 void Profile_one(const struct slide::Model &M, const struct DEG_ID &degid, int cellType, int verbose, std::string profName, int n, int limit, // simulate one drive cycle ageing experiment
-				 double Vma, double Vmi, double Ti, int timeCycleData, int nrProfiles, int nrCap, struct checkUpProcedure proc, std::string name);
+				 double Vma, double Vmi, double Ti, int timeCycleData, int nrProfiles, int nrCap, struct checkUpProcedure &proc, std::string name);
 
 // Degradation experiments
 void CycleAgeing(const struct slide::Model &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);	// simulate a range of cycle ageing experiments (different temperatures, SoC windows, currents)
@@ -101,4 +101,4 @@ void ProfileAgeing(const struct slide::Model &M, std::string pref, const struct 
 // Configuration struct for above-given functions.
 
 void Cycle_one(const struct slide::Model &M, const struct DEG_ID &degid, int cellType, int verbose, // simulate one cycle ageing experiment
-			   const struct CycleAgeingConfig &cycAgConfig, bool CVcha, double Icutcha, bool CVdis, double Icutdis, int timeCycleData, int nrCycles, int nrCap, const struct checkUpProcedure &proc, const std::string &pref);
+			   const struct CycleAgeingConfig &cycAgConfig, bool CVcha, double Icutcha, bool CVdis, double Icutdis, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, const std::string &pref);

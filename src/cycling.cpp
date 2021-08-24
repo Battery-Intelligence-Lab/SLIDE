@@ -203,7 +203,7 @@ void FollowCurrent(const struct slide::Model &M, std::string pref, const struct 
 	// 	Current Profile drive cycle US06.csv		601			US06 drive cycle with a maximum current of 8.1A (around 3C), each current step takes 1 second
 
 	std::string profile = "Current Profile drive cycle UDDS.csv"; // name of the csv file with the current profile
-	int length = 1370;											  // length of the profile (number of rows in the csv file)
+	int length = 1370;											  // length of the profile (number of rows in the csv file) to read.
 
 	int limit = 1; // what to do if the voltage limits are reached while following the profile:
 				   // 0 immediately go to the next current step of the profile (i.e. reduce the time of the step)

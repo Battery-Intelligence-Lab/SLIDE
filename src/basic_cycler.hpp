@@ -136,5 +136,6 @@ public:
 	void CC_V_CV_I(double Crate, double Vset, double Icut, double dt, bool blockDegradation, double *ahi, double *whi, double *timei);		   // bring the cell to a specified voltage, starting with a CC phase, followed by a CV phase
 
 	// current profile
-	int followI(int nI, std::string nameI, bool blockDegradation, int limit, double Vupp, double Vlow, double *ahi, double *whi, double *timeio); // follow a predefined current pattern
+	int followI(int nI, const std::string &nameI, bool blockDegradation, int limit, double Vupp, double Vlow, double *ahi, double *whi, double *timei);									  // follow a predefined current pattern (reads CSV)
+	int followI(int nI, const std::vector<double> &I, const std::vector<double> &T, bool blockDegradation, int limit, double Vupp, double Vlow, double *ahi, double *whi, double *timei); // follow a predefined current pattern (does not read CSV)
 };

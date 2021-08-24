@@ -380,13 +380,14 @@ double Cycler::checkUp_batteryStates(bool blockDegradation, bool checkCap, int c
 
 	fileStatus.is_DegradationData_batteryState_created = true; // Set it to true, because we just opened it.
 
-	output << cumCycle << "," << cumTime << "," << cumAh << "," << cumWh; // write the data points for where the cell is in it's life
-	output << "," << cap;												  // write the cell capacity
-	for (const auto s : states)
-		output << "," << s; // write the state variables of the cell
+	output << cumCycle << ',' << cumTime << ',' << cumAh << ',' << cumWh; // write the data points for where the cell is in it's life
+	output << ',' << cap;												  // write the cell capacity
 
-	output << "," << c.getR();			  // write the total cell resistance (DC resistance [Ohm])
-	output << "," << c.getAnodeSurface(); // write the active anode surface area an*thickn*elec_surf excluding cracks [m2]
+	for (const auto s : states)
+		output << ',' << s; // write the state variables of the cell
+
+	output << ',' << c.getR();			  // write the total cell resistance (DC resistance [Ohm])
+	output << ',' << c.getAnodeSurface(); // write the active anode surface area an*thickn*elec_surf excluding cracks [m2]
 	output << '\n';						  // write an end-line (we have written everything we want)
 	output.close();
 
@@ -465,18 +466,18 @@ void Cycler::checkUp_OCVcurves(bool blockDegradation, double ocvpini, double ocv
 	fileStatus.is_DegradationData_OCV_created = true; // Set it to true, because we just opened it.
 
 	for (int i = 0; i < ocvAh.size(); i++) // write the x-axis, discharged Ah
-		output << ocvAh[i] << ",";
+		output << ocvAh[i] << ',';
 	output << '\n';
 
-	for (const auto &ocvp_i : ocvp) // write the cathode OCV
-		output << ocvp_i << ",";
+	for (const auto ocvp_i : ocvp) // write the cathode OCV
+		output << ocvp_i << ',';
 	output << '\n';
 
-	for (const auto &ocvn_i : ocvn) // write the anode OCV
-		output << ocvn_i << ",";
+	for (const auto ocvn_i : ocvn) // write the anode OCV
+		output << ocvn_i << ',';
 
 	// write the voltages of the operating point of the cell next to the anode OCV
-	output << ",," << ocvpini << "," << ocvnini << "," << '\n';
+	output << ",," << ocvpini << ',' << ocvnini << ',' << '\n';
 
 	// leave one row blank to indicate these three lines were one measurement
 	output << '\n';
@@ -606,7 +607,7 @@ void Cycler::checkUp_CCCV(bool blockDegradation, int nCycles, double Crates[], d
 		std::cout << "Cycler::checkUp_CCCV terminating.\n";
 }
 
-void Cycler::checkUp_pulse(bool blockDegradation, std::string profileName, int profileLength, bool includeCycleData)
+void Cycler::checkUp_pulse(bool blockDegradation, const std::vector<double> &I, const std::vector<double> &T, int profileLength, bool includeCycleData)
 {
 	/*
 	 * Function to simulate and write a pulse test as part of a check-up.
@@ -661,23 +662,6 @@ void Cycler::checkUp_pulse(bool blockDegradation, std::string profileName, int p
 	CyclingDataTimeInterval = dataTimeInterval;													  // update the time resolution of the cycling data collection to the new value for the pulse discharge
 	double ahi, whi, timei;																		  // unneeded feedback variables
 	double Ccut = 0.05;																			  // C rate of the cutoff current for the CV phase
-
-	// *********************************************************** 1 get the pulse profile ***********************************************************************
-	// read the pulse profile
-	std::vector<double> I(profileLength); // array for the profile
-	std::vector<int> T(profileLength);	  // array for the duration of each step as integers
-	try
-	{
-		if constexpr (settings::verbose >= printLevel::printCyclerHighLevel)
-			std::cout << "Cycler::checkUp_pulse is reading the current profile.\n";
-		loadCSV_2col(PathVar::data + profileName, I, T); // read the file
-	}
-	catch (int e)
-	{
-		if constexpr (settings::verbose >= printLevel::printCrit)
-			std::cout << "Error in Cycler::checkUp_pulse when reading the pulse profile: " << e << ". Throwing it on.\n";
-		throw e;
-	}
 
 	// check that the pulse profile is a discharge
 	if constexpr (settings::verbose >= printLevel::printCyclerHighLevel)
@@ -742,8 +726,8 @@ void Cycler::checkUp_pulse(bool blockDegradation, std::string profileName, int p
 		{
 			if constexpr (settings::verbose >= printLevel::printCyclerHighLevel)
 				std::cout << "Cycler::checkUp_pulse is applying the pulse profile and has so far discharged " << ahi << "Ah.\n";
-			Vlim = followI(profileLength, profileName, blockDegradation, limit, Vupp, Vlow, &ahi, &whi, &timei); // follow the current pulses, the return-integer indicates which voltage limit was hit while following the profile
-			Vmin = (Vlim == -1) || (Vlim == 10);																 // a return-integer of -1 or 10 means the lower voltage was hit, stop when it is
+			Vlim = followI(profileLength, I, T, blockDegradation, limit, Vupp, Vlow, &ahi, &whi, &timei); // follow the current pulses, the return-integer indicates which voltage limit was hit while following the profile
+			Vmin = (Vlim == -1) || (Vlim == 10);														  // a return-integer of -1 or 10 means the lower voltage was hit, stop when it is
 		}
 	}
 	catch (int e)
@@ -773,7 +757,69 @@ void Cycler::checkUp_pulse(bool blockDegradation, std::string profileName, int p
 		std::cout << "Cycler::checkUp_pulse terminating.\n";
 }
 
-double Cycler::checkUp(struct checkUpProcedure proc, int cumCycle, double cumTime, double cumAh, double cumWh)
+void Cycler::checkUp_pulse(bool blockDegradation, const std::string &profileName, int profileLength, bool includeCycleData)
+{
+	/*
+	 * Function to simulate and write a pulse test as part of a check-up.
+	 * The voltage and temperature while cycling are written in a csv file in the subfolder of this Cycler.
+	 * The data from each check-up is written in a new csv file, with as name DegradationData_CheckupPulse_x.csv
+	 * 		where 'x' is 1 (for the first check-up), 2 (for the second check-up), etc.
+	 * In the file, a data entry is recorded for every 2 seconds. Each data entry is written on one row of the csv file.
+	 * Each row has 15 columns (with the values for that entry):
+	 * 	 	total_time 		the total (cumulative) time since the start of this function, i.e. it is 0 for the first row [s]
+	 * 	 	Ah_throughput 	the total (cumulative) charge throughput since the start of this function, i.e. it is 0 for the first row [Ah]
+	 * 	 	Wh_throughput 	the total (cumulative) energy throughput since the start of this function, i.e. it is 0 for the first row [Wh]
+	 * 	 	I 				the battery current at this point in time [A], > 0 for discharge, < 0 for charge
+	 * 	 	V  				the battery voltage at this point in time [V]
+	 * 	 	OCVp 			the cathode potential at this point in time [V]
+	 * 	 	OCVn  			the anode potential at this point in time [V]
+	 * 	 	Temperature 	the battery temperature at this point in time [K]
+	 * 	 	charge_time  	the cumulative time spent on charging since the start of this function, i.e. it is 0 for the first row [s]
+	 * 	 	charge_Ah  		the cumulative charged charge since the start of this function, i.e. it is 0 for the first row [Ah]
+	 * 	 	charge_Wh  		the cumulative charged energy since the start of this function, i.e. it is 0 for the first row [Wh]
+	 * 	 	discharge_time 	the cumulative time spent on discharging since the start of this function, i.e. it is 0 for the first row [s]
+	 * 	 	discharge_Ah 	the cumulative discharged charge since the start of this function, i.e. it is 0 for the first row [Ah]
+	 * 	 	discharge_Wh 	the cumulative discharged energy since the start of this function, i.e. it is 0 for the first row [Wh]
+	 * 	 	rest_time 		the cumulative time spent on resting since the start of this function, i.e. it is 0 for the first row [s]
+	 *
+	 * IN
+	 * blockDegradation 	if true [RECOMMENDED], degradation is not accounted for during this check-up,
+	 * 							and at the end of the check-up, the exact battery state from the start of the check-up is restored
+	 * 						if false [NOT RECOMMENDED], degradation is accounted for during this check-up,
+	 * 							and at the end of the check-up, the cell's voltage and temperature are brought back to the levels from before the check-up
+	 * profileName 			name of the csv file which contains the current profile for the pulse test
+	 * 							the first column contains the current in [A] (positive for discharge, negative for charge)
+	 * 							the second column contains the time in [sec] the current should be maintained
+	 * 							the profile must be a net discharge, i.e. sum (I*dt) > 0
+	 * profileLength		length of the current profiles (number of rows in the csv file)
+	 * includeCycleData	 	boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
+	 * 							if false, the cycling data from the pulse discharge is only stored in a separate data file (and not part of the 'regular cycling data files': 'cyclingData_x.csv')
+	 * 							if true, the cycling data from the pulse discharge is stored both in a separate document and in the regular cycling data files ('cyclingData_x.csv')
+	 *
+	 * THROWS
+	 * 1013 				the pulse profile is not a net discharge
+	 */
+
+	// *********************************************************** 1 get the pulse profile ***********************************************************************
+	// read the pulse profile
+	static thread_local std::vector<double> I(profileLength), T(profileLength); // array for the profile and array for the duration of each step as integers % integer did not make sense so I converted it to double.
+	try
+	{
+		if constexpr (settings::verbose >= printLevel::printCyclerHighLevel)
+			std::cout << "Cycler::checkUp_pulse is reading the current profile.\n";
+		loadCSV_2col(PathVar::data + profileName, I, T); // read the file
+	}
+	catch (int e)
+	{
+		if constexpr (settings::verbose >= printLevel::printCrit)
+			std::cout << "Error in Cycler::checkUp_pulse when reading the pulse profile: " << e << ". Throwing it on.\n";
+		throw e;
+	}
+
+	checkUp_pulse(blockDegradation, I, T, profileLength, includeCycleData);
+}
+
+double Cycler::checkUp(struct checkUpProcedure &proc, int cumCycle, double cumTime, double cumAh, double cumWh)
 {
 	/*
 	 * Function to do a check-up during a degradation experiment
@@ -936,7 +982,7 @@ double Cycler::checkUp(struct checkUpProcedure proc, int cumCycle, double cumTim
 		{
 			if constexpr (settings::verbose >= printLevel::printCyclerHighLevel)
 				std::cout << "Cycler::checkUp is starting a pulse profile check.\n";
-			checkUp_pulse(proc.blockDegradation, proc.profileName, proc.profileLength, proc.includeCycleData);
+			checkUp_pulse(proc.blockDegradation, proc.I, proc.T, proc.profileLength, proc.includeCycleData);
 		}
 		catch (int e)
 		{
@@ -973,7 +1019,7 @@ double Cycler::checkUp(struct checkUpProcedure proc, int cumCycle, double cumTim
 }
 
 void Cycler::cycleAgeing(double dt, double Vma, double Vmi, double Ccha, bool CVcha, double Ccutcha,
-						 double Cdis, bool CVdis, double Ccutdis, double Ti, int nrCycles, int nrCap, struct checkUpProcedure proc)
+						 double Cdis, bool CVdis, double Ccutdis, double Ti, int nrCycles, int nrCap, struct checkUpProcedure &proc)
 {
 	/*
 	 * Function to simulate a cycle degradation experiment where a cell is continuously cycled at constant current and/or constant voltage.
@@ -1024,7 +1070,7 @@ void Cycler::cycleAgeing(double dt, double Vma, double Vmi, double Ccha, bool CV
 	 */
 
 	if constexpr (settings::verbose >= printLevel::printCyclerFunctions)
-		std::cout << "Cycler::cycleAgeing starting\n";
+		std::cout << "Cycler::cycleAgeing starting.\n";
 
 	slide::util::error::checkInputParam_CycAge(c, Vma, Vmi, Ccha, Ccutcha, Cdis, Ccutdis, Ti, nrCycles, nrCap); // Check the input parameters
 
@@ -1172,7 +1218,7 @@ void Cycler::cycleAgeing(double dt, double Vma, double Vmi, double Ccha, bool CV
 		std::cout << "Cycler::cycleAgeing terminating\n";
 }
 
-void Cycler::calendarAgeing(double dt, double V, double Ti, int Time, int timeCheck, int mode, struct checkUpProcedure proc)
+void Cycler::calendarAgeing(double dt, double V, double Ti, int Time, int timeCheck, int mode, struct checkUpProcedure &proc)
 {
 	/*
 	 * Function to simulate a calendar degradation experiment where a cell is rested at a given voltage.
@@ -1351,7 +1397,7 @@ void Cycler::calendarAgeing(double dt, double V, double Ti, int Time, int timeCh
 		std::cout << "Cycler::calendarAgeing terminating.\n";
 }
 
-void Cycler::profileAgeing(std::string nameI, int limit, double Vma, double Vmi, double Ti, int nrProfiles, int nrCap, struct checkUpProcedure proc, size_t length)
+void Cycler::profileAgeing(const std::string &nameI, int limit, double Vma, double Vmi, double Ti, int nrProfiles, int nrCap, struct checkUpProcedure &proc, size_t length)
 {
 	/*
 	 * Function to simulate degradation by continuously cycling a cell with a certain current profile.
@@ -1454,7 +1500,7 @@ void Cycler::profileAgeing(std::string nameI, int limit, double Vma, double Vmi,
 	if constexpr (settings::verbose >= printLevel::printCyclerHighLevel)
 		std::cout << "Cycler::profileAgeing is reading the current profile.\n";
 
-	std::vector<double> I(length), T(length); // arrays to store the current profile as doubles
+	static thread_local std::vector<double> I(length), T(length); // arrays to store the current profile as doubles
 	try
 	{
 		loadCSV_2col(PathVar::data + nameI, I, T); // read the file
@@ -1530,7 +1576,7 @@ void Cycler::profileAgeing(std::string nameI, int limit, double Vma, double Vmi,
 			{ // loop to keep applying the profile until you hit a voltage limit
 
 				// follow the profile
-				vlim = followI(length, nameI, blockDegradation, limit, Vma, Vmi, &ahi, &whi, &timei);
+				vlim = followI(length, I, T, blockDegradation, limit, Vma, Vmi, &ahi, &whi, &timei);
 
 				// update the throughput
 				Ahtot += abs(ahi);

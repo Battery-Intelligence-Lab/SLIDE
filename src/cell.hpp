@@ -134,14 +134,14 @@ protected: // protected such that child classes can access the class variables
 
 	// Get and set the cell's state using an array-representation
 	// This is for internal use only, the states can be accessed externally using the State-representation
-	void getStates(slide::states_type &states) // get a State object with the cell's states and the cell current // get an array with the cell's states
+	const auto &getStates() // get an array with the cell's states
 	{
 		/*
 	 	* Returns all states which describe the status of the cell in the array.
 	 	* OUT
 	 	* states array of length ns (defined on top of Constants.hpp)
 	 	*/
-		states = s.getStates_arr();
+		return s.getStates_arr();
 	}
 
 	void setStates(slide::states_type &&states); // set the cell's states to the states in the array
@@ -169,13 +169,13 @@ public:
 	{
 	}
 
-	Cell() = default;									 // Default constructor.
-														 // getters
-	double getNominalCap() const { return nomCapacity; } // returns nominal capacity of the cell [Ah]	(e.g. to convert from Crate to Amperes)
-	double getVmax() const { return Vmax; }				 // returns the maximum voltage of this cell [V] above which operation is not allowed
-	double getVmin() const { return Vmin; }				 // returns the minimum voltage of this cell [V] below which operation is not allowed
-	double getT() { return s.get_T(); }					 // returns the uniform battery temperature in [K]
-	double getTenv() const { return T_env; }			 // get the environmental temperature [K]
+	Cell() = default;											  // Default constructor.
+																  // getters
+	double getNominalCap() const noexcept { return nomCapacity; } // returns nominal capacity of the cell [Ah]	(e.g. to convert from Crate to Amperes)
+	double getVmax() const noexcept { return Vmax; }			  // returns the maximum voltage of this cell [V] above which operation is not allowed
+	double getVmin() const noexcept { return Vmin; }			  // returns the minimum voltage of this cell [V] below which operation is not allowed
+	double getT() noexcept { return s.get_T(); }				  // returns the uniform battery temperature in [K]
+	double getTenv() const noexcept { return T_env; }			  // get the environmental temperature [K]
 
 	void getTemperatures(double *Tenv, double *Tref) noexcept // get the environmental and reference temperature
 	{
@@ -201,7 +201,7 @@ public:
 		return (Rsei * s.get_delta() + s.getR(elec_surf));
 	}
 
-	double getAnodeSurface() { return s.get_an() * s.get_thickn() * elec_surf; } // get the anode pure surface area (without cracks) product of the effective surface area (an) with the electrode volume
+	double getAnodeSurface() noexcept { return s.get_an() * s.get_thickn() * elec_surf; } // get the anode pure surface area (without cracks) product of the effective surface area (an) with the electrode volume
 
 	double getI() { return Icell; } // get the cell current [A]  positive for discharging
 
@@ -211,11 +211,11 @@ public:
 	void getC(double cp[], double cn[]);																						 // get the concentrations at all nodes
 	bool getVoltage(bool print, double *V, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp); // get the cell's voltage
 
-	void getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p, sigma_type &sigma_r_n,
-					  sigma_type &sigma_t_p, sigma_type &sigma_t_n, sigma_type &sigma_h_p, sigma_type &sigma_h_n); // get the stresses at all nodes according to Dai's stress model
-	void updateDaiStress();																						   // updated the stored stress values for Dai's stress model
-	void getLaresgoitiStress(bool print, double *sigma_n);														   // get the stresses at all nodes according to Laresgoiti's stress model
-	void updateLaresgoitiStress(bool print);																	   // update the stored stress values for Laresgoiti's stress model
+	void getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p, sigma_type &sigma_r_n, sigma_type &sigma_t_p, sigma_type &sigma_t_n,
+					  sigma_type &sigma_h_p, sigma_type &sigma_h_n) noexcept; // get the stresses at all nodes according to Dai's stress model
+	void updateDaiStress() noexcept;										  // updated the stored stress values for Dai's stress model
+	void getLaresgoitiStress(bool print, double *sigma_n);					  // get the stresses at all nodes according to Laresgoiti's stress model
+	void updateLaresgoitiStress(bool print);								  // update the stored stress values for Laresgoiti's stress model
 
 	// setters
 	void setVlimits(double VMAX, double VMIN);		  // set the voltage limits of the cell
@@ -239,11 +239,6 @@ public:
 		// Overwrite both current and initial states.
 		s.overwriteGeometricStates(thickpi, thickni, epi, eni, api, ani);
 		s_ini.overwriteGeometricStates(thickpi, thickni, epi, eni, api, ani);
-	}
-
-	void setIniStates(slide::states_type &si)
-	{
-		s_ini.setIniStates(si);
 	}
 
 	// time integration

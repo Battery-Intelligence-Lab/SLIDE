@@ -14,6 +14,7 @@
 #include <string>
 #include <cmath>
 #include <array>
+#include <algorithm>
 
 #include "cell.hpp"
 #include "read_CSVfiles.h"
@@ -28,30 +29,25 @@ void Cell::getStates(slide::State &si, double *I)
 	 * Copies all the states which describe the status of the cell to the State-object
 	 *
 	 * OUT
-	 * si 	a reference to a state-boject in which the states will be written
-	 * 		the & ensures this is a call by reference
-	 * 		i.e. you pass a pointer to the memory location such that changes in this function to si are
-	 * 			reflected in the State object which you used to call this function.
-	 * 		else it would be a call by value, so changes in this function to si won't be reflected in the object you used to call this function.
-	 * 		see https://stackoverflow.com/questions/21215409/does-c-pass-objects-by-value-or-reference
+	 * si 	a reference to a state-object in which the states will be written
 	 * I 	the actual cell current [A]
 	 * 			positive for discharging
 	 * 			negative for charging
 	 */
 
+	// #HOTFUNC  -> called 450 million times.
 	if constexpr (settings::verbose >= printLevel::printCellFunctions)
 		std::cout << "Cell::getStates(State, double*) starting\n";
 
-	try
-	{
-		validState(); // throw 15 if the state is illegal
-	}
-	catch (int e)
-	{
-		std::cout << "Error in State::setStates(double states[]), the suggested state is illegal: " << e << ". throwing it on.\n";
-		throw e;
-	}
-	//	validState(); // throw 15 if the state is illegal
+	// try
+	// {
+	// 	//validState(); // throw 15 if the state is illegal
+	// }
+	// catch (int e)
+	// {
+	// 	std::cout << "Error in State::setStates(double states[]), the suggested state is illegal: " << e << ". throwing it on.\n";
+	// 	throw e;
+	// }
 	si = s;
 	*I = Icell;
 
@@ -288,7 +284,7 @@ bool Cell::getVoltage(bool print, double *V, double *OCVp, double *OCVn, double 
 }
 
 void Cell::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p, sigma_type &sigma_r_n,
-						sigma_type &sigma_t_p, sigma_type &sigma_t_n, sigma_type &sigma_h_p, sigma_type &sigma_h_n)
+						sigma_type &sigma_t_p, sigma_type &sigma_t_n, sigma_type &sigma_h_p, sigma_type &sigma_h_n) noexcept
 {
 	/*
 	 * Calculates the radial and tangential stress for each positive Chebyshev node according to the formula by
@@ -308,41 +304,40 @@ void Cell::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p,
 	 * 				[0]			stress at the surface of the sphere
 	 * 				[1 to nch]	stress at the inner nodes
 	 * 				[nch + 1]	stress at the centre of the sphere
-	 *
-	 * THROWS
-	 * 100 	the arrays provided have the wrong length
 	 */
+
+	using settings::nch;
 
 	if constexpr (settings::verbose >= printLevel::printCellFunctions)
 		std::cout << "Cell::getDaiStress starting\n";
 
 	// Get the locations of the Chebyshev nodes
-	std::array<double, settings::nch + 2> xp; // location (x-value) of the positive Chebyshev nodes
+	std::array<double, nch + 2> xp; // location (x-value) of the positive Chebyshev nodes
 	xp[0] = 1;
 	std::copy(M.xch.begin(), M.xch.end(), xp.begin() + 1);
-	xp[settings::nch + 1] = 0;
+	xp[nch + 1] = 0;
 
-	double xtot[2 * settings::nch + 3];				 // location (x-value) of the positive and negative Chebyshev nodes [-surface .. centre .. +surface]
-	xtot[settings::nch + 1] = xp[settings::nch + 1]; // centre node
-	for (int i = 0; i < settings::nch + 1; i++)
+	double xtot[2 * nch + 3];	 // location (x-value) of the positive and negative Chebyshev nodes [-surface .. centre .. +surface]
+	xtot[nch + 1] = xp[nch + 1]; // centre node
+	for (int i = 0; i < nch + 1; i++)
 	{
-		xtot[i] = -xp[i];									 // negative nodes
-		xtot[settings::nch + 2 + i] = xp[settings::nch - i]; // positive nodes
+		xtot[i] = -xp[i];				 // negative nodes
+		xtot[nch + 2 + i] = xp[nch - i]; // positive nodes
 	}
 
 	// get concentrations at each Chebyshev node
 	// Due to symmetry, the concentration at the negative point is the same as the concentration of the positive point: c(-x) = c(x)
-	double cp[settings::nch + 2], cn[settings::nch + 2]; // positive and negative nodes, [+surface .. inner .. centre]
+	double cp[nch + 2], cn[nch + 2]; // positive and negative nodes, [+surface .. inner .. centre]
 	getC(cp, cn);
-	double CP[2 * settings::nch + 3], CN[2 * settings::nch + 3]; // concentrations at all nodes, [-surface .. inner .. centre .. inner .. +surface]
-	CP[settings::nch + 1] = cp[settings::nch + 1];				 // cathode centre node
-	CN[settings::nch + 1] = cn[settings::nch + 1];				 // anode centre node
-	for (int i = 0; i < settings::nch + 1; i++)
+	double CP[2 * nch + 3], CN[2 * nch + 3]; // concentrations at all nodes, [-surface .. inner .. centre .. inner .. +surface]
+	CP[nch + 1] = cp[nch + 1];				 // cathode centre node
+	CN[nch + 1] = cn[nch + 1];				 // anode centre node
+	for (int i = 0; i < nch + 1; i++)
 	{
-		CP[i] = cp[i];									   // cathode negative points
-		CN[i] = cn[i];									   // anode negative points
-		CP[settings::nch + 2 + i] = cp[settings::nch - i]; // cathode positive points
-		CN[settings::nch + 2 + i] = cn[settings::nch - i]; // anode positive points
+		CP[i] = cp[i];				   // cathode negative points
+		CN[i] = cn[i];				   // anode negative points
+		CP[nch + 2 + i] = cp[nch - i]; // cathode positive points
+		CN[nch + 2 + i] = cn[nch - i]; // anode positive points
 	}
 
 	// The formula's to calculate the stress have integrals.
@@ -363,12 +358,12 @@ void Cell::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p,
 	// we need to remember the transformation of variables from x (-1<x<1) to r (-R<r<R)
 	// 		int( c * r^2 dr) = int(c * (x*R)^2 * d(R*x)) = int(c x^2 R^3 dx)
 	// so the matrix-vector product we need is F = Q * (concentration * x^2 * R^3)
-	double Fp[2 * settings::nch + 3], Fn[2 * settings::nch + 3]; // arrays with the product for the positive and negative electrode
-	for (int i = 0; i < 2 * settings::nch + 3; i++)
+	double Fp[2 * nch + 3], Fn[2 * nch + 3]; // arrays with the product for the positive and negative electrode
+	for (int i = 0; i < 2 * nch + 3; i++)
 	{			   // loop for each row (one row = one node)
 		Fp[i] = 0; // calculate the matrix-vector product for row i as you would do it by hand:
 		Fn[i] = 0; // 	F(i) = sum(Q(i,j)*C(j)*x(j)^2*R^3, j=0..2*nch+2)
-		for (int j = 0; j < 2 * settings::nch + 3; j++)
+		for (int j = 0; j < 2 * nch + 3; j++)
 		{													  // loop through the columns to calculate the sum
 			Fp[i] += M.Q[i][j] * (CP[j] * xtot[j] * xtot[j]); // 		Q(i,j)*C(j)*x(j)^2
 			Fn[i] += M.Q[i][j] * (CN[j] * xtot[j] * xtot[j]);
@@ -378,55 +373,53 @@ void Cell::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p,
 	}
 
 	// Calculate the integral from the centre to the positive surface, which is a constant present in all equations
-	double ap = Fp[2 * settings::nch + 2] - Fp[settings::nch + 1]; // int( cp*r^2, r=0..Rp )
-	double an = Fn[2 * settings::nch + 2] - Fn[settings::nch + 1]; // int( cn*r^2, r=0..Rn )
+	const double ap = Fp[2 * nch + 2] - Fp[nch + 1]; // int( cp*r^2, r=0..Rp )
+	const double an = Fn[2 * nch + 2] - Fn[nch + 1]; // int( cn*r^2, r=0..Rn )
 
 	// Calculate the equations for all nodes
-	double srp[settings::nch + 2]; // radial stress in the positive particle at the positive nodes [centre .. +surface]
-	double srn[settings::nch + 2]; // radial stress in the negative particle at the positive nodes [centre .. +surface]
-	double stp[settings::nch + 2]; // tangential stress in the positive particle at the positive nodes [centre .. +surface]
-	double stn[settings::nch + 2]; // tangential stress in the negative particle at the positive nodes [centre .. +surface]
-	for (int i = 0; i < settings::nch + 2; i++)
+	std::array<double, nch + 2> srp, srn; // radial stress in the positive/negative particle at the positive nodes [centre .. +surface]
+	std::array<double, nch + 2> stp, stn; // tangential stress in the positive/negative particle at the positive nodes [centre .. +surface]
+
+	for (int i = 0; i < nch + 2; i++)
 	{ // loop for the positive nodes
 
-		const double rp = Rp * xtot[settings::nch + 1 + i];					 // r(i) = R * x(i) radius of positive node i in the positive particle
-		const double rn = Rn * xtot[settings::nch + 1 + i];					 // radius of positive node i in the negative particle
-		const double bp = Fp[settings::nch + 1 + i] - Fp[settings::nch + 1]; // integral from the centre to positive node i int(cp*zp^2, zp=0..rp(i)) = F[nch+1+i] - F[nch+1]
-		const double bn = Fn[settings::nch + 1 + i] - Fn[settings::nch + 1]; // integral from the centre to positive node i int(cn*zn^2, zn=0..rn(i))
+		const double rp = Rp * xtot[nch + 1 + i];		 // r(i) = R * x(i) radius of positive node i in the positive particle
+		const double rn = Rn * xtot[nch + 1 + i];		 // radius of positive node i in the negative particle
+		const double bp = Fp[nch + 1 + i] - Fp[nch + 1]; // integral from the centre to positive node i int(cp*zp^2, zp=0..rp(i)) = F[nch+1+i] - F[nch+1]
+		const double bn = Fn[nch + 1 + i] - Fn[nch + 1]; // integral from the centre to positive node i int(cn*zn^2, zn=0..rn(i))
 
 		// Implement the equations from Dai et al.
 		if (i == 0)
 		{ // centre node -> special formula (31 & 33) in Dai, Cai, White
-			srp[i] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 / pow(Rp, 3.0) * ap - CP[settings::nch + 1]);
-			srn[i] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 / pow(Rn, 3.0) * an - CN[settings::nch + 1]);
+			srp[i] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 / pow(Rp, 3.0) * ap - CP[nch + 1]);
+			srn[i] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 / pow(Rn, 3.0) * an - CN[nch + 1]);
 
-			stp[i] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 / pow(Rp, 3.0) * ap - CP[settings::nch + 1]);
-			stn[i] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 / pow(Rn, 3.0) * an - CN[settings::nch + 1]);
+			stp[i] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 / pow(Rp, 3.0) * ap - CP[nch + 1]);
+			stn[i] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 / pow(Rn, 3.0) * an - CN[nch + 1]);
 		}
 		else
-		{																													   // other nodes -> equation 13 in Dai, Cai, White
+		{ // other nodes -> equation 13 in Dai, Cai, White
+
 			srp[i] = 2 * sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (1 / pow(Rp, 3.0) * ap - 1 / pow(rp, 3.0) * bp); //ap = int (c x^2, x=0..R), bp = int (c x^2 , x=0..r)
 			srn[i] = 2 * sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (1 / pow(Rn, 3.0) * an - 1 / pow(rn, 3.0) * bn);
 
 			stp[i] = sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (2 / pow(Rp, 3.0) * ap + 1 / pow(rp, 3.0) * bp - cp[i]);
 			stn[i] = sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (2 / pow(Rn, 3.0) * an + 1 / pow(rn, 3.0) * bn - cn[i]);
 		}
-	}
 
-	// Flip all arrays to get the opposite order (now it is [centre .. +surface] and we want [+surface .. centre]
-	// and store in the output arrays
-	for (int i = 0; i < settings::nch + 2; i++)
-	{ // loop for the positive nodes
-		sigma_r_p[i] = srp[settings::nch + 2 - 1 - i];
-		sigma_r_n[i] = srn[settings::nch + 2 - 1 - i];
-		sigma_t_p[i] = stp[settings::nch + 2 - 1 - i];
-		sigma_t_n[i] = stn[settings::nch + 2 - 1 - i];
+		// Flip all arrays to get the opposite order (now it is [centre .. +surface] and we want [+surface .. centre]
+		// and store in the output arrays
+		// loop for the positive nodes
+		sigma_r_p[i] = srp[nch + 2 - 1 - i];
+		sigma_r_n[i] = srn[nch + 2 - 1 - i];
+		sigma_t_p[i] = stp[nch + 2 - 1 - i];
+		sigma_t_n[i] = stn[nch + 2 - 1 - i];
 	}
 
 	// Make the hydrostatic stress sh = (sr + 2sp)/3
 	int sp = 0; // node with the maximum hydrostatic stress in the positive particle
 	int sn = 0; // node with the maximum hydrostatic stress in the negative
-	for (int i = 0; i < settings::nch + 2; i++)
+	for (int i = 0; i < nch + 2; i++)
 	{														  // loop for all nodes
 		sigma_h_p[i] = (sigma_r_p[i] + 2 * sigma_t_p[i]) / 3; // calculate hydrostatic stress
 		sigma_h_n[i] = (sigma_r_n[i] + 2 * sigma_t_n[i]) / 3;
@@ -444,7 +437,7 @@ void Cell::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p,
 		std::cout << "Cell::getDaiStress terminating.\n";
 }
 
-void Cell::updateDaiStress()
+void Cell::updateDaiStress() noexcept
 {
 	/*
 	 * Function which will update the values stored in the stress variables relating with Dai's stress model
@@ -457,16 +450,7 @@ void Cell::updateDaiStress()
 	std::array<double, settings::nch + 2> sigma_r_p, sigma_r_n, sigma_t_p, sigma_t_n, sigma_h_p, sigma_h_n;
 
 	// Get the stress
-	try
-	{
-		getDaiStress(&sparam.s_dai_p, &sparam.s_dai_n, sigma_r_p, sigma_r_n, sigma_t_p, sigma_t_n, sigma_h_p, sigma_h_n);
-	}
-	catch (int e)
-	{
-		std::cout << "Error in Cell::getDaiStress when calling updateDaiStress: " << e << ". throwing it on.\n";
-		throw e;
-	}
-
+	getDaiStress(&sparam.s_dai_p, &sparam.s_dai_n, sigma_r_p, sigma_r_n, sigma_t_p, sigma_t_n, sigma_h_p, sigma_h_n);
 	// indicate that the values in the class variables are updated
 	sparam.s_dai_update = true;
 
@@ -1485,6 +1469,7 @@ slide::states_type Cell::dState(bool print, bool blockDegradation, int electr)
 	 */
 
 	using namespace PhyConst;
+	using settings::nch;
 
 	if constexpr (settings::verbose >= printLevel::printCellFunctions)
 		std::cout << "Cell::dState starting\n";
@@ -1534,7 +1519,7 @@ slide::states_type Cell::dState(bool print, bool blockDegradation, int electr)
 
 	// Calculate the effect of the main li-reaction on the (transformed) concentration
 	slide::z_type dzp, dzn;
-	for (int j = 0; j < settings::nch; j++)
+	for (int j = 0; j < nch; j++)
 	{											   // loop for each row of the matrix-vector product A * z
 		const double ctep = M.Ap[j] * s.get_zp(j); // A is diagonal, so the array M.A has only the diagonal elements
 		const double cten = M.An[j] * s.get_zn(j);
@@ -1577,10 +1562,10 @@ slide::states_type Cell::dState(bool print, bool blockDegradation, int electr)
 	// If we ignore degradation in this time step, we have calculated everything we need
 	if (blockDegradation)
 	{
-		slide::states_type dstates{};												 // Initialize as zero.
-		std::copy(dzp.begin(), dzp.end(), dstates.begin());							 // first nch dstates are d_zp,
-		std::copy(dzn.begin(), dzn.end(), dstates.begin() + settings::nch);			 // first nch dstates are d_zn,
-		dstates[2 * settings::nch + 0] = 1 / (rho * Cp) * (Qrev + Qrea + Qohm + Qc); // dT		cell temperature
+		slide::states_type dstates{};									   // Initialize as zero.
+		std::copy(dzp.begin(), dzp.end(), dstates.begin());				   // first nch dstates are d_zp,
+		std::copy(dzn.begin(), dzn.end(), dstates.begin() + nch);		   // first nch dstates are d_zn,
+		dstates[2 * nch + 0] = 1 / (rho * Cp) * (Qrev + Qrea + Qohm + Qc); // dT		cell temperature
 
 		// Others are zero : ddelta	SEI thickness, dLLI	lost lithium, dthickp/dthickn 	electrode thickness,
 		// dep/den volume fraction of active material, dap/dan effective surface are, a = 3 e/R, dCS surface area of the cracks,
@@ -1609,9 +1594,9 @@ slide::states_type Cell::dState(bool print, bool blockDegradation, int electr)
 	const double OCVnt = OCV_n + (s.get_T() - T_ref) * dOCVn; // anode potential at the cell's temperature [V]
 
 	// SEI growth
-	double isei;				  // current density of the SEI growth side reaction [A m-2]
-	double den_sei;				  // decrease in volume fraction due to SEI growth [s-1]
-	double dznsei[settings::nch]; // additional diffusion in the anode due to isei
+	double isei;		// current density of the SEI growth side reaction [A m-2]
+	double den_sei;		// decrease in volume fraction due to SEI growth [s-1]
+	double dznsei[nch]; // additional diffusion in the anode due to isei
 	try
 	{
 		SEI(OCVnt, etan, &isei, &den_sei);
@@ -1624,14 +1609,14 @@ slide::states_type Cell::dState(bool print, bool blockDegradation, int electr)
 	}
 
 	// Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + isei/nF)
-	for (int j = 0; j < settings::nch; j++)
+	for (int j = 0; j < nch; j++)
 		dznsei[j] = (M.Bn[j] * isei / (nsei * F));
 
 	// crack growth leading to additional exposed surface area
-	double isei_multiplyer;			 // relative increase in isei due to additional SEI growth on the extra exposed surface area [-]
-	double dCS;						 // increase in crack surface area [m2 s-1]
-	double dDn;						 // change in negative diffusion constant [m s-1 s-1]
-	double dznsei_CS[settings::nch]; // additional diffusion in the anode due to extra SEI growth on the crack surface
+	double isei_multiplyer; // relative increase in isei due to additional SEI growth on the extra exposed surface area [-]
+	double dCS;				// increase in crack surface area [m2 s-1]
+	double dDn;				// change in negative diffusion constant [m s-1 s-1]
+	double dznsei_CS[nch];	// additional diffusion in the anode due to extra SEI growth on the crack surface
 	try
 	{
 		CS(OCVnt, etan, &isei_multiplyer, &dCS, &dDn);
@@ -1646,7 +1631,7 @@ slide::states_type Cell::dState(bool print, bool blockDegradation, int electr)
 	// crack surface leads to extra SEI growth because the exposed surface area increases.
 	// (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + isei/nF + isei_CS/nF)
 	const double isei_CS = isei * isei_multiplyer; // extra SEI side reaction current density due to the crack surface area [A m-2]
-	for (int j = 0; j < settings::nch; j++)
+	for (int j = 0; j < nch; j++)
 		dznsei_CS[j] = (M.Bn[j] * isei_CS / (nsei * F));
 
 	// loss of active material LAM
@@ -1663,8 +1648,8 @@ slide::states_type Cell::dState(bool print, bool blockDegradation, int electr)
 	}
 
 	// lithium plating
-	double ipl;					  // current density of the plating side reaction [A m-2]
-	double dzn_pl[settings::nch]; // additional diffusion in the anode due to ipl
+	double ipl;			// current density of the plating side reaction [A m-2]
+	double dzn_pl[nch]; // additional diffusion in the anode due to ipl
 	try
 	{
 		LiPlating(OCVnt, etan, &ipl);
@@ -1677,32 +1662,32 @@ slide::states_type Cell::dState(bool print, bool blockDegradation, int electr)
 	}
 
 	// Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + ipl/nF)
-	for (int j = 0; j < settings::nch; j++)
+	for (int j = 0; j < nch; j++)
 		dzn_pl[j] = (M.Bn[j] * ipl / (npl * F));
 
 	// time derivatives
 	slide::states_type dstates{}; // Initialize as zero.
-	for (int j = 0; j < settings::nch; j++)
+	for (int j = 0; j < nch; j++)
 	{
-		dstates[j] = dzp[j];														  // dzp 		diffusion
-		dstates[settings::nch + j] = (dzn[j] + dznsei[j] + dznsei_CS[j] + dzn_pl[j]); // dzn		jtot = jn + isei/nF + isei_CS/nF + ipl/nF
+		dstates[j] = dzp[j];												// dzp 		diffusion
+		dstates[nch + j] = (dzn[j] + dznsei[j] + dznsei_CS[j] + dzn_pl[j]); // dzn		jtot = jn + isei/nF + isei_CS/nF + ipl/nF
 	}
-	dstates[2 * settings::nch + 0] = 1 / (rho * Cp) * (Qrev + Qrea + Qohm + Qc);					   // dT 		cell temperature
-	dstates[2 * settings::nch + 1] = isei / (nsei * F * rhosei);									   // ddelta	thickness of the SEI layer
-																									   // delta uses only isei (and not isei + isei_CS) since crack growth increases the area, not the thickness
-	dstates[2 * settings::nch + 2] = (isei + isei_CS + ipl) * elec_surf * s.get_thickn() * s.get_an(); // dLLI 	loss of lithium
-																									   // i_sei = density => * active surface area = * (surf*thick*specific_surf_neg)
-	dstates[2 * settings::nch + 3] = dthickp;														   // dthickp 	electrode thickness
-	dstates[2 * settings::nch + 4] = dthickn;														   // dthickn
-	dstates[2 * settings::nch + 5] = dep;															   // dep		volume fraction of active material
-	dstates[2 * settings::nch + 6] = den + den_sei;													   // den
-	dstates[2 * settings::nch + 7] = dap + 3 / Rp * dep;											   // dap		effective surface area, a = 3 e/R -> da/dt = da/dt + 3/R de/dt
-	dstates[2 * settings::nch + 8] = dan + 3 / Rn * (den + den_sei);								   // dan
-	dstates[2 * settings::nch + 9] = dCS;															   // dCS 		surface area of the cracks
-	dstates[2 * settings::nch + 10] = 0;															   // dDp 		diffusion constant
-	dstates[2 * settings::nch + 11] = dDn;															   // dDn
-	dstates[2 * settings::nch + 12] = 0;															   // dR 		specific electrode resistance
-	dstates[2 * settings::nch + 13] = ipl / (npl * F * rhopl);										   // ddelta_pl thickness of the plated lithium
+	dstates[2 * nch + 0] = 1 / (rho * Cp) * (Qrev + Qrea + Qohm + Qc);						 // dT 		cell temperature
+	dstates[2 * nch + 1] = isei / (nsei * F * rhosei);										 // ddelta	thickness of the SEI layer
+																							 // delta uses only isei (and not isei + isei_CS) since crack growth increases the area, not the thickness
+	dstates[2 * nch + 2] = (isei + isei_CS + ipl) * elec_surf * s.get_thickn() * s.get_an(); // dLLI 	loss of lithium
+																							 // i_sei = density => * active surface area = * (surf*thick*specific_surf_neg)
+	dstates[2 * nch + 3] = dthickp;															 // dthickp 	electrode thickness
+	dstates[2 * nch + 4] = dthickn;															 // dthickn
+	dstates[2 * nch + 5] = dep;																 // dep		volume fraction of active material
+	dstates[2 * nch + 6] = den + den_sei;													 // den
+	dstates[2 * nch + 7] = dap + 3 / Rp * dep;												 // dap		effective surface area, a = 3 e/R -> da/dt = da/dt + 3/R de/dt
+	dstates[2 * nch + 8] = dan + 3 / Rn * (den + den_sei);									 // dan
+	dstates[2 * nch + 9] = dCS;																 // dCS 		surface area of the cracks
+	dstates[2 * nch + 10] = 0;																 // dDp 		diffusion constant
+	dstates[2 * nch + 11] = dDn;															 // dDn
+	dstates[2 * nch + 12] = 0;																 // dR 		specific electrode resistance
+	dstates[2 * nch + 13] = ipl / (npl * F * rhopl);										 // ddelta_pl thickness of the plated lithium
 
 	if constexpr (settings::verbose >= printLevel::printCellFunctions)
 		std::cout << "Cell::dState terminating with degradation.\n";

@@ -19,6 +19,7 @@
 #include <fstream>
 #include <cassert>
 #include <memory>
+#include <vector>
 
 #include "basic_cycler.hpp"
 #include "interpolation.h"
@@ -48,6 +49,27 @@ struct checkUpProcedure
 							 //	the second column contains the time in [sec] the current should be maintained
 							 //	the profile must be a net discharge, i.e. sum (I*dt) > 0
 	int profileLength;		 // length of the current profiles for the pulse test (number of rows in the csv file)
+
+	std::vector<double> I, T; // profile data;
+
+	void set_profileName(const std::string &_profileName)
+	{
+		profileName = _profileName;
+
+		// read the pulse profile
+		try
+		{
+			if constexpr (settings::verbose >= printLevel::printCyclerHighLevel)
+				std::cout << "checkUpProcedure::set_profileName is reading the current profile.\n";
+			loadCSV_2col(PathVar::data + profileName, I, T); // read the file
+		}
+		catch (int e)
+		{
+			if constexpr (settings::verbose >= printLevel::printCrit)
+				std::cout << "Error in checkUpProcedure::set_profileName when reading the pulse profile: " << e << ". Throwing it on.\n";
+			throw e;
+		}
+	}
 };
 
 class Cycler : public BasicCycler
@@ -56,22 +78,24 @@ private:
 	int indexdegr; // index number of the check-up (how many check-ups have we done so far)
 
 	// functions for a check-up
-	double getCapacity(bool blockDegradation);																						 // measure the remaining cell capacity
-	void getOCV(slide::fixed_data<double> &Ah, std::vector<double> &OCVp, std::vector<double> &OCVn);								 // measure the half-cell OCV curves
-	double checkUp_batteryStates(bool blockDegradation, bool checkCap, int cumCycle, double cumTime, double cumAh, double cumWh);	 // measure the capacity and battery state & write to a file
-	void checkUp_OCVcurves(bool blockDegradation, double ocvpini, double ocvnini);													 // measure the half-cell OCV curves & write them to a file
-	void checkUp_CCCV(bool blockDegradation, int nCycles, double Crates[], double Ccut_cha, double Ccut_dis, bool includeCycleData); // measure the voltage and temperature during some CCCV cycles & write to a file
-	void checkUp_pulse(bool blockDegradation, std::string profileName, int profileLength, bool includeCycleData);					 // measure the voltage and temperature during a pulse discharge & write to a file
-	double checkUp(struct checkUpProcedure proc, int cumCycle, double cumTime, double cumAh, double cumWh);							 // function to do a check-up of a cell
+	double getCapacity(bool blockDegradation);																										 // measure the remaining cell capacity
+	void getOCV(slide::fixed_data<double> &Ah, std::vector<double> &OCVp, std::vector<double> &OCVn);												 // measure the half-cell OCV curves
+	double checkUp_batteryStates(bool blockDegradation, bool checkCap, int cumCycle, double cumTime, double cumAh, double cumWh);					 // measure the capacity and battery state & write to a file
+	void checkUp_OCVcurves(bool blockDegradation, double ocvpini, double ocvnini);																	 // measure the half-cell OCV curves & write them to a file
+	void checkUp_CCCV(bool blockDegradation, int nCycles, double Crates[], double Ccut_cha, double Ccut_dis, bool includeCycleData);				 // measure the voltage and temperature during some CCCV cycles & write to a file
+	void checkUp_pulse(bool blockDegradation, const std::string &profileName, int profileLength, bool includeCycleData);							 // measure the voltage and temperature during a pulse discharge & write to a file
+	void checkUp_pulse(bool blockDegradation, const std::vector<double> &I, const std::vector<double> &T, int profileLength, bool includeCycleData); // measure the voltage and temperature during a pulse discharge & write to a file
+
+	double checkUp(struct checkUpProcedure &proc, int cumCycle, double cumTime, double cumAh, double cumWh); // function to do a check-up of a cell
 
 public:
 	Cycler(Cell &ci, std::string IDi, int verbosei, int feedbacki) : BasicCycler(ci, IDi, verbosei, feedbacki), indexdegr(0) {} // constructor
 
 	// Degradation procedures
 	void cycleAgeing(double dt, double Vma, double Vmi, double Ccha, bool CVcha, double Icutcha, // cycle ageing by continuously repeating the same cycle
-					 double Cdis, bool CVdis, double Icutdis, double Ti, int nrCycles, int nrCap, struct checkUpProcedure proc);
+					 double Cdis, bool CVdis, double Icutdis, double Ti, int nrCycles, int nrCap, struct checkUpProcedure &proc);
 	void calendarAgeing(double dt, double V, double Ti, int Time, // calendar ageing by resting a cell
-						int timeCheck, int mode, struct checkUpProcedure proc);
-	void profileAgeing(std::string nameI, int limit, // profile ageing by repeating the same current profile
-					   double Vma, double Vmi, double Ti, int nrProfiles, int nrCap, struct checkUpProcedure proc, size_t length = 1000);
+						int timeCheck, int mode, struct checkUpProcedure &proc);
+	void profileAgeing(const std::string &nameI, int limit, // profile ageing by repeating the same current profile
+					   double Vma, double Vmi, double Ti, int nrProfiles, int nrCap, struct checkUpProcedure &proc, size_t length = 1000);
 };

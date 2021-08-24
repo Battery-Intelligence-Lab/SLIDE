@@ -119,7 +119,7 @@ namespace slide
 		x = std::move(states); // #CHECK -> try move constructor.
 	}
 
-	void State::setIniStates(slide::states_type &si)
+	void State::setIniStates(const slide::states_type &si)
 	{
 		/*
 	 * Function to set the initial states of this State object

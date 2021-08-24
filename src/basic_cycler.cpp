@@ -961,6 +961,7 @@ int BasicCycler::CC_V(double I, double dt, bool blockDegradation, double Vset, d
 	// get the OCV and if Vset > OCV then we must charge so I must be negative and vice versa
 	if constexpr (settings::verbose >= printLevel::printCyclerDetail)
 		std::cout << "BasicCycler::CC_V is checking that the current has the correct sign.\n";
+
 	try
 	{
 		c.setI(settings::verbose >= printLevel::printNonCrit, check, 0); // set the current to 0
@@ -2204,7 +2205,7 @@ void BasicCycler::CC_V_CV_I(double Crate, double Vset, double Ccut, double dt, b
 		std::cout << "BasicCycler::CC_V_CV_I with voltage = " << Vset << ", CC current Crate " << Crate << "C and CV current cutoff Crate " << Ccut << "C, is terminating\n";
 }
 
-int BasicCycler::followI(int nI, std::string nameI, bool blockDegradation, int limit, double Vupp, double Vlow, double *ahi, double *whi, double *timei)
+int BasicCycler::followI(int nI, const std::vector<double> &I, const std::vector<double> &T, bool blockDegradation, int limit, double Vupp, double Vlow, double *ahi, double *whi, double *timei)
 {
 	/*
 	 * function to follow a certain current pattern.
@@ -2213,9 +2214,7 @@ int BasicCycler::followI(int nI, std::string nameI, bool blockDegradation, int l
 	 * IN
 	 * nI 		length of the current profile (i.e. number of rows in the csv file)
 	 * 				if n is too small, only the first n steps of the profile are simulated
-	 * 				if n is too large (i.e. you think there are more rows than there actually are in the csv file)
-	 * 					the behaviour is not guaranteed. Probably, the current in the additional steps will be 0 and the function will work
-	 * 					but the function might also crash (an error might happen in when the program tries to read the additional rows)
+	 * 				if 0 or large than number of rows, then all rows are simulated. 
 	 * nameI 	name of the CSV-file with the current profile
 	 * 				the first column contains the current in [A], positive for discharge, negative for charge
 	 * 				the second column contains the time in [sec] the current should be maintained
@@ -2244,7 +2243,7 @@ int BasicCycler::followI(int nI, std::string nameI, bool blockDegradation, int l
 	 */
 
 	if constexpr (settings::verbose >= printLevel::printCyclerFunctions)
-		std::cout << "BasicCycler::followI with profile = " << nameI << ", and voltage limits " << Vupp << " to " << Vlow << ", is starting\n";
+		std::cout << "BasicCycler::followI with given profile and voltage limits " << Vupp << " to " << Vlow << ", is starting\n";
 
 	if (limit < 0 || limit > 1)
 	{
@@ -2254,39 +2253,17 @@ int BasicCycler::followI(int nI, std::string nameI, bool blockDegradation, int l
 	}
 
 	// *********************************************************** 1 read the current profile & variables ***********************************************************************
-	if constexpr (settings::verbose >= printLevel::printCyclerDetail)
-		std::cout << "BasicCycler::followI is reading the current profile\n";
-
-	// Read the current profile
-	std::vector<double> I(nI), T(nI);
-	try
-	{
-		loadCSV_2col(PathVar::data + nameI, I, T); // read the file
-	}
-	catch (int e)
-	{
-		std::cout << "error in BasicCycler::followI when reading the file with the current profile called "
-				  << nameI << ", error " << e << ". Throwing it on.\n";
-		throw e;
-	}
-
-	// variables
-	double dt;										   // time step to be used for this step in the profile [sec]
-	bool Tlow = c.getTenv() < (PhyConst::Kelvin + 45); // boolean indicating if the environmental temperature is below 45 degrees
-	bool Ilow;										   // boolean indicating if the magnitude of the current in this step of the profile is below 1.5C
-	bool Imed;										   // boolean indicating if the magnitude of the current in this step of the profile is below 3C
-	slide::State s;									   // state of the battery
-	double Iprev;									   // current in the previous time step
-	double ah;										   // capacity discharged during this step in the profile [Ah]
-	double wh;										   // energy discharged during this step in the profile [Wh]
-	double tt;										   // time spent during this step in the profile [sec]
-	int vlim;										   // integer indicating why the CC phase finished
-	double ahtot = 0;								   // charge throughput up to this step in the profile [Ah]
-	double whtot = 0;								   // energy throughput up to this step in the profile [Wh]
-	double tttot = 0;								   // cumulative time up to this step in the profile [sec]
-	bool vminlim = false;							   // boolean to indicate if the minimum voltage limit was hit
-	bool vmaxlim = false;							   // boolean to indicate if the maximum voltage limit was hit
-	bool verr = false;								   // boolean to indicate if an unknown error occurred
+	double dt;												 // time step to be used for this step in the profile [sec]
+	const bool Tlow = c.getTenv() < (PhyConst::Kelvin + 45); // boolean indicating if the environmental temperature is below 45 degrees
+	slide::State s;											 // state of the battery
+	double Iprev;											 // current in the previous time step
+	double ah, wh;											 // capacity/energy discharged during this step in the profile [Ah]/[Wh]
+	double tt;												 // time spent during this step in the profile [sec]
+	int vlim;												 // integer indicating why the CC phase finished
+	double ahtot{0}, whtot{0};								 // charge/energy throughput up to this step in the profile [Ah]/[Wh]
+	double tttot = 0;										 // cumulative time up to this step in the profile [sec]
+	bool vminlim{false}, vmaxlim{false};					 // boolean to indicate if the minimum/maximum voltage limit was hit
+	bool verr = false;										 // boolean to indicate if an unknown error occurred
 
 	// ****************************************************** 2 loop through the profile ***********************************************************************
 
@@ -2297,13 +2274,13 @@ int BasicCycler::followI(int nI, std::string nameI, bool blockDegradation, int l
 			std::cout << "BasicCycler::followI is in step " << i << " with a current of " << I[i] << " and time of " << T[i] << " seconds.\n";
 
 		// Determine the time step to be used for the time integration in this step of the profile
-		Ilow = std::abs(I[i]) < 1.5 * c.getNominalCap(); // is the current below 1.5C?
-		Imed = std::abs(I[i]) < 3 * c.getNominalCap();	 // is the current below 3C?
-		if (std::fmod(T[i], 3) == 0 && Tlow && Ilow)	 // if the temperature is low, the current is low, and the time of the step is a multiple of 3 sec
-			dt = 3;										 // then use 3 seconds as time step
-		else if (std::fmod(T[i], 2) == 0 && Imed)		 // the current is medium, and the time of the step is a multiple of 2 sec
-			dt = 2;										 // then use 2 seconds as time step
-		else											 // else use the lower value of 1 second or the time step
+		const bool Ilow = std::abs(I[i]) < 1.5 * c.getNominalCap(); // is the current below 1.5C?
+		const bool Imed = std::abs(I[i]) < 3 * c.getNominalCap();	// is the current below 3C?
+		if (std::fmod(T[i], 3) == 0 && Tlow && Ilow)				// if the temperature is low, the current is low, and the time of the step is a multiple of 3 sec
+			dt = 3;													// then use 3 seconds as time step
+		else if (std::fmod(T[i], 2) == 0 && Imed)					// the current is medium, and the time of the step is a multiple of 2 sec
+			dt = 2;													// then use 2 seconds as time step
+		else														// else use the lower value of 1 second or the time step
 			dt = std::min(1.0, T[i]);
 		// note: if the data collection time interval is smaller than dt, this will be corrected in the underlying functions (in CC_t_V)
 
@@ -2380,6 +2357,79 @@ int BasicCycler::followI(int nI, std::string nameI, bool blockDegradation, int l
 		endvalue = 1;
 	else // no voltage limit was hit
 		endvalue = 0;
+	if constexpr (settings::verbose >= printLevel::printCyclerFunctions)
+		std::cout << "BasicCycler::followI with given profile and voltage limits " << Vupp
+				  << " to " << Vlow << ", is terminating with " << endvalue << ".\n";
+
+	return endvalue;
+}
+
+int BasicCycler::followI(int nI, const std::string &nameI, bool blockDegradation, int limit, double Vupp, double Vlow, double *ahi, double *whi, double *timei)
+{
+	/*
+	 * function to follow a certain current pattern.
+	 * The cell tries to follow the current every time step.
+	 *
+	 * IN
+	 * nI 		length of the current profile (i.e. number of rows in the csv file)
+	 * 				if n is too small, only the first n steps of the profile are simulated
+	 * 				if 0 or large than number of rows, then all rows are simulated. 
+	 * nameI 	name of the CSV-file with the current profile
+	 * 				the first column contains the current in [A], positive for discharge, negative for charge
+	 * 				the second column contains the time in [sec] the current should be maintained
+	 * blockDegradation if true, degradation is not accounted for during this current profile
+	 * 				set this to 'true' if you want to ignore degradation for now (e.g. if you're characterising a cell)
+	 * limit 	integer describing what to do if the current can't be maintained because a voltage limit is reached
+	 * 				0 	immediately go to the next current step of the profile (i.e. reduce the time of this step)
+	 * 				1 	keep the voltage constant for the rest of this step of the profile (i.e. reduce the current for the rest of this step)
+	 * Vupp		upper voltage limit, Cell.Vmin <= Vupp <= Cell.Vmax, [V]
+	 * Vlow		lower voltage limit, Cell.Vmin <= Vlow <= Cell.Vmax, [V]
+	 *
+	 * OUT
+	 * ahi		charge throughput while following the profile [Ah]
+	 * whi		energy throughput while following the profile [Wh]
+	 * timei	time spent while following the profile [sec]
+	 * int 		integer indicating if a voltage limit was hit while following the current profile
+	 * 				-1 if the lower voltage limit was hit while following the original profile
+	 * 				0 if the profile could be followed, i.e. no voltage limit was hit while following this profile
+	 * 				1 if the upper voltage limit was hit while following the original profile
+	 * 				10 if both the lower and upper voltage limits were hit while following the original profile
+	 * 				100 if we don't know which voltage limit was hit while following the original profile
+	 *
+	 * throws
+	 * 1011 	limit has an illegal value (it is not 0, 1 or 2)
+	 * 1012 	if the cell is in an illegal state (i.e. even a current of 0A still violates the voltage constraints of the cell)
+	 */
+
+	if constexpr (settings::verbose >= printLevel::printCyclerFunctions)
+		std::cout << "BasicCycler::followI with profile = " << nameI << ", and voltage limits " << Vupp << " to " << Vlow << ", is starting\n";
+
+	if (limit < 0 || limit > 1)
+	{
+		std::cerr << "ERROR in BasicCycler::followI, illegal value for the limit setting: " << limit
+				  << ", only the values 0 and 1 are allowed. Throwing an error.\n";
+		throw 1011;
+	}
+
+	// *********************************************************** 1 read the current profile & variables ***********************************************************************
+	if constexpr (settings::verbose >= printLevel::printCyclerDetail)
+		std::cout << "BasicCycler::followI is reading the current profile\n";
+
+	// Read the current profile
+	static thread_local std::vector<double> I(nI), T(nI);
+	try
+	{
+		loadCSV_2col(PathVar::data + nameI, I, T, nI); // read the file
+	}
+	catch (int e)
+	{
+		std::cout << "error in BasicCycler::followI when reading the file with the current profile called "
+				  << nameI << ", error " << e << ". Throwing it on.\n";
+		throw e;
+	}
+
+	auto endvalue = followI(nI, I, T, blockDegradation, limit, Vupp, Vlow, ahi, whi, timei);
+
 	if constexpr (settings::verbose >= printLevel::printCyclerFunctions)
 		std::cout << "BasicCycler::followI with profile = " << nameI << ", and voltage limits " << Vupp
 				  << " to " << Vlow << ", is terminating with " << endvalue << ".\n";

@@ -18,14 +18,14 @@
 #include "util.hpp"
 
 void Cycle_one(const struct slide::Model &M, const struct DEG_ID &degid, int cellType, int verbose, // simulate one cycle ageing experiment
-			   const struct CycleAgeingConfig &cycAgConfig, bool CVcha, double Icutcha, bool CVdis, double Icutdis, int timeCycleData, int nrCycles, int nrCap, const struct checkUpProcedure &proc, const std::string &pref)
+			   const struct CycleAgeingConfig &cycAgConfig, bool CVcha, double Icutcha, bool CVdis, double Icutdis, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, const std::string &pref)
 {
 	Cycle_one(M, degid, cellType, verbose, cycAgConfig.Vma, cycAgConfig.Vmi, // simulate one cycle ageing experiment
 			  cycAgConfig.Ccha, CVcha, Icutcha, cycAgConfig.Cdis, CVdis, Icutdis, cycAgConfig.Ti(), timeCycleData, nrCycles, nrCap, proc, cycAgConfig.get_name(pref));
 }
 
 void Calendar_one(const struct slide::Model &M, const struct DEG_ID &degid, int cellType, int verbose,
-				  double V, double Ti, int Time, int mode, int timeCycleData, int timeCheck, struct checkUpProcedure proc, std::string name)
+				  double V, double Ti, int Time, int mode, int timeCycleData, int timeCheck, struct checkUpProcedure &proc, std::string name)
 {
 	/*
 	 * Function which simulates one calendar ageing regime.
@@ -128,7 +128,7 @@ void Calendar_one(const struct slide::Model &M, const struct DEG_ID &degid, int 
 
 void Cycle_one(const struct slide::Model &M, const struct DEG_ID &degid, int cellType, int verbose, double Vma, double Vmi,
 			   double Ccha, bool CVcha, double Ccutcha, double Cdis, bool CVdis, double Ccutdis, double Ti, int timeCycleData,
-			   int nrCycles, int nrCap, struct checkUpProcedure proc, std::string name)
+			   int nrCycles, int nrCap, struct checkUpProcedure &proc, std::string name)
 {
 	/*
 	 * Function which simulates one cycle ageing regime.
@@ -233,7 +233,7 @@ void Cycle_one(const struct slide::Model &M, const struct DEG_ID &degid, int cel
 }
 
 void Profile_one(const struct slide::Model &M, const struct DEG_ID &degid, int cellType, int verbose, std::string profName, int n, int limit,
-				 double Vma, double Vmi, double Ti, int timeCycleData, int nrProfiles, int nrCap, struct checkUpProcedure proc, std::string name)
+				 double Vma, double Vmi, double Ti, int timeCycleData, int nrProfiles, int nrCap, struct checkUpProcedure &proc, std::string name)
 {
 	/*
 	 * Calls the ProfileAgeing() function of a Cycler
@@ -411,28 +411,28 @@ void CycleAgeing(const struct slide::Model &M, std::string pref, const struct DE
 
 	// Make a struct to describe the check-up procedure
 	struct checkUpProcedure proc;
-	proc.blockDegradation = true;				  // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
-	proc.capCheck = true;						  // boolean indicating if the capacity should be checked
-	proc.OCVCheck = true;						  // boolean indicating if the half-cell OCV curves should be checked
-	proc.CCCVCheck = true;						  // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
-	proc.pulseCheck = true;						  // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
-	proc.includeCycleData = true;				  // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
-	proc.nCycles = 3;							  // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates)
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[0] = 0.5;						  // do a 0.5C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[1] = 1.0;						  // do a 1C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[2] = 2.0;						  // do a 2C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Ccut_cha = 0.05;						  // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
-	proc.Ccut_dis = 100;						  // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
-												  // 		if the cutoff is larger than the value in the CC phase, no CV phase is done
-	proc.profileName = "CheckupPulseProfile.csv"; // name of the csv file which contains the current profile for the pulse test
-												  //	the first column contains the current in [A] (positive for discharge, negative for charge)
-												  //	the second column contains the time in [sec] the current should be maintained
-												  //	the profile must be a net discharge, i.e. sum (I*dt) > 0
-	proc.profileLength = 13;					  // length of the current profiles for the pulse test (number of rows in the csv file)
+	proc.blockDegradation = true;					 // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
+	proc.capCheck = true;							 // boolean indicating if the capacity should be checked
+	proc.OCVCheck = true;							 // boolean indicating if the half-cell OCV curves should be checked
+	proc.CCCVCheck = true;							 // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
+	proc.pulseCheck = true;							 // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
+	proc.includeCycleData = true;					 // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
+	proc.nCycles = 3;								 // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates)
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[0] = 0.5;							 // do a 0.5C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[1] = 1.0;							 // do a 1C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[2] = 2.0;							 // do a 2C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Ccut_cha = 0.05;							 // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
+	proc.Ccut_dis = 100;							 // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
+													 // if the cutoff is larger than the value in the CC phase, no CV phase is done
+	proc.set_profileName("CheckupPulseProfile.csv"); // name of the csv file which contains the current profile for the pulse test
+													 //	the first column contains the current in [A] (positive for discharge, negative for charge)
+													 //	the second column contains the time in [sec] the current should be maintained
+													 //	the profile must be a net discharge, i.e. sum (I*dt) > 0
+	proc.profileLength = 13;						 // length of the current profiles for the pulse test (number of rows in the csv file)
 
 	// *********************************************************** 3 simulations ******************************************************************
 
@@ -569,28 +569,28 @@ void CalendarAgeing(const struct slide::Model &M, std::string pref, const struct
 
 	// Make a struct to describe the check-up procedure
 	struct checkUpProcedure proc;
-	proc.blockDegradation = true;				  // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
-	proc.capCheck = true;						  // boolean indicating if the capacity should be checked
-	proc.OCVCheck = true;						  // boolean indicating if the half-cell OCV curves should be checked
-	proc.CCCVCheck = true;						  // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
-	proc.pulseCheck = true;						  // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
-	proc.includeCycleData = true;				  // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
-	proc.nCycles = 3;							  // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates), maximum 100
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[0] = 0.5;						  // do a 0.5C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[1] = 1.0;						  // do a 1C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[2] = 2.0;						  // do a 2C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Ccut_cha = 0.05;						  // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
-	proc.Ccut_dis = 100;						  // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
-												  // 		if the cutoff is larger than the value in the CC phase, no CV phase is done
-	proc.profileName = "CheckupPulseProfile.csv"; // name of the csv file which contains the current profile for the pulse test
-												  //	the first column contains the current in [A] (positive for discharge, negative for charge)
-												  //	the second column contains the time in [sec] the current should be maintained
-												  //	the profile must be a net discharge, i.e. sum (I*dt) > 0
-	proc.profileLength = 13;					  // length of the current profiles for the pulse test (number of rows in the csv file)
+	proc.blockDegradation = true;					 // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
+	proc.capCheck = true;							 // boolean indicating if the capacity should be checked
+	proc.OCVCheck = true;							 // boolean indicating if the half-cell OCV curves should be checked
+	proc.CCCVCheck = true;							 // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
+	proc.pulseCheck = true;							 // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
+	proc.includeCycleData = true;					 // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
+	proc.nCycles = 3;								 // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates), maximum 100
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[0] = 0.5;							 // do a 0.5C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[1] = 1.0;							 // do a 1C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[2] = 2.0;							 // do a 2C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Ccut_cha = 0.05;							 // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
+	proc.Ccut_dis = 100;							 // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
+													 // if the cutoff is larger than the value in the CC phase, no CV phase is done
+	proc.set_profileName("CheckupPulseProfile.csv"); // name of the csv file which contains the current profile for the pulse test
+													 //	the first column contains the current in [A] (positive for discharge, negative for charge)
+													 //	the second column contains the time in [sec] the current should be maintained
+													 //	the profile must be a net discharge, i.e. sum (I*dt) > 0
+	proc.profileLength = 13;						 // length of the current profiles for the pulse test (number of rows in the csv file)
 
 	// *********************************************************** Simulations ******************************************************************
 
@@ -723,28 +723,28 @@ void ProfileAgeing(const struct slide::Model &M, std::string pref, const struct 
 
 	// Make a struct to describe the check-up procedure
 	struct checkUpProcedure proc;
-	proc.blockDegradation = true;				  // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
-	proc.capCheck = true;						  // boolean indicating if the capacity should be checked
-	proc.OCVCheck = true;						  // boolean indicating if the half-cell OCV curves should be checked
-	proc.CCCVCheck = true;						  // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
-	proc.pulseCheck = true;						  // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
-	proc.includeCycleData = true;				  // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
-	proc.nCycles = 3;							  // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates).
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[0] = 0.5;						  // do a 0.5C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[1] = 1.0;						  // do a 1C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Crates[2] = 2.0;						  // do a 2C cycle as part of the CCCV check-up, must be positive
-												  // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-	proc.Ccut_cha = 0.05;						  // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
-	proc.Ccut_dis = 100;						  // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
-												  // 		if the cutoff is larger than the value in the CC phase, no CV phase is done
-	proc.profileName = "CheckupPulseProfile.csv"; // name of the csv file which contains the current profile for the pulse test
-												  //	the first column contains the current in [A] (positive for discharge, negative for charge)
-												  //	the second column contains the time in [sec] the current should be maintained
-												  //	the profile must be a net discharge, i.e. sum (I*dt) > 0
-	proc.profileLength = 13;					  // length of the current profiles for the pulse test (number of rows in the csv file)
+	proc.blockDegradation = true;					 // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
+	proc.capCheck = true;							 // boolean indicating if the capacity should be checked
+	proc.OCVCheck = true;							 // boolean indicating if the half-cell OCV curves should be checked
+	proc.CCCVCheck = true;							 // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
+	proc.pulseCheck = true;							 // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
+	proc.includeCycleData = true;					 // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
+	proc.nCycles = 3;								 // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates).
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[0] = 0.5;							 // do a 0.5C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[1] = 1.0;							 // do a 1C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Crates[2] = 2.0;							 // do a 2C cycle as part of the CCCV check-up, must be positive
+													 // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+	proc.Ccut_cha = 0.05;							 // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
+	proc.Ccut_dis = 100;							 // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
+													 // if the cutoff is larger than the value in the CC phase, no CV phase is done
+	proc.set_profileName("CheckupPulseProfile.csv"); // name of the csv file which contains the current profile for the pulse test
+													 //	the first column contains the current in [A] (positive for discharge, negative for charge)
+													 //	the second column contains the time in [sec] the current should be maintained
+													 //	the profile must be a net discharge, i.e. sum (I*dt) > 0
+	proc.profileLength = 13;						 // length of the current profiles for the pulse test (number of rows in the csv file)
 
 	// *********************************************************** 3 simulations ******************************************************************
 

@@ -70,13 +70,14 @@ void loadCSV_1col(const Tpath &name, std::array<T, ROW> &x)
 }
 
 template <typename Tpath, typename Tx, typename Ty>
-void loadCSV_2col(const Tpath &name, Tx &x, Ty &y)
+void loadCSV_2col(const Tpath &name, Tx &x, Ty &y, int n = 0)
 {
 	/*
 	 * Reads data from a CSV file with 2 columns
 	 *
 	 * IN
-	 * name 	the name of the file	 *
+	 * name 	the name of the file
+	 * n 		the number of rows to read (if n==0, read all), it is used to read a portion of a *.csv file.
 	 * 
 	 * OUT
 	 * x 		array in which the data from the first column will be put
@@ -94,27 +95,29 @@ void loadCSV_2col(const Tpath &name, Tx &x, Ty &y)
 		throw 2;
 	}
 
-	int j = 0;
 	char c = '.';
 
 	while (!std::isalnum(in.peek())) // Ignore byte order mark (BOM) at the beginning
 		in >> c;
 
+	int j = 0;
 	if constexpr (std::is_same<std::vector<double>, Tx>::value)
 	{
 		x.clear(); // Sometimes pre-allocated vectors are passed; therefore, cleared to be able to use push_back.
 		y.clear();
 
 		double x_i, y_i;
-		while (in >> x_i >> c >> y_i) // Read file.
+		while ((n == 0 || j < n) && (in >> x_i >> c >> y_i)) // Read file.
 		{
 			x.push_back(x_i);
 			y.push_back(y_i);
+			j++;
 		}
 	}
 	else
-	{									// It must be a std::array, then just read without clear.
-		while (in >> x[j] >> c >> y[j]) // Read file.
+	{ // It must be a std::array, then just read without clear.
+
+		while ((n == 0 || j < n) && (in >> x[j] >> c >> y[j])) // Read file.
 			j++;
 	}
 }

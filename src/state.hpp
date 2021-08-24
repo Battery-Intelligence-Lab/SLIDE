@@ -73,7 +73,7 @@ namespace slide
 			std::copy(zni.begin(), zni.end(), x.begin() + nch);
 		}																											   // set the transformed concentration
 		void setStates(slide::states_type &&states);																   // set the states to the values in the array
-		void setIniStates(slide::states_type &si);																	   // set the initial states to the values in the array
+		void setIniStates(const slide::states_type &si);															   // set the initial states to the values in the array
 		void overwriteGeometricStates(double thickpi, double thickni, double epi, double eni, double api, double ani); // overwrite the states related to the geometry of a cell
 		void overwriteCharacterisationStates(double Dpi, double Dni, double ri);									   // overwrite the states related to the characterisation of a cell
 
