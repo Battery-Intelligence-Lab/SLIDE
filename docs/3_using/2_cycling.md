@@ -64,11 +64,11 @@ There are MATLAB functions to read these csv files. You have to specify in the M
 If you simulated the CCCV cycles, run the MATLAB script ```ReadCCCV.m```. It produces a plot of the simulated current, voltage and temperature similar to the figure below.
 
 
+
 ![](img/fig_readCCCV.png){:width="60%" }
 
 
 If you had simulated the current profile, run the matlab script ```ReadFollowCurrent.m```. It produces a plot of the simulated current, voltage and temperature as well as the original current from the profile.
-
 
 ![](img/fig_ReadFollowCurrent.png){:width="60%" }
 
@@ -76,6 +76,7 @@ If you had simulated the current profile, run the matlab script ```ReadFollowCur
 ## How do you change something?
 
 ### Changing the cell or cell parameters
+
 Two real-life cells are implemented in this code, with different OCV curves and different parameters. To switch between different types, change the value of ```cellType``` to the other value. The two real life cells have values of 0 and 1. On top of this, there is a third ```template``` cell type called ```Cell_user``` where users can implement their own values (in the released code, the parameters of this type are the same as the ones from the Kokam high power cell).
 
 Alternatively, the user can change the parameters of the cell which is being used. The parameters of a cell are defined in its cpp-files: ```cell_KokamNMC.cpp```, ```cell_LGChemNMC.cpp```, and ```cell_user.cpp```. There, the user can directly change the values of all cell parameters and things like the initial lithium concentrations.

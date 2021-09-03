@@ -108,6 +108,7 @@ Two `*.csv` files with results are written
 
 The OCV curves have to be supplied in csv files which have to follow a specific format (see above). You can make new csv files with your new OCV curves and copy these files to the project folder. You then have to change the parameter in the C++ code which gives the name of the `*.csv` file with the respective OCV curve (namexxxx) and the parameter which indicates the length of the OCV curve (the number of rows in the csv file, nx). This has to be done in code block ‘1 user input’ in the function `estimateOCVparameters` in the file `determineOCV.cpp`.
 
+
 At the same location, you can also update the values of the maximum lithium concentration in each electrode.
 
 

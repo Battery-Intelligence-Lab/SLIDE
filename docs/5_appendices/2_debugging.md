@@ -78,7 +78,6 @@ Consider a case where the cell is being discharged to the minimum voltage (e.g. 
 But if the current or time step is very large, or the amount of active material or the diffusion constant is very small, the changes in surface concentration (and cell voltage) over one time step become very large. Suppose that the voltage at time t is 2.71V with a corresponding lithium fraction in the anode of 0.96, so the code takes another time step to further discharge the cell. But due to the large change in surface concentration, the lithium fraction in the anode now becomes 1.01, which is illegal (the lithium fraction has to be smaller than 1). This will lead to error 101.
 
 To solve this, try the following.
-
 - First check the parameters you are using (e.g. you got the wrong units and are now trying to run a 1000C current instead of a 1C). Idem for the diffusion constant, electrode thickness, etc.
 - Secondly you can decrease the time step, which will decrease the change per time step.
 - Another thing you can try is to decrease the rate of change in the cell’s current (`dIcell` in the constructors of the Cell-subclasses). This will solve the case where the problem happened when you were suddenly changing the applied current which lead to a crazy surface concentration (but not the case where you were just running a large current and then the error happened)

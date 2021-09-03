@@ -113,6 +113,7 @@ If you want to change the radius, you therefore have to re-compute the spatial d
 
 Note that there can only be one spatial discretisation at any given time (the `*.csv` files are overwritten when a new discretisation is calculated). This means it is not allowed to use two cell types with a different radius at the same time (which is why both the high-power Kokam and the high-energy LG Chem cell have the same radius). So if you change the radius is one cell type (and therefore also in MATLAB and in the written csv files with the discretisation), the code will throw an error if you try to use another cell type which still has the old radius.
 
+
 ### Note on numerical stability of changing the radius, diffusion constant or thermal parameters
 
 Sometimes, changing certain parameters by large amounts might lead to errors in the code. This is the case for the radius, the diffusion constant, and all the thermal parameters (cooling, density, heat capacity, etc.). The reason is that the time integration of the diffusion PDE or thermal ODE becomes unstable (i.e. numerical errors blow up to infinity and the value of parameters becomes inf or NaN (not a number). (note: the inf or NaN might appear somewhere else in the code, e.g. in the voltage). In this case, there are a couple of things you can try:
