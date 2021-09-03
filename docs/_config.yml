@@ -1,0 +1,13 @@
+title: SLIDE
+description: Official documentation of SLIDE software.
+remote_theme: rundocs/jekyll-rtd-theme
+
+# Theme settings:
+site_author: SLIDE authors
+repo_url: "https://github.com/davidhowey/SLIDE/"
+edit_on_github: true
+github_docs_folder: true
+sticky_navigation: true
+prev_next_buttons_location: bottom
+search_enabled: true
+hljs_style: github-gist
