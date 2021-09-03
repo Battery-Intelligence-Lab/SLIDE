@@ -50,7 +50,7 @@ void Model_initialise(Model& M){
 		// M.Cn
 		n = nch+1;								// number of rows
 		m = nch;								// number of columns
-		loadCSV_mat("cheb_Cn.csv", n, m, A);	// read data into A
+		loadCSV_mat("Cheb_Cn.csv", n, m, A);	// read data into A
 		for(int i=0;i<n;i++){					// copy the first n rows
 			for(int j=0;j<m;j++)				// copy the first m columns
 				M.Cn[i][j] = A[i][j];
@@ -59,7 +59,7 @@ void Model_initialise(Model& M){
 		// M.Cp
 		n = nch+1;								// number of rows
 		m = nch;								// number of columns
-		loadCSV_mat("cheb_Cp.csv", n, m, A);	// read data into A
+		loadCSV_mat("Cheb_Cp.csv", n, m, A);	// read data into A
 		for(int i=0;i<n;i++){					// copy the first n rows
 			for(int j=0;j<m;j++)				// copy the first m columns
 				M.Cp[i][j] = A[i][j];
@@ -68,7 +68,7 @@ void Model_initialise(Model& M){
 		// M.Vn
 		n = nch;								// number of rows
 		m = nch;								// number of columns
-		loadCSV_mat("cheb_Vn.csv", n, m, A);	// read data into A
+		loadCSV_mat("Cheb_Vn.csv", n, m, A);	// read data into A
 		for(int i=0;i<n;i++){					// copy the first n rows
 			for(int j=0;j<m;j++)				// copy the first m columns
 				M.Vn[i][j] = A[i][j];
@@ -77,7 +77,7 @@ void Model_initialise(Model& M){
 		// M.Vp
 		n = nch;								// number of rows
 		m = nch;								// number of columns
-		loadCSV_mat("cheb_Vp.csv", n, m, A);	// read data into A
+		loadCSV_mat("Cheb_Vp.csv", n, m, A);	// read data into A
 		for(int i=0;i<n;i++){					// copy the first n rows
 			for(int j=0;j<m;j++)				// copy the first m columns
 				M.Vp[i][j] = A[i][j];
@@ -86,7 +86,7 @@ void Model_initialise(Model& M){
 		// M.Q
 		n = 2*nch+3;							// number of rows
 		m = 2*nch+3;							// number of columns
-		loadCSV_mat("cheb_Q.csv", n, m, A);		// read data into A
+		loadCSV_mat("Cheb_Q.csv", n, m, A);		// read data into A
 		for(int i=0;i<n;i++){					// copy the first n rows
 			for(int j=0;j<m;j++)				// copy the first m columns
 				M.Q[i][j] = A[i][j];
