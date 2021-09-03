@@ -7,13 +7,9 @@ nav_order: 3
 
 # Mathematical background
 
+_Slide_ builds upon the spectral single particle model implemented by Adrien Bizeray, Jorn Reniers and David Howey, which is available on [GitHub](https://github.com/davidhowey/Spectral_li-ion_SPM). The reader is recommended to first familiarise with the spectral SPM before turning attention to Slide, which extends the spectral SPM with various degradation mechanisms.
 
-_Slide_ builds upon the spectral single particle model implemented by Adrien Bizeray, Jorn Reniers and David Howey, which is available on 
-[GitHub](https://github.com/davidhowey/Spectral_li-ion_SPM). The reader is recommended to first familiarise with the spectral SPM before turning attention 
-to Slide, which extends the spectral SPM with various degradation mechanisms.
-
-There is one main mathematical difference. The spectral SPM used the *transformed concentration* $$u$$, which was obtained by multiplying the 
-radius with the lithium concentration at that radius. The final equation of the state space model for solid diffusion of the spectral SPM was:
+There is one main mathematical difference. The spectral SPM used the *transformed concentration* $$u$$, which was obtained by multiplying the radius with the lithium concentration at that radius. The final equation of the state space model for solid diffusion of the spectral SPM was:
 
 $$\frac{\partial u_{2:N}}{\partial t} = D_{s,i}(T)Au_{2:N}  + Bj_i(t)$$
 

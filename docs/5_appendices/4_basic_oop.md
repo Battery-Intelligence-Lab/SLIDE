@@ -27,7 +27,7 @@ Class Car {
 }
 ```
 
-Up to here, a class is very similar to a struct in Matlab, C or other programming languages. The main difference is that in the real-world, there are clearly defined ‘things’ a car can ‘do’ (e.g. accelerate, turn, etc.). While in Matlab or other non-object-oriented programming functions to ‘do things’ have to be defined externally, they are included in a class in object-oriented code. So a class groups both the variables AND the functions related to the ‘thing’ the class represents. Let’s add a function to accelerate the car to our class. The function has one variable, the increase in speed ds. Our Car-class could for instance look like:
+Up to here, a class is very similar to a struct in MATLAB, C or other programming languages. The main difference is that in the real-world, there are clearly defined ‘things’ a car can ‘do’ (e.g. accelerate, turn, etc.). While in MATLAB or other non-object-oriented programming functions to ‘do things’ have to be defined externally, they are included in a class in object-oriented code. So a class groups both the variables AND the functions related to the ‘thing’ the class represents. Let’s add a function to accelerate the car to our class. The function has one variable, the increase in speed ds. Our Car-class could for instance look like:
 
 ```cpp
 Class Car {

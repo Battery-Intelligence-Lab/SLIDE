@@ -1,0 +1,15 @@
+# exclude some files.
+slide.exe
+slide.pdb
+.idea/*
+Debug/*
+slide.ilk
+cmake-build-debug/*
+.vscode/*
+*.pdb
+out/*
+.vs/*
+.editorconfig
+Release/*
+Debug/*
+*.ilk

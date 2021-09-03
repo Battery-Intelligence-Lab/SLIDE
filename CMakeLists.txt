@@ -1,20 +1,41 @@
 cmake_minimum_required (VERSION 3.6)
 
-project (SLIDE)
+project (SLIDE VERSION 2.0)
 
 set (CMAKE_DEBUG_POSTFIX d)
 
-# ensure C++11
-set (CMAKE_CXX_STANDARD 11)
+# ensure C++17
+set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
+set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+#default build type. 
+
+set(default_build_type "Release")
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
+      STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
 
 #export compiler flags for code completion engines
 set (CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/Debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/Release)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_SOURCE_DIR}/RelWithDebInfo)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_CURRENT_SOURCE_DIR}/MinSizeRel)
+
+
 # Set global compiler warnings
 if (MSVC)
-    set(common_options /W3 /WX)
+    set(common_options /W3 /permissive-) #/WX
     set(debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
     set(not_debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
 
@@ -22,44 +43,55 @@ if (MSVC)
         "$<$<CONFIG:Debug>:${debug_options}>$<$<NOT:$<CONFIG:Debug>>:${not_debug_options}>"
         )
 else ()
-	add_compile_options (-Wall)
+	add_compile_options ("-Wall" 
+                       "$<$<CONFIG:Release>:-Ofast;-march=native>") #-Ofast -march=native -g -fno-omit-frame-pointer -gdwarf-2 (flto not good)
 endif ()
 
+message(STATUS "Host system: ${CMAKE_HOST_SYSTEM}")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
-set (slide_headers
-  src/Cell_KokamNMC.hpp   
-  src/determineOCV.h
-  src/ReadCSVfiles.h   
-  src/BasicCycler.hpp
-  src/Cycling.h 
-  src/Cell_LGChemNMC.hpp
-  src/Interpolation.h 
-  src/State.hpp        
-  src/Degradation.h
-  src/Cell_Fit.hpp
-  src/Cell_user.hpp                           
-  src/Cell.hpp
-  src/determineCharacterisation.h
-  src/Model.h
-  src/Cycler.hpp      
+
+set(slide_headers
+  src/cell_KokamNMC.hpp   
+  src/determine_OCV.h
+  src/read_CSVfiles.h   
+  src/basic_cycler.hpp
+  src/cycling.h 
+  src/cell_LGChemNMC.hpp
+  src/interpolation.h 
+  src/state.hpp        
+  src/degradation.h
+  src/cell_fit.hpp
+  src/cell_user.hpp                           
+  src/cell.hpp
+  src/determine_characterisation.h
+  src/model.h
+  src/cycler.hpp
+  src/constants.hpp
+  src/util_error.hpp
+  src/util.hpp
+  src/slide_aux.hpp
   )
 
 set (slide_source
-  src/BasicCycler.cpp
-  src/Cell_LGChemNMC.cpp
-  src/Degradation.cpp
-  src/Cell.cpp
-  src/Cell_user.cpp
-  src/determineCharacterisation.cpp
-  src/Model.cpp
-  src/Cell_Fit.cpp
-  src/Cycler.cpp 
-  src/determineOCV.cpp
-  src/ReadCSVfiles.cpp
-  src/Cell_KokamNMC.cpp
-  src/Cycling.cpp
-  src/Interpolation.cpp
-  src/State.cpp
+  src/basic_cycler.cpp
+  src/cell_LGChemNMC.cpp
+  src/degradation.cpp
+  src/cell.cpp
+  src/cell_user.cpp
+  src/determine_characterisation.cpp
+  src/model.cpp
+  src/cell_fit.cpp
+  src/cycler.cpp 
+  src/determine_OCV.cpp
+  src/read_CSVfiles.cpp
+  src/cell_KokamNMC.cpp
+  src/cycling.cpp
+  src/interpolation.cpp
+  src/state.cpp
+  src/util_error.cpp
+  src/util.cpp
   )
 
 
@@ -69,5 +101,6 @@ add_executable (slide src/main.cpp
     )
 
 target_include_directories (slide PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-TARGET_LINK_LIBRARIES(slide pthread)
+TARGET_LINK_LIBRARIES(slide) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
 
+# 1F15CC8FAF2E004105282ADDDC78DC21098DFF10
