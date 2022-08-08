@@ -225,189 +225,189 @@ So they are one step ahead of ocvpi, ocvni and V. Is it a bug? Or is it saving e
 - [x] slide::State now inherits from std::array
 - [ ] Explation function for all classes? 
 
-slide_pack integration: 
-[x] SPMModel.h, SPMModel.cpp
+slide_pack integration:
+- [x] SPMModel.h, SPMModel.cpp
 
 slide_pack changes: 
-[ ] StorageUnit parent shared_pointer -> raw poiner. 
-[x] NULL -> nullptr
-[ ] Module shared_ptr<StorageUnit> SUs[MODULE_NSUs_MAX] -> vector.
-[ ] Namespace slide is added.
-[ ] Rcontact is removed from Module and it will be moved into Module_s and Module_p
-[ ] bockDegAndTherm -> typo.
-[ ] (verbose_gl > v_noncrit_gl)  ->  (settings::verbose >= printLevel::printNonCrit) 
-[ ] (verbose_gl >= v_crit_gl)   (settings::verbose >= printLevel::printCrit)
-[ ] #if DATA_STORE is being removed and module is now a template. 
-[ ] getIndex seems to be useless. 
-[ ] getting Vmax everytime is a problem. 
-[ ] getNstates is not needed. It is only used for checking sizes and it won't be needed. 
-[ ] Use default instead of empty destructor. 
-[ ] If base class does what needs to do, do not redefine everything. 
-[ ] Histogram should be in another class. 
-[ ] DEG_ID and OCVcurves may need to be shared pointers
-[ ] More hierarchy for ECM and SPM 
-[ ] Factory methods. 
-[ ] Add MSVC things 
-[ ] copy() function is about to be eliminated.
-[ ] Can we make ID static since it is same in all classes? Do we change? Look at it 
-[ ] StorateUnit -> StorageUnit
-[ ] getSUTemperatures in Module creates unnecessary storage then -> getSUTemperature(i).
-[ ] typeid(*SUs[i]) == typeid(Module) || typeid(*SUs[i]) == typeid(slide::Module_p) || typeid(*SUs[i]) == typeid(Module_s) -> is not good dynamic_pointer_cast already gives nullptr. 
-[ ] All shared pointers are converted to unique pointers. 
-[ ] validStates should not backup/should not change states! SetStates should not back up but can change. 
-[ ] getNstates is now useless. Removed from all functions. 
-[ ] Cell_Bucket setSOC was repeating some code. Therefore, we combined it with setStates. However, the logic should be divided better.
-[ ] setStates to support r-values. 
-[ ] do not copy shared pointers in for loops.
-[ ] Why there are so many ifs instead of else-ifs
-[ ] validSUs functions are combined. 
-[ ] Cycler was checking if storeData is full but storeData itself should check and call writeData. Or better, Cycler should collect everything and write. 
-[ ] su->getIndex() should not be used  in cycler because it is removed. 
-[ ] timeStep_CC_i -> seems to be used only for binding; therefore, not needed anymore. 
-[ ] par variable inside module should be constexpr somehow. 
-[ ] holding a vector of instances in a class? 
-[ ] Creating a thermal model. 
-[ ] Bugfix: Module_s::getI() tries to return value if (getNSUs() >= 0) but it should be >
-[x] getSUCurrents is removed. It was only used in module_p for a very short function. 
-[ ] Although not very necessary, eliminating internal getNSUs() and size().
-[ ] Add small free / helper functions. 
-  [ ] mean. 
-  [x] is_zero.
-[ ] getSUVoltages can replace some of the functions. 
-[ ] getSUTemperature does not seem to be useful, should we allow indiced calling? 
-[ ] Why thermal model takes 1-dim arrays? 
-[ ] Writing functions must be outside of Procedure. 
-[ ] Intermediate design decision: setStates -> span,  getStates -> vector. Also hold the states as std::array<double,N> in actual object. In future we can allocate alltogether. 
-[ ] EmptyStorageUnit to remove if(nullptr) parent? 
-[ ] Both soft and hard limits for battery is not good. 
-[ ] Some of the vectors can be eliminated 
-  [ ] via small vector optimisation. 
-  [ ] via unique_ptr(T[]). Use span for getting 
-[ ] Larger member variables should defined first in classes due to padding.
-[ ] use #include <source_location> to simplify error/warning/explanation messages.
-[ ] Delegated constructors? 
-[ ] Make this 'verb' things compile time things!!!!
-[ ] do not put get to everything   getV() -> V(),  getT() -> T()
-[ ] getVcheck -> checkV. 
-[x] isCharging() -> I() < 0  and isDischarging() -> I() > 0 are added to enforce consistent current representation. 
-[ ] setI should not return voltage, setI should not throw for no reason.
-[ ] why setI returns voltage? it should not. It is also not used anywhere. 
-[ ] setI -> setCurrent
-[ ] output of the setstates is also not used!!!! 
-[ ] error codes should be universal. Functions throw or return random codes. 
-[ ] cycler has set current and what we did setI is mixed with it :O 
-[ ] v < VMIN() && isDischarging()  this if else statements can be converted into summation and multiplication. 
-[ ] viewStates, viewVariations returns span or some other lightweight object. 
-[ ] CellData, CellDataStorage and CellDataWriter are created. We need policy design. 
-[ ] Cell::checkVoltage does not throw anymore. We encapsulate it in try-catch instead of in upper function. 
-[ ] getCSurf to return flag + pair? Optional?
-[ ] st.setZ can have a move object. 
-[ ] why setCS does not set Vcell_valid=false? 
-[ ] Don't forget to add timing functions into some particular functions. 
-[ ] Why case2 of CS starting with csparam.CS2alpha is different in old and new models? Also Case 1?
-[ ] Why case1 of LAM is different?
-[ ] LAM and CS are changed to be same as new versions.
-[ ] double degState[CELL_NSTATE_MAX] is useless. Causes use of 700 kB unnecessary memory. 
-[ ] Create another class for thermal model.
-[ ] What happens considering only one electrode? 
-[ ] Why Qrev definition is different? In new one it is -I() * T() * dOCV  but old one -i_app / L * st.T() * dOCV, because of change in units? 
-[ ] SetSOC does not change any concentration in SPM cell. However, it is effective in others. So is it an estimation thing or not? 
-[ ] Why does getOCV does not include entropic coefficient? 
-[ ] Use template functions instead of repeating st dependent but same functions. 
-[ ] setCurrent output is set to int. 
-[ ] Multiple CMakeLists is created which also allows me to find more path errors.
-[x] Geometry_SPM is created. 
-[ ] DEG_ID variables are changed from int to uint_fast8_t -> 144 byte to 36 byte size reduction. We also need to improve print function.
-[ ] DegArray is added to DEG_ID to remove deg_id.SEI_n > deg_id.len type of controls at each step.
-[ ] Degradation ID's should be enums. 
-[ ] Cannot use const with DEG_ID
-[ ] Range based for loops are added. 
-[ ] SmallArray is required. 
-[ ] i < getNSUs() - 1 is a bug! Fix immediately. 
-[ ] setStates validStates all calling each other copying states for nothing! We need to remove redundancy. We need a state pointer thing to do that.
-[ ] Remember that in copy(), usage stats are not copied across to the new module.
+- [ ] StorageUnit parent shared_pointer -> raw poiner. 
+- [x] NULL -> nullptr
+- [ ] Module shared_ptr<StorageUnit> SUs[MODULE_NSUs_MAX] -> vector.
+- [ ] Namespace slide is added.
+- [ ] Rcontact is removed from Module and it will be moved into Module_s and Module_p
+- [ ] bockDegAndTherm -> typo.
+- [ ] (verbose_gl > v_noncrit_gl)  ->  (settings::verbose >= printLevel::printNonCrit) 
+- [ ] (verbose_gl >= v_crit_gl)   (settings::verbose >= printLevel::printCrit)
+- [ ] #if DATA_STORE is being removed and module is now a template. 
+- [ ] getIndex seems to be useless. 
+- [ ] getting Vmax everytime is a problem. 
+- [ ] getNstates is not needed. It is only used for checking sizes and it won't be needed. 
+- [ ] Use default instead of empty destructor. 
+- [ ] If base class does what needs to do, do not redefine everything. 
+- [ ] Histogram should be in another class. 
+- [ ] DEG_ID and OCVcurves may need to be shared pointers
+- [ ] More hierarchy for ECM and SPM 
+- [ ] Factory methods. 
+- [ ] Add MSVC things 
+- [ ] copy() function is about to be eliminated.
+- [ ] Can we make ID static since it is same in all classes? Do we change? Look at it 
+- [ ] StorateUnit -> StorageUnit
+- [ ] getSUTemperatures in Module creates unnecessary storage then -> getSUTemperature(i).
+- [ ] typeid(*SUs[i]) == typeid(Module) || typeid(*SUs[i]) == typeid(slide::Module_p) || typeid(*SUs[i]) == typeid(Module_s) -> is not good dynamic_pointer_cast already gives nullptr. 
+- [ ] All shared pointers are converted to unique pointers. 
+- [ ] validStates should not backup/should not change states! SetStates should not back up but can change. 
+- [ ] getNstates is now useless. Removed from all functions. 
+- [ ] Cell_Bucket setSOC was repeating some code. Therefore, we combined it with setStates. However, the logic should be divided better.
+- [ ] setStates to support r-values. 
+- [ ] do not copy shared pointers in for loops.
+- [ ] Why there are so many ifs instead of else-ifs
+- [ ] validSUs functions are combined. 
+- [ ] Cycler was checking if storeData is full but storeData itself should check and call writeData. Or better, Cycler should collect everything and write. 
+- [ ] su->getIndex() should not be used  in cycler because it is removed. 
+- [ ] timeStep_CC_i -> seems to be used only for binding; therefore, not needed anymore. 
+- [ ] par variable inside module should be constexpr somehow. 
+- [ ] holding a vector of instances in a class? 
+- [ ] Creating a thermal model. 
+- [ ] Bugfix: Module_s::getI() tries to return value if (getNSUs() >= 0) but it should be >
+- [x] getSUCurrents is removed. It was only used in module_p for a very short function. 
+- [ ] Although not very necessary, eliminating internal getNSUs() and size().
+- [ ] Add small free / helper functions. 
+-   [ ] mean. 
+-   [x] is_zero.
+- [ ] getSUVoltages can replace some of the functions. 
+- [ ] getSUTemperature does not seem to be useful, should we allow indiced calling? 
+- [ ] Why thermal model takes 1-dim arrays? 
+- [ ] Writing functions must be outside of Procedure. 
+- [ ] Intermediate design decision: setStates -> span,  getStates -> vector. Also hold the states as std::array<double,N> in actual object. In future we can allocate alltogether. 
+- [ ] EmptyStorageUnit to remove if(nullptr) parent? 
+- [ ] Both soft and hard limits for battery is not good. 
+- [ ] Some of the vectors can be eliminated 
+-   [ ] via small vector optimisation. 
+-   [ ] via unique_ptr(T[]). Use span for getting 
+- [ ] Larger member variables should defined first in classes due to padding.
+- [ ] use #include <source_location> to simplify error/warning/explanation messages.
+- [ ] Delegated constructors? 
+- [ ] Make this 'verb' things compile time things!!!!
+- [ ] do not put get to everything   getV() -> V(),  getT() -> T()
+- [ ] getVcheck -> checkV. 
+- [x] isCharging() -> I() < 0  and isDischarging() -> I() > 0 are added to enforce consistent current representation. 
+- [ ] setI should not return voltage, setI should not throw for no reason.
+- [ ] why setI returns voltage? it should not. It is also not used anywhere. 
+- [ ] setI -> setCurrent
+- [ ] output of the setstates is also not used!!!! 
+- [ ] error codes should be universal. Functions throw or return random codes. 
+- [ ] cycler has set current and what we did setI is mixed with it :O 
+- [ ] v < VMIN() && isDischarging()  this if else statements can be converted into summation and multiplication. 
+- [ ] viewStates, viewVariations returns span or some other lightweight object. 
+- [ ] CellData, CellDataStorage and CellDataWriter are created. We need policy design. 
+- [ ] Cell::checkVoltage does not throw anymore. We encapsulate it in try-catch instead of in upper function. 
+- [ ] getCSurf to return flag + pair? Optional?
+- [ ] st.setZ can have a move object. 
+- [ ] why setCS does not set Vcell_valid=false? 
+- [ ] Don't forget to add timing functions into some particular functions. 
+- [ ] Why case2 of CS starting with csparam.CS2alpha is different in old and new models? Also Case 1?
+- [ ] Why case1 of LAM is different?
+- [ ] LAM and CS are changed to be same as new versions.
+- [ ] double degState[CELL_NSTATE_MAX] is useless. Causes use of 700 kB unnecessary memory. 
+- [ ] Create another class for thermal model.
+- [ ] What happens considering only one electrode? 
+- [ ] Why Qrev definition is different? In new one it is -I() * T() * dOCV  but old one -i_app / L * st.T() * dOCV, because of change in units? 
+- [ ] SetSOC does not change any concentration in SPM cell. However, it is effective in others. So is it an estimation thing or not? 
+- [ ] Why does getOCV does not include entropic coefficient? 
+- [ ] Use template functions instead of repeating st dependent but same functions. 
+- [ ] setCurrent output is set to int. 
+- [ ] Multiple CMakeLists is created which also allows me to find more path errors.
+- [x] Geometry_SPM is created. 
+- [ ] DEG_ID variables are changed from int to uint_fast8_t -> 144 byte to 36 byte size reduction. We also need to improve print function.
+- [ ] DegArray is added to DEG_ID to remove deg_id.SEI_n > deg_id.len type of controls at each step.
+- [ ] Degradation ID's should be enums. 
+- [ ] Cannot use const with DEG_ID
+- [ ] Range based for loops are added. 
+- [ ] SmallArray is required. 
+- [ ] i < getNSUs() - 1 is a bug! Fix immediately. 
+- [ ] setStates validStates all calling each other copying states for nothing! We need to remove redundancy. We need a state pointer thing to do that.
+- [ ] Remember that in copy(), usage stats are not copied across to the new module.
 		 * So this function will write all zeros if called with a copy of the SU   -> is this a bug or feature? 
 
-[ ] for setSUs and validSUs span is used. 
-[ ] We are reading file lots of times when individually creating cells! In release mode it takes 30 seconds. 
-  [x] slide::Model_SPM -> slide::Model_SPM*  and makeModel();  from 34 seconds to 12 seconds.  18900x326 double = 47 MB RAM is also saved.
-  [ ] OCVcurves -> OCVcurves*   12 seconds to 0.22 seconds. Do not forget things otherwise than NMC. 
-[ ] Benchmarking?
-  [ ] Now EPFL battery 1 hour timestep CC is like 2 seconds for and 3.5 with ageing. 
-[ ] su->getIndex() in Cycler is not necessary. Cycler should keep its index. 
-[ ] Why cycler CC is much slower then time step CC ? 
-[ ] Not necessary constants to remove:
-  [ ] CELL_NCH, CELL_NOCV_MAX
-[x] remainder for integers are eliminated. 
-[x] storeData() pattern is removed.  
-[ ] Ncells for module is created.
-[ ] etacell_valid -> is removed. Should be checked in future if it really matters for performance. 
-[x] slide.hpp is added. 
-[x] BugFix : if(abs(Ii < 0.1)) in Cycler. 
-[x] Subfolders should also include linker options. 
-[x] removing getVi for series module. and getSUVoltages for all. 
-[ ] Consider making test functions friend and getVi protected. 
-[ ] "HVAC coolsystem for active cooling with the environment" obligation should be  removed. 
-[ ] XYdata_ss  for span. 
-[ ] Minor updates: 
-  [x] i in Cycler::rest is removed. 
-[ ] VMAX and VMIN in modules calculated VMAX and VMIN by summing then checks if each cells has a violation. That would give the same result. 
-[ ] We need to have constant values for VMIN, VMAX for all SUs which are initialised at beginning. 
-[ ] #CHECK how module calculates isCharging? 
-[ ] Add typename to all classes for printing purposes. 
-[ ] checkCurrent only checks voltage!
-[ ] SetCurrent has unusual error codes! 
-[ ] Gradually setting current should be there. 
-[ ] Cycler checks Vlow many times. Maybe it is better to cache? 
-[ ] Unnecessary voltage check in SetCurrent of module_s is removed. 
-[x] Catch outside LiPlating is removed since it is not needed to be handled since it only throws when id is wrong. 
-[ ] SEI, CS, LAM, LiPlating, getDaiStress are used once so make them inline. 
-[ ] Cell_SPM::setSOC does not actually set SOC.
-[ ] Check why in Battery.cpp Tbatt check is repeated. Should Tbatt be something else? 
-[ ] Cell::setT(Tnew) does not check temperature anymore, be careful! 
-[x] free::check_Cell_states is created.
-[ ] redistributeI returns number of iteration but sometimes it is asked for voltage. Minor bug. Its number of iteration is only used for test.
-[ ] Check issues Jorn listed in redistributeI()
-[ ] Try to find a way to solve all parallel circuits. 
-[ ] #CHECK getVi for parallel. 
-[x] DEG_ID improved, zero is not counted anymore.
-[x] SmallVector is added. DegArray is now derived from SmallVector.
-[x] double Rdc is removed from Cell.hpp
-[ ] Memoize Cap. 
-[x] Bugfix: dt / 3600.0;  should be dti / 3600.0;
-[x] if (succ != 1) after CV phase is changed with more meaningful limit reaching condition. 
-[ ] Change const string& with string_view.
-[ ] Why do we cheeck Vini in Cycler::setCurrent? 
-[ ] Reached Voltage limit for CC and reached current limit for CV were both same  = 1 so we distinguised. 
-[ ] Should we include entropic effect in OCV or not? 
-[ ] SOC -> why do we use columb counting? 
-[ ] Definitely create a file type to compactly save files and retrieve. 
-[ ] Remove Error IDs.xlsx 
+- [ ] for setSUs and validSUs span is used. 
+- [ ] We are reading file lots of times when individually creating cells! In release mode it takes 30 seconds. 
+  - [x] slide::Model_SPM -> slide::Model_SPM*  and makeModel();  from 34 seconds to 12 seconds.  18900x326 double = 47 MB RAM is also saved.
+  - [ ] OCVcurves -> OCVcurves*   12 seconds to 0.22 seconds. Do not forget things otherwise than NMC. 
+- [ ] Benchmarking?
+  - [ ] Now EPFL battery 1 hour timestep CC is like 2 seconds for and 3.5 with ageing. 
+- [ ] su->getIndex() in Cycler is not necessary. Cycler should keep its index. 
+- [ ] Why cycler CC is much slower then time step CC ? 
+- [ ] Not necessary constants to remove:
+  - [ ] CELL_NCH, CELL_NOCV_MAX
+- [x] remainder for integers are eliminated. 
+- [x] storeData() pattern is removed.  
+- [ ] Ncells for module is created.
+- [ ] etacell_valid -> is removed. Should be checked in future if it really matters for performance. 
+- [x] slide.hpp is added. 
+- [x] BugFix : if(abs(Ii < 0.1)) in Cycler. 
+- [x] Subfolders should also include linker options. 
+- [x] removing getVi for series module. and getSUVoltages for all. 
+- [ ] Consider making test functions friend and getVi protected. 
+- [ ] "HVAC coolsystem for active cooling with the environment" obligation should be  removed. 
+- [ ] XYdata_ss  for span. 
+- [ ] Minor updates: 
+  - [x] i in Cycler::rest is removed. 
+- [ ] VMAX and VMIN in modules calculated VMAX and VMIN by summing then checks if each cells has a violation. That would give the same result. 
+- [ ] We need to have constant values for VMIN, VMAX for all SUs which are initialised at beginning. 
+- [ ] #CHECK how module calculates isCharging? 
+- [ ] Add typename to all classes for printing purposes. 
+- [ ] checkCurrent only checks voltage!
+- [ ] SetCurrent has unusual error codes! 
+- [ ] Gradually setting current should be there. 
+- [ ] Cycler checks Vlow many times. Maybe it is better to cache? 
+- [ ] Unnecessary voltage check in SetCurrent of module_s is removed. 
+- [x] Catch outside LiPlating is removed since it is not needed to be handled since it only throws when id is wrong. 
+- [ ] SEI, CS, LAM, LiPlating, getDaiStress are used once so make them inline. 
+- [ ] Cell_SPM::setSOC does not actually set SOC.
+- [ ] Check why in Battery.cpp Tbatt check is repeated. Should Tbatt be something else? 
+- [ ] Cell::setT(Tnew) does not check temperature anymore, be careful! 
+- [x] free::check_Cell_states is created.
+- [ ] redistributeI returns number of iteration but sometimes it is asked for voltage. Minor bug. Its number of iteration is only used for test.
+- [ ] Check issues Jorn listed in redistributeI()
+- [ ] Try to find a way to solve all parallel circuits. 
+- [ ] #CHECK getVi for parallel. 
+- [x] DEG_ID improved, zero is not counted anymore.
+- [x] SmallVector is added. DegArray is now derived from SmallVector.
+- [x] double Rdc is removed from Cell.hpp
+- [ ] Memoize Cap. 
+- [x] Bugfix: dt / 3600.0;  should be dti / 3600.0;
+- [x] if (succ != 1) after CV phase is changed with more meaningful limit reaching condition. 
+- [ ] Change const string& with string_view.
+- [ ] Why do we cheeck Vini in Cycler::setCurrent? 
+- [ ] Reached Voltage limit for CC and reached current limit for CV were both same  = 1 so we distinguised. 
+- [ ] Should we include entropic effect in OCV or not? 
+- [ ] SOC -> why do we use columb counting? 
+- [ ] Definitely create a file type to compactly save files and retrieve. 
+- [ ] Remove Error IDs.xlsx 
 
 
 C++20 changes (yay!):
-[ ] std::span for state assignments. 
+- [ ] std::span for state assignments. 
 
 Some new ideas to implement: 
-[ ] For XY data read to vector but then create a specific-sized data structure with all heap allocated as if make_shared.
-[ ] begin and end functions for StorageUnit to traverse the children. 
-[ ] Classes to hold static vector of their elements for make_X;
-[ ] Constructor chaining. 
-[ ] Free functions to call member functions. 
-[ ] Status class to hold error codes. 
-[ ] std variant with regular pointer and unique pointer OR a boolean to indicate deleter. 
-[ ] Cycler kind of things should be able to take things other than SU pointer. A template pointer could make things faster. But let's see. 
-[ ] Making SLIDE a header-only library for easy compilation. (Maybe use a proper CMake config?)
-  [x] Cell, Cell_Bucket, Cell_ECM: Instead of increase in *.exe, there is a decrease. 80 kB -> 77 kB
-  [x] Model_SPM, State_SPM. 
-  [x] interpolation.cpp, read_CSVfiles.cpp, slide_aux.cpp, util.cpp, util_error.cpp -> 77 kB -> 76 kB
+- [ ] For XY data read to vector but then create a specific-sized data structure with all heap allocated as if make_shared.
+- [ ] begin and end functions for StorageUnit to traverse the children. 
+- [ ] Classes to hold static vector of their elements for make_X;
+- [ ] Constructor chaining. 
+- [ ] Free functions to call member functions. 
+- [ ] Status class to hold error codes. 
+- [ ] std variant with regular pointer and unique pointer OR a boolean to indicate deleter. 
+- [ ] Cycler kind of things should be able to take things other than SU pointer. A template pointer could make things faster. But let's see. 
+- [ ] Making SLIDE a header-only library for easy compilation. (Maybe use a proper CMake config?)
+  - [x] Cell, Cell_Bucket, Cell_ECM: Instead of increase in *.exe, there is a decrease. 80 kB -> 77 kB
+  - [x] Model_SPM, State_SPM. 
+  - [x] interpolation.cpp, read_CSVfiles.cpp, slide_aux.cpp, util.cpp, util_error.cpp -> 77 kB -> 76 kB
 
 
 
 Formatting: 
-[ ] Include a clang-tidy file. 
+- [ ] Include a clang-tidy file. 
 
 
 
 JOSS: 
-[ ] Added JOSS folder and Github workflow. 
+- [ ] Added JOSS folder and Github workflow. 
