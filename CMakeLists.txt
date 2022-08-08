@@ -1,106 +1,35 @@
-cmake_minimum_required (VERSION 3.6)
+cmake_minimum_required(VERSION 3.16)
 
-project (SLIDE VERSION 2.0)
+project (SLIDE_V3 VERSION 3.0)
 
-set (CMAKE_DEBUG_POSTFIX d)
+# defines targets and sources CMAKE_BUILD_PARALLEL_LEVEL -> Try this to see if it gets better than -j 
+add_subdirectory(src)
 
-# ensure C++17
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
-set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set (CMAKE_EXPORT_COMPILE_COMMANDS ON) #export compiler flags for code completion engines
 
-#default build type. 
+# include(CheckIPOSupported)
+# check_ipo_supported(RESULT ipo_supported)
+# if(ipo_supported)
+# set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
+# endif()
 
-set(default_build_type "Release")
+add_library(slidelib INTERFACE)
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
-  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
-      STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-endif()
-
-
-#export compiler flags for code completion engines
-set (CMAKE_EXPORT_COMPILE_COMMANDS 1)
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/Debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/Release)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_SOURCE_DIR}/RelWithDebInfo)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_CURRENT_SOURCE_DIR}/MinSizeRel)
-
-
-# Set global compiler warnings
-if (MSVC)
-    set(common_options /W3 /permissive-) #/WX
-    set(debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
-    set(not_debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
-
-    add_compile_options(
-        "$<$<CONFIG:Debug>:${debug_options}>$<$<NOT:$<CONFIG:Debug>>:${not_debug_options}>"
-        )
-else ()
-	add_compile_options ("-Wall" 
-                       "$<$<CONFIG:Release>:-Ofast;-march=native>") #-Ofast -march=native -g -fno-omit-frame-pointer -gdwarf-2 (flto not good)
-endif ()
-
-message(STATUS "Host system: ${CMAKE_HOST_SYSTEM}")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-
-
-set(slide_headers
-  src/cell_KokamNMC.hpp   
-  src/determine_OCV.h
-  src/read_CSVfiles.h   
-  src/basic_cycler.hpp
-  src/cycling.h 
-  src/cell_LGChemNMC.hpp
-  src/interpolation.h 
-  src/state.hpp        
-  src/degradation.h
-  src/cell_fit.hpp
-  src/cell_user.hpp                           
-  src/cell.hpp
-  src/determine_characterisation.h
-  src/model.h
-  src/cycler.hpp
-  src/constants.hpp
-  src/util_error.hpp
-  src/util.hpp
-  src/slide_aux.hpp
+target_link_libraries(slidelib
+  INTERFACE
+    SLIDE
   )
 
-set (slide_source
-  src/basic_cycler.cpp
-  src/cell_LGChemNMC.cpp
-  src/degradation.cpp
-  src/cell.cpp
-  src/cell_user.cpp
-  src/determine_characterisation.cpp
-  src/model.cpp
-  src/cell_fit.cpp
-  src/cycler.cpp 
-  src/determine_OCV.cpp
-  src/read_CSVfiles.cpp
-  src/cell_KokamNMC.cpp
-  src/cycling.cpp
-  src/interpolation.cpp
-  src/state.cpp
-  src/util_error.cpp
-  src/util.cpp
-  )
-
-
-add_executable (slide src/main.cpp
-    ${slide_source}
-    ${slide_headers}
+add_executable(slide_v3
+    src/main.cpp
     )
 
-target_include_directories (slide PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-TARGET_LINK_LIBRARIES(slide) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
+target_link_libraries(slide_v3
+  PRIVATE
+    SLIDE
+  ) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
 
 # 1F15CC8FAF2E004105282ADDDC78DC21098DFF10

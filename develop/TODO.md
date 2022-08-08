@@ -1,0 +1,413 @@
+# Information about this fork of this library: 
+
+- Only a test version, not complete. 
+
+# Disclaimer: 
+- This TODO list is pretty much informal text of what is in my mind. 
+
+## TODO: 
+
+- [ ] Cannot compile with other compilers.
+  - [x] Eliminate GCC dependent features.
+  - [ ] Add Cmake necessary options.  
+  - [x] Eliminate TDM-GCC specific features. 
+  - [x] Compile with MSVC.
+    - [x] non-constant nin is used to create arrays in determineCharacterisation.cpp
+  - [x] Compile with clang. 
+     - [x] variable-sized object may not be initialized. 
+- [x] Adding release mode to Cmake
+- [ ] Elimination of raw arrays. 
+  - [x] OCV_pos_x, OCV_pos_y, OCV_neg_x, OCV_neg_y, dOCV_neg_x, dOCV_neg_y, dOCV_tot_x, dOCV_tot_y are now std::array
+  - [x] zp, zn are std::array. So nin from getZ are removed. Also no need to length check! 
+  - [x] states are now std::array
+  - [x] 1D model parameters are now std::arrays
+  - [x] dstates are now std::array
+  - [ ] Elimiate lengths, Crates, Ccuts, weights in determinaCharacterisation.cpp. 
+- [ ] Using std::vector for large data arrays. 
+  - [X] Convert 12x100000 double arrays to vectors in heap.
+  - [X] BasicCycler std::fill to zero out (not sure?) 
+- [x] Creating wiki page from *.pdfs. 
+- [x] Moving files to folders. 
+  - [X] Create a result folder do not create result folders into the main folder. 
+- [x] Remove using namespace std;
+  - [x] change min and max to std::min and std::max
+  - [x] endl are changed to "\n"
+  - [x] flush -> std::flush
+  - [x] cerr, cout -> std::cerr, std::cout
+  - [x] ifstream, ofstream -> std::ifstream, std::ofstream
+- [x] Formatting the code style to :clang-format. 
+- [x] Remove used-defined classes from std namespace (such as state).
+  - [X] A namespace called "slide" is created.
+  - [X] State moved from std to slide. 
+  - [X] Cell_user is moved from std to slide.
+- [ ] Cannot use <thread> with C++14 or 17. 
+  - [X] Code converted to single threaded code. 
+  - [ ] Some of the code is commented out, uncomment them (multithreaded part)
+- [x] Remove preprocessor based constants, nch, ns, TMIN, TMAX in State.hpp 
+  - [x] These preprocessor commands especially "ns" conflicts with the chrono lib. 
+  - [x] TMIN, TMAX in State.hpp are removed. Tmin_K, Tmax_K are the new constants.
+- [ ] Removing magical numbers
+  - [X] 273 -> PhyConst::Kelvin
+- [ ] Change some pointers to references. 
+- [x] Delete C-based header files.
+- [ ] Add more constexpr
+- [ ] Modernise path handling:
+  - [x] mkdir is decrecated. use ISO C and C++ conformant name (or filesystem)
+  - [x] make_preferred of <filesystem> is used instead of separators. 
+- [ ] Others
+  - [X] Range based for loop for cycler.CC_V_CV_I in cycling.cpp
+  - [X] Typo CalendarAgeig -> CalendarAgeing
+- [ ] Create templates for loadCSV_2col or similar functions to take std::array or vector. Now it is vector. 
+- [x] Remove using in header files. 
+- [ ] Convert xx and yy in getLaresgoitiStress. 
+- [x] loadCSV_1col to take std:array or vector as argument. -> Now it takes array. 
+- [ ] Convert strings in function parameters to string references. 
+- [x] Eliminate C-style functions from file reading. 
+- [ ] Remove linear search from interpolation! O(n) -> O(log(n)) or O(1) for fixed-step data. 
+  - [x] Binary search for linInt is implemented but not enough. 
+  - [x] Check if it is already fixed step. 
+  - [x] Ahci and Ahpi assumed to be fixed but they are not called very often. 
+  - [ ] Fixed time step *.csv files were tried but no measurable effect in -O0. 
+  - [x] std::lower_bound for binary search. 
+  - [ ] Also add a particular data type for data, so warmstart and interpolators can be hold. 
+- [x] Nan initialization for interpolation is removed. 
+- [ ] There are lots of try-catch blocks, simplify by removing them from main sections. 
+- [ ] May be important: 
+  - [x] warning: variables 'j' and 'timeCheck' used in loop condition not modified in loop body.
+  - [ ] There are some printing values after return statement of the function. 
+- [ ] Inline small functions. 
+- [ ] There are a lot of error checking. 
+- [ ] Same parameters are defined multiple places! For example Kokam parameters. Cleaning up! 
+  - [ ] csv paths are moved to settings constant file. 
+- [ ] Why does getstates call the setstates twice?
+- [ ] Convert if(x<x_min); if(x>x_max) to   if (x<x_min) else if (x>x_max); So less loop. 
+- [ ] Use more initializer lists: 
+  - [ ] State constructor now uses initializer list. 
+- [ ] Some instances of slide states are converted to pass-by-reference.
+- [x] There is a problem with inline functions when -O3 solved by moving to .hpp file. 
+- [ ] Model.Dn and Dp are created as nch elements but require nch+1 elements! 
+- [x] printlevels are converted to enum in Constants.hpp
+- [ ] Some bugs with header guards are fixed. 
+- [x] Both Cell setT and State setT checks if temperature is between limits. So cell setT is removed. 
+- [ ] abs(Icell - I) < pow(10, -10) -> here pow(10,-10) may be ZERO. So pow(10.0, -10.0) is better. 
+  - [x] changed pow to scientific notation  7*pow(10,-10) ->  7e-10. 
+- [x] Check if we can avoid std::vector<double> ocvAh2(Ninocv2), ocvp2(Ninocv2), ocvn2(Ninocv2);
+- [x] Root folder is added to the CMake. 
+- [ ] Remove large arrays from classes to use cache better. 
+- [ ] There are some places where double is compared to zero. Such as: 
+- [ ] Cycler followI does not require "DegradationData_batteryState.csv" and "DegradationData_OCV.csv" but it is created anyway. 
+- [x] Removed CyclerFiles class since it causes Cycler not to be copiable. Created FileStatus class with booleans instead. 
+ 
+- [x] Why there is Model_initialist(Model M&)? Constructor can handle this task. We are also creating model in different places for some reason. 
+- [ ] Convert printing function to template function.  -> Did not work. Be careful about string initialisation.
+- [ ] BasicCycler.cpp is very large. 
+- [ ] Convert verbose to settings::verbose? -> May reconvert. 
+- [x] Remove empty destructors etc. Rule of zero. 
+- [x] Bugfix: I had introduced a bug by assuming all data starts from zero. It was trying to reach negative indices. 
+- [ ] Create a special class for data so you can use a warmstart. 
+- [ ] We throw so many exceptions. 
+  - [x] Remove throw for interpolation since it fails many times in determine_OCV.
+- [x] Too many virtual methods, all virtual keywords are deleted. 
+- [x] MSVC and GCC can work together, path problem is resolved. 
+- [ ] But need to shift all paths to bin/debug etc. Maybe a binary path.
+- [x] Model Cp, Cn, Vn, Vp, Q are 2D std::arrays, and shorter code. 
+- [x] loadCSV_1col now uses loadCSV_mat to read .csv files. 
+- [x] There may be object slicing in some files such as cycling.cpp Cell c1 is assigned from. 
+- [x] Cell c1 and else-if clauses; Cause twice construction-> Solved with lambda expressions.
+- [x] OCVcurves is being moved to a struct. 
+- [x] Unnecessary size parameter in getC() is removed. 
+- [ ] Remove physical constants etc. non-battery dependent values outside of the class. 
+- [ ] Do not use exceptions for normal system operation: example BasicCycler::CC_halfCell_full
+- [ ] When using vector and array, remove unnecessary size information from function arguments. 
+- [x] Important: Check cycler.cpp mode==1, for (int j = 0; j < timeCheck; i++) problem. 
+- [x] State setStates(State& s) is removed since it is equal to = operator. 
+- [x] State default constructor is removed since it sets all states to zero, thanks to uniform initialiser. State() = default
+- [ ] Instead of using references, use structural binding and std::pair or tuple to return multiple elements. 
+- [ ] getters should be const reference and try to add const to all non-changing functions. 
+- [ ] create mutable getters as private functions for internal usage and const ref getters for external usage. 
+- [ ] Convert states to array representation. 
+- [ ] States has initstates which is checked all the time. Move it into cell. It is not used except validstates 
+  - [x] overwriteCharacterisationStates, overwriteGeometricStates are moved to cell, use cell versions. 
+  - [x] validState is moved to Cell. 
+- [ ] Make validState() bool not void.
+- [ ] Write for loop to simplify validState
+- [x] void checkModelparam(); is created to check MATLAB param. 
+- [x] void initialise(slide::State &s_ini) is removed
+- [ ] To make OCVcurves std::array, they have to appear on derived classes. 
+- [x] A struct created for stress parameters.
+- [ ] Ahni_vec.push_back(ah_neg_n + i * dt / 3600.0 * Idis); do we really need to store this in an array? Remove it in Cycler::getOCV called 16 times. Lesser memory probably. Lazy evaluation.
+- [x] Important bug on linux, only use std::abs otherwise it may call int abs(int). 
+- [x] Ahpi_vec and Ahni_vec (100k double heap vectors) are removed. slide::fixed_data type is created. 12.9 MB -> 11.4 MB memory on release mode. 
+- [x] Remove creation of vectors in determine OCV.
+- [x] Error in determineOCV in estimateOCVparameters func. Comma was forgotten when writing OCVfit_parameters.csv 
+- [ ] Why estimateOCVparameters() cannot find any parameters? 
+- [x] linInt_matrix is removed. 
+- [ ] for (int ap = 0; ap < nAMstep / 3 + 1; ap++) in determine_OCV.cpp with ap3 = 3 * ap + 2 means  nAMstep+2 steps. is it correct? 
+- [x] Adjust paths for moved matlab scripts. 
+- [ ] Look at .m files for problems like _SOC. 
+- [ ] Write unit tests.
+  - [x] Unit test to control results is written in MATLAB. But only folders, so make also for files. 
+- [ ] For starting and terminating things. 
+- [x] Slide::runParallel is added to run tasks in parallel.
+- [ ] Automatise SOC -> OCV conversion (see: for other cells the user has to derive the conversion from the OCV curve)
+- [ ] Write parser for cycling things. 
+- [ ] In parallel, output texts are mixed. Write a string stream to pass. 
+- [ ] Use actual error classes and predefine errors. 
+- [ ] Python and MATLAB interfaces. 
+- [ ] CMake Seperate release and debug flags. 
+- [ ] Removed passing size 'n' since array and vector sizes are known. 
+- [x] Reading into double and converting whole vector in integer -> reading into integer. 
+- [x] Vectors are now cleared in loadCSV_2col when reading csv to be able to use push_back. 
+- [ ] Convert single characters to chars. "," -> ',' and "\n" -> '\n';
+- [x] Why estimateOCVparameters calls readOCVinput 109 times??? -> 
+  - [x] fitAMnAndStartingPoints was calling readOCVinput all the time. It is fixed. 
+- [ ] Can we use __func__ to substitute function names? 
+- [ ] Cell::setVlimits does not control VMIN < VMAX. 
+- [x] New counter as a struct is added. 
+- [x] linInt_noexcept is added. 
+- [x] ValidOCV, calculateError, readOCVinput, discharge, fitAMnAndStartingPoints size input removed. 
+- [ ] determine_characterisation and cycling both has "CCCV" functions. 
+- [x] name inputs are deleted from fitAMnAndStartingPoints.
+- [x] Bug in determineOCV, fitAMnAndStartingPoints. When discharge throws, erri is assigned as very large number then it is calculated again! 
+- [x] discharge_noexcept is added.
+- [ ] BasicCycler::returnCyclingData try to see if we can get away with constant reference. -> yes we can. 
+- [x] Data recording system is converted to push_back.
+- [ ] "Error in determineCharacterisation::CCCV when getting the cycling data " -> There is nothing to throw, so delete. 
+- [x] Bug: Characterisation writes into data folder. 
+- [ ] Bug: Characterisation does not write cycling data. 
+- [x] Charactersation calls files many many times: Vdata_all removed. 
+- [x] Use linspace, logspace when searching for parameters! 
+- [ ] Important: Cycler copies cell, so changing cell state probably does not work. Check characterisation. -> It is cell parameters. 
+- [ ] Documentation of the new stuff. 
+- [x] CyclerFiles causes Cycler not be copiable.  Removed. Changed with booleans
+- [ ] In determine_characterisation unnecessary try-catch when error calculation. Flag is added. Also it was not breaking the loop when there is large error in one data set. 
+- [ ] setCyclingDataTimeResolution does not throw anymore, it just makes time resolution 0 if it is negative.
+- [x] linstep_fix and logstep_fix are added and they are in action! 
+- [ ] Actually we are looking same error values twice in hierarchy! 
+- [ ] Actually nrStep+3 steps are taken! Therefore, nr 6 -> 9 (also same in AMp -> +3 iterations!)
+- [x] oneLevelCharacterisationFit is removed. Its contents moved to hierarchicalCharacterisationFit. 
+- [x] writeCharacterisationParam is created.
+- [ ] extrapolation variable is added in fixed_data since most of the time extrapolation is needed. 
+- [ ] Improve const correctness.
+- [ ] Discharge functor. 
+- [ ] In determineOCV, discharge function calculates sp, sn and Ah one more time before saving. 
+So they are one step ahead of ocvpi, ocvni and V. Is it a bug? Or is it saving exceeding values with correct voltages? (Original code) 
+- [ ] Iterator for fixed data is implemented but not completely working. 
+- [ ] static thread_local keywords are being used. 
+- [ ] More range-based for loops.
+- [ ] Removing indices does not work for logspace. Write an around function.
+- [ ] prev(T x_current) and next(T x_current) are added to fixed_data to satisfy generic interface. 
+- [x] New determine_OCV cost function, much faster. 
+- [x] Cell::getDaiStress does not throw so try-catch removed in Cell::updateDaiStress(), noexcept added. 
+- [ ] Add package manager installation option. 
+- [ ] Why is integer T is used in Cycler::checkUp_pulse? 
+- [ ] number of file readings in ProfileAgeing is reduced.
+- [x] OCVni_vec and OCVpi_vec are removed.
+- [x] outVec is created. 
+- [ ] Higher order integration Runge Kutta 4 and adaptive time stepping. 
+- [ ] The fitting algorithm does not currently support fitting the activation energy directly.
+- [ ] "check what would happen if the current is set to 0 for one time step" why? no needed. 
+- [ ] better findCurrent algorithm.
+- [ ] New functions: calcSurfaceConcentration, calcDiffConstant, calcMolarFlux, calcOverPotential
+- [ ] findCVcurrent_bin is added with false position method. 
+- [ ] There is not much difference between setting I and having small time step and having dt + dt_I time step because we do not store I. 
+- [ ] Check if sparam.s_dai_p and others are correctly used in multi-step integration. 
+- [ ] updateDaiStress and updateLaresgoitiStress may not need to be calculated if blockDegradation is true.
+- [ ] RK4 is implemented and FWEuler is seperated. 
+- [x] Error in BasicCycler::.... The total time is not a multiple of the time step dt, -> Converted to warning. And time step adjustment is added. Throw 1003 is eliminated.
+- [ ] BasicCycler::storeResults now does not check if it is storing the same point. Therefore, you should check. 
+- [ ] Bug!!: loadCSV_2col   does not read minus sign at the beginning. Due to alphanumeric 
+- [ ] When creating xy data put something not to check if it is fixed. 
+- [ ] determineOCV is still inefficient, we may reduce search space lot more by looking at the sp and sn requirements. 
+- [x] log(x + sqrt(1+x^2)) is changed with asinh(x)
+- [x] Interpolation is in OCVcurves now. Simplified.  
+- [x] State::setIniStates is removed.
+- [x] slide::State now inherits from std::array
+- [ ] Explation function for all classes? 
+
+slide_pack integration: 
+[x] SPMModel.h, SPMModel.cpp
+
+slide_pack changes: 
+[ ] StorageUnit parent shared_pointer -> raw poiner. 
+[x] NULL -> nullptr
+[ ] Module shared_ptr<StorageUnit> SUs[MODULE_NSUs_MAX] -> vector.
+[ ] Namespace slide is added.
+[ ] Rcontact is removed from Module and it will be moved into Module_s and Module_p
+[ ] bockDegAndTherm -> typo.
+[ ] (verbose_gl > v_noncrit_gl)  ->  (settings::verbose >= printLevel::printNonCrit) 
+[ ] (verbose_gl >= v_crit_gl)   (settings::verbose >= printLevel::printCrit)
+[ ] #if DATA_STORE is being removed and module is now a template. 
+[ ] getIndex seems to be useless. 
+[ ] getting Vmax everytime is a problem. 
+[ ] getNstates is not needed. It is only used for checking sizes and it won't be needed. 
+[ ] Use default instead of empty destructor. 
+[ ] If base class does what needs to do, do not redefine everything. 
+[ ] Histogram should be in another class. 
+[ ] DEG_ID and OCVcurves may need to be shared pointers
+[ ] More hierarchy for ECM and SPM 
+[ ] Factory methods. 
+[ ] Add MSVC things 
+[ ] copy() function is about to be eliminated.
+[ ] Can we make ID static since it is same in all classes? Do we change? Look at it 
+[ ] StorateUnit -> StorageUnit
+[ ] getSUTemperatures in Module creates unnecessary storage then -> getSUTemperature(i).
+[ ] typeid(*SUs[i]) == typeid(Module) || typeid(*SUs[i]) == typeid(slide::Module_p) || typeid(*SUs[i]) == typeid(Module_s) -> is not good dynamic_pointer_cast already gives nullptr. 
+[ ] All shared pointers are converted to unique pointers. 
+[ ] validStates should not backup/should not change states! SetStates should not back up but can change. 
+[ ] getNstates is now useless. Removed from all functions. 
+[ ] Cell_Bucket setSOC was repeating some code. Therefore, we combined it with setStates. However, the logic should be divided better.
+[ ] setStates to support r-values. 
+[ ] do not copy shared pointers in for loops.
+[ ] Why there are so many ifs instead of else-ifs
+[ ] validSUs functions are combined. 
+[ ] Cycler was checking if storeData is full but storeData itself should check and call writeData. Or better, Cycler should collect everything and write. 
+[ ] su->getIndex() should not be used  in cycler because it is removed. 
+[ ] timeStep_CC_i -> seems to be used only for binding; therefore, not needed anymore. 
+[ ] par variable inside module should be constexpr somehow. 
+[ ] holding a vector of instances in a class? 
+[ ] Creating a thermal model. 
+[ ] Bugfix: Module_s::getI() tries to return value if (getNSUs() >= 0) but it should be >
+[x] getSUCurrents is removed. It was only used in module_p for a very short function. 
+[ ] Although not very necessary, eliminating internal getNSUs() and size().
+[ ] Add small free / helper functions. 
+  [ ] mean. 
+  [x] is_zero.
+[ ] getSUVoltages can replace some of the functions. 
+[ ] getSUTemperature does not seem to be useful, should we allow indiced calling? 
+[ ] Why thermal model takes 1-dim arrays? 
+[ ] Writing functions must be outside of Procedure. 
+[ ] Intermediate design decision: setStates -> span,  getStates -> vector. Also hold the states as std::array<double,N> in actual object. In future we can allocate alltogether. 
+[ ] EmptyStorageUnit to remove if(nullptr) parent? 
+[ ] Both soft and hard limits for battery is not good. 
+[ ] Some of the vectors can be eliminated 
+  [ ] via small vector optimisation. 
+  [ ] via unique_ptr(T[]). Use span for getting 
+[ ] Larger member variables should defined first in classes due to padding.
+[ ] use #include <source_location> to simplify error/warning/explanation messages.
+[ ] Delegated constructors? 
+[ ] Make this 'verb' things compile time things!!!!
+[ ] do not put get to everything   getV() -> V(),  getT() -> T()
+[ ] getVcheck -> checkV. 
+[x] isCharging() -> I() < 0  and isDischarging() -> I() > 0 are added to enforce consistent current representation. 
+[ ] setI should not return voltage, setI should not throw for no reason.
+[ ] why setI returns voltage? it should not. It is also not used anywhere. 
+[ ] setI -> setCurrent
+[ ] output of the setstates is also not used!!!! 
+[ ] error codes should be universal. Functions throw or return random codes. 
+[ ] cycler has set current and what we did setI is mixed with it :O 
+[ ] v < VMIN() && isDischarging()  this if else statements can be converted into summation and multiplication. 
+[ ] viewStates, viewVariations returns span or some other lightweight object. 
+[ ] CellData, CellDataStorage and CellDataWriter are created. We need policy design. 
+[ ] Cell::checkVoltage does not throw anymore. We encapsulate it in try-catch instead of in upper function. 
+[ ] getCSurf to return flag + pair? Optional?
+[ ] st.setZ can have a move object. 
+[ ] why setCS does not set Vcell_valid=false? 
+[ ] Don't forget to add timing functions into some particular functions. 
+[ ] Why case2 of CS starting with csparam.CS2alpha is different in old and new models? Also Case 1?
+[ ] Why case1 of LAM is different?
+[ ] LAM and CS are changed to be same as new versions.
+[ ] double degState[CELL_NSTATE_MAX] is useless. Causes use of 700 kB unnecessary memory. 
+[ ] Create another class for thermal model.
+[ ] What happens considering only one electrode? 
+[ ] Why Qrev definition is different? In new one it is -I() * T() * dOCV  but old one -i_app / L * st.T() * dOCV, because of change in units? 
+[ ] SetSOC does not change any concentration in SPM cell. However, it is effective in others. So is it an estimation thing or not? 
+[ ] Why does getOCV does not include entropic coefficient? 
+[ ] Use template functions instead of repeating st dependent but same functions. 
+[ ] setCurrent output is set to int. 
+[ ] Multiple CMakeLists is created which also allows me to find more path errors.
+[x] Geometry_SPM is created. 
+[ ] DEG_ID variables are changed from int to uint_fast8_t -> 144 byte to 36 byte size reduction. We also need to improve print function.
+[ ] DegArray is added to DEG_ID to remove deg_id.SEI_n > deg_id.len type of controls at each step.
+[ ] Degradation ID's should be enums. 
+[ ] Cannot use const with DEG_ID
+[ ] Range based for loops are added. 
+[ ] SmallArray is required. 
+[ ] i < getNSUs() - 1 is a bug! Fix immediately. 
+[ ] setStates validStates all calling each other copying states for nothing! We need to remove redundancy. We need a state pointer thing to do that.
+[ ] Remember that in copy(), usage stats are not copied across to the new module.
+		 * So this function will write all zeros if called with a copy of the SU   -> is this a bug or feature? 
+
+[ ] for setSUs and validSUs span is used. 
+[ ] We are reading file lots of times when individually creating cells! In release mode it takes 30 seconds. 
+  [x] slide::Model_SPM -> slide::Model_SPM*  and makeModel();  from 34 seconds to 12 seconds.  18900x326 double = 47 MB RAM is also saved.
+  [ ] OCVcurves -> OCVcurves*   12 seconds to 0.22 seconds. Do not forget things otherwise than NMC. 
+[ ] Benchmarking?
+  [ ] Now EPFL battery 1 hour timestep CC is like 2 seconds for and 3.5 with ageing. 
+[ ] su->getIndex() in Cycler is not necessary. Cycler should keep its index. 
+[ ] Why cycler CC is much slower then time step CC ? 
+[ ] Not necessary constants to remove:
+  [ ] CELL_NCH, CELL_NOCV_MAX
+[x] remainder for integers are eliminated. 
+[x] storeData() pattern is removed.  
+[ ] Ncells for module is created.
+[ ] etacell_valid -> is removed. Should be checked in future if it really matters for performance. 
+[x] slide.hpp is added. 
+[x] BugFix : if(abs(Ii < 0.1)) in Cycler. 
+[x] Subfolders should also include linker options. 
+[x] removing getVi for series module. and getSUVoltages for all. 
+[ ] Consider making test functions friend and getVi protected. 
+[ ] "HVAC coolsystem for active cooling with the environment" obligation should be  removed. 
+[ ] XYdata_ss  for span. 
+[ ] Minor updates: 
+  [x] i in Cycler::rest is removed. 
+[ ] VMAX and VMIN in modules calculated VMAX and VMIN by summing then checks if each cells has a violation. That would give the same result. 
+[ ] We need to have constant values for VMIN, VMAX for all SUs which are initialised at beginning. 
+[ ] #CHECK how module calculates isCharging? 
+[ ] Add typename to all classes for printing purposes. 
+[ ] checkCurrent only checks voltage!
+[ ] SetCurrent has unusual error codes! 
+[ ] Gradually setting current should be there. 
+[ ] Cycler checks Vlow many times. Maybe it is better to cache? 
+[ ] Unnecessary voltage check in SetCurrent of module_s is removed. 
+[x] Catch outside LiPlating is removed since it is not needed to be handled since it only throws when id is wrong. 
+[ ] SEI, CS, LAM, LiPlating, getDaiStress are used once so make them inline. 
+[ ] Cell_SPM::setSOC does not actually set SOC.
+[ ] Check why in Battery.cpp Tbatt check is repeated. Should Tbatt be something else? 
+[ ] Cell::setT(Tnew) does not check temperature anymore, be careful! 
+[x] free::check_Cell_states is created.
+[ ] redistributeI returns number of iteration but sometimes it is asked for voltage. Minor bug. Its number of iteration is only used for test.
+[ ] Check issues Jorn listed in redistributeI()
+[ ] Try to find a way to solve all parallel circuits. 
+[ ] #CHECK getVi for parallel. 
+[x] DEG_ID improved, zero is not counted anymore.
+[x] SmallVector is added. DegArray is now derived from SmallVector.
+[x] double Rdc is removed from Cell.hpp
+[ ] Memoize Cap. 
+[x] Bugfix: dt / 3600.0;  should be dti / 3600.0;
+[x] if (succ != 1) after CV phase is changed with more meaningful limit reaching condition. 
+[ ] Change const string& with string_view.
+[ ] Why do we cheeck Vini in Cycler::setCurrent? 
+[ ] Reached Voltage limit for CC and reached current limit for CV were both same  = 1 so we distinguised. 
+[ ] Should we include entropic effect in OCV or not? 
+[ ] SOC -> why do we use columb counting? 
+[ ] Definitely create a file type to compactly save files and retrieve. 
+[ ] Remove Error IDs.xlsx 
+
+
+C++20 changes (yay!):
+[ ] std::span for state assignments. 
+
+Some new ideas to implement: 
+[ ] For XY data read to vector but then create a specific-sized data structure with all heap allocated as if make_shared.
+[ ] begin and end functions for StorageUnit to traverse the children. 
+[ ] Classes to hold static vector of their elements for make_X;
+[ ] Constructor chaining. 
+[ ] Free functions to call member functions. 
+[ ] Status class to hold error codes. 
+[ ] std variant with regular pointer and unique pointer OR a boolean to indicate deleter. 
+[ ] Cycler kind of things should be able to take things other than SU pointer. A template pointer could make things faster. But let's see. 
+[ ] Making SLIDE a header-only library for easy compilation. (Maybe use a proper CMake config?)
+  [x] Cell, Cell_Bucket, Cell_ECM: Instead of increase in *.exe, there is a decrease. 80 kB -> 77 kB
+  [x] Model_SPM, State_SPM. 
+  [x] interpolation.cpp, read_CSVfiles.cpp, slide_aux.cpp, util.cpp, util_error.cpp -> 77 kB -> 76 kB
+
+
+
+Formatting: 
+[ ] Include a clang-tidy file. 
+
+
+
+JOSS: 
+[ ] Added JOSS folder and Github workflow. 
