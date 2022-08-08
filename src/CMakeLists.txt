@@ -39,10 +39,10 @@ endif()
 
 add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../")
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${SLIDE_ROOT_DIR}/exe/Debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${SLIDE_ROOT_DIR}/exe/Release)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${SLIDE_ROOT_DIR}/exe/RelWithDebInfo)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${SLIDE_ROOT_DIR}/exe/MinSizeRel)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${SLIDE_ROOT_DIR}/bin/Debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${SLIDE_ROOT_DIR}/bin/Release)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${SLIDE_ROOT_DIR}/bin/RelWithDebInfo)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${SLIDE_ROOT_DIR}/bin/MinSizeRel)
 
 # Set global compiler warnings
 if(MSVC)
@@ -51,7 +51,7 @@ if(MSVC)
   set(debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
   set(not_debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
 
-  add_compile_options(
+  add_compile_options( # REMOVE THIS #CHECK
     "$<$<CONFIG:Debug>:${debug_options}>$<$<NOT:$<CONFIG:Debug>>:${not_debug_options}>"
   )
 else()
