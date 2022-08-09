@@ -214,8 +214,8 @@ namespace slide
 		bool verb = print && (settings::printBool::printCrit); // print if the (global) verbose-setting is above the threshold
 
 		// Set the current, if checkVi this also gets the cell voltages
-		bool validVcell = true;
-		Vmodule_valid = false; // we are changing the current, so the stored voltage is no longer valid
+		bool validVcell = true; // #CHECK
+		Vmodule_valid = false;	// we are changing the current, so the stored voltage is no longer valid
 		double Iold = I();
 
 		for (size_t i = 0; i < getNSUs(); i++)

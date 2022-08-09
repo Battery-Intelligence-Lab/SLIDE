@@ -10,6 +10,8 @@ set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON) #export compiler flags for code completion engines
 
+
+
 # include(CheckIPOSupported)
 # check_ipo_supported(RESULT ipo_supported)
 # if(ipo_supported)
@@ -26,6 +28,13 @@ target_link_libraries(slidelib
 add_executable(slide_v3
     src/main.cpp
     )
+
+# install(TARGETS slide_v3
+#     CONFIGURATIONS Debug
+#     RUNTIME DESTINATION Debug/bin)
+# install(TARGETS slide_v3
+#     CONFIGURATIONS Release
+#     RUNTIME DESTINATION Release/bin)
 
 target_link_libraries(slide_v3
   PRIVATE

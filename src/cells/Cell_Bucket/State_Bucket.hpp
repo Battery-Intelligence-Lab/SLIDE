@@ -8,6 +8,7 @@
 #pragma once
 
 #include <array>
+#include <cstdlib> // for size_t
 
 namespace slide
 {

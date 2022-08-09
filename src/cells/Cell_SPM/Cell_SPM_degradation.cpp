@@ -700,7 +700,7 @@ namespace slide
 
 		// Flip all arrays to get the opposite order (now it is [centre .. +surface] and we want [+surface .. centre]
 		// and store in the output arrays
-		for (int i = 0; i < nch + 2; i++)
+		for (size_t i = 0; i < nch + 2; i++)
 		{ // loop for the positive nodes
 			sigma_r_p[i] = srp[nch + 2 - 1 - i];
 			sigma_r_n[i] = srn[nch + 2 - 1 - i];

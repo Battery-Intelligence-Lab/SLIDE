@@ -22,7 +22,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # export compiler flags for code completion engines
 
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+include(CheckIPOSupported)
+check_ipo_supported(RESULT supported OUTPUT error)
+
+# if( supported )
+#     message(STATUS "IPO / LTO enabled")
+#     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+# else()
+#     message(STATUS "IPO / LTO not supported: <${error}>")
+# endif()
+
+
 
 # default build type.
 set(default_build_type "Release")
@@ -68,32 +78,6 @@ endif()
 message(STATUS "Host system: ${CMAKE_HOST_SYSTEM}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# set(slide_headers
-# # determine_OCV.h
-# # BasicCycler.hpp
-# # cycling.h
-# # degradation.h
-# # cell_fit.hpp
-# # cell_user.hpp
-# # determine_characterisation.h
-# settings/settings.hpp
-# # currentWork.hpp
-# # converter.hpp
-# StorageUnit.hpp
-# slide.hpp
-# )
-
-# set (slide_source
-# # basic_cycler.cpp
-# # degradation.cpp
-# # cell_user.cpp
-# # determine_characterisation.cpp
-# # cell_fit.cpp
-# # determine_OCV.cpp
-# # cycling.cpp
-# # currentWork.cpp
-# # converter_test.cpp
-# )
 add_subdirectory(cells)
 add_subdirectory(modules)
 add_subdirectory(cooling)

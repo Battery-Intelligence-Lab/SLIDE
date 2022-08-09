@@ -291,7 +291,7 @@ namespace slide
 #endif
 
 		// variables
-		const int nIterationsMax = 1000 * getNSUs();						 // allow a maximum number of iterations // Very big iteration....
+		const size_t nIterationsMax = 1000 * getNSUs();						 // allow a maximum number of iterations // Very big iteration....
 		const double dImin = settings::MODULE_P_I_ABSTOL / 10.0 / getNSUs(); // allow a minimum change in current
 		double dI;															 // change in current in this iteration
 		const bool verb = print && (settings::printBool::printCrit);		 // print if the (global) verbose-setting is above the threshold

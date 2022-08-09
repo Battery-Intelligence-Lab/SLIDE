@@ -30,14 +30,14 @@ namespace slide
         // Calculate the surface concentration at the positive particle
         // 	cp_surf = M->Cp[0][:] * zp[:] + M->Dp*jp/Dpt
         double cp_surf = 0;
-        for (int j = 0; j < nch; j++)
+        for (size_t j = 0; j < nch; j++)
             cp_surf += M->Cp[0][j] * st.zp(j);
         cp_surf += M->Dp[0] * jp / Dpt;
 
         // Calculate the surface concentration at the negative particle
         // 	cn_surf = M->Cn[0][:] * zn[:] + M->Dn*jn/Dnt
         double cn_surf = 0;
-        for (int j = 0; j < nch; j++)
+        for (size_t j = 0; j < nch; j++)
             cn_surf += M->Cn[0][j] * st.zn(j);
         cn_surf += M->Dn[0] * jn / Dnt;
 

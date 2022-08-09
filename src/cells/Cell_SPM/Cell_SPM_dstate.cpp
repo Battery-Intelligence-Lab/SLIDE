@@ -50,11 +50,11 @@ namespace slide
         auto [i_app, jp, jn] = calcMolarFlux(); // current density, molar flux on the pos/neg particle
 
         // Calculate the effect of the main li-reaction on the (transformed) concentration
-        for (int j = 0; j < nch; j++)
+        for (size_t j = 0; j < nch; j++)
             d_st.zp(j) = (Dpt * M->Ap[j] * st.zp(j) + M->Bp[j] * jp); // dz/dt = D * A * z + B * j
 
         // loop for each row of the matrix-vector product A * z
-        for (int j = 0; j < nch; j++)                                 // A is diagonal, so the array M->A has only the diagonal elements
+        for (size_t j = 0; j < nch; j++)                              // A is diagonal, so the array M->A has only the diagonal elements
             d_st.zn(j) = (Dnt * M->An[j] * st.zn(j) + M->Bn[j] * jn); // dz/dt = D * A * z + B * j
 
         d_st.SOC() += -I() / (Cap() * 3600); // dSOC state of charge
@@ -226,7 +226,7 @@ namespace slide
         SEI(OCVnt, etan, &isei, &den_sei); // Throws but not wrapped in try-catch since only appears here.
 
         // Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + isei/nF)
-        for (int j = 0; j < nch; j++)
+        for (size_t j = 0; j < nch; j++)
             dznsei[j] = (M->Bn[j] * isei / (nsei * F));
 
         // crack growth leading to additional exposed surface area
@@ -254,11 +254,11 @@ namespace slide
         double dzn_pl[nch];                        // additional diffusion in the anode due to ipl
 
         // Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + ipl/nF)
-        for (int j = 0; j < nch; j++)
+        for (size_t j = 0; j < nch; j++)
             dzn_pl[j] = (M->Bn[j] * ipl / (npl * F)); // #CHECK (npl * F) division is unnecessary it is already multiple in the function.
 
         // output
-        for (int j = 0; j < nch; j++)                                // dzp += 0 // dzp should be added from diffusion function
+        for (size_t j = 0; j < nch; j++)                             // dzp += 0 // dzp should be added from diffusion function
             d_state.zn(j) += (dznsei[j] + dznsei_CS[j] + dzn_pl[j]); // dzn		jtot = jn + isei/nF + isei_CS/nF + ipl/nF
 
         d_state.delta() = isei / (nsei * F * rhosei);                                   // ddelta	SEI thickness

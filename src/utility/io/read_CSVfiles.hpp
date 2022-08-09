@@ -18,6 +18,7 @@
 #include <vector>
 #include <map>
 #include <span>
+#include <cstring> // -> for memcpy
 
 #include "../../types/matrix.hpp"
 #include "../util_debug.hpp"
