@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "../slide.hpp"
+#include "../src/slide.hpp"
 
 #include <string>
 

@@ -11,9 +11,9 @@ add_subdirectory(power_conversion)
 add_subdirectory(system)
 add_subdirectory(procedures)
 add_subdirectory(factories)
+add_subdirectory(settings)
 
 # add_subdirectory(unit_tests)
-# add_subdirectory(settings)
 # target_sources(src
 #   PRIVATE
 #   slide.hpp
@@ -28,7 +28,7 @@ target_link_libraries(src
   system
   procedures
   factories
-
+  settings
   # unit_tests
   # pthread -> For WSL.
 )

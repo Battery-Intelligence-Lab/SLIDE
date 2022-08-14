@@ -19,7 +19,7 @@
 #include <iomanip>
 
 #include "slide.hpp"
-#include "benchmarks/running_Cell_Bucket.hpp"
+#include "../benchmark/running_Cell_Bucket.hpp"
 
 int main()
 {

@@ -50,7 +50,7 @@ public:
   double VMAX() override { return cells->VMAX() * static_cast<double>(nseries); }
   double I() override { return cells->I() * static_cast<double>(nparallel); }
   double getRtot() override { return cells->getRtot() * static_cast<double>(nseries) / static_cast<double>(nparallel); }
-  size_t getNcells() override { return cells->getNcells() * static_cast<double>(nseries * nparallel); }
+  size_t getNcells() override { return static_cast<double>(cells->getNcells() * nseries * nparallel); }
 
   Module *getCells() { return cells.get(); }
   // int getNstates() { return cells->getNstates() + 1; } // +1 for the temperature of this battery
