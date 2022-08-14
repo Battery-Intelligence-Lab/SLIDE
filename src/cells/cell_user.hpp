@@ -13,15 +13,13 @@
 #include "Cell_LGChemNMC.hpp"
 #include "settings/settings.hpp"
 
-namespace slide
+namespace slide {
+class Cell_user : public Cell
 {
-
-	class Cell_user : public Cell
-	{
-	public:
-		// constructors
-		Cell_user(const struct slide::Model_SPM &, int verbosei);
-		Cell_user(const slide::Model_SPM &M, const DEG_ID &, int verbosei);
-	};
+public:
+  // constructors
+  Cell_user(const struct slide::Model_SPM &, int verbosei);
+  Cell_user(const slide::Model_SPM &M, const DEG_ID &, int verbosei);
+};
 
 } // namespace slide

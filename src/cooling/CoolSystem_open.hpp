@@ -21,19 +21,18 @@
 
 #include "CoolSystem.hpp"
 
-namespace slide
+namespace slide {
+class CoolSystem_open : public CoolSystem
 {
-	class CoolSystem_open : public CoolSystem
-	{
-	protected:
-		double h{90}; // cooling constant for perfect heat exchange
-	public:
-		CoolSystem_open();
-		CoolSystem_open(int Ncells, int control);
+protected:
+  double h{ 90 }; // cooling constant for perfect heat exchange
+public:
+  CoolSystem_open();
+  CoolSystem_open(int Ncells, int control);
 
-		double getH() override;
-		void control(double Thot_local, double Thot_global) override;
+  double getH() override;
+  void control(double Thot_local, double Thot_global) override;
 
-		CoolSystem_open *copy() override { return new CoolSystem_open(*this); }
-	};
-}
+  CoolSystem_open *copy() override { return new CoolSystem_open(*this); }
+};
+} // namespace slide

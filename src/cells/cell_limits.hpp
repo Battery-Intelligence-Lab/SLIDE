@@ -9,15 +9,14 @@
 
 #include "../settings/settings.hpp"
 
-namespace slide
+namespace slide {
+struct CellLimits
 {
-    struct CellLimits
-    {
-        using data_type = double;
-        data_type Vmin{2.7}, Vmax{4.2};                                     // minimum / maximum voltage  [V]
-        data_type VMIN{1.8}, VMAX{4.6};                                     // lower   / upper safety cut-off limit [V]
-        data_type Tmin{settings::Tmin_Cell_K}, Tmax{settings::Tmax_Cell_K}; // minimum / maximum temperature;
-    };
+  using data_type = double;
+  data_type Vmin{ 2.7 }, Vmax{ 4.2 };                                     // minimum / maximum voltage  [V]
+  data_type VMIN{ 1.8 }, VMAX{ 4.6 };                                     // lower   / upper safety cut-off limit [V]
+  data_type Tmin{ settings::Tmin_Cell_K }, Tmax{ settings::Tmax_Cell_K }; // minimum / maximum temperature;
+};
 
-    inline constexpr CellLimits defaultCellLimits;
-}
+inline constexpr CellLimits defaultCellLimits;
+} // namespace slide

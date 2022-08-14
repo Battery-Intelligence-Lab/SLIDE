@@ -1,11 +1,22 @@
-# Information about this fork of this library: 
-
+# Information about this branch of this library: 
 - Only a test version, not complete. 
 
 # Disclaimer: 
 - This TODO list is pretty much informal text of what is in my mind. 
 
 ## TODO: 
+
+### Higher priority: 
+
+- [ ] Add CTest support for tests
+- [ ] Add static analysers: include-what-you-use, valgrind, etc. 
+- [ ] Doxygen integration 
+- [ ] CPack and installation improvements. 
+- [ ] Figure out why OBJECT libraries cause linker error. We converted everything to STATIC
+- [ ] Check #CHECK tags in the code.  
+
+
+### Lower priority: 
 
 - [ ] Cannot compile with other compilers.
   - [x] Eliminate GCC dependent features.
@@ -228,7 +239,7 @@ So they are one step ahead of ocvpi, ocvni and V. Is it a bug? Or is it saving e
 slide_pack integration:
 - [x] SPMModel.h, SPMModel.cpp
 
-slide_pack changes: 
+### slide_pack changes: 
 - [ ] StorageUnit parent shared_pointer -> raw poiner. 
 - [x] NULL -> nullptr
 - [ ] Module shared_ptr<StorageUnit> SUs[MODULE_NSUs_MAX] -> vector.
@@ -383,9 +394,13 @@ slide_pack changes:
 - [ ] SOC -> why do we use columb counting? 
 - [ ] Definitely create a file type to compactly save files and retrieve. 
 - [ ] Remove Error IDs.xlsx 
+- [ ] "${CMAKE_CURRENT_LIST_DIR}/" is mostly eliminated since it is not needed in newer CMake versions. 
+- [ ] "develop" folder is added for developer-related matters. 
+- [ ] License files of individual libraries are moved into the corresponding folders. 
+- [ ] tests folder is created and unit tests are moved into that folder. 
 
 
-C++20 changes (yay!):
+### C++20 changes (yay!):
 - [ ] std::span for state assignments. 
 
 Some new ideas to implement: 
@@ -404,10 +419,12 @@ Some new ideas to implement:
 
 
 
-Formatting: 
-- [ ] Include a clang-tidy file. 
+### Formatting: 
+- [x] Include a clang-format file. 
+- [ ] Configure clang-format, cmake-format etc. 
 
 
 
-JOSS: 
+### JOSS: 
 - [ ] Added JOSS folder and Github workflow. 
+

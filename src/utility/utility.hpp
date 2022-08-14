@@ -21,5 +21,3 @@
 #include "slide_aux.hpp"
 
 #include "io/read_CSVfiles.hpp"
-
-

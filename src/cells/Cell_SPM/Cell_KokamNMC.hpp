@@ -14,14 +14,12 @@
 
 #include "Cell_SPM.hpp"
 
-namespace slide
+namespace slide {
+class Cell_KokamNMC : public Cell_SPM
 {
-
-	class Cell_KokamNMC : public Cell_SPM
-	{
-	public:
-		// constructors
-		Cell_KokamNMC(Model_SPM *, int verbosei);
-		Cell_KokamNMC(Model_SPM *, DEG_ID &, int verbosei);
-	};
-}
+public:
+  // constructors
+  Cell_KokamNMC(Model_SPM *, int verbosei);
+  Cell_KokamNMC(Model_SPM *, DEG_ID &, int verbosei);
+};
+} // namespace slide

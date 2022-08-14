@@ -14,14 +14,13 @@
 
 #include "Cell_KokamNMC.hpp" // includes Cell.hpp, State.hpp and Model.hpp
 
-namespace slide
+namespace slide {
+class Cell_LGChemNMC : public Cell_SPM
 {
-	class Cell_LGChemNMC : public Cell_SPM
-	{
-	private:
-	public:
-		// constructor
-		Cell_LGChemNMC(Model_SPM *, int verbosei);
-		Cell_LGChemNMC(Model_SPM *M, DEG_ID &, int verbosei);
-	};
-}
+private:
+public:
+  // constructor
+  Cell_LGChemNMC(Model_SPM *, int verbosei);
+  Cell_LGChemNMC(Model_SPM *M, DEG_ID &, int verbosei);
+};
+} // namespace slide

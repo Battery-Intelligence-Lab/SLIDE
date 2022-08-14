@@ -1,18 +1,11 @@
-cmake_minimum_required(VERSION 3.16)
-add_library(system OBJECT)
+cmake_minimum_required(VERSION 3.20)
+add_library(system STATIC)
 
 target_sources(system
   PRIVATE
     Battery.cpp
   PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/Battery.hpp
+    Battery.hpp
   )
 
-target_include_directories(system 
-  PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}
-  )
-
-
-
-
+target_include_directories(system PUBLIC .)

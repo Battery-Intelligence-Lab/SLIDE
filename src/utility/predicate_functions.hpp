@@ -9,18 +9,17 @@
 
 #pragma once
 
-namespace slide::util
+namespace slide::util {
+template<typename T>
+constexpr auto is_zero(T x) // No reference it is probably already very small object.
 {
-    template <typename T>
-    constexpr auto is_zero(T x) // No reference it is probably already very small object.
-    {
-        return x == 0;
-    }
-
-    template <typename T>
-    constexpr int sign(T x) // No reference it is probably already very small object.
-    {
-        return (x > T(0)) - (x < T(0));
-    }
-
+  return x == 0;
 }
+
+template<typename T>
+constexpr int sign(T x) // No reference it is probably already very small object.
+{
+  return (x > T(0)) - (x < T(0));
+}
+
+} // namespace slide::util

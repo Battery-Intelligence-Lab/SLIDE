@@ -1,15 +1,12 @@
-cmake_minimum_required(VERSION 3.16)
-add_library(Cell_PbA "")
+cmake_minimum_required(VERSION 3.20)
+add_library(Cell_PbA STATIC)
 
 target_sources(Cell_PbA
   PRIVATE
   Cell_PbA.cpp
   PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/Cell_PbA.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/State_PbA.hpp
+    Cell_PbA.hpp
+    State_PbA.hpp
   )
 
-target_include_directories(Cell_Bucket
-  PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}
-  )
+target_include_directories(Cell_PbA  PUBLIC  .)

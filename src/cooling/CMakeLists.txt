@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
-add_library(cooling "")
+cmake_minimum_required(VERSION 3.20)
+add_library(cooling STATIC)
 
 target_sources(cooling
   PRIVATE
@@ -9,19 +9,16 @@ target_sources(cooling
     data_storage/CoolSystemData.cpp
     data_storage/CoolSystem_HVACData.cpp
   PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/CoolSystem.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/CoolSystem_open.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/CoolSystem_HVAC.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_storage/cool_data.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_storage/CoolSystemData.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_storage/CoolSystem_HVACData.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_storage/cool_data.hpp
+    CoolSystem.hpp
+    CoolSystem_open.hpp
+    CoolSystem_HVAC.hpp
+    data_storage/cool_data.hpp
+    data_storage/CoolSystemData.hpp
+    data_storage/CoolSystem_HVACData.hpp
+    data_storage/cool_data.hpp
   )
 
-target_include_directories(cooling 
-  PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}
-  )
+target_include_directories(cooling PUBLIC .)
 
 
 

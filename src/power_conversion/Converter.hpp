@@ -10,18 +10,17 @@
 
 #pragma once
 
-namespace slide
+namespace slide {
+class Converter
 {
-	class Converter
-	{
-	private:
-		double Vdc;	 // voltage of the DC bus
-		double Vac;	 // voltage of the AC link
-		double Pnom; // nominal power, [Wh]
-	public:
-		Converter();
+private:
+  double Vdc;  // voltage of the DC bus
+  double Vac;  // voltage of the AC link
+  double Pnom; // nominal power, [Wh]
+public:
+  Converter();
 
-		void setPower(double Pnom);
-		double getLosses(double Vin, double Iin);
-	};
-}
+  void setPower(double Pnom);
+  double getLosses(double Vin, double Iin);
+};
+} // namespace slide

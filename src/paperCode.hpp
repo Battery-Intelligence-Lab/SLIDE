@@ -7,13 +7,12 @@
 
 #pragma once
 
-namespace slide::paperCode::paper2022
-{
-    void Vequalisation();
-    void thermalModel();
+namespace slide::paperCode::paper2022 {
+void Vequalisation();
+void thermalModel();
 
-    void degradation_1cell();
-    void degradation_electricalModel();
-    void degradation_variations();
-    void degradation_thermal();
-}
+void degradation_1cell();
+void degradation_electricalModel();
+void degradation_variations();
+void degradation_thermal();
+} // namespace slide::paperCode::paper2022

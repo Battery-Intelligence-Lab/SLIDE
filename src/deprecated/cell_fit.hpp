@@ -20,12 +20,12 @@
 class Cell_Fit : public Cell
 {
 public:
-	Cell_Fit(const struct slide::Model_SPM &, int verbosei); // standard constructor
+  Cell_Fit(const struct slide::Model_SPM &, int verbosei); // standard constructor
 
-	void setOCVcurve(const std::string &namepos, const std::string &nameneg);										  // sets the OCV curve of the cell to the given value
-	void setInitialConcentration(double cmaxp, double cmaxn, double lifracp, double lifracn);						  // sets the initial concentration
-	void setGeometricParameters(double capnom, double elec_surf, double ep, double en, double thickp, double thickn); // sets the geometric parameters related to the amount of active material
-	void setRamping(double Istep, double tstep);																	  // sets the ramping parameters
+  void setOCVcurve(const std::string &namepos, const std::string &nameneg);                                         // sets the OCV curve of the cell to the given value
+  void setInitialConcentration(double cmaxp, double cmaxn, double lifracp, double lifracn);                         // sets the initial concentration
+  void setGeometricParameters(double capnom, double elec_surf, double ep, double en, double thickp, double thickn); // sets the geometric parameters related to the amount of active material
+  void setRamping(double Istep, double tstep);                                                                      // sets the ramping parameters
 
-	void setCharacterisationParam(double Dp, double Dn, double kp, double kn, double Rdc); // sets the parameters related to the characterisation of the cell
+  void setCharacterisationParam(double Dp, double Dn, double kp, double kn, double Rdc); // sets the parameters related to the characterisation of the cell
 };

@@ -9,10 +9,9 @@
 
 #include <iostream>
 
-namespace slide::debug
+namespace slide::debug {
+inline void getLine() // Not working.
 {
-    inline void getLine() // Not working.
-    {
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
-    }
+  std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
 }
+} // namespace slide::debug

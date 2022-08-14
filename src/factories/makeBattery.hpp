@@ -12,12 +12,11 @@
 #include <string>
 #include <memory>
 
-namespace slide
-{
-    std::unique_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl);
-    std::unique_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl);
-    std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM);
-    std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM);
-    std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM);
-    std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM);
-}
+namespace slide {
+std::unique_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl);
+std::unique_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl);
+std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM);
+std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM);
+std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM);
+std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM);
+} // namespace slide

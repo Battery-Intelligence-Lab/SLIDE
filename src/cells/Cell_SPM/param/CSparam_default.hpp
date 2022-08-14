@@ -11,8 +11,7 @@
 
 #include "CSparam.hpp"
 
-namespace slide::param::def
-{
-    // Here will be some default parameters.
+namespace slide::param::def {
+// Here will be some default parameters.
 
 }

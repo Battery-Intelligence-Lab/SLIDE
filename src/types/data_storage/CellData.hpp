@@ -12,16 +12,15 @@
 #include "CellDataStorage.hpp"
 #include "CellDataWriter.hpp"
 
-namespace slide
+namespace slide {
+template <int N>
+struct CellData : public CellDataStorage<N>
 {
-    template <int N>
-    struct CellData : public CellDataStorage<N>
-    {
-        CellDataWriter<N> writer;
+  CellDataWriter<N> writer;
 
-        auto writeData(auto *ths, const std::string &prefix)
-        {
-            writer.writeData(ths, prefix, *this);
-        }
-    };
-}
+  auto writeData(auto *ths, const std::string &prefix)
+  {
+    writer.writeData(ths, prefix, *this);
+  }
+};
+} // namespace slide

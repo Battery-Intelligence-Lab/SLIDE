@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
-add_library(modules OBJECT)
+cmake_minimum_required(VERSION 3.20)
+add_library(modules STATIC)
 
 target_sources(modules
   PRIVATE
@@ -7,15 +7,12 @@ target_sources(modules
     Module_s.cpp
     Module.cpp
   PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/Module_p.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/Module_s.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/Module.hpp
+    Module_p.hpp
+    Module_s.hpp
+    Module.hpp
   )
 
-target_include_directories(modules 
-  PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}
-  )
+target_include_directories(modules PUBLIC .)
 
 
 
