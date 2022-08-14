@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.17)
 add_library(Cell_PbA STATIC)
 
 target_sources(Cell_PbA

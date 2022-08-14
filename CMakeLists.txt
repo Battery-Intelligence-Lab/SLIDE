@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.17)
 
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
@@ -69,9 +69,9 @@ set_project_warnings(project_warnings)
 # include(cmake/Sanitizers.cmake)
 # enable_sanitizers(project_options)
 
-# # enable doxygen
-# include(cmake/Doxygen.cmake)
-# enable_doxygen()
+# enable doxygen
+include(cmake/Doxygen.cmake)
+enable_doxygen(src doxygen-docs)
 
 # # allow for static analysis options
 # include(cmake/StaticAnalyzers.cmake)

@@ -43,14 +43,14 @@ public:
   void setSeriesandParallel(int ser, int par);
 
   // basic getters and setters
-  double Cap() override { return cells->Cap() * nparallel; }
-  double Vmin() override { return cells->Vmin() * nseries; }
-  double VMIN() override { return cells->VMIN() * nseries; }
-  double Vmax() override { return cells->Vmax() * nseries; }
-  double VMAX() override { return cells->VMAX() * nseries; }
-  double I() override { return cells->I() * nparallel; }
-  double getRtot() override { return cells->getRtot() * nseries / nparallel; }
-  size_t getNcells() override { return cells->getNcells() * nseries * nparallel; }
+  double Cap() override { return cells->Cap() * static_cast<double>(nparallel); }
+  double Vmin() override { return cells->Vmin() * static_cast<double>(nseries); }
+  double VMIN() override { return cells->VMIN() * static_cast<double>(nseries); }
+  double Vmax() override { return cells->Vmax() * static_cast<double>(nseries); }
+  double VMAX() override { return cells->VMAX() * static_cast<double>(nseries); }
+  double I() override { return cells->I() * static_cast<double>(nparallel); }
+  double getRtot() override { return cells->getRtot() * static_cast<double>(nseries) / static_cast<double>(nparallel); }
+  size_t getNcells() override { return cells->getNcells() * static_cast<double>(nseries * nparallel); }
 
   Module *getCells() { return cells.get(); }
   // int getNstates() { return cells->getNstates() + 1; } // +1 for the temperature of this battery

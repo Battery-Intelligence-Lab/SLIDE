@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.17)
 add_library(modules STATIC)
 
 target_sources(modules
