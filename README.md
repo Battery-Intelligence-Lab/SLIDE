@@ -88,4 +88,4 @@ please read `LICENSE` file for more information.
 This software also uses the following external libraries:
 Two Matlab functions used by the code to produce the spatial discretisation have been developed by others.
 - DMSUITE: see [matlab/license-chebdif.txt](matlab/LICENSE-chebdif.txt) for details. 
-- Cumsummat: see [matlab/licence-cumsummat.txt](matlab/licence-cumsummat.txt) for details.
+- Cumsummat: see [matlab/licence-cumsummat.txt](matlab/LICENSE-cumsummat.txt) for details.
