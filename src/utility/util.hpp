@@ -35,7 +35,7 @@ struct Clock
   Clock() = default;
   auto now() const { return std::clock(); }
   auto start() const { return tstart; }
-  double duration() const { return (now() - start()) / (double)CLOCKS_PER_SEC; }
+  double duration() const { return (now() - start()) / static_cast<double>(CLOCKS_PER_SEC); }
 };
 
 inline std::ostream &operator<<(std::ostream &ofs, const Clock &clk)

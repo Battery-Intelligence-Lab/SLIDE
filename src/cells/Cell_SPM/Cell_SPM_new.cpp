@@ -1215,7 +1215,7 @@ double Cell_SPM::getOCV(bool print)
   }
 
 #if TIMING
-  T_getOCV += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  T_getOCV += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
   return OCV_p - OCV_n + (getT() - T_ref) * dOCV;
 }
@@ -1254,7 +1254,7 @@ double Cell_SPM::getOCV(double fps, double fns, bool print)
   }
 
 #if TIMING
-  T_getOCV += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  T_getOCV += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
   return OCV_p - OCV_n; //+ (getT()-T_ref)*dOCV;
 }
@@ -1342,7 +1342,7 @@ double Cell_SPM::getV(bool print)
   Vcell_valid = true; // we now have the most up to date value stored
 
 #if TIMING
-  T_getV += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  T_getV += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 
   return Vcell;
@@ -1410,7 +1410,7 @@ double Cell_SPM::setStates(double s[], int nin, bool checkV, bool print)
       V = getV(verb); // throws error if SoC is outside of range, but that should have been checked in validState()
 
 #if TIMING
-      T_setStates += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+      T_setStates += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 
       if (V < getVmin() || V > getVmax())
@@ -1424,7 +1424,7 @@ double Cell_SPM::setStates(double s[], int nin, bool checkV, bool print)
     }
   } else {
 #if TIMING
-    T_setStates += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+    T_setStates += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
     return 0;
   }
@@ -1538,7 +1538,7 @@ bool Cell_SPM::validStates(double s[], int nin, bool print)
    */
 
 #if TIMING
-  T_validStates += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  T_validStates += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 
   return range;
@@ -2053,7 +2053,7 @@ void Cell_SPM::dState_diffusion(bool print, double dzp[], double dzn[], double &
   dSoC = -getI() / (getCap() * 3600); // dSoC	 	state of charge
 
 #if TIMING
-  T_dstate += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  T_dstate += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 }
 
@@ -2123,7 +2123,7 @@ void Cell_SPM::dState_thermal(bool print, double &dQgen)
   // dT = 1/(rho*Cp)*(Qrev+Qrea+Qohm+Qc);					// dT		cell temperature
 
 #if TIMING
-  T_dstate += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  T_dstate += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 }
 
@@ -2293,7 +2293,7 @@ void Cell_SPM::dState_degradation(bool print, double dstates[])
   dstates[2 * CELL_NCH + 14] = ipl / (npl * F * rhopl);                                   // ddelta_pl thickness of the plated lithium
 
 #if TIMING
-  T_dstate += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  T_dstate += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 }
 

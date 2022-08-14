@@ -242,7 +242,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   // #CHECK Here we need module specific voltage.
 
 #if TIMING
-  timeData.setCurrent += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 
   return Status::Success;
@@ -280,7 +280,7 @@ bool Module_s::validSUs(moduleSUs_span_t c, bool print)
   }
 
 #if TIMING
-  timeData.validSUs += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  timeData.validSUs += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
   return result; // else the cells are valid
 }
@@ -373,7 +373,7 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
   Vmodule_valid = false; // we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
 #if TIMING
-  timeData.timeStep += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  timeData.timeStep += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 }
 

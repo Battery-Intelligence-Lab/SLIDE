@@ -1136,7 +1136,7 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
 // 		}
 
 // #if TIMING
-// 		T_validStates += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+// 		T_validStates += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 // #endif
 
 // 		return range;

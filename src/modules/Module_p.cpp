@@ -770,7 +770,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   } // catch statement of uniform allocation
 
 #if TIMING
-  timeData.setCurrent += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
   return Status::Success; // #CHECK problem
 }
@@ -838,7 +838,7 @@ bool Module_p::validSUs(moduleSUs_span_t c, bool print)
   } // else the voltage is valid
 
 #if TIMING
-  timeData.validSUs += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  timeData.validSUs += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
   return result;
 }
@@ -952,7 +952,7 @@ void Module_p::timeStep_CC(double dt, bool addData, int nstep)
   }
 
 #if TIMING
-  timeData.timeStep += (std::clock() - tstart) / (double)CLOCKS_PER_SEC; // time in seconds
+  timeData.timeStep += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
 #endif
 }
 

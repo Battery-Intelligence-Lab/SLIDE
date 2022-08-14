@@ -73,7 +73,7 @@ void test_Procedure_cycleAge(double Rc, bool spread, int cool)
                                // just check this runs without producing an error warning
 #if TIMING
   cp1->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
-  duration = (std::clock() - tstart) / (double)CLOCKS_PER_SEC;
+  duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);
   std::cout << "Timings for a singe SPM cell in seconds: total " << duration << ", OCV " << tocv << ", V " << tv << ", dstate " << tdstate << ", validStates " << tvalidstates << ", and setStates " << tsetstates << '\n';
 
   tstart = std::clock();
@@ -106,7 +106,7 @@ void test_Procedure_cycleAge(double Rc, bool spread, int cool)
 #if TIMING
   cp2->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
   mp->getTimings(tsetI, tvalidSU, ttimestep, ttimestepi);
-  duration = (std::clock() - tstart) / (double)CLOCKS_PER_SEC;
+  duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);
   std::cout << "Timings for a SPM cell in a series module in seconds: total " << duration << ", OCV " << tocv * ncel << ", V " << tv * ncel << ", dstate " << tdstate * ncel << ", validStates " << tvalidstates * ncel << ", and setStates " << tsetstates * ncel << '\n';
   std::cout << "Timings for the series module, total was " << duration << ", setCurrent " << tsetI << ", validSUs " << tvalidSU << ", timestep " << ttimestep << ", timestepi " << ttimestepi << '\n';
 
@@ -149,7 +149,7 @@ void test_Procedure_cycleAge(double Rc, bool spread, int cool)
 #if TIMING
   cp7->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
   mpp->getTimings(tredistribute, tsetI, tvalidSU, ttimestep, ttimestepi);
-  duration = (std::clock() - tstart) / (double)CLOCKS_PER_SEC;
+  duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);
   std::cout << "Timings for a SPM cell in a parallel module in seconds: total " << duration << ", OCV " << tocv * ncel2 << ", V " << tv * ncel2 << ", dstate " << tdstate * ncel2 << ", validStates " << tvalidstates * ncel2 << ", and setStates " << tsetstates * ncel2 << '\n';
   std::cout << "Timings for the parallel module, total was " << duration << ", redistributeI " << tredistribute << ", setCurrent " << tsetI << ", validSUs " << tvalidSU << ", timestep " << ttimestep << ", timestepi " << ttimestepi << '\n';
 #endif
@@ -506,7 +506,7 @@ void test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
 #if TIMING // #CHECK we are using unique pointers.
   cp2->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
   mp->getTimings(tsetI, tvalidSU, ttimestep, ttimestepi);
-  duration = (std::clock() - tstart) / (double)CLOCKS_PER_SEC;
+  duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);
   std::cout << "Timings for a SPM cell in a series module in seconds: total " << duration << ", OCV " << tocv * ncel << ", V " << tv * ncel << ", dstate " << tdstate * ncel << ", validStates " << tvalidstates * ncel << ", and setStates " << tsetstates * ncel << '\n';
   std::cout << "Timings for the series module, total was " << duration << ", setCurrent " << tsetI << ", validSUs " << tvalidSU << ", timestep " << ttimestep << ", timestepi " << ttimestepi << '\n';
 

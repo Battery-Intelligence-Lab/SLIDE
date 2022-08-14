@@ -4,23 +4,6 @@ add_library(src STATIC)
 
 #add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../")
 
-# Set global compiler warnings
-# if(MSVC)
-#   message(STATUS "Building for MSVC")
-#   set(common_options /W2 /permissive-) # /WX
-#   set(debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
-#   set(not_debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
-
-#   add_compile_options( # REMOVE THIS #CHECK
-#     "$<$<CONFIG:Debug>:${debug_options}>$<$<NOT:$<CONFIG:Debug>>:${not_debug_options}>"
-#   )
-# else()
-#   message(STATUS "Building for non-MSVC")
-#   add_compile_options("-Wall"
-#     "$<$<CONFIG:Release>:-Ofast;-march=native>") # "-Weffc++" -Ofast -march=native -g -fno-omit-frame-pointer -gdwarf-2 (flto not good) -Wextra -pedantic
-# endif()
-
-
 add_subdirectory(cells)
 add_subdirectory(modules)
 add_subdirectory(cooling)

@@ -14,16 +14,26 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(src bin)
 
-add_executable(slide_v3
+# Link this 'library' to use the warnings specified in CompilerWarnings.cmake
+add_library(project_warnings INTERFACE)
+
+# Link this 'library' to set the c++ standard / compile-time options requested
+add_library(project_options INTERFACE)
+target_compile_features(project_options INTERFACE cxx_std_20)
+
+
+add_executable(slide
     src/main.cpp
     )
 
-target_link_libraries(slide_v3
+target_link_libraries(slide
     PRIVATE
     src
+    project_warnings
+    project_options
 )
 
-target_include_directories(slide_v3 
+target_include_directories(slide
   PUBLIC
     data
   )
@@ -36,27 +46,24 @@ target_include_directories(slide_v3
 # cmake --install build --config Debug
 # ccmake -G "Unix Makefiles" -S . -B ./build
 
-# # Link this 'library' to set the c++ standard / compile-time options requested
-# add_library(project_options INTERFACE)
-# target_compile_features(project_options INTERFACE cxx_std_20)
-
-# if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-#   option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" OFF)
-#   if(ENABLE_BUILD_WITH_TIME_TRACE)
-#     add_compile_definitions(project_options INTERFACE -ftime-trace)
-#   endif()
-# endif()
 
 
-# # Link this 'library' to use the warnings specified in CompilerWarnings.cmake
-# add_library(project_warnings INTERFACE)
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" OFF)
+  if(ENABLE_BUILD_WITH_TIME_TRACE)
+    add_compile_definitions(project_options INTERFACE -ftime-trace)
+  endif()
+endif()
+
+
+
 
 # # enable cache system
 # include(cmake/Cache.cmake)
 
-# # standard compiler warnings
-# include(cmake/CompilerWarnings.cmake)
-# set_project_warnings(project_warnings)
+# standard compiler warnings
+include(cmake/CompilerWarnings.cmake)
+set_project_warnings(project_warnings)
 
 # # sanitizer options if supported by compiler
 # include(cmake/Sanitizers.cmake)
@@ -131,20 +138,6 @@ target_include_directories(slide_v3
 
 # # defines targets and sources CMAKE_BUILD_PARALLEL_LEVEL -> Try this to see if it gets better than -j 
 # add_subdirectory(src)
-
-# set (CMAKE_CXX_STANDARD 20)
-# set (CMAKE_CXX_STANDARD_REQUIRED ON)
-# set (CMAKE_CXX_EXTENSIONS OFF)
-# set (CMAKE_EXPORT_COMPILE_COMMANDS ON) #export compiler flags for code completion engines
-
-
-
-# include(CheckIPOSupported)
-# check_ipo_supported(RESULT ipo_supported)
-# if(ipo_supported)
-# set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
-# endif()
-
 
 
 
