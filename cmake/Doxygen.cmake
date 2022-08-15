@@ -16,8 +16,8 @@ function(enable_doxygen input output)
     set(DOXYGEN_HTML_OUTPUT
       ${PROJECT_BINARY_DIR}/${output})
 
-    set(DOXYGEN_HTML_EXTRA_STYLESHEET
-      ${PROJECT_SOURCE_DIR}/../doxygen-awesome-css/doxygenawesome.css)
+    # set(DOXYGEN_HTML_EXTRA_STYLESHEET
+    #   ${PROJECT_SOURCE_DIR}/../doxygen-awesome-css/doxygenawesome.css)
 
     find_package(Doxygen REQUIRED dot)
     doxygen_add_docs(doxygen-docs ${PROJECT_SOURCE_DIR}/${input})
