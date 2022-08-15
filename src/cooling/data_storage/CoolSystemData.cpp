@@ -16,30 +16,30 @@ namespace slide {
 void CoolSystemData::initialise(CoolSystem &cs)
 {
   initialise(cs, tData);
-} // Do nothing.
+} //!< Do nothing.
 
 void CoolSystemData::storeData(CoolSystem &cs)
 {
   if (cData.time != 0)
     storeData(cs, tData);
-} // Do nothing.
+} //!< Do nothing.
 
 void CoolSystemData::writeData(CoolSystem &cs, const std::string &prefix)
 {
   writeData(cs, prefix, tData);
 }
 
-// N=1
+//!< N=1
 void CoolSystemData::initialise(CoolSystem &cs, CoolSystemHist_t &data)
 {
   constexpr auto flr_max = 1.1 * settings::cool::flowrate_perCell;
   const auto v_max = flr_max / cs.Across;
   const auto E_max = cs.fluid_rho * cs.Across * v_max * v_max * v_max / cs.eta;
 
-  data.flr = Histogram<>(0, flr_max); // 0 to 0.02 m3/s per cell
+  data.flr = Histogram<>(0, flr_max); //!< 0 to 0.02 m3/s per cell
   data.Q = Histogram<>(0, 5);
   data.T = Histogram<>(C_to_Kelvin(0), C_to_Kelvin(100));
-  data.E = Histogram<>(0, E_max); // #CHECK if it is really correct?
+  data.E = Histogram<>(0, E_max); //!< #CHECK if it is really correct?
 }
 
 //------------------------
@@ -54,7 +54,7 @@ void CoolSystemData::storeData(CoolSystem &cs, CoolSystemHist_t &data)
   data.Q.add(Qmean_percell);
   data.flr.add(flr_percell);
 
-  // reset variables to calculate the mean
+  //!< reset variables to calculate the mean
   cData.E = 0;
   cData.Qevac = 0;
   cData.time = 0;
@@ -62,18 +62,18 @@ void CoolSystemData::storeData(CoolSystem &cs, CoolSystemHist_t &data)
 
 void CoolSystemData::storeData(CoolSystem &cs, CoolSystemInst_t &data)
 {
-  data.push_back({ cData.time_life,          // total time
-                   cData.Qevac / cData.time, // cooling power
-                   cData.E / cData.time,     // operating energy
-                   cs.getFlr() });           // flow rate
+  data.push_back({ cData.time_life,          //!< total time
+                   cData.Qevac / cData.time, //!< cooling power
+                   cData.E / cData.time,     //!< operating energy
+                   cs.getFlr() });           //!< flow rate
 }
 
-// ----- writeData ------
+//!< ----- writeData ------
 
 auto CoolSystemData::openFile(const std::string &prefix)
 {
   std::string name = prefix + "_coolSystemStats.csv";
-  // name of the file, start with the full hierarchy-ID to identify this cell
+  //!< name of the file, start with the full hierarchy-ID to identify this cell
   /*
    * 1 gives the number of cells
    * 2, 3 are empty
@@ -83,7 +83,7 @@ auto CoolSystemData::openFile(const std::string &prefix)
    * 107-206 gives the edges of the bins of the histogram: edge(i-1) < bin(i) < edge(i)
    */
 
-  // append the new data to the existing file
+  //!< append the new data to the existing file
   std::ofstream file(name, std::ios_base::app);
 
   if (!file.is_open()) {
@@ -97,7 +97,7 @@ auto CoolSystemData::openFile(const std::string &prefix)
 void CoolSystemData::writeData(CoolSystem &cs, const std::string &prefix, CoolSystemHist_t &data)
 {
   auto file = openFile(prefix);
-  // write the number of cells and the total operating energy [J]
+  //!< write the number of cells and the total operating energy [J]
   file << cs.Ncells << '\n';
   file << cData.E << '\n';
   file << "\n\n";

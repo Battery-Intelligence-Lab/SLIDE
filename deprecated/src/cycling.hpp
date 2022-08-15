@@ -18,5 +18,5 @@
 
 #include "model.h"
 
-void CCCV(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, const int verbose);    // function to load a cell with a few CCCV cycles
-void FollowCurrent(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose); // function to let a cell follow a predefined current profile
+void CCCV(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, const int verbose);    //!< function to load a cell with a few CCCV cycles
+void FollowCurrent(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose); //!< function to let a cell follow a predefined current profile

@@ -18,7 +18,7 @@ namespace slide {
 class Cell_KokamNMC : public Cell_SPM
 {
 public:
-  // constructors
+  //!< constructors
   Cell_KokamNMC(Model_SPM *, int verbosei);
   Cell_KokamNMC(Model_SPM *, DEG_ID &, int verbosei);
 };

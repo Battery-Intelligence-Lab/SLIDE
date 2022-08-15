@@ -8,7 +8,7 @@
  *
  */
 
-// Include header files
+//!< Include header files
 #include <ctime>
 #include <thread>
 #include <array>
@@ -23,14 +23,14 @@
 int main()
 {
 
-  // print that you start simulations
-  // slide::unit_tests::test_all();
+  //!< print that you start simulations
+  //!< slide::unit_tests::test_all();
 
   std::cout << "Start tests" << std::endl;
 
-  // Slide-pack tests:
+  //!< Slide-pack tests:
 
-  // *********************************************** END ********************************************************
-  // Now all the simulations have finished. Print this message, as well as how long it took to do the simulations
+  //!< *********************************************** END ********************************************************
+  //!< Now all the simulations have finished. Print this message, as well as how long it took to do the simulations
   std::cout << "finished all tests in " << clk << ".\n";
 }

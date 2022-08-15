@@ -11,16 +11,16 @@
  * See the licence file LICENCE.txt for more information.
  */
 
-// Include header files
+//!< Include header files
 #include "degradation.hpp"
 #include "cycler.hpp"
 #include "cell_user.hpp"
 #include "../utility/utility.hpp"
 
-void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, // simulate one cycle ageing experiment
+void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one cycle ageing experiment
                const struct CycleAgeingConfig &cycAgConfig, bool CVcha, double Icutcha, bool CVdis, double Icutdis, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, const std::string &pref)
 {
-  Cycle_one(M, degid, cellType, verbose, cycAgConfig.Vma, cycAgConfig.Vmi, // simulate one cycle ageing experiment
+  Cycle_one(M, degid, cellType, verbose, cycAgConfig.Vma, cycAgConfig.Vmi, //!< simulate one cycle ageing experiment
             cycAgConfig.Ccha,
             CVcha,
             Icutcha,
@@ -97,33 +97,33 @@ void Calendar_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, 
    * 				avoid special characters or spaces
    */
 
-  // settings of the cycler
-  double dt = 2; // use a time step of 2 seconds
+  //!< settings of the cycler
+  double dt = 2; //!< use a time step of 2 seconds
   if (Ti < 40)
-    dt = 5; // a lower temperature allows a larger time step without numerical problems
+    dt = 5; //!< a lower temperature allows a larger time step without numerical problems
 
-  // Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
+  //!< Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
   auto createCell = [&] {
     if (cellType == 0)
-      return (Cell)Cell_KokamNMC(M, degid, verbose); // a high power NMC cell made by Kokam
+      return (Cell)Cell_KokamNMC(M, degid, verbose); //!< a high power NMC cell made by Kokam
     else if (cellType == 1)
-      return (Cell)Cell_LGChemNMC(M, degid, verbose); // a high energy NMC cell made by LG Chem
+      return (Cell)Cell_LGChemNMC(M, degid, verbose); //!< a high energy NMC cell made by LG Chem
     else
-      return (Cell)slide::Cell_user(M, degid, verbose); // a user-defined cell
+      return (Cell)slide::Cell_user(M, degid, verbose); //!< a user-defined cell
   };
 
   Cell c1 = createCell();
 
-  // Make the cycler
+  //!< Make the cycler
   Cycler cycler(c1, name, verbose, timeCycleData);
 
-  // Call the Calendar-function of the cycler. Wrap it in a try-catch to avoid fatal errors
+  //!< Call the Calendar-function of the cycler. Wrap it in a try-catch to avoid fatal errors
   try {
     cycler.calendarAgeing(dt, V, Ti, Time, timeCheck, mode, proc);
   } catch (int err) {
-    // std::cout << "Throw test: " << 75 << '\n';
+    //!< std::cout << "Throw test: " << 75 << '\n';
     std::cout << "Calendar_one experienced error " << err << " during execution of " << name << ", abort this test.\n";
-    if (err == 15) // #CHECK this is not valid anymore.
+    if (err == 15) //!< #CHECK this is not valid anymore.
     {
       std::cout << "Error 15 means that the cell had degraded too much to continue simulating.\n"
                    "This can be due to too much SEI growth, too much loss of lithium, too much loss of active material (thin electrodes, low volume fraction, or low effective surface)\n"
@@ -200,33 +200,33 @@ void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int
    * 				avoid special characters or spaces
    */
 
-  // settings of the cycler
-  double dt = 2; // use a time step of 2 seconds to ensure numerical stability
+  //!< settings of the cycler
+  double dt = 2; //!< use a time step of 2 seconds to ensure numerical stability
   if (Ti < 40)
-    dt = 3; // a lower temperature allows a larger time step without numerical problems
+    dt = 3; //!< a lower temperature allows a larger time step without numerical problems
 
-  // Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
+  //!< Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
   auto createCell = [&] {
     if (cellType == 0)
-      return (Cell)Cell_KokamNMC(M, degid, verbose); // a high power NMC cell made by Kokam
+      return (Cell)Cell_KokamNMC(M, degid, verbose); //!< a high power NMC cell made by Kokam
     else if (cellType == 1)
-      return (Cell)Cell_LGChemNMC(M, degid, verbose); // a high energy NMC cell made by LG Chem
+      return (Cell)Cell_LGChemNMC(M, degid, verbose); //!< a high energy NMC cell made by LG Chem
     else
-      return (Cell)slide::Cell_user(M, degid, verbose); // a user-defined cell
+      return (Cell)slide::Cell_user(M, degid, verbose); //!< a user-defined cell
   };
 
   Cell c1 = createCell();
 
-  // Make the cycler
+  //!< Make the cycler
   Cycler cycler(c1, name, verbose, timeCycleData);
 
-  // Call the cycle ageing function from the cycler
+  //!< Call the cycle ageing function from the cycler
   try {
     cycler.cycleAgeing(dt, Vma, Vmi, Ccha, CVcha, Ccutcha, Cdis, CVdis, Ccutdis, Ti, nrCycles, nrCap, proc);
   } catch (int err) {
-    // std::cout << "Throw test: " << 76 << '\n';
+    //!< std::cout << "Throw test: " << 76 << '\n';
     std::cout << "Cycle_one experienced error " << err << " during execution of " << name << ", abort this test.\n";
-    if (err == 15) // #CHECK this is not valid anymore.
+    if (err == 15) //!< #CHECK this is not valid anymore.
     {
       std::cout << "Error 15 means that the cell had degraded too much to continue simulating.\n"
                    "This can be due to too much SEI growth, too much loss of lithium, too much loss of active material (thin electrodes, low volume fraction, or low effective surface) \n"
@@ -296,35 +296,35 @@ void Profile_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, i
    * 				avoid special characters or spaces
    */
 
-  // Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
+  //!< Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
   auto createCell = [&] {
     if (cellType == 0)
-      return (Cell)Cell_KokamNMC(M, degid, verbose); // a high power NMC cell made by Kokam
+      return (Cell)Cell_KokamNMC(M, degid, verbose); //!< a high power NMC cell made by Kokam
     else if (cellType == 1)
-      return (Cell)Cell_LGChemNMC(M, degid, verbose); // a high energy NMC cell made by LG Chem
+      return (Cell)Cell_LGChemNMC(M, degid, verbose); //!< a high energy NMC cell made by LG Chem
     else
-      return (Cell)slide::Cell_user(M, degid, verbose); // a user-defined cell
+      return (Cell)slide::Cell_user(M, degid, verbose); //!< a user-defined cell
   };
 
   Cell c1 = createCell();
 
-  // Make the cycler
+  //!< Make the cycler
   Cycler cycler(c1, name, verbose, timeCycleData);
 
-  // Print a warning if you want to store cycling data
-  // In profileAgeing, you are guaranteed to get one point per step in the profile
-  // so if the steps are very short (e.g. 1sec), you are storing a huge amount of data (e.g. every second)
-  // 	This seriously slowing down the code (taking hours instead of minutes) and produces huge amounts of data (several GB)
+  //!< Print a warning if you want to store cycling data
+  //!< In profileAgeing, you are guaranteed to get one point per step in the profile
+  //!< so if the steps are very short (e.g. 1sec), you are storing a huge amount of data (e.g. every second)
+  //!< 	This seriously slowing down the code (taking hours instead of minutes) and produces huge amounts of data (several GB)
   if (timeCycleData != 0)
     std::cout << "Warning for profile ageing: the cycling data of the cell is going to be stored, which will lead to much slower "
                  "calculation (several hours) and a huge amount of data (several GB).\n";
-  // Call the profile ageing function from the Cycler
+  //!< Call the profile ageing function from the Cycler
   try {
     cycler.profileAgeing(profName, limit, Vma, Vmi, Ti, nrProfiles, nrCap, proc);
   } catch (int err) {
-    // std::cout << "Throw test: " << 77 << '\n';
+    //!< std::cout << "Throw test: " << 77 << '\n';
     std::cout << "Profile_one experienced error " << err << " during execution of " << name << ", abort this test.\n";
-    if (err == 15) // #CHECK this is not valid anymore.
+    if (err == 15) //!< #CHECK this is not valid anymore.
     {
       std::cout << "Error 15 means that the cell had degraded too much to continue simulating.\n"
                    "This can be due to too much SEI growth, too much loss of lithium, too much loss of active material (thin electrodes, low volume fraction, or low effective surface)\n"
@@ -393,102 +393,102 @@ void CycleAgeing(const struct slide::Model_SPM &M, std::string pref, const struc
    * 			exact description of the file can be found in Cycler::checkUp_pulse
    */
 
-  // *********************************************************** 1 variables ***********************************************************************
+  //!< *********************************************************** 1 variables ***********************************************************************
 
-  // append the ageing identifiers to the prefix
+  //!< append the ageing identifiers to the prefix
   pref += +"_" + degid.print() + "_";
 
-  // Make variables to describe the cycling regimes
-  bool CVcha = true;      // we want to have a CC CV charge (if false, then charge has only a CC phase)
-  double Ccutcha = 0.05;  // Crate of the cutoff current for the CV phase of the charge [-]
-  bool CVdis = false;     // we want to have a CC discharge (if true, then discharge has both a CC and CV phase)
-  double Ccutdis = 1.0;   // Crate of the cutoff current for the CV phase of the discharge [-]
-  int nrCycles = 3000;    // the number of cycles which has to be simulated
-  int nrCap = 500;        // the number of cycles between check-ups
-  int timeCycleData = 60; // time interval at which cycling data (voltage and temperature) has to be recorded [s]
-                          // 	0 means no data is recorded
-                          //  if not 0, data is recorded approximately every so many seconds
+  //!< Make variables to describe the cycling regimes
+  bool CVcha = true;      //!< we want to have a CC CV charge (if false, then charge has only a CC phase)
+  double Ccutcha = 0.05;  //!< Crate of the cutoff current for the CV phase of the charge [-]
+  bool CVdis = false;     //!< we want to have a CC discharge (if true, then discharge has both a CC and CV phase)
+  double Ccutdis = 1.0;   //!< Crate of the cutoff current for the CV phase of the discharge [-]
+  int nrCycles = 3000;    //!< the number of cycles which has to be simulated
+  int nrCap = 500;        //!< the number of cycles between check-ups
+  int timeCycleData = 60; //!< time interval at which cycling data (voltage and temperature) has to be recorded [s]
+                          //!< 	0 means no data is recorded
+                          //!<  if not 0, data is recorded approximately every so many seconds
 
-  // *********************************************************** 2 check-up procedure ******************************************************************
+  //!< *********************************************************** 2 check-up procedure ******************************************************************
 
-  // Make a struct to describe the check-up procedure
+  //!< Make a struct to describe the check-up procedure
   struct checkUpProcedure proc;
-  proc.blockDegradation = true;                    // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
-  proc.capCheck = true;                            // boolean indicating if the capacity should be checked
-  proc.OCVCheck = true;                            // boolean indicating if the half-cell OCV curves should be checked
-  proc.CCCVCheck = true;                           // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
-  proc.pulseCheck = true;                          // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
-  proc.includeCycleData = true;                    // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
-  proc.nCycles = 3;                                // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates)
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[0] = 0.5;                            // do a 0.5C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[1] = 1.0;                            // do a 1C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[2] = 2.0;                            // do a 2C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Ccut_cha = 0.05;                            // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
-  proc.Ccut_dis = 100;                             // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
-                                                   // if the cutoff is larger than the value in the CC phase, no CV phase is done
-  proc.set_profileName("CheckupPulseProfile.csv"); // name of the csv file which contains the current profile for the pulse test
+  proc.blockDegradation = true;                    //!< boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
+  proc.capCheck = true;                            //!< boolean indicating if the capacity should be checked
+  proc.OCVCheck = true;                            //!< boolean indicating if the half-cell OCV curves should be checked
+  proc.CCCVCheck = true;                           //!< boolean indicating if some CCCV cycles should be done as part of the check-up procedure
+  proc.pulseCheck = true;                          //!< boolean indicating if a pulse discharge test should be done as part of the check-up procedure
+  proc.includeCycleData = true;                    //!< boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
+  proc.nCycles = 3;                                //!< number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates)
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[0] = 0.5;                            //!< do a 0.5C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[1] = 1.0;                            //!< do a 1C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[2] = 2.0;                            //!< do a 2C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Ccut_cha = 0.05;                            //!< C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
+  proc.Ccut_dis = 100;                             //!< C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
+                                                   //!< if the cutoff is larger than the value in the CC phase, no CV phase is done
+  proc.set_profileName("CheckupPulseProfile.csv"); //!< name of the csv file which contains the current profile for the pulse test
                                                    //	the first column contains the current in [A] (positive for discharge, negative for charge)
                                                    //	the second column contains the time in [sec] the current should be maintained
                                                    //	the profile must be a net discharge, i.e. sum (I*dt) > 0
-  proc.profileLength = 13;                         // length of the current profiles for the pulse test (number of rows in the csv file)
+  proc.profileLength = 13;                         //!< length of the current profiles for the pulse test (number of rows in the csv file)
 
-  // *********************************************************** 3 simulations ******************************************************************
+  //!< *********************************************************** 3 simulations ******************************************************************
 
-  // The cycling-window needs the voltage windows between which it should cycle the battery.
-  // Users typically find it easier to think in terms of state of charge windows.
-  // For the Kokam cell used here, the conversion is as follows (for other cells the user has to derive the conversion from the OCV curve)
-  // 0%		2.7V
-  // 10%		3.42V
-  // 20%		3.49V
-  // 50% 		3.65V
-  // 80%		3.98V
-  // 90%		4.08V
-  // 100%		4.2V
-  // The voltages will be slightly different for the LG Chem cell because it has different OCV curves
+  //!< The cycling-window needs the voltage windows between which it should cycle the battery.
+  //!< Users typically find it easier to think in terms of state of charge windows.
+  //!< For the Kokam cell used here, the conversion is as follows (for other cells the user has to derive the conversion from the OCV curve)
+  //!< 0%		2.7V
+  //!< 10%		3.42V
+  //!< 20%		3.49V
+  //!< 50% 		3.65V
+  //!< 80%		3.98V
+  //!< 90%		4.08V
+  //!< 100%		4.2V
+  //!< The voltages will be slightly different for the LG Chem cell because it has different OCV curves
 
-  // Use for loops to create a cycle ageing experiment configuration.
+  //!< Use for loops to create a cycle ageing experiment configuration.
   std::vector<CycleAgeingConfig> cycleAgConfigVec;
   cycleAgConfigVec.reserve(25);
 
-  // cycleAgConfigVec.emplace_back(4.08, 3.42, 45, 2, 1, 90, 10); // For debugging purposes.
+  //!< cycleAgConfigVec.emplace_back(4.08, 3.42, 45, 2, 1, 90, 10); //!< For debugging purposes.
 
-  for (double Ccha : { 1, 2, 3 }) // Crate of the CC charge
+  for (double Ccha : { 1, 2, 3 }) //!< Crate of the CC charge
   {
-    double Cdis{ 1 }; // Crate of the CC discharge
+    double Cdis{ 1 }; //!< Crate of the CC discharge
 
-    // Corresponds to SOC window 100% -- 0%
-    double Vma{ 4.2 }, Vmi{ 2.7 }, SOCma{ 100 }, SOCmi{ 0 }; // maximum and minimum voltages of the cycle [V] with corresponding SOC values [%].
-    for (double Tc : { 45, 25 })                             // 45 and 25 Celsius degrees of environmental temperature.
+    //!< Corresponds to SOC window 100% -- 0%
+    double Vma{ 4.2 }, Vmi{ 2.7 }, SOCma{ 100 }, SOCmi{ 0 }; //!< maximum and minimum voltages of the cycle [V] with corresponding SOC values [%].
+    for (double Tc : { 45, 25 })                             //!< 45 and 25 Celsius degrees of environmental temperature.
       cycleAgConfigVec.emplace_back(Vma, Vmi, Tc, Ccha, Cdis, SOCma, SOCmi);
 
-    // Corresponds to SOC window 80% -- 0%
+    //!< Corresponds to SOC window 80% -- 0%
     Vma = 3.98, Vmi = 2.7, SOCma = 80, SOCmi = 0;
-    for (double Tc : { 45 }) // 45 Celsius degrees of environmental temperature.
+    for (double Tc : { 45 }) //!< 45 Celsius degrees of environmental temperature.
       cycleAgConfigVec.emplace_back(Vma, Vmi, Tc, Ccha, Cdis, SOCma, SOCmi);
 
-    // Corresponds to SOC window 100% -- 20%
+    //!< Corresponds to SOC window 100% -- 20%
     Vma = 4.2, Vmi = 3.49, SOCma = 100, SOCmi = 20;
-    for (double Tc : { 45 }) // 45 Celsius degrees of environmental temperature.
+    for (double Tc : { 45 }) //!< 45 Celsius degrees of environmental temperature.
       cycleAgConfigVec.emplace_back(Vma, Vmi, Tc, Ccha, Cdis, SOCma, SOCmi);
 
-    // Corresponds to SOC window 90% -- 10%
+    //!< Corresponds to SOC window 90% -- 10%
     Vma = 4.08, Vmi = 3.42, SOCma = 90, SOCmi = 10;
-    for (double Tc : { 45, 25, 5 }) // 45, 25, and 5 Celsius degrees of environmental temperature.
+    for (double Tc : { 45, 25, 5 }) //!< 45, 25, and 5 Celsius degrees of environmental temperature.
       cycleAgConfigVec.emplace_back(Vma, Vmi, Tc, Ccha, Cdis, SOCma, SOCmi);
   }
 
   auto task_indv = [&](int i_begin) {
-    // simulate one cycle ageing experiment
+    //!< simulate one cycle ageing experiment
     Cycle_one(M, degid, cellType, verbose, cycleAgConfigVec[i_begin], CVcha, Ccutcha, CVdis, Ccutdis, timeCycleData, nrCycles, nrCap, proc, pref);
   };
 
-  // Print a message that we are starting the simulations
+  //!< Print a message that we are starting the simulations
   std::cout << "\t Cycle ageing experiments are started.\n";
-  slide::run(task_indv, cycleAgConfigVec.size()); // Runs individual simulation in parallel or sequential depending on settings.
+  slide::run(task_indv, cycleAgConfigVec.size()); //!< Runs individual simulation in parallel or sequential depending on settings.
 }
 
 void CalendarAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose)
@@ -549,76 +549,76 @@ void CalendarAgeing(const struct slide::Model_SPM &M, std::string pref, const st
    * 			exact description of the file can be found in Cycler::checkUp_pulse
    */
 
-  // *********************************************************** 1 variables ***********************************************************************
+  //!< *********************************************************** 1 variables ***********************************************************************
 
-  // append the ageing identifiers to the prefix
+  //!< append the ageing identifiers to the prefix
   pref += "_" + degid.print() + "_";
 
-  // Make variables to describe the cycling regimes
-  constexpr int mode = 0;             // integer deciding how often to recharge the cells (due to degradation, the voltage will decrease over time. But no self-discharge is simulated)
-                                      // 0 means we recharge to the specified voltage only after a check-up
-                                      // 1 means we recharge to the specified voltage every day
-                                      // 2 means we float the cell at a constant voltage, rather than resting it
-                                      // 		floating at constant voltage takes very long to simulate
-  constexpr int Time = 20 * 30;       // time the cell has to rest [days]
-  constexpr int timeCheck = 30;       // time between consecutive check-ups [days]
-  constexpr int timeCycleData = 3600; // time interval at which cycling data (voltage and temperature) has to be recorded [s]
-                                      // 	0 means no data is recorded
-                                      //  if not 0, data is recorded approximately every so many seconds
+  //!< Make variables to describe the cycling regimes
+  constexpr int mode = 0;             //!< integer deciding how often to recharge the cells (due to degradation, the voltage will decrease over time. But no self-discharge is simulated)
+                                      //!< 0 means we recharge to the specified voltage only after a check-up
+                                      //!< 1 means we recharge to the specified voltage every day
+                                      //!< 2 means we float the cell at a constant voltage, rather than resting it
+                                      //!< 		floating at constant voltage takes very long to simulate
+  constexpr int Time = 20 * 30;       //!< time the cell has to rest [days]
+  constexpr int timeCheck = 30;       //!< time between consecutive check-ups [days]
+  constexpr int timeCycleData = 3600; //!< time interval at which cycling data (voltage and temperature) has to be recorded [s]
+                                      //!< 	0 means no data is recorded
+                                      //!<  if not 0, data is recorded approximately every so many seconds
 
-  // *********************************************************** 2 check-up procedure ******************************************************************
+  //!< *********************************************************** 2 check-up procedure ******************************************************************
 
-  // Make a struct to describe the check-up procedure
+  //!< Make a struct to describe the check-up procedure
   struct checkUpProcedure proc;
-  proc.blockDegradation = true;                    // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
-  proc.capCheck = true;                            // boolean indicating if the capacity should be checked
-  proc.OCVCheck = true;                            // boolean indicating if the half-cell OCV curves should be checked
-  proc.CCCVCheck = true;                           // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
-  proc.pulseCheck = true;                          // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
-  proc.includeCycleData = true;                    // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
-  proc.nCycles = 3;                                // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates), maximum 100
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[0] = 0.5;                            // do a 0.5C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[1] = 1.0;                            // do a 1C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[2] = 2.0;                            // do a 2C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Ccut_cha = 0.05;                            // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
-  proc.Ccut_dis = 100;                             // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
-                                                   // if the cutoff is larger than the value in the CC phase, no CV phase is done
-  proc.set_profileName("CheckupPulseProfile.csv"); // name of the csv file which contains the current profile for the pulse test
+  proc.blockDegradation = true;                    //!< boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
+  proc.capCheck = true;                            //!< boolean indicating if the capacity should be checked
+  proc.OCVCheck = true;                            //!< boolean indicating if the half-cell OCV curves should be checked
+  proc.CCCVCheck = true;                           //!< boolean indicating if some CCCV cycles should be done as part of the check-up procedure
+  proc.pulseCheck = true;                          //!< boolean indicating if a pulse discharge test should be done as part of the check-up procedure
+  proc.includeCycleData = true;                    //!< boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
+  proc.nCycles = 3;                                //!< number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates), maximum 100
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[0] = 0.5;                            //!< do a 0.5C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[1] = 1.0;                            //!< do a 1C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[2] = 2.0;                            //!< do a 2C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Ccut_cha = 0.05;                            //!< C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
+  proc.Ccut_dis = 100;                             //!< C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
+                                                   //!< if the cutoff is larger than the value in the CC phase, no CV phase is done
+  proc.set_profileName("CheckupPulseProfile.csv"); //!< name of the csv file which contains the current profile for the pulse test
                                                    //	the first column contains the current in [A] (positive for discharge, negative for charge)
                                                    //	the second column contains the time in [sec] the current should be maintained
                                                    //	the profile must be a net discharge, i.e. sum (I*dt) > 0
-  proc.profileLength = 13;                         // length of the current profiles for the pulse test (number of rows in the csv file)
+  proc.profileLength = 13;                         //!< length of the current profiles for the pulse test (number of rows in the csv file)
 
-  // *********************************************************** Simulations ******************************************************************
+  //!< *********************************************************** Simulations ******************************************************************
 
-  // The cycling-window needs the voltage windows between which it should cycle the battery.
-  // Users typically find it easier to think in terms of state of charge windows.
-  // For the Kokam cell used here, the conversion is as follows (for other cells the user has to derive the conversion from the OCV curve)
-  // 0%		2.7V
-  // 10%		3.42V
-  // 20%		3.49V
-  // 50% 		3.65V
-  // 80%		3.98V
-  // 90%		4.08V
-  // 100%		4.2V
-  // The voltages will be slightly different for the LG Chem cell because it has different OCV curves
+  //!< The cycling-window needs the voltage windows between which it should cycle the battery.
+  //!< Users typically find it easier to think in terms of state of charge windows.
+  //!< For the Kokam cell used here, the conversion is as follows (for other cells the user has to derive the conversion from the OCV curve)
+  //!< 0%		2.7V
+  //!< 10%		3.42V
+  //!< 20%		3.49V
+  //!< 50% 		3.65V
+  //!< 80%		3.98V
+  //!< 90%		4.08V
+  //!< 100%		4.2V
+  //!< The voltages will be slightly different for the LG Chem cell because it has different OCV curves
 
   std::vector<CalendarAgeingConfig> calAgConfig;
   std::array<double, 3> V_arr{ 4.2, 4.08, 3.65 }, SOC_arr{ 100, 90, 50 };
 
-  for (double Tc : { 5, 25, 45 })             // temperature at which the cell has to rest [oC]
-    for (size_t i = 0; i < V_arr.size(); i++) // voltage at which the cell has to rest [V] above the minimum and below the maximum voltage of the cell
+  for (double Tc : { 5, 25, 45 })             //!< temperature at which the cell has to rest [oC]
+    for (size_t i = 0; i < V_arr.size(); i++) //!< voltage at which the cell has to rest [V] above the minimum and below the maximum voltage of the cell
       calAgConfig.emplace_back(V_arr[i], Tc, SOC_arr[i]);
 
   auto task_indv = [&](size_t i) {
     Calendar_one(M, degid, cellType, verbose, calAgConfig[i].V, calAgConfig[i].Ti(), Time, mode, timeCycleData, timeCheck, proc, calAgConfig[i].get_name(pref));
   };
 
-  // Print a message that we are starting the simulations
+  //!< Print a message that we are starting the simulations
   std::cout << "\t Calendar ageing experiments are started.\n";
   slide::run(task_indv, calAgConfig.size());
 }
@@ -681,119 +681,119 @@ void ProfileAgeing(const struct slide::Model_SPM &M, std::string pref, const str
    * 			exact description of the file can be found in Cycler::checkUp_pulse
    */
 
-  // *********************************************************** 1 variables ***********************************************************************
+  //!< *********************************************************** 1 variables ***********************************************************************
 
-  // append the ageing identifiers to the prefix
+  //!< append the ageing identifiers to the prefix
   pref += "_" + degid.print() + "_";
 
-  // find the number of parallel threads that are optimal to use
-  // unsigned int Ncor = std::thread::hardware_concurrency(); // Ncor is the number of (logical) cores, 0 if c++ can't identify it
+  //!< find the number of parallel threads that are optimal to use
+  //!< unsigned int Ncor = std::thread::hardware_concurrency(); //!< Ncor is the number of (logical) cores, 0 if c++ can't identify it
 
-  // Give the current profile which should be followed
-  // the first column must give the current [A] which should be followed
-  // 		>0 is discharge
+  //!< Give the current profile which should be followed
+  //!< the first column must give the current [A] which should be followed
+  //!< 		>0 is discharge
   //		<0 is charge
-  // the second column should give the time [sec] for which this current should be maintained
+  //!< the second column should give the time [sec] for which this current should be maintained
   //		values for time are floored to the integer value (ie. the numbers behind the comma are ignored)
-  // 5 example current profiles are provided:
-  // 	name										length		description
-  // 	Current Profile random.csv 					100			a random current profile with a maximum current of 5A, each current step takes maximum 1000 seconds
+  //!< 5 example current profiles are provided:
+  //!< 	name										length		description
+  //!< 	Current Profile random.csv 					100			a random current profile with a maximum current of 5A, each current step takes maximum 1000 seconds
   //	Current Profile drive cycle HWFET.csv		766			HWFET drive cycle with a maximum current of 8.1A (= 3C), each current step takes 1 second
   //	Current Profile drive cycle NYCC.csv		599			NYCC drive cycle with a maximum current of 8.1A (= 3C), each current step takes 1 second
   //	Current Profile drive cycle UDDS.csv		1370		UDDS drive cycle with a maximum current of 8.1A (= 3C), each current step takes 1 second
-  // 	Current Profile drive cycle US06.csv		601			US06 drive cycle with a maximum current of 8.1A (= 3C), each current step takes 1 second
-  int length;    // length of the profile (number of rows)
-  int limit = 0; // what to do if the voltage limits are reached while following the profile:
-                 // 0 immediately go to the next current step of the profile (i.e. reduce the time of this step)
-                 // 1 keep the voltage constant for the rest of this step of the profile (i.e. reduce the current of this step)
+  //!< 	Current Profile drive cycle US06.csv		601			US06 drive cycle with a maximum current of 8.1A (= 3C), each current step takes 1 second
+  int length;    //!< length of the profile (number of rows)
+  int limit = 0; //!< what to do if the voltage limits are reached while following the profile:
+                 //!< 0 immediately go to the next current step of the profile (i.e. reduce the time of this step)
+                 //!< 1 keep the voltage constant for the rest of this step of the profile (i.e. reduce the current of this step)
 
-  int nrProfiles = 10000; // number of times the current profile should be repeated [-]
-  int nrCap = 1000;       // number of times the current profile should be repeated between consecutive check-ups [-]
-  int timeCycleData = 0;  // time interval at which cycling data (voltage and temperature) has to be recorded [s]
-                          // 	0 means no data is recorded
-                          //  if not 0, data is recorded approximately every so many seconds
-                          // For this function (profileAgeing) it is highly recommended to keep timeCycleData at 0.
-                          // 	Otherwise, a huge amount of data is generated (many GB) and consequently the code slows down dramatically
-                          // 	This is because you are guaranteed to get one data point per step in the current profile if timeCycleData is bigger than 0,
-                          // 	independent of the time interval at which you are otherwise collecting data (i.e. even if you set it to 100, you will still get a data point every step)
-                          // 	As many drive cycles will have a step per second (i.e. the current changes every second), this means you store a data point every second (even if timeCycleData = 100)
-                          // 	which is obviously a huge amount of data if you simulate long term battery usage
+  int nrProfiles = 10000; //!< number of times the current profile should be repeated [-]
+  int nrCap = 1000;       //!< number of times the current profile should be repeated between consecutive check-ups [-]
+  int timeCycleData = 0;  //!< time interval at which cycling data (voltage and temperature) has to be recorded [s]
+                          //!< 	0 means no data is recorded
+                          //!<  if not 0, data is recorded approximately every so many seconds
+                          //!< For this function (profileAgeing) it is highly recommended to keep timeCycleData at 0.
+                          //!< 	Otherwise, a huge amount of data is generated (many GB) and consequently the code slows down dramatically
+                          //!< 	This is because you are guaranteed to get one data point per step in the current profile if timeCycleData is bigger than 0,
+                          //!< 	independent of the time interval at which you are otherwise collecting data (i.e. even if you set it to 100, you will still get a data point every step)
+                          //!< 	As many drive cycles will have a step per second (i.e. the current changes every second), this means you store a data point every second (even if timeCycleData = 100)
+                          //!< 	which is obviously a huge amount of data if you simulate long term battery usage
 
-  // *********************************************************** 2 check-up procedure ******************************************************************
+  //!< *********************************************************** 2 check-up procedure ******************************************************************
 
-  // Make a struct to describe the check-up procedure
+  //!< Make a struct to describe the check-up procedure
   struct checkUpProcedure proc;
-  proc.blockDegradation = true;                    // boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
-  proc.capCheck = true;                            // boolean indicating if the capacity should be checked
-  proc.OCVCheck = true;                            // boolean indicating if the half-cell OCV curves should be checked
-  proc.CCCVCheck = true;                           // boolean indicating if some CCCV cycles should be done as part of the check-up procedure
-  proc.pulseCheck = true;                          // boolean indicating if a pulse discharge test should be done as part of the check-up procedure
-  proc.includeCycleData = true;                    // boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
-  proc.nCycles = 3;                                // number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates).
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[0] = 0.5;                            // do a 0.5C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[1] = 1.0;                            // do a 1C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Crates[2] = 2.0;                            // do a 2C cycle as part of the CCCV check-up, must be positive
-                                                   // If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
-  proc.Ccut_cha = 0.05;                            // C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
-  proc.Ccut_dis = 100;                             // C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
-                                                   // if the cutoff is larger than the value in the CC phase, no CV phase is done
-  proc.set_profileName("CheckupPulseProfile.csv"); // name of the csv file which contains the current profile for the pulse test
+  proc.blockDegradation = true;                    //!< boolean indicating if degradation is accounted for during the check-up, [RECOMMENDED: TRUE]
+  proc.capCheck = true;                            //!< boolean indicating if the capacity should be checked
+  proc.OCVCheck = true;                            //!< boolean indicating if the half-cell OCV curves should be checked
+  proc.CCCVCheck = true;                           //!< boolean indicating if some CCCV cycles should be done as part of the check-up procedure
+  proc.pulseCheck = true;                          //!< boolean indicating if a pulse discharge test should be done as part of the check-up procedure
+  proc.includeCycleData = true;                    //!< boolean indicating if the cycling data from the check-up should be included in the cycling data of the cell or not
+  proc.nCycles = 3;                                //!< number of different cycles to be simulated for the CCCV check-up (i.e. the length of the array crates).
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[0] = 0.5;                            //!< do a 0.5C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[1] = 1.0;                            //!< do a 1C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Crates[2] = 2.0;                            //!< do a 2C cycle as part of the CCCV check-up, must be positive
+                                                   //!< If you change this variable, also change it in the MATLAB script which reads the results from the check-up (the variable Crates in readAgeing_CCCV.m)
+  proc.Ccut_cha = 0.05;                            //!< C rate of the cutoff current for the CV phase for the charges in the CCCV check-up, must be positive
+  proc.Ccut_dis = 100;                             //!< C rate of the cutoff current for the CV phase for the discharges in the CCCV check-up, must be positive
+                                                   //!< if the cutoff is larger than the value in the CC phase, no CV phase is done
+  proc.set_profileName("CheckupPulseProfile.csv"); //!< name of the csv file which contains the current profile for the pulse test
                                                    //	the first column contains the current in [A] (positive for discharge, negative for charge)
                                                    //	the second column contains the time in [sec] the current should be maintained
                                                    //	the profile must be a net discharge, i.e. sum (I*dt) > 0
-  proc.profileLength = 13;                         // length of the current profiles for the pulse test (number of rows in the csv file)
+  proc.profileLength = 13;                         //!< length of the current profiles for the pulse test (number of rows in the csv file)
 
-  // *********************************************************** 3 simulations ******************************************************************
+  //!< *********************************************************** 3 simulations ******************************************************************
 
-  // The cycling-window needs the voltage windows between which it should cycle the battery.
-  // Users typically find it easier to think in terms of state of charge windows.
-  // For the Kokam cell used here, the conversion is as follows (for other cells the user has to derive the conversion from the OCV curve)
-  // 0%		2.7V
-  // 10%		3.42V
-  // 20%		3.49V
-  // 50% 		3.65V
-  // 80%		3.98V
-  // 90%		4.08V
-  // 100%		4.2V
-  // The voltages will be slightly different for the LG Chem cell because it has different OCV curves
+  //!< The cycling-window needs the voltage windows between which it should cycle the battery.
+  //!< Users typically find it easier to think in terms of state of charge windows.
+  //!< For the Kokam cell used here, the conversion is as follows (for other cells the user has to derive the conversion from the OCV curve)
+  //!< 0%		2.7V
+  //!< 10%		3.42V
+  //!< 20%		3.49V
+  //!< 50% 		3.65V
+  //!< 80%		3.98V
+  //!< 90%		4.08V
+  //!< 100%		4.2V
+  //!< The voltages will be slightly different for the LG Chem cell because it has different OCV curves
 
-  // Use for loops to create a profile ageing experiment configuration.
+  //!< Use for loops to create a profile ageing experiment configuration.
   std::vector<ProfileAgeingConfig> profAgConfigVec;
   profAgConfigVec.reserve(25);
 
-  // names of the csv file with the current profile:
+  //!< names of the csv file with the current profile:
   std::array<std::string, 4> profile_arr = { "Current Profile drive cycle HWFET.csv",
                                              "Current Profile drive cycle NYCC.csv",
                                              "Current Profile drive cycle UDDS.csv",
                                              "Current Profile drive cycle US06.csv" };
 
-  // identification strings for each experiment (will also be used to name the folder so must have the same restrictions as the prefix, i.e. no spaces, no special characters, etc.)
-  std::array<std::string, 4> prefName_arr = { "prof-HWFET", "prof-NYCC", "prof-UDDS", "prof-US06" }; // Should be same size as profile_arr.
+  //!< identification strings for each experiment (will also be used to name the folder so must have the same restrictions as the prefix, i.e. no spaces, no special characters, etc.)
+  std::array<std::string, 4> prefName_arr = { "prof-HWFET", "prof-NYCC", "prof-UDDS", "prof-US06" }; //!< Should be same size as profile_arr.
 
-  for (size_t i{}; i < profile_arr.size(); i++) // Profile file names.
+  for (size_t i{}; i < profile_arr.size(); i++) //!< Profile file names.
   {
-    // Corresponds to SOC window 100% -- 0%
-    double Vma{ 4.2 }, Vmi{ 2.7 }, SOCma{ 100 }, SOCmi{ 0 }; // maximum and minimum voltages which the cell should stay while following the current profile [V]
-                                                             // with corresponding SOC values [%].
-    for (double Tc : { 45, 25 })                             // 45 and 25 Celsius degrees of environmental temperature while the cell is following the profile [oC]
+    //!< Corresponds to SOC window 100% -- 0%
+    double Vma{ 4.2 }, Vmi{ 2.7 }, SOCma{ 100 }, SOCmi{ 0 }; //!< maximum and minimum voltages which the cell should stay while following the current profile [V]
+                                                             //!< with corresponding SOC values [%].
+    for (double Tc : { 45, 25 })                             //!< 45 and 25 Celsius degrees of environmental temperature while the cell is following the profile [oC]
       profAgConfigVec.emplace_back(Vma, Vmi, Tc, SOCma, SOCmi, profile_arr[i], prefName_arr[i]);
 
-    // Corresponds to SOC window 90% -- 10%
+    //!< Corresponds to SOC window 90% -- 10%
     Vma = 4.08, Vmi = 3.42, SOCma = 90, SOCmi = 10;
-    for (double Tc : { 25 }) // 25 Celsius degree of environmental temperature.
+    for (double Tc : { 25 }) //!< 25 Celsius degree of environmental temperature.
       profAgConfigVec.emplace_back(Vma, Vmi, Tc, SOCma, SOCmi, profile_arr[i], prefName_arr[i]);
   }
 
   auto task_indv = [&](size_t i) {
-    // simulate one profile ageing experiment
+    //!< simulate one profile ageing experiment
     auto &conf = profAgConfigVec[i];
     Profile_one(M, degid, cellType, verbose, conf.csvName, length, limit, conf.Vma, conf.Vmi, conf.Ti(), timeCycleData, nrProfiles, nrCap, proc, conf.get_name(pref));
   };
 
-  // Print a message that we are starting the simulations
+  //!< Print a message that we are starting the simulations
   std::cout << "\t Profile ageing experiments are started.\n";
   slide::run(task_indv, profAgConfigVec.size());
 }

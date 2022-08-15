@@ -18,7 +18,7 @@
 #include <vector>
 #include <map>
 #include <span>
-#include <cstring> // -> for memcpy
+#include <cstring> //!< -> for memcpy
 
 #include "../../types/matrix.hpp"
 #include "../util_debug.hpp"
@@ -31,10 +31,10 @@ std::string getFileContents(const Tpath &name)
   std::cerr << "NOT IMPLEMENTED YET!\n";
   throw 1234;
 
-  // For more info see: https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
+  //!< For more info see: https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
 
   std::ifstream in(name, std::ios::in | std::ios::binary);
-  if (!in.good()) // check if we could open the file
+  if (!in.good()) //!< check if we could open the file
   {
     std::cerr << "Error in getFileContents. File " << name << " could not be opened.\n";
     throw 2;
@@ -56,19 +56,19 @@ inline auto getFile(std::string name)
 template <typename Tpath, typename T, size_t ROW, size_t COL>
 void loadCSV_mat(const Tpath &name, Matrix<T, ROW, COL> &x)
 {
-  // 	 * Reads a matrix CSV file with multiple columns.
-  // 	 * IN
-  // 	 * name 	the name of the file
-  // 	 *
-  // 	 * OUT
-  // 	 * x 		matrix in which the data from the file will be put.
-  // 	 *
-  // 	 * THROWS
-  // 	 * 2 		could not open the file
-  // 	 */
+  //!< 	 * Reads a matrix CSV file with multiple columns.
+  //!< 	 * IN
+  //!< 	 * name 	the name of the file
+  //!< 	 *
+  //!< 	 * OUT
+  //!< 	 * x 		matrix in which the data from the file will be put.
+  //!< 	 *
+  //!< 	 * THROWS
+  //!< 	 * 2 		could not open the file
+  //!< 	 */
   std::ifstream in(name, std::ios_base::in);
 
-  if (!in.good()) // check if we could open the file
+  if (!in.good()) //!< check if we could open the file
   {
     std::cerr << "Error in ReadCSVfiles::loadCSV_mat. File " << name << " could not be opened\n";
     throw 2;
@@ -76,15 +76,15 @@ void loadCSV_mat(const Tpath &name, Matrix<T, ROW, COL> &x)
 
   char c = '.';
 
-  while (in.peek() <= 32) // Ignore byte order mark (BOM) at the beginning
+  while (in.peek() <= 32) //!< Ignore byte order mark (BOM) at the beginning
     in >> c;
 
   for (size_t i = 0; i < ROW; i++) {
-    // read all but the last column
+    //!< read all but the last column
     for (size_t j = 0; j < COL - 1; j++) {
-      in >> x[i][j] >> c; // Read number and comma
+      in >> x[i][j] >> c; //!< Read number and comma
     }
-    in >> x[i][COL - 1]; // Read only number since there is no comma.
+    in >> x[i][COL - 1]; //!< Read only number since there is no comma.
   }
 
   in.close();
@@ -93,7 +93,7 @@ void loadCSV_mat(const Tpath &name, Matrix<T, ROW, COL> &x)
 template <typename Tpath, typename T, size_t ROW>
 void loadCSV_1col(const Tpath &name, std::array<T, ROW> &x)
 {
-  // read data from a CSV file with one column
+  //!< read data from a CSV file with one column
   slide::Matrix<T, ROW, 1> temp;
   loadCSV_mat(name, temp);
   std::memcpy(&x, &temp, sizeof temp);
@@ -105,7 +105,7 @@ inline void ignoreBOM(std::ifstream &in)
 
   do {
     in >> c;
-  } while (c < 45); // Ignore byte order mark (BOM) at the beginning
+  } while (c < 45); //!< Ignore byte order mark (BOM) at the beginning
 
   in.putback(c);
 }
@@ -130,7 +130,7 @@ void loadCSV_2col(const Tpath &name, Tx &x, Ty &y, int n = 0)
 
   std::ifstream in(name, std::ios_base::in);
 
-  if (!in.good()) // check if we could open the file
+  if (!in.good()) //!< check if we could open the file
   {
     std::cerr << "Error in ReadCSVfiles::loadCSV_2col. File " << name
               << " could not be opened.\n";
@@ -142,18 +142,18 @@ void loadCSV_2col(const Tpath &name, Tx &x, Ty &y, int n = 0)
   int j = 0;
   char c;
   if constexpr (std::is_same<std::vector<double>, Tx>::value) {
-    x.clear(); // Sometimes pre-allocated vectors are passed; therefore, cleared to be able to use push_back.
+    x.clear(); //!< Sometimes pre-allocated vectors are passed; therefore, cleared to be able to use push_back.
     y.clear();
 
     double x_i, y_i;
-    while ((n == 0 || j < n) && (in >> x_i >> c >> y_i)) // Read file.
+    while ((n == 0 || j < n) && (in >> x_i >> c >> y_i)) //!< Read file.
     {
       x.push_back(x_i);
       y.push_back(y_i);
       j++;
     }
-  } else {                                                 // It must be a std::array, then just read without clear.
-    while ((n == 0 || j < n) && (in >> x[j] >> c >> y[j])) // Read file.
+  } else {                                                 //!< It must be a std::array, then just read without clear.
+    while ((n == 0 || j < n) && (in >> x[j] >> c >> y[j])) //!< Read file.
       j++;
   }
 }
@@ -178,7 +178,7 @@ void loadCSV_Ncol(const Tpath &name, DynamicMatrix<Tx> &x, int n = 0)
 
   std::ifstream in(name, std::ios_base::in);
 
-  if (!in.good()) // check if we could open the file
+  if (!in.good()) //!< check if we could open the file
   {
     std::cerr << "Error in ReadCSVfiles::loadCSV_2col. File " << name
               << " could not be opened.\n";
@@ -187,12 +187,12 @@ void loadCSV_Ncol(const Tpath &name, DynamicMatrix<Tx> &x, int n = 0)
 
   ignoreBOM(in);
 
-  x.data.clear(); // Sometimes pre-allocated vectors are passed; therefore, cleared to be able to use push_back.
+  x.data.clear(); //!< Sometimes pre-allocated vectors are passed; therefore, cleared to be able to use push_back.
 
   std::string line;
 
   int n_rows{ 0 };
-  while ((n == 0 || n_rows < n) && std::getline(in, line)) // Read file.
+  while ((n == 0 || n_rows < n) && std::getline(in, line)) //!< Read file.
   {
     n_rows++;
     std::istringstream in_line(line);
@@ -216,7 +216,7 @@ struct XYplain
   std::vector<double> x_vec, y_vec;
 };
 
-// struct Data
+//!< struct Data
 template <typename Tpath>
 void loadCSV_2col(const Tpath &name, std::span<double> &x, std::span<double> &y, int n = 0)
 {
@@ -243,7 +243,7 @@ void loadCSV_2col(const Tpath &name, std::span<double> &x, std::span<double> &y,
 
   if (fm == XYdataMap.end()) {
     XYplain xyp{};
-    loadCSV_2col(name, xyp.x_vec, xyp.y_vec); // #CHECK -> for some reason it does not take XYdataMap[name] directly.
+    loadCSV_2col(name, xyp.x_vec, xyp.y_vec); //!< #CHECK -> for some reason it does not take XYdataMap[name] directly.
 
     XYdataMap[name_str] = std::move(xyp);
   }
@@ -257,13 +257,13 @@ void loadCSV_2col(const Tpath &name, std::span<double> &x, std::span<double> &y,
   }
 }
 
-// template <typename Tpath>
-// auto loadCSV_2col(const Tpath &name, int n = 0)
-// {
-// 	// slide::XYdata_vv returning overload.
-// 	slide::XYdata_vv data;
-// 	loadCSV_2col(name, data.x, data.y, n);
-// 	return data;
-// }
+//!< template <typename Tpath>
+//!< auto loadCSV_2col(const Tpath &name, int n = 0)
+//!< {
+//!< 	//!< slide::XYdata_vv returning overload.
+//!< 	slide::XYdata_vv data;
+//!< 	loadCSV_2col(name, data.x, data.y, n);
+//!< 	return data;
+//!< }
 
 } // namespace slide

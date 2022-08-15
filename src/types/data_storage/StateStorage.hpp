@@ -37,13 +37,13 @@ public:
   void add(std::span<T> x)
   {
     state_span.emplace_back(x);
-    states.insert(states.end(), x.begin(), x.end()); // states.reserve(states.size() + x.size());
+    states.insert(states.end(), x.begin(), x.end()); //!< states.reserve(states.size() + x.size());
   }
 
   [[nodiscard]] constexpr auto begin() noexcept { return states.begin(); }
   [[nodiscard]] constexpr auto end() noexcept { return states.end(); }
 
-  void restore() // Restore states to spans.
+  void restore() //!< Restore states to spans.
   {
     size_t i{ 0 };
 

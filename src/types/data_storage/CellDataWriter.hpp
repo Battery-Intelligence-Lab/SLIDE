@@ -23,9 +23,9 @@ inline void writeData(std::ofstream &file, CellCommonHist &hist)
     auto V_bins = hist.V.viewBinValues();
     auto T_bins = hist.T.viewBinValues();
 
-    // write bin values
+    //!< write bin values
     for (size_t i = 0; i < I_bins.size(); i++)
-      file << I_bins[i] << ',' << V_bins[i] << ',' << T_bins[i] << '\n'; // #CHECK change how you write the values to remove repetition.
+      file << I_bins[i] << ',' << V_bins[i] << ',' << T_bins[i] << '\n'; //!< #CHECK change how you write the values to remove repetition.
     file << "\n\n";
   }
 
@@ -34,19 +34,19 @@ inline void writeData(std::ofstream &file, CellCommonHist &hist)
     auto V_edges = hist.V.getEdgeValues();
     auto T_edges = hist.T.getEdgeValues();
 
-    // write bin edges
+    //!< write bin edges
     for (size_t i = 0; i < I_edges.size(); i++)
       file << I_edges[i] << ',' << V_edges[i] << ',' << T_edges[i] << '\n';
-    // data is in bin i if edge[i-1] <= data < edge[i]
-    // except bin[0] if data < edge[0]
-    //    and bin[N] if data >= edge[N-1] #CHECK if it is still true.
+    //!< data is in bin i if edge[i-1] <= data < edge[i]
+    //!< except bin[0] if data < edge[0]
+    //!<    and bin[N] if data >= edge[N-1] #CHECK if it is still true.
     file << "\n\n\n";
   }
 }
 
 inline void writeVarAndStates(std::ofstream &file, std::span<double> varstate, std::span<double> state)
 {
-  // write throughput data, cell-to-cell variations and the battery state:
+  //!< write throughput data, cell-to-cell variations and the battery state:
   for (auto var : varstate)
     file << var << ',';
   file << '\n';
@@ -58,7 +58,7 @@ inline void writeVarAndStates(std::ofstream &file, std::span<double> varstate, s
 
 inline void writeData(std::ofstream &file, CellCumulativeData tData)
 {
-  // write throughput data, cell-to-cell variations and the battery state:
+  //!< write throughput data, cell-to-cell variations and the battery state:
   file << tData.Time << ',' << tData.Ah << ',' << tData.Wh << '\n';
 }
 
@@ -69,7 +69,7 @@ inline void writeData(std::ofstream &file, std::vector<CommonData> &cData)
          << ',' << c.T << ',' << c.Ah << ',' << c.Wh
          << ',' << c.Time << '\n';
 
-  // reset the index to 0 since we can overwrite the stored data
+  //!< reset the index to 0 since we can overwrite the stored data
   cData.clear();
 }
 
@@ -92,7 +92,7 @@ void writeDataImpl(std::ofstream &file, SU_t *ths, storage_t &storage)
     writeData(file, storage.hist);
   } else if (N == 2) {
     writeData(file, storage.cData);
-  } // else write nothing.
+  } //!< else write nothing.
 }
 
 template <int N>
@@ -111,14 +111,14 @@ struct CellDataWriter
 
   inline std::string getName(auto *ths, const std::string &prefix)
   {
-    // name of the file, start with the full hierarchy-ID to identify this cell
+    //!< name of the file, start with the full hierarchy-ID to identify this cell
     return prefix + "_" + ths->getFullID() + "_cellData.csv";
   }
 
   inline std::ofstream openFile(auto *ths, const std::string &prefix)
   {
-    // store histograms and degradation state of cell utilisation
-    std::string name = getName(ths, prefix); // name of the file
+    //!< store histograms and degradation state of cell utilisation
+    std::string name = getName(ths, prefix); //!< name of the file
     std::ofstream file(name, std::ios_base::app);
 
     if (!file.is_open()) {

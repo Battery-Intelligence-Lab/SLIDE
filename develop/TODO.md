@@ -6,17 +6,17 @@
 
 ## TODO: 
 
-### Higher priority: 
+### Current priority: 
 
 - [ ] Add CTest support for tests
 - [ ] Add static analysers: include-what-you-use, valgrind, etc. 
-- [ ] Doxygen integration 
+- [ ] Doxygen integration - adapting commenting style. 
 - [ ] CPack and installation improvements. 
 - [ ] Figure out why OBJECT libraries cause linker error. We converted everything to STATIC
 - [ ] Check #CHECK tags in the code.  
 
 
-### Lower priority: 
+### From SLIDE v2: 
 
 - [ ] Cannot compile with other compilers.
   - [x] Eliminate GCC dependent features.
@@ -172,7 +172,7 @@
 - [ ] Convert single characters to chars. "," -> ',' and "\n" -> '\n';
 - [x] Why estimateOCVparameters calls readOCVinput 109 times??? -> 
   - [x] fitAMnAndStartingPoints was calling readOCVinput all the time. It is fixed. 
-- [ ] Can we use __func__ to substitute function names? 
+- [ ] Can we use __func__ to substitute function names in some warnings? 
 - [ ] Cell::setVlimits does not control VMIN < VMAX. 
 - [x] New counter as a struct is added. 
 - [x] linInt_noexcept is added. 
@@ -206,19 +206,19 @@ So they are one step ahead of ocvpi, ocvni and V. Is it a bug? Or is it saving e
 - [ ] Iterator for fixed data is implemented but not completely working. 
 - [ ] static thread_local keywords are being used. 
 - [ ] More range-based for loops.
-- [ ] Removing indices does not work for logspace. Write an around function.
+- [x] Removing indices does not work for logspace. Write an around function.
 - [ ] prev(T x_current) and next(T x_current) are added to fixed_data to satisfy generic interface. 
 - [x] New determine_OCV cost function, much faster. 
 - [x] Cell::getDaiStress does not throw so try-catch removed in Cell::updateDaiStress(), noexcept added. 
 - [ ] Add package manager installation option. 
 - [ ] Why is integer T is used in Cycler::checkUp_pulse? 
-- [ ] number of file readings in ProfileAgeing is reduced.
+- [x] number of file readings in ProfileAgeing is reduced.
 - [x] OCVni_vec and OCVpi_vec are removed.
 - [x] outVec is created. 
-- [ ] Higher order integration Runge Kutta 4 and adaptive time stepping. 
+- [ ] Higher order integration Runge Kutta 4 and adaptive time stepping. -> Fixed for slide
 - [ ] The fitting algorithm does not currently support fitting the activation energy directly.
 - [ ] "check what would happen if the current is set to 0 for one time step" why? no needed. 
-- [ ] better findCurrent algorithm.
+- [x] better findCurrent algorithm. Fixed for SLIDE but not slide-pack
 - [ ] New functions: calcSurfaceConcentration, calcDiffConstant, calcMolarFlux, calcOverPotential
 - [ ] findCVcurrent_bin is added with false position method. 
 - [ ] There is not much difference between setting I and having small time step and having dt + dt_I time step because we do not store I. 
@@ -227,7 +227,7 @@ So they are one step ahead of ocvpi, ocvni and V. Is it a bug? Or is it saving e
 - [ ] RK4 is implemented and FWEuler is seperated. 
 - [x] Error in BasicCycler::.... The total time is not a multiple of the time step dt, -> Converted to warning. And time step adjustment is added. Throw 1003 is eliminated.
 - [ ] BasicCycler::storeResults now does not check if it is storing the same point. Therefore, you should check. 
-- [ ] Bug!!: loadCSV_2col   does not read minus sign at the beginning. Due to alphanumeric 
+- [x] Bug!!: loadCSV_2col   does not read minus sign at the beginning. Due to alphanumeric 
 - [ ] When creating xy data put something not to check if it is fixed. 
 - [ ] determineOCV is still inefficient, we may reduce search space lot more by looking at the sp and sn requirements. 
 - [x] log(x + sqrt(1+x^2)) is changed with asinh(x)
@@ -242,14 +242,14 @@ slide_pack integration:
 ### slide_pack changes: 
 - [ ] StorageUnit parent shared_pointer -> raw poiner. 
 - [x] NULL -> nullptr
-- [ ] Module shared_ptr<StorageUnit> SUs[MODULE_NSUs_MAX] -> vector.
-- [ ] Namespace slide is added.
+- [x] Module shared_ptr<StorageUnit> SUs[MODULE_NSUs_MAX] -> vector.
+- [x] Namespace slide is added.
 - [ ] Rcontact is removed from Module and it will be moved into Module_s and Module_p
-- [ ] bockDegAndTherm -> typo.
+- [x] bockDegAndTherm -> typo.
 - [ ] (verbose_gl > v_noncrit_gl)  ->  (settings::verbose >= printLevel::printNonCrit) 
 - [ ] (verbose_gl >= v_crit_gl)   (settings::verbose >= printLevel::printCrit)
 - [ ] #if DATA_STORE is being removed and module is now a template. 
-- [ ] getIndex seems to be useless. 
+- [x] getIndex seems to be useless. 
 - [ ] getting Vmax everytime is a problem. 
 - [ ] getNstates is not needed. It is only used for checking sizes and it won't be needed. 
 - [ ] Use default instead of empty destructor. 
@@ -259,7 +259,6 @@ slide_pack integration:
 - [ ] More hierarchy for ECM and SPM 
 - [ ] Factory methods. 
 - [ ] Add MSVC things 
-- [ ] copy() function is about to be eliminated.
 - [ ] Can we make ID static since it is same in all classes? Do we change? Look at it 
 - [ ] StorateUnit -> StorageUnit
 - [ ] getSUTemperatures in Module creates unnecessary storage then -> getSUTemperature(i).
@@ -372,7 +371,7 @@ slide_pack integration:
 - [ ] Cycler checks Vlow many times. Maybe it is better to cache? 
 - [ ] Unnecessary voltage check in SetCurrent of module_s is removed. 
 - [x] Catch outside LiPlating is removed since it is not needed to be handled since it only throws when id is wrong. 
-- [ ] SEI, CS, LAM, LiPlating, getDaiStress are used once so make them inline. 
+- [ ] SEI, CS, LAM, LiPlating, getDaiStress are used once so can make them inline. 
 - [ ] Cell_SPM::setSOC does not actually set SOC.
 - [ ] Check why in Battery.cpp Tbatt check is repeated. Should Tbatt be something else? 
 - [ ] Cell::setT(Tnew) does not check temperature anymore, be careful! 
@@ -423,7 +422,9 @@ Some new ideas to implement:
 - [x] Include a clang-format file. 
 - [ ] Configure clang-format, cmake-format etc. 
 
+### Developer changes: 
 
+- [ ] CMake folder and some files are added. 
 
 ### JOSS: 
 - [ ] Added JOSS folder and Github workflow. 

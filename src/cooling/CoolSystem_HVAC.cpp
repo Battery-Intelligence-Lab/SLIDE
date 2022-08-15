@@ -18,25 +18,25 @@ namespace slide {
 CoolSystem_HVAC::CoolSystem_HVAC()
 {
 
-  // Nominal power of the AC system (active cooling of the container)
-  // For a battery of 2700 cells (continous 1C cycling) we need to evacuate about 4 kW continuously (at the begin of life)
-  // or about 1.5 W per cell (this is the heat evacuated by the top level module from its children, during equilibrium equal to total heat generation of all cells)
-  // which is 2.5% of total cell energy (cell power ~ 4V * 15A = 60 W)
-  // During degradation, R can easily double so we expect to have to cool about 3 W per cell continuous
-  // So the maximum power should be about double so we can cool down (3 W heating + 7.5 W cooling = cool down at 4.5 W or 50% faster than the cells heated up)
-  constexpr double Qac_per_cell = 7.5; // cool 7.5 W per cell (5 times the heating load at begin of life)
+  //!< Nominal power of the AC system (active cooling of the container)
+  //!< For a battery of 2700 cells (continous 1C cycling) we need to evacuate about 4 kW continuously (at the begin of life)
+  //!< or about 1.5 W per cell (this is the heat evacuated by the top level module from its children, during equilibrium equal to total heat generation of all cells)
+  //!< which is 2.5% of total cell energy (cell power ~ 4V * 15A = 60 W)
+  //!< During degradation, R can easily double so we expect to have to cool about 3 W per cell continuous
+  //!< So the maximum power should be about double so we can cool down (3 W heating + 7.5 W cooling = cool down at 4.5 W or 50% faster than the cells heated up)
+  constexpr double Qac_per_cell = 7.5; //!< cool 7.5 W per cell (5 times the heating load at begin of life)
   Q_ac = Qac_per_cell * Ncells;
-  COP = 3; // value from Schimpe's paper of thermal model of battery but double check
+  COP = 3; //!< value from Schimpe's paper of thermal model of battery but double check
 
   controlAC_onoff_Ton = C_to_Kelvin(25);
-  controlAC_onoff_Toff = C_to_Kelvin(20); // if this value is < settings::T_ENV, then coolsystems can cool cells below their initial temperature (which is settings::T_ENV) resulting in negative total heat energy absorbed in cells. See unit tests for module_s
-                                          // and then some unit tests might fail because they demand positive heating energy (cells must heat up due to cycling)
-                                          // therefore, it is not recommended to set this T below settings::T_ENV (20 degrees at the moment)
+  controlAC_onoff_Toff = C_to_Kelvin(20); //!< if this value is < settings::T_ENV, then coolsystems can cool cells below their initial temperature (which is settings::T_ENV) resulting in negative total heat energy absorbed in cells. See unit tests for module_s
+                                          //!< and then some unit tests might fail because they demand positive heating energy (cells must heat up due to cycling)
+                                          //!< therefore, it is not recommended to set this T below settings::T_ENV (20 degrees at the moment)
   controlAC_onoff_Q = Q_ac;
   controlAC_prop_T = C_to_Kelvin(20);
-  controlAC_prop_gain = 1.0 / (controlAC_onoff_Ton - controlAC_prop_T); // 1 at the T where the on/off control would go on, 0 at the target T
+  controlAC_prop_gain = 1.0 / (controlAC_onoff_Ton - controlAC_prop_T); //!< 1 at the T where the on/off control would go on, 0 at the target T
 
-  // Data storage
+  //!< Data storage
   HVACdata.initialise(*this, Qac_per_cell);
 }
 
@@ -48,27 +48,27 @@ CoolSystem_HVAC::CoolSystem_HVAC(size_t Ncells, int control, double Q0)
    * Q0 	ancillary losses [W] independent on the cell power. E.g. constant losses on the converter
    */
 
-  constexpr double Qac_per_cell = 7.5; // cool 20 W per cell (cell power ~ 4V * 15A = 60 W so worst case 30% losses)
+  constexpr double Qac_per_cell = 7.5; //!< cool 20 W per cell (cell power ~ 4V * 15A = 60 W so worst case 30% losses)
   Q_ac = Qac_per_cell * Ncells + Q0;
-  COP = 3; // value from Schimpe's paper of thermal model of battery but double check
+  COP = 3; //!< value from Schimpe's paper of thermal model of battery but double check
 
-  // Increase the inertia of the coolsystem if Q0 >>>>  Qac_per_cell * Ncells
-  // since the inertia in CoolSystem is based on Ncells only, and designed for 7.5W per cell
-  fluid_V = fluid_V * Q_ac / (Qac_per_cell * Ncells); // increase proportional to the fraction of Q0 of the total heating
+  //!< Increase the inertia of the coolsystem if Q0 >>>>  Qac_per_cell * Ncells
+  //!< since the inertia in CoolSystem is based on Ncells only, and designed for 7.5W per cell
+  fluid_V = fluid_V * Q_ac / (Qac_per_cell * Ncells); //!< increase proportional to the fraction of Q0 of the total heating
 
   controlAC_onoff_Ton = C_to_Kelvin(25);
   controlAC_onoff_Toff = C_to_Kelvin(20);
-  if (control == 3) // todo control hotspot -> 20 to 30
+  if (control == 3) //!< todo control hotspot -> 20 to 30
     controlAC_onoff_Ton = C_to_Kelvin(30);
   controlAC_onoff_Q = Q_ac;
-  controlAC_prop_T = C_to_Kelvin(20);      // todo control the local T to 20 degrees
-  if (control == 5) {                      // todo control the hotspot to 25 degrees
-    controlAC_prop_T = C_to_Kelvin(25);    // todo do something similar to cool3
-    controlAC_onoff_Ton = C_to_Kelvin(30); // todo
+  controlAC_prop_T = C_to_Kelvin(20);      //!< todo control the local T to 20 degrees
+  if (control == 5) {                      //!< todo control the hotspot to 25 degrees
+    controlAC_prop_T = C_to_Kelvin(25);    //!< todo do something similar to cool3
+    controlAC_onoff_Ton = C_to_Kelvin(30); //!< todo
   }
-  controlAC_prop_gain = 1.0 / (controlAC_onoff_Ton - controlAC_prop_T); // 1 at the T where the on/off control would go on, 0 at the target T
+  controlAC_prop_gain = 1.0 / (controlAC_onoff_Ton - controlAC_prop_T); //!< 1 at the T where the on/off control would go on, 0 at the target T
 
-  // Data storage
+  //!< Data storage
   HVACdata.initialise(*this, Qac_per_cell);
 }
 
@@ -88,7 +88,7 @@ double CoolSystem_HVAC::dstate(double Qtotal, double Qchildren, double t)
    * 10 			total heat exchange not the same as the children's heat exchange.
    */
 
-  // Ensure Qtot == Qchildren for consistency
+  //!< Ensure Qtot == Qchildren for consistency
   if (std::abs(Qtotal - Qchildren) > 1e-12) {
     std::cerr << "ERROR in coolSystem_HVAC: the total heat exchanged is " << Qtotal
               << " and heat exchange from the children is " << Qchildren
@@ -98,33 +98,33 @@ double CoolSystem_HVAC::dstate(double Qtotal, double Qchildren, double t)
     throw 10;
   }
 
-  // calculate total heat exchange, including the cooling from the HVAC
-  const double Q = Qtotal - Q_ac * t; // - since it is cooling down
+  //!< calculate total heat exchange, including the cooling from the HVAC
+  const double Q = Qtotal - Q_ac * t; //!< - since it is cooling down
 
-  // calculate the new temperature
+  //!< calculate the new temperature
   const double Tnew = T() + Q / (fluid_rho * fluid_cp * fluid_V);
 
-  // increase the power required to run the cooling system
-  // power scales like speed ^ 3 and rho ^1 (kinetic energy/mass * flow rate = rho * A * v * v^2 / 2)
-  // 		see also https://fluidflowinfo.com/fan-performance-and-fan-laws/, and my undergrad course on wind energy [fan = opposite wind turbine]
-  const double v = flowrate / Across;                                   // speed of the fluid
-  const double E = (fluid_rho * Across * std::pow(v, 3) / 2) / eta * t; // this is the energy to speed up air from stationary to the required speed to cool the child SUs [W]
-  const double Eac = getACoperatingPower(Q_ac, t);                      // this is the energy to operate the AC unit
+  //!< increase the power required to run the cooling system
+  //!< power scales like speed ^ 3 and rho ^1 (kinetic energy/mass * flow rate = rho * A * v * v^2 / 2)
+  //!< 		see also https://fluidflowinfo.com/fan-performance-and-fan-laws/, and my undergrad course on wind energy [fan = opposite wind turbine]
+  const double v = flowrate / Across;                                   //!< speed of the fluid
+  const double E = (fluid_rho * Across * std::pow(v, 3) / 2) / eta * t; //!< this is the energy to speed up air from stationary to the required speed to cool the child SUs [W]
+  const double Eac = getACoperatingPower(Q_ac, t);                      //!< this is the energy to operate the AC unit
 
-  // update the mean cooling power
+  //!< update the mean cooling power
   coolData.cData.Qevac_life += Qchildren;
   coolData.cData.Qabs_life += Q;
   coolData.cData.t_life += t;
-  coolData.cData.Qevac += Qchildren;  // heat extracted from children, only until next data collection interval (reset to 0 in storeData)
-  coolData.cData.time += t;           // only until next data collection interval (reset to 0 in storeData)
-  coolData.cData.time_life += t;      // time since start of simulations
-  coolData.cData.E += E;              // increase the total operating energy for the fan
-  coolData.cData.Eoperate += E + Eac; // increase the total lifetime operating poer
+  coolData.cData.Qevac += Qchildren;  //!< heat extracted from children, only until next data collection interval (reset to 0 in storeData)
+  coolData.cData.time += t;           //!< only until next data collection interval (reset to 0 in storeData)
+  coolData.cData.time_life += t;      //!< time since start of simulations
+  coolData.cData.E += E;              //!< increase the total operating energy for the fan
+  coolData.cData.Eoperate += E + Eac; //!< increase the total lifetime operating poer
 
-  HVACdata.cData.Eac += Eac;          // increase the total operating energy for the AC unit
-  HVACdata.cData.QcoolAC += Q_ac * t; // heat extracted from the entire coolsystem by the AC system
+  HVACdata.cData.Eac += Eac;          //!< increase the total operating energy for the AC unit
+  HVACdata.cData.QcoolAC += Q_ac * t; //!< heat extracted from the entire coolsystem by the AC system
 
-  // cout<<"\t HVAC system: Total heat energy "<<Qtotal<<", HVAC cooling "<<Q_ac*t<<" giving net energy "<<Q<<" and new T "<<Tnew<<" after "<<t<<" seconds"<<endl;
+  //!< cout<<"\t HVAC system: Total heat energy "<<Qtotal<<", HVAC cooling "<<Q_ac*t<<" giving net energy "<<Q<<" and new T "<<Tnew<<" after "<<t<<" seconds"<<endl;
   return Tnew;
 }
 
@@ -146,15 +146,15 @@ double CoolSystem_HVAC::getACoperatingPower(double Qac, double t)
   if (Qac == 0 || t == 0)
     return 0;
 
-  // if the environment is too hot, use active cooling with the AC system
+  //!< if the environment is too hot, use active cooling with the AC system
   if (T_ENV > (T() - 5))
     return COP * Qac * t;
 
-  // else we can suck in cold air
-  const double flr = Qac / (fluid_rho * fluid_cp * (T() - T_ENV));   // flow rate of environment air we need (cooling energy = flow rate * rho * cp * dT)
-  const double Acr = Across * 2;                                     // assume the surface area of the fan to suck in air is twice the surface area of the fan to cool the cells
-  const double v = flr / Acr;                                        // speed of the air
-  const double E = (fluid_rho * Acr * std::pow(v, 3) / 2) / eta * t; // energy to operate the fan
+  //!< else we can suck in cold air
+  const double flr = Qac / (fluid_rho * fluid_cp * (T() - T_ENV));   //!< flow rate of environment air we need (cooling energy = flow rate * rho * cp * dT)
+  const double Acr = Across * 2;                                     //!< assume the surface area of the fan to suck in air is twice the surface area of the fan to cool the cells
+  const double v = flr / Acr;                                        //!< speed of the air
+  const double E = (fluid_rho * Acr * std::pow(v, 3) / 2) / eta * t; //!< energy to operate the fan
 
   return E;
 }
@@ -189,30 +189,30 @@ void CoolSystem_HVAC::control(double Thot_local, double Thot_global)
    * Thot_global 	the global hot spot of the module or battery [K]
    */
 
-  // Call the base class function to control the fan inside the container to cool the racks
+  //!< Call the base class function to control the fan inside the container to cool the racks
   CoolSystem::control(Thot_local, Thot_global);
 
-  // variables
+  //!< variables
   double Terr;
 
-  // control the cooling power of the AC system
-  // 	note that the off criterium is always the same, never cool below the minimum temperature
-  // 	this is because we are controlling an active system, so in theory it would keep cooling to freezing, -100 and even -Inf degrees if you wouldn't stop it
+  //!< control the cooling power of the AC system
+  //!< 	note that the off criterium is always the same, never cool below the minimum temperature
+  //!< 	this is because we are controlling an active system, so in theory it would keep cooling to freezing, -100 and even -Inf degrees if you wouldn't stop it
   switch (control_strategy) {
-  case 1: // always on unless T of the container < minimum temperature
+  case 1: //!< always on unless T of the container < minimum temperature
     if (T() < controlAC_onoff_Toff)
       Q_ac = 0;
     else
       Q_ac = controlAC_onoff_Q;
     break;
-  case 2: // on/off depending on child T -> on and off based on T of container
+  case 2: //!< on/off depending on child T -> on and off based on T of container
     if (T() <= controlAC_onoff_Toff)
       Q_ac = 0;
     else if (T() >= controlAC_onoff_Ton)
       Q_ac = controlAC_onoff_Q;
     break;
 
-  case 3: // on/off depending on global hot spot temperature -> on based on T of hottest cell, off based on T of container
+  case 3: //!< on/off depending on global hot spot temperature -> on based on T of hottest cell, off based on T of container
 
     if (T() <= controlAC_onoff_Toff)
       Q_ac = 0;
@@ -220,36 +220,36 @@ void CoolSystem_HVAC::control(double Thot_local, double Thot_global)
       Q_ac = controlAC_onoff_Q;
     break;
 
-  case 4: // proportional to T of hottest child SU -> proportional to T of container
+  case 4: //!< proportional to T of hottest child SU -> proportional to T of container
 
-    // error on the local temperature
+    //!< error on the local temperature
     Terr = T() - controlAC_prop_T;
-    Terr = std::max(Terr, 0.0); // ensure we never go negative
+    Terr = std::max(Terr, 0.0); //!< ensure we never go negative
 
     if (T() <= controlAC_onoff_Toff)
       Q_ac = 0;
-    else if (control_prop_gain * Terr > 0.2)                                // avoid very small cooling powers
-      Q_ac = controlAC_onoff_Q * std::min(controlAC_prop_gain * Terr, 1.0); // can't do more than the design-power
+    else if (control_prop_gain * Terr > 0.2)                                //!< avoid very small cooling powers
+      Q_ac = controlAC_onoff_Q * std::min(controlAC_prop_gain * Terr, 1.0); //!< can't do more than the design-power
     else
       Q_ac = 0;
     break;
 
-  case 5: // proportional to global hot spot temperature -> on based on T of hottest cell, off based on T of container
+  case 5: //!< proportional to global hot spot temperature -> on based on T of hottest cell, off based on T of container
 
-    // error on the global temperature
+    //!< error on the global temperature
     Terr = Thot_global - controlAC_prop_T;
-    Terr = std::max(Terr, 0.0); // ensure we never go negative
+    Terr = std::max(Terr, 0.0); //!< ensure we never go negative
 
     if (T() <= controlAC_onoff_Toff)
       Q_ac = 0;
-    else if (control_prop_gain * Terr > 0.2)                                // avoid very small cooling powers
-      Q_ac = controlAC_onoff_Q * std::min(controlAC_prop_gain * Terr, 1.0); // can't do more than the design-power
+    else if (control_prop_gain * Terr > 0.2)                                //!< avoid very small cooling powers
+      Q_ac = controlAC_onoff_Q * std::min(controlAC_prop_gain * Terr, 1.0); //!< can't do more than the design-power
     else
       Q_ac = 0;
 
     break;
 
-  default: // always on
+  default: //!< always on
     break;
   }
 }
@@ -285,11 +285,11 @@ void CoolSystem_HVAC::storeData(size_t Ncellsi)
     }
   }
 
-  // Store additional data of the AC system
+  //!< Store additional data of the AC system
   HVACdata.storeData(*this);
 
-  // Call parent function to store conventional data
-  CoolSystem::storeData(Ncellsi); // sets ttot to 0 so do this after wards
+  //!< Call parent function to store conventional data
+  CoolSystem::storeData(Ncellsi); //!< sets ttot to 0 so do this after wards
 }
 
 void CoolSystem_HVAC::writeData(const std::string &prefix)
@@ -303,7 +303,7 @@ void CoolSystem_HVAC::writeData(const std::string &prefix)
 
   CoolSystem::writeData(prefix);
 
-  // store histograms and degradation state of cell utilisation
-  HVACdata.writeData(*this, prefix); // #CHECK -> since we are doing append we cannot write like this IMPORTANT!!!!!
+  //!< store histograms and degradation state of cell utilisation
+  HVACdata.writeData(*this, prefix); //!< #CHECK -> since we are doing append we cannot write like this IMPORTANT!!!!!
 }
 } // namespace slide

@@ -40,22 +40,22 @@ double Cell_SPM::thermalModel_cell()
    * We do not account for neighbouring cells, and this cell is cooled convectively by the environment
    */
 
-  // total heat generation since last time the temperature was updated
+  //!< total heat generation since last time the temperature was updated
   double Etot = Therm_Qgen;
 
-  // cooling with the environment
-  double Qc = Qch * getThermalSurface() * (T_env - T()) * Therm_time; // cooling with the environment [W m-3]
+  //!< cooling with the environment
+  double Qc = Qch * getThermalSurface() * (T_env - T()) * Therm_time; //!< cooling with the environment [W m-3]
   Etot += Qc;
 
-  // Calculate the new temperature
-  // rho * cp * dT/dt = Qtot / V
-  // 		where 	Qtot is total power in W
-  // 				V is the cell's volume L * elec_surf
-  // so integrated over time this is
-  // rho * cp * (Tnew - Told) = Etot / V
+  //!< Calculate the new temperature
+  //!< rho * cp * dT/dt = Qtot / V
+  //!< 		where 	Qtot is total power in W
+  //!< 				V is the cell's volume L * elec_surf
+  //!< so integrated over time this is
+  //!< rho * cp * (Tnew - Told) = Etot / V
   double Tnew = T() + Etot / (rho * Cp * geo.L * geo.elec_surf);
 
-  // Check the new temperature is valid, and if so, set it
+  //!< Check the new temperature is valid, and if so, set it
   if (Tnew > Tmax() || Tnew < Tmin() || std::isnan(Tnew)) {
     if constexpr (settings::printBool::printCrit) {
       std::cerr << "ERROR in Cell_SPM::thermalModel, the new temperature of " << Tnew
@@ -68,10 +68,10 @@ double Cell_SPM::thermalModel_cell()
     throw 9;
   }
 
-  // setting the temperature is done by the parent module. else some cells will update their T before others, and we get inconsistencies
-  // 		e.g. exchange from cell 2 to this cell will not be same as from this cell to cell 2 since T of this cell would have changed.
+  //!< setting the temperature is done by the parent module. else some cells will update their T before others, and we get inconsistencies
+  //!< 		e.g. exchange from cell 2 to this cell will not be same as from this cell to cell 2 since T of this cell would have changed.
 
-  // Reset the cumulative thermal variables
+  //!< Reset the cumulative thermal variables
   Therm_Qgen = 0;
   Therm_time = 0;
 
@@ -101,18 +101,18 @@ double Cell_SPM::thermalModel_coupled(int Nneighbours, double Tneighbours[], dou
    * 9 	invalid module temperature
    */
 
-  // check the time since the last checkup is not too large.
-  // if the parent has not called the thermal model for a while, the equation becomes unstable
-  // 		cause E = time * kA dT, so even a small dT will cause a huge E, and therefore a very large temperature swint
+  //!< check the time since the last checkup is not too large.
+  //!< if the parent has not called the thermal model for a while, the equation becomes unstable
+  //!< 		cause E = time * kA dT, so even a small dT will cause a huge E, and therefore a very large temperature swint
   //
-  if (Therm_time > 15 * 60) // #CHECK magic number.
+  if (Therm_time > 15 * 60) //!< #CHECK magic number.
   {
     if constexpr (settings::printBool::printNonCrit)
       std::cout << "Warning in Cell_SPM::thermalModel, the time since this function was called last is very large, "
                 << Therm_time << " which might lead to excessive temperature variations" << '\n';
   }
 
-  // then check whether our internal time keeping matches up with the external one
+  //!< then check whether our internal time keeping matches up with the external one
   if (std::abs(Therm_time - tim) > 1) {
     if constexpr (settings::printBool::printCrit) {
       std::cerr << "ERROR in Cell_SPM::thermalModel, according to the cell's internal timing, " << Therm_time
@@ -122,7 +122,7 @@ double Cell_SPM::thermalModel_coupled(int Nneighbours, double Tneighbours[], dou
     throw 8;
   }
 
-  // calculate the total thermal balance
+  //!< calculate the total thermal balance
   double Etot = Therm_Qgen;
   double Atherm;
   for (int i = 0; i < Nneighbours; i++) {
@@ -130,15 +130,15 @@ double Cell_SPM::thermalModel_coupled(int Nneighbours, double Tneighbours[], dou
     Etot += Kneighbours[i] * Atherm * (Tneighbours[i] - T()) * Therm_time;
   }
 
-  // Calculate the new temperature
-  // rho * cp * dT/dt = Qtot / V
-  // 		where 	Qtot is total power in W
-  // 				V is the cell's volume L * elec_surf
-  // so integrated over time this is
-  // rho * cp * (Tnew - Told) = Etot / V
+  //!< Calculate the new temperature
+  //!< rho * cp * dT/dt = Qtot / V
+  //!< 		where 	Qtot is total power in W
+  //!< 				V is the cell's volume L * elec_surf
+  //!< so integrated over time this is
+  //!< rho * cp * (Tnew - Told) = Etot / V
   const double Tnew = T() + Etot / (rho * Cp * geo.L * geo.elec_surf);
 
-  // Check the new temperature is valid, and if so, set it
+  //!< Check the new temperature is valid, and if so, set it
   if (Tnew > Tmax() || Tnew < Tmin() || std::isnan(Tnew)) {
     if constexpr (settings::printBool::printCrit) {
       std::cerr << "ERROR in Cell_SPM::thermalModel, the new temperature of " << Tnew
@@ -157,10 +157,10 @@ double Cell_SPM::thermalModel_coupled(int Nneighbours, double Tneighbours[], dou
     throw 9;
   }
 
-  // setting the temperature is done by the parent module. else some cells will update their T before others, and we get inconsistencies
-  // 		e.g. exchange from cell 2 to this cell will not be same as from this cell to cell 2 since T of this cell would have changed.
+  //!< setting the temperature is done by the parent module. else some cells will update their T before others, and we get inconsistencies
+  //!< 		e.g. exchange from cell 2 to this cell will not be same as from this cell to cell 2 since T of this cell would have changed.
 
-  // Reset the cumulative thermal variables
+  //!< Reset the cumulative thermal variables
   Therm_Qgentot += Therm_Qgen;
   Therm_Qgen = 0;
   Therm_time = 0;
@@ -170,7 +170,7 @@ double Cell_SPM::thermalModel_coupled(int Nneighbours, double Tneighbours[], dou
 
 double Cell_SPM::thermal_getTotalHeat()
 {
-  return Therm_Qgentot; // total heat generation [J] since start of cell's life
+  return Therm_Qgentot; //!< total heat generation [J] since start of cell's life
 }
 
 double Cell_SPM::thermalModel(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim)
@@ -199,7 +199,7 @@ double Cell_SPM::thermalModel(int Nneighbours, double Tneighbours[], double Knei
   double Tnew;
 
   try {
-    if constexpr (settings::T_MODEL == 0) // #CHECK thermal model implementation should be outside.
+    if constexpr (settings::T_MODEL == 0) //!< #CHECK thermal model implementation should be outside.
       Tnew = T();
     else if constexpr (settings::T_MODEL == 1)
       Tnew = thermalModel_cell();
@@ -207,17 +207,17 @@ double Cell_SPM::thermalModel(int Nneighbours, double Tneighbours[], double Knei
       Tnew = thermalModel_coupled(Nneighbours, Tneighbours, Kneighbours, Aneighb, tim);
   } catch (int e) {
 
-    // indicate we have ran the thermal model
+    //!< indicate we have ran the thermal model
     Therm_Qgen = 0;
     Therm_time = 0;
     throw e;
   }
 
-  // setting the temperature is done by the parent module. else some cells will update their T before others,
-  // and we get inconsistencies e.g. exchange from cell 2 to this cell will not be same as from this cell to
-  // cell 2 since T of this cell would have changed.
+  //!< setting the temperature is done by the parent module. else some cells will update their T before others,
+  //!< and we get inconsistencies e.g. exchange from cell 2 to this cell will not be same as from this cell to
+  //!< cell 2 since T of this cell would have changed.
 
-  // Reset the cumulative thermal variables
+  //!< Reset the cumulative thermal variables
   Therm_Qgen = 0;
   Therm_time = 0;
 

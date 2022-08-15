@@ -14,9 +14,9 @@ namespace slide {
 class Converter
 {
 private:
-  double Vdc;  // voltage of the DC bus
-  double Vac;  // voltage of the AC link
-  double Pnom; // nominal power, [Wh]
+  double Vdc;  //!< voltage of the DC bus
+  double Vac;  //!< voltage of the AC link
+  double Pnom; //!< nominal power, [Wh]
 public:
   Converter();
 

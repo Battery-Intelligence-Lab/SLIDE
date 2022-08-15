@@ -12,7 +12,7 @@
  * See the licence file LICENCE.txt for more information.
  */
 
-// Include other util files.
+//!< Include other util files.
 #pragma once
 
 #include <string>
@@ -91,9 +91,9 @@ void run(Tfun task_indv, int i_end, unsigned int numMaxParallelWorkers = setting
       std::vector<std::thread> threads;
       threads.reserve(N_th_max);
 
-      for (unsigned int i_begin = 0; i_begin < N_th_max; i_begin++) // indices for the threads
+      for (unsigned int i_begin = 0; i_begin < N_th_max; i_begin++) //!< indices for the threads
       {
-        // Multi threaded simul:
+        //!< Multi threaded simul:
 
         threads.emplace_back(task_par, i_begin, i_end, N_th_max);
       }
@@ -110,35 +110,35 @@ void run(Tfun task_indv, int i_end, unsigned int numMaxParallelWorkers = setting
 } // namespace slide
 
 namespace slide::util {
-// template <int pLevel>
-// inline void print(const std::string& message) // Print messages.
-//  {
-//  if constexpr (settings::verbose >= pLevel)
-//   {
-//        std::cout << message << '\n';
-//     }
-//  }
+//!< template <int pLevel>
+//!< inline void print(const std::string& message) //!< Print messages.
+//!<  {
+//!<  if constexpr (settings::verbose >= pLevel)
+//!<   {
+//!<        std::cout << message << '\n';
+//!<     }
+//!<  }
 
-// struct Counter // Counts how many times it is called.
-// {
+//!< struct Counter //!< Counts how many times it is called.
+//!< {
 
-//     // To use counter create a static Counter object in the function you would like to measure
-//     // slide::util::Counter myCounterName(printEveryXiter);  Then just call it
-//     // myCounterName();
-//     static count{0};
-//     long long printEveryXiter{500000};
+//!<     //!< To use counter create a static Counter object in the function you would like to measure
+//!<     //!< slide::util::Counter myCounterName(printEveryXiter);  Then just call it
+//!<     //!< myCounterName();
+//!<     static count{0};
+//!<     long long printEveryXiter{500000};
 
-//     Counter() = default;
-//     Counter(unsigned long long printEveryXiter) : printEveryXiter(printEveryXiter){};
+//!<     Counter() = default;
+//!<     Counter(unsigned long long printEveryXiter) : printEveryXiter(printEveryXiter){};
 
-//     void operator()()
-//     {
-//         count++;
+//!<     void operator()()
+//!<     {
+//!<         count++;
 
-//         if (count % printEveryXiter == 0)
-//             std::cout << "Counter: " << count << '\n';
-//     }
-// };
+//!<         if (count % printEveryXiter == 0)
+//!<             std::cout << "Counter: " << count << '\n';
+//!<     }
+//!< };
 
 } // namespace slide::util
 
@@ -151,8 +151,8 @@ FixedData<double> logstep_fix(double x_min, double x_step, int Nstep);
 
 FixedData<double> range_fix(double x_min, double x_max, double dx);
 
-// FixedData<int> range(int stop); #TODO -> FixedData is not good since it has function
-// FixedData<int> range(int start, int stop, int step = 1);
+//!< FixedData<int> range(int stop); #TODO -> FixedData is not good since it has function
+//!< FixedData<int> range(int start, int stop, int step = 1);
 
 std::vector<double> linspace(double x1, double x2, int N);
 FixedData<double> linspace_fix(double x1, double x2, int N);

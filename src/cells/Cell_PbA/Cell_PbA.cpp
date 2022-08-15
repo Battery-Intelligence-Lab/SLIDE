@@ -22,9 +22,9 @@ namespace slide {
 Cell_PbA::Cell_PbA()
 {
   ID = "Cell_PbA";
-  cap = 54; // [Ah] Nominal capacity (data sheet)
+  cap = 54; //!< [Ah] Nominal capacity (data sheet)
 
-  // OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
+  //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 11);
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
 
@@ -36,7 +36,7 @@ Cell_PbA::Cell_PbA(std::string IDi, double capin, double SOCin) : Cell_PbA()
   if (!free::check_SOC(SOCin))
     throw 10;
 
-  // #CHECK also check capacity if negative? Use bool instead of throwing?
+  //!< #CHECK also check capacity if negative? Use bool instead of throwing?
   ID = std::move(IDi);
   cap = capin;
   st.SOC() = SOCin;
@@ -86,7 +86,7 @@ Status Cell_PbA::setCurrent(double Inew, bool checkV, bool print)
    * 			since this current is helping to rectify the situation
    */
 
-  Inew = -Inew; // For sign convention.
+  Inew = -Inew; //!< For sign convention.
 
   const double Iold = st.I();
   st.I() = Inew;
@@ -113,12 +113,12 @@ double Cell_PbA::V(bool print)
    * 1 	if SOC is outside the allowed range
    * 			passed on from linear interpolation
    */
-  const bool verb = print && (settings::printBool::printCrit); // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   try {
     if (isCharging())
       return getOCV() - g_OCV * DOD() + (rho_c / cap) * st.I() * (1 + M_c * SOC() / (C_c - st.SOC()));
     else
-      return getOCV() - g_OCV * DOD() + (rho_d / cap) * st.I() * (1 + M_d * DOD() / (C_d - DOD())); // #CHECK if are making any problems.
+      return getOCV() - g_OCV * DOD() + (rho_d / cap) * st.I() * (1 + M_d * DOD() / (C_d - DOD())); //!< #CHECK if are making any problems.
   } catch (int e) {
     if (verb)
       std::cerr << "ERROR in Cell_PbA::getV when getting the OCV.\n";
@@ -126,7 +126,7 @@ double Cell_PbA::V(bool print)
   }
 }
 
-Status Cell_PbA::setSOC(double SOCnew, bool checkV, bool print) // Also not used except test functions.
+Status Cell_PbA::setSOC(double SOCnew, bool checkV, bool print) //!< Also not used except test functions.
 {
   /*
    * checkV	true, the voltage is checked after setting the current
@@ -153,10 +153,10 @@ Status Cell_PbA::setSOC(double SOCnew, bool checkV, bool print) // Also not used
 
   if (checkV) {
     double v;
-    const auto status = checkVoltage(v, print); // get the voltage Does not throw anymore!
+    const auto status = checkVoltage(v, print); //!< get the voltage Does not throw anymore!
 
     if (isStatusBad(status))
-      st.SOC() = SOCold; // Restore states here.
+      st.SOC() = SOCold; //!< Restore states here.
 
     return status;
   }
@@ -168,15 +168,15 @@ Status Cell_PbA::setStates(setStates_t s, bool checkV, bool print)
 {
   /*
    */
-  auto st_old = st; // Back-up values.
+  auto st_old = st; //!< Back-up values.
 
-  std::copy(s.begin(), s.begin() + st.size(), st.begin()); // Copy states.
-  s = s.last(s.size() - st.size());                        // Remove first Nstates elements from span.
+  std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
+  s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
 
   const Status status = free::check_Cell_states(*this, checkV);
 
   if (isStatusBad(status))
-    st = st_old; // Restore states here.
+    st = st_old; //!< Restore states here.
 
   return status;
 }
@@ -187,11 +187,11 @@ bool Cell_PbA::validStates(bool print)
    * note: does NOT check the voltage, only whether all fields are in the allowed range
    */
 
-  const bool verb = print && settings::printBool::printCrit; // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
-  // Check if all fields are present & extract their values
+  //!< Check if all fields are present & extract their values
 
-  bool range = free::check_SOC(SOC()); // Are we in allowed range?
+  bool range = free::check_SOC(SOC()); //!< Are we in allowed range?
 
   if (T() < Tmin() || T() > Tmax()) {
     if (verb)
@@ -199,7 +199,7 @@ bool Cell_PbA::validStates(bool print)
                 << " <= T <= " << Tmax() << ", value is " << T() << '\n';
     range = false;
   }
-  // there is no range on the current
+  //!< there is no range on the current
   return range;
 }
 
@@ -221,9 +221,9 @@ void Cell_PbA::timeStep_CC(double dt, bool addData, int nstep)
     throw 10;
   }
 
-  // take the specified number of time steps
+  //!< take the specified number of time steps
   for (int t = 0; t < nstep; t++) {
-    // Using forward Euler time integration.
+    //!< Using forward Euler time integration.
 
     st.SOC() += (st.I() - I_gas()) * dt / (3600.0 * Cap());
 
@@ -239,18 +239,18 @@ void Cell_PbA::timeStep_CC(double dt, bool addData, int nstep)
       st.Zw() += std::abs(st.I()) * f_SOC() * f_acid() * dt / (3600.0 * Cap());
     }
 
-    if (isFullyCharged()) // fully charged:
+    if (isFullyCharged()) //!< fully charged:
     {
-      st.SOC_min() = 1;    // Reset minimum SOC.
-      st.Delta_tSOC() = 0; // Reset elapsed time.
-      st.n_bad() = 0;      // 0.9999>SOC reset.
+      st.SOC_min() = 1;    //!< Reset minimum SOC.
+      st.Delta_tSOC() = 0; //!< Reset elapsed time.
+      st.n_bad() = 0;      //!< 0.9999>SOC reset.
     } else {
       st.Delta_tSOC() += dt;
       st.SOC_min() = std::min(st.SOC_min(), st.SOC());
     }
 
     st.f_stratification() += (f_plus() - f_minus()) * dt;
-    st.f_stratification() = std::max(st.f_stratification(), 0.0); // Cannot be less than 0.
+    st.f_stratification() = std::max(st.f_stratification(), 0.0); //!< Cannot be less than 0.
 
     if (addData)
       storeData();
@@ -314,15 +314,15 @@ double Cell_PbA::Ucorr()
     return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_d / cap) * st.I() * (1 + M_d * DOD() / (C_d - DOD()));
 }
 
-// void Cell_PbA::backupStates()
-// {
-// 	st_backup.push_back(st);
-// }
+//!< void Cell_PbA::backupStates()
+//!< {
+//!< 	st_backup.push_back(st);
+//!< }
 
-// void Cell_PbA::restoreStates()
-// {
-// 	st = st_backup.back();
-// 	st_backup.pop_back();
-// }
+//!< void Cell_PbA::restoreStates()
+//!< {
+//!< 	st = st_backup.back();
+//!< 	st_backup.pop_back();
+//!< }
 
 } // namespace slide

@@ -12,10 +12,9 @@
 
 #pragma once
 
-namespace PhyConst
-{
-    constexpr double Kelvin = 273.0;
-    constexpr double F = 96487;  // Faraday's constant
-    constexpr double Rg = 8.314; // ideal gas constant
-    constexpr double pi = 3.141592653589793;
-}
+namespace PhyConst {
+constexpr double Kelvin = 273.0;
+constexpr double F = 96487;  //!< Faraday's constant
+constexpr double Rg = 8.314; //!< ideal gas constant
+constexpr double pi = 3.141592653589793;
+} // namespace PhyConst

@@ -19,7 +19,7 @@
 namespace slide::unit_tests {
 void Cell_test()
 {
-  // test the constructors
+  //!< test the constructors
   Cell_Bucket c1;
   assert(c1.Cap() == 16);
   assert(c1.Vmin() == 2.7);
@@ -47,14 +47,14 @@ void getStates_test(bool fault)
   std::vector<double> s;
 
   c1.getStates(s);
-  assert(s[0] == 0.5);             // soc
-  assert(s[1] == settings::T_ENV); // T
-  assert(s[2] == 0);               // current
+  assert(s[0] == 0.5);             //!< soc
+  assert(s[1] == settings::T_ENV); //!< T
+  assert(s[2] == 0);               //!< current
 
   if (fault) {
     try {
-      // cout<<"There must be an error message after this line"<<endl<<flush; 	// changed global verbose variable
-      // Something with error.
+      //!< cout<<"There must be an error message after this line"<<endl<<flush; 	//!< changed global verbose variable
+      //!< Something with error.
     } catch (...) {
     }
   }
@@ -65,7 +65,7 @@ void getV_test(bool fault)
   Cell_Bucket c1;
   std::string n = "na";
 
-  // normal cell, should give no errors
+  //!< normal cell, should give no errors
   assert(c1.V(false) == 3.2);
   assert(c1.V(false) == 3.2);
   assert(c1.V(true) == 3.2);
@@ -75,19 +75,19 @@ void getV_test(bool fault)
   assert(val == 0);
   assert(v == 3.2);
 
-  // cell with SOC out of range
-  Cell_Bucket c2(n, 1, 1); // make a cell with soC equal to 1
+  //!< cell with SOC out of range
+  Cell_Bucket c2(n, 1, 1); //!< make a cell with soC equal to 1
   c2.setCurrent(-1, false, false);
-  c2.timeStep_CC(3600); // charge further for one hour, now the SOC should be close to 2
+  c2.timeStep_CC(3600); //!< charge further for one hour, now the SOC should be close to 2
   if (fault) {
     try {
-      // cout<<"There should be an error message after this line"<<endl<<flush;	// changed global verbose variable
+      //!< cout<<"There should be an error message after this line"<<endl<<flush;	//!< changed global verbose variable
       c2.V(true);
       assert(false);
     } catch (...) {
     }
     try {
-      // cout<<"There should be another error message after this line"<<endl<<flush;	// changed global verbose variable
+      //!< cout<<"There should be another error message after this line"<<endl<<flush;	//!< changed global verbose variable
       c2.V();
       assert(false);
     } catch (...) {
@@ -106,17 +106,17 @@ void setI_test()
 {
   Cell_Bucket c1;
 
-  // set I without checking the voltage is valid
+  //!< set I without checking the voltage is valid
   assert(c1.I() == 0);
   double V = c1.setCurrent(1.0, false, false);
   assert(c1.I() == 1.0);
   assert(V == 0);
 
-  // setCurrent with a valid voltage
+  //!< setCurrent with a valid voltage
   V = c1.setCurrent(0, true, true);
   assert(c1.I() == 0);
   assert(V == 3.2);
-  V = c1.setCurrent(0); // without optional arguments
+  V = c1.setCurrent(0); //!< without optional arguments
   assert(c1.I() == 0);
   assert(V == 3.2);
 }
@@ -131,17 +131,17 @@ void setSOC_test()
 {
   Cell_Bucket c1;
 
-  // set I without checking the voltage is valid
+  //!< set I without checking the voltage is valid
   assert(c1.SOC() == 0.5);
   auto V = c1.setSOC(1, false, false);
   assert(c1.I() == 1.0);
   assert(V == 0);
 
-  // setCurrent with a valid voltage
+  //!< setCurrent with a valid voltage
   V = c1.setCurrent(0, true, true);
   assert(c1.I() == 0);
   assert(V == 3.2);
-  V = c1.setCurrent(0); // without optional arguments
+  V = c1.setCurrent(0); //!< without optional arguments
   assert(c1.I() == 0);
   assert(V == 3.2);
 }
@@ -151,7 +151,7 @@ void setStates_test(bool fault)
   int nin = settings::CELL_NSTATE_MAX;
   int n;
 
-  // set valid new states
+  //!< set valid new states
   double soc, i, t;
   soc = 0.7;
   i = 2;
@@ -163,25 +163,25 @@ void setStates_test(bool fault)
 
   s.clear();
   c1.getStates(s);
-  assert(s[0] == soc); // soc
-  assert(s[1] == t);   // T
-  assert(s[2] == i);   // current
+  assert(s[0] == soc); //!< soc
+  assert(s[1] == t);   //!< T
+  assert(s[2] == i);   //!< current
 
-  // set invalid states
+  //!< set invalid states
   if (fault) {
     soc = 2;
     t = 0;
     s[0] = soc;
     s[1] = t;
     try {
-      // cout<<"There must be three error messages, one about invalid SOC and one invalid T, and one illegal state"<<endl<<flush;	// changed global verbose variable
+      //!< cout<<"There must be three error messages, one about invalid SOC and one invalid T, and one illegal state"<<endl<<flush;	//!< changed global verbose variable
       c1.setStates(spn);
       assert(false);
     } catch (...) {
     };
   }
 
-  // set states which violate voltage
+  //!< set states which violate voltage
   if (fault) {
     soc = 1;
     t = 273 + 25;
@@ -190,7 +190,7 @@ void setStates_test(bool fault)
     s[1] = t;
     s[2] = i;
     try {
-      // cout<<"There must be one error message about an error when getting the voltage"<<endl<<flush;	// changed global verbose variable
+      //!< cout<<"There must be one error message about an error when getting the voltage"<<endl<<flush;	//!< changed global verbose variable
       c1.setStates(spn);
       assert(false);
     } catch (...) {
@@ -204,8 +204,8 @@ void timeStep_CC_test()
   double dt = 5;
   double tol = 0.002;
 
-  // soc initial = 0.5 and capacity = 10
-  // so SOC_end = 0.5 + 1*5/3600/capacity =
+  //!< soc initial = 0.5 and capacity = 10
+  //!< so SOC_end = 0.5 + 1*5/3600/capacity =
   c1.setCurrent(I);
   c1.timeStep_CC(dt);
   double err = c1.SOC() - (0.5 - I * dt / 3600.0 / c1.Cap());
@@ -221,22 +221,22 @@ void data_test()
 {
   slide::Cell_Bucket c1;
 
-  // slowly charge while storing data
+  //!< slowly charge while storing data
   double I = -1;
   double dt = 5;
-  // double tol = 0.002;
+  //!< double tol = 0.002;
   int nstep = 100;
   c1.setCurrent(I);
 
-  // store a data point every time step
+  //!< store a data point every time step
   for (int i = 0; i < nstep; i++) {
     c1.timeStep_CC(dt, true);
     c1.storeData();
   }
 
-  // write the data
+  //!< write the data
   std::string pref = "CellTest_";
-  // c1.writeData(pref);
+  //!< c1.writeData(pref);
 }
 
 void Copy_test()
@@ -244,21 +244,21 @@ void Copy_test()
   Cell_Bucket c1;
 
   std::unique_ptr<StorageUnit> c2{ c1.copy() };
-  // dynamic cast c2 back to a cell
-  Cell_Bucket *c22 = dynamic_cast<Cell_Bucket *>(c2.get()); // Dynamic cast from smart pointer of StorageUnit to regular pointer of Cell
+  //!< dynamic cast c2 back to a cell
+  Cell_Bucket *c22 = dynamic_cast<Cell_Bucket *>(c2.get()); //!< Dynamic cast from smart pointer of StorageUnit to regular pointer of Cell
   assert(c1.SOC() == c22->SOC());
   assert(c1.I() == c22->I());
 
-  // now try with a changed SOC
+  //!< now try with a changed SOC
   double socnew = 0.4;
   c1.setSOC(socnew, false, false);
   c2.reset(c1.copy());
-  // dynamic cast c2 back to a cell
-  c22 = dynamic_cast<Cell_Bucket *>(c2.get()); // Dynamic cast from StorageUnit to Cell
+  //!< dynamic cast c2 back to a cell
+  c22 = dynamic_cast<Cell_Bucket *>(c2.get()); //!< Dynamic cast from StorageUnit to Cell
   assert(c1.SOC() == c22->SOC());
   assert(c1.I() == c22->I());
 
-  // now change c22 and double check c1 hasn't changed
+  //!< now change c22 and double check c1 hasn't changed
   c22->setSOC(0.6, false, false);
   assert(c1.SOC() == socnew);
 }
@@ -275,7 +275,7 @@ void test_Cell_Bucket(bool testErrors)
    * 				if false, we only test things which should go well
    */
 
-  // if we test the errors, suppress error messages
+  //!< if we test the errors, suppress error messages
   Cell_test();
   getStates_test(testErrors);
   getV_test(testErrors);

@@ -21,12 +21,12 @@
 
 namespace slide::unit_tests {
 
-// ********************************************************** test functions from Module_base *******************************************************************
+//!< ********************************************************** test functions from Module_base *******************************************************************
 void test_BasicGetters()
 {
-  // int Module_base::getNcells()
-  // int Module_base::getNstates()
-  // double Module_base::getTmod()
+  //!< int Module_base::getNcells()
+  //!< int Module_base::getNstates()
+  //!< double Module_base::getTmod()
 
   constexpr size_t ncel = 2;
   std::string n = "na";
@@ -47,7 +47,7 @@ void test_BasicGetters()
 }
 void test_getCellV()
 {
-  // Module_base::getCellVotages
+  //!< Module_base::getCellVotages
 
   constexpr size_t ncel = 2;
   std::unique_ptr<StorageUnit> cs[ncel];
@@ -55,7 +55,7 @@ void test_getCellV()
   auto cs[0] = std::make_unique<Cell_Bucket>();
   auto cs[1] = std::make_unique<Cell_Bucket>();
   std::string n = "na";
-  cs[1]->setSOC(0.6); // change cell 2 to verify the order is correct
+  cs[1]->setSOC(0.6); //!< change cell 2 to verify the order is correct
 
   double v[ncel] = { cs[0]->V(), cs[1]->V() };
   constexpr double T = settings::T_ENV;
@@ -69,7 +69,7 @@ void test_getCellV()
 }
 void test_getStates()
 {
-  // void Module_base::getStates(double s[], int nin, int& nout)
+  //!< void Module_base::getStates(double s[], int nin, int& nout)
   constexpr int ncel = 2;
   constexpr int nin = settings::STORAGEUNIT_NSTATES_MAX;
   constexpr int nin1 = settings::CELL_NSTATE_MAX;
@@ -79,7 +79,7 @@ void test_getStates()
   std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
   std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
   std::string n = "na";
-  cp2->setSOC(0.6); // change cell 2 to verify the order is correct
+  cp2->setSOC(0.6); //!< change cell 2 to verify the order is correct
   cp1->getStates(s1, nin1, nout1);
   cp2->getStates(s2, nin1, nout2);
   double T = settings::T_ENV;
@@ -102,15 +102,15 @@ void test_getCells()
   constexpr int ncel = 2;
   int nin1 = settings::CELL_NSTATE_MAX;
   int nn;
-  double so1[nin1], so2[nin1]; // original states
-  double s1[nin1], s2[nin1];   // states of returned cells
+  double so1[nin1], so2[nin1]; //!< original states
+  double s1[nin1], s2[nin1];   //!< states of returned cells
   double v1, v2;
 
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
   std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
   std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
   std::string n = "na";
-  cp2->setSOC(0.6); // change cell 2 to verify the order is correct
+  cp2->setSOC(0.6); //!< change cell 2 to verify the order is correct
   cp1->getStates(so1, nin1, nn);
   cp2->getStates(so2, nin1, nn);
   v1 = cp1->V();
@@ -121,11 +121,11 @@ void test_getCells()
   std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
   mp->setSUs(cs, ncel, checkCells, true);
   std::unique_ptr<StorageUnit> cs2[ncel];
-  mp->getSUs(cs2, ncel, nn);       // returns storage units, not cells. So getStates is the implementation from SU not Cell_Bucket
-  cs2[0]->getStates(s1, nin1, nn); // this is SU::getStates, not Cell_Bucket::getStates
+  mp->getSUs(cs2, ncel, nn);       //!< returns storage units, not cells. So getStates is the implementation from SU not Cell_Bucket
+  cs2[0]->getStates(s1, nin1, nn); //!< this is SU::getStates, not Cell_Bucket::getStates
   cs2[1]->getStates(s2, nin1, nn);
 
-  // validate cell states
+  //!< validate cell states
   for (int i = 0; i < cp1->getNstates(); i++) {
     assert(s1[i] == so1[i]);
     assert(s2[i] == so2[i]);
@@ -143,7 +143,7 @@ void test_getCells()
 
   std::cout<<"remove the first three characters from the string to get the name of the class"<<endl;
   std::string a = typeid( *cs2[0] ).name();
-  a.erase(a.begin() + 0, a.begin()+3); 	// remove the first 3 random characters, to end up with the string "Class" or "StorageUnit"
+  a.erase(a.begin() + 0, a.begin()+3); 	//!< remove the first 3 random characters, to end up with the string "Class" or "StorageUnit"
   std::cout<<a<<endl;
 
   std::cout<<"Check typeID with respect to class"<<endl;
@@ -154,18 +154,18 @@ void test_getCells()
 
   std::cout<<"Dynamic type casting to the correct type: "<<endl;
   Cell_Bucket* cell1 = dynamic_cast<Cell_Bucket*>(cs2[0]);
-  std::cout<<cell1->SOC()<<endl;				// prints correctly to 0.5
+  std::cout<<cell1->SOC()<<endl;				//!< prints correctly to 0.5
   std::cout<<"Dynamic type casting to the wrong type: "<<endl;
   Module_base_s* mb1 = dynamic_cast<Module_base_s*>(cs2[0]);
   if(mb1 == NULL)
           std::cout<<"wrong type, returned null"<<endl;
 
-  // casting smart pointers
-  std::unique_ptr<StorageUnit> c2 = c1.copy(); 		// c2 is a pointer to a SU
-  Cell_Bucket* c22 = dynamic_cast<Cell_Bucket*>(c2.get()); 	// Dynamic cast from StorageUnit to Cell_Bucket
+  //!< casting smart pointers
+  std::unique_ptr<StorageUnit> c2 = c1.copy(); 		//!< c2 is a pointer to a SU
+  Cell_Bucket* c22 = dynamic_cast<Cell_Bucket*>(c2.get()); 	//!< Dynamic cast from StorageUnit to Cell_Bucket
    */
 
-  // Set the current, ensure it has changed in the cells
+  //!< Set the current, ensure it has changed in the cells
   double Inew = 1;
   mp->setCurrent(Inew);
   mp->getSUs(cs2, ncel, nn);
@@ -174,7 +174,7 @@ void test_getCells()
   assert(cs2[0]->V() < v1);
   assert(cs2[1]->V() < v2);
 
-  // charge
+  //!< charge
   Inew = -1;
   mp->setCurrent(Inew);
   mp->getSUs(cs2, ncel, nn);
@@ -185,7 +185,7 @@ void test_getCells()
 }
 void test_setT()
 {
-  // void Module_base::setT(double Tnew)
+  //!< void Module_base::setT(double Tnew)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -203,7 +203,7 @@ void test_setT()
 }
 void test_setStates(bool testError)
 {
-  // double Module_base::setStates(double s[], int nin, bool checkStates, bool print)
+  //!< double Module_base::setStates(double s[], int nin, bool checkStates, bool print)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -215,14 +215,14 @@ void test_setStates(bool testError)
   std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
   mp->setSUs(cs, ncel, checkCells, true);
 
-  // Make a new State vector from cells 1 and 3, where 3 has a different SOC
+  //!< Make a new State vector from cells 1 and 3, where 3 has a different SOC
   int nin = settings::STORAGEUNIT_NSTATES_MAX;
   int nin1 = settings::CELL_NSTATE_MAX;
   double s[nin], sout[nin], s1[nin1], s2[nin1];
   int nout, nout1;
   Cell_Bucket c3;
-  c3.setSOC(0.4);        // change SOC of a cell
-  double Tnew = 273 + 1; // change T
+  c3.setSOC(0.4);        //!< change SOC of a cell
+  double Tnew = 273 + 1; //!< change T
   cp1->getStates(s1, nin1, nout1);
   c3.getStates(s2, nin1, nout1);
   for (int i = 0; i < nout1; i++) {
@@ -230,10 +230,10 @@ void test_setStates(bool testError)
     s[nout1 + i] = s2[i];
   }
   s[nout1 * 2] = Tnew;
-  mp->setStates(s, 1 + 2 * nout1); // this changes the states of m, and should therefore change the states of cell 2 too
+  mp->setStates(s, 1 + 2 * nout1); //!< this changes the states of m, and should therefore change the states of cell 2 too
 
-  // Check cell 2 and the states have changed
-  assert(cp2->SOC() == 0.4); // mp->setStates invoked cp2->setStates, so also c2 should have changed
+  //!< Check cell 2 and the states have changed
+  assert(cp2->SOC() == 0.4); //!< mp->setStates invoked cp2->setStates, so also c2 should have changed
   mp->getStates(sout, nin, nout);
   assert(nout == 1 + 2 * nout1);
   assert(sout[nout - 1] == Tnew);
@@ -243,14 +243,14 @@ void test_setStates(bool testError)
   }
 
   if (testError) {
-    // try setting an array with the wrong length
+    //!< try setting an array with the wrong length
     try {
       mp->setStates(s1, nout1);
       assert(false);
     } catch (...) {
     };
 
-    // try setting states with different currents
+    //!< try setting states with different currents
     c3.setCurrent(1);
     cp1->getStates(s1, nin1, nout1);
     c3.getStates(s2, nin1, nout1);
@@ -268,7 +268,7 @@ void test_setStates(bool testError)
 }
 void test_setCells(bool testErrors)
 {
-  // void Module_base::setCells(Cell_Bucket c[], int nin, bool checkCells, bool print)
+  //!< void Module_base::setCells(Cell_Bucket c[], int nin, bool checkCells, bool print)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -280,47 +280,47 @@ void test_setCells(bool testErrors)
   std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
   mp->setSUs(cs, ncel, checkCells);
 
-  // set cell with new SOC
+  //!< set cell with new SOC
   double socnew = 0.4;
   std::unique_ptr<Cell_Bucket> cp22(new Cell_Bucket);
   cp22->setSOC(socnew);
   cs[1] = cp22;
   mp->setSUs(cs, ncel);
-  // check using getCells
+  //!< check using getCells
   std::unique_ptr<StorageUnit> cs2[ncel];
   int nn;
   mp->getSUs(cs2, ncel, nn);
-  Cell_Bucket *cell1 = dynamic_cast<Cell_Bucket *>(cs2[1].get()); // Dynamic cast from smart ptr of StorageUnit to regular pointer of Cell_Bucket
-  assert(cell1->SOC() == socnew);                                 // the new soc should be 0.1
-  assert(cp2->SOC() == 0.5);                                      // we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
+  Cell_Bucket *cell1 = dynamic_cast<Cell_Bucket *>(cs2[1].get()); //!< Dynamic cast from smart ptr of StorageUnit to regular pointer of Cell_Bucket
+  assert(cell1->SOC() == socnew);                                 //!< the new soc should be 0.1
+  assert(cp2->SOC() == 0.5);                                      //!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
 
-  // try updating the number of cells
+  //!< try updating the number of cells
   std::unique_ptr<Cell_Bucket> cp3(new Cell_Bucket);
   ncel++;
   std::unique_ptr<StorageUnit> cs3[ncel] = { cp1, cp22, cp3 };
   mp->setSUs(cs3, ncel);
 
-  // check using getCells
+  //!< check using getCells
   std::unique_ptr<StorageUnit> cs4[ncel];
   mp->getSUs(cs4, ncel, nn);
-  cell1 = dynamic_cast<Cell_Bucket *>(cs4[1].get()); // Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC() == socnew);                    // cells[1] is cell22 with new soc
-  cell1 = dynamic_cast<Cell_Bucket *>(cs4[2].get()); // Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC() == 0.5);                       // cells[2] is cell3 with standard soc
+  cell1 = dynamic_cast<Cell_Bucket *>(cs4[1].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+  assert(cell1->SOC() == socnew);                    //!< cells[1] is cell22 with new soc
+  cell1 = dynamic_cast<Cell_Bucket *>(cs4[2].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+  assert(cell1->SOC() == 0.5);                       //!< cells[2] is cell3 with standard soc
   assert(mp->getNSUs() == ncel);
 
   if (testErrors) {
-    // try setting cells with different currents
+    //!< try setting cells with different currents
     double Inew = 1;
     cp2->setCurrent(Inew);
     std::unique_ptr<StorageUnit> cs5[ncel] = { cp1, cp2, cp3 };
     try {
-      mp->setSUs(cs5, ncel); // this causes some erorror. 10 is thrown, but we don't arrive in the catch-statement
-      assert(false);         // so probably one of the smart pointer shits is fucking up
+      mp->setSUs(cs5, ncel); //!< this causes some erorror. 10 is thrown, but we don't arrive in the catch-statement
+      assert(false);         //!< so probably one of the smart pointer shits is fucking up
     } catch (...) {
     }
 
-    /*	// cells which belong to a different module
+    /*	//!< cells which belong to a different module
 * note: that gives errors with the pointers
     std::unique_ptr<Module_s> mp2 (new Module_s());
     try{
@@ -330,11 +330,11 @@ void test_setCells(bool testErrors)
   }
 }
 
-// ********************************************************* test functions from Module_base_s *******************************************************************
+//!< ********************************************************* test functions from Module_base_s *******************************************************************
 void test_Constructor()
 {
-  // Module_base_s::Module_base_s()
-  // Module_base_s::Module_base_s(int ncellsi, Cell_Bucket ci[], double Ti, bool checkCells, bool print)
+  //!< Module_base_s::Module_base_s()
+  //!< Module_base_s::Module_base_s(int ncellsi, Cell_Bucket ci[], double Ti, bool checkCells, bool print)
 
   std::unique_ptr<Module_s> mp(new Module_s());
   assert(mp->getNSUs() == 0);
@@ -345,14 +345,14 @@ void test_Constructor()
   std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
   std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
-  assert(cp1->getFullID() == "cell"); // has no parent yet
+  assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   std::unique_ptr<Module_s> mp2(new Module_s(n, T, true, false, ncel, 1, 1));
   mp2->setSUs(cs, ncel, checkCells, true);
-  // note: you have to make a new module, else the getParent() fails
-  // I made an m before, so &m points to the first module_s made
+  //!< note: you have to make a new module, else the getParent() fails
+  //!< I made an m before, so &m points to the first module_s made
 
   assert(mp2->getNSUs() == ncel);
   assert(mp2->T() == T);
@@ -364,11 +364,11 @@ void test_Constructor()
 }
 void test_BasicGetters_s()
 {
-  // double Module_base_s::Cap()
-  // double Module_base_s::Vmin(){
-  // double Module_base_s::Vmax()
-  // double Module_base_s::I()
-  // double double Module_base_s::V()
+  //!< double Module_base_s::Cap()
+  //!< double Module_base_s::Vmin(){
+  //!< double Module_base_s::Vmax()
+  //!< double Module_base_s::I()
+  //!< double double Module_base_s::V()
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -388,7 +388,7 @@ void test_BasicGetters_s()
 }
 void test_setI(bool testErrors)
 {
-  // double Module_base_s::setCurrent(double Inew, bool checkV, bool print)
+  //!< double Module_base_s::setCurrent(double Inew, bool checkV, bool print)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -407,28 +407,28 @@ void test_setI(bool testErrors)
   double V;
   V = mp->setCurrent(Inew, true);
   assert(mp->I() == Inew);
-  assert(V < 2 * v1); // voltage must decrease
-  // do not check individual cells, that is done in getCells
+  assert(V < 2 * v1); //!< voltage must decrease
+  //!< do not check individual cells, that is done in getCells
 
   Inew = -1;
   V = mp->setCurrent(Inew, true);
   assert(mp->I() == Inew);
-  assert(mp->V() > 2 * v1); // voltage must increase
+  assert(mp->V() > 2 * v1); //!< voltage must increase
 
-  // test things which should break
+  //!< test things which should break
   if (testErrors) {
-    Inew = 10000;                    // very large current, should give too low voltage
-    V = mp->setCurrent(Inew, false); // don't check the voltage, so should be ok
+    Inew = 10000;                    //!< very large current, should give too low voltage
+    V = mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
     try {
-      V = mp->setCurrent(Inew); // check the voltage, should fail
+      V = mp->setCurrent(Inew); //!< check the voltage, should fail
       assert(false);
     } catch (int e) {
     };
 
-    Inew = -10000;                   // very large current, should give too low voltage
-    V = mp->setCurrent(Inew, false); // don't check the voltage, so should be ok
+    Inew = -10000;                   //!< very large current, should give too low voltage
+    V = mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
     try {
-      V = mp->setCurrent(Inew); // check the voltage, should fail
+      V = mp->setCurrent(Inew); //!< check the voltage, should fail
       assert(false);
     } catch (int e) {
     };
@@ -436,7 +436,7 @@ void test_setI(bool testErrors)
 }
 void test_validStates(bool testErrors)
 {
-  // bool Module_base_s::validStates(double s[], int nin, bool print)
+  //!< bool Module_base_s::validStates(double s[], int nin, bool print)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -448,39 +448,39 @@ void test_validStates(bool testErrors)
   std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
   mp->setSUs(cs, ncel, checkCells, true);
 
-  // valid states (current states)
+  //!< valid states (current states)
   int nin = settings::MODULE_NSUs_MAX;
   double s[nin];
   int nout;
   mp->getStates(s, nin, nout);
   assert(mp->validStates(s, nout));
 
-  // valid states (new T)
+  //!< valid states (new T)
   s[nout - 1] = 273 + 5;
   assert(mp->validStates(s, nout));
 
   if (testErrors) {
-    // wrong length
+    //!< wrong length
     int nc = settings::CELL_NSTATE_MAX;
     double sc[nc];
     int noutc;
     cp1->getStates(sc, nc, noutc);
     assert(!mp->validStates(sc, noutc, false));
 
-    // an SOC which is too large
-    s[0] = 2; // this is the SOC of cell 1
+    //!< an SOC which is too large
+    s[0] = 2; //!< this is the SOC of cell 1
     s[nout - 1] = 273 + 1;
     assert(!mp->validStates(s, nout, false));
 
-    // different current values
+    //!< different current values
     s[0] = 0.5;
-    s[2] = 5; // current of cell 1
+    s[2] = 5; //!< current of cell 1
     assert(!mp->validStates(s, nout, false));
   }
 }
 void test_validCells(bool testErrors)
 {
-  // bool Module_base_s::validCells(Cell_Bucket c[], int nin, bool print)
+  //!< bool Module_base_s::validCells(Cell_Bucket c[], int nin, bool print)
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
   std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
@@ -491,33 +491,33 @@ void test_validCells(bool testErrors)
   std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
   mp->setSUs(cs, ncel, checkCells, true);
 
-  // valid cells with the current cells
+  //!< valid cells with the current cells
   std::unique_ptr<StorageUnit> cs2[ncel];
   int nout;
   mp->getSUs(cs2, ncel, nout);
   assert(mp->validSUs(cs2, ncel));
 
-  // valid cells (new cell)
+  //!< valid cells (new cell)
   std::unique_ptr<Cell_Bucket> cp3(new Cell_Bucket);
   cs2[1] = cp3;
   assert(mp->validSUs(cs2, ncel));
 
-  // add an additional cell
+  //!< add an additional cell
   std::unique_ptr<StorageUnit> cs3[3] = { cp1, cp2, cp3 };
   assert(mp->validSUs(cs3, 3));
 
   if (testErrors) {
-    // different currents
+    //!< different currents
     cp3->setCurrent(1);
-    assert(cs3[2]->I() == 1); // array of pointers, so it should have been changed automatically in the array
+    assert(cs3[2]->I() == 1); //!< array of pointers, so it should have been changed automatically in the array
     assert(!mp->validSUs(cs3, 3, false));
 
-    // validSU does not check whether cells are outside their voltage range
+    //!< validSU does not check whether cells are outside their voltage range
   }
 }
 void test_timeStep_CC()
 {
-  // void Module_base_s::timeStep_CC(double dt)
+  //!< void Module_base_s::timeStep_CC(double dt)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -531,12 +531,12 @@ void test_timeStep_CC()
   std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
   mp->setSUs(cs, ncel, checkCells, true);
 
-  // time step with 0 current
+  //!< time step with 0 current
   double dt = 5;
   mp->timeStep_CC(dt);
   assert(mp->V() == 2 * v1);
 
-  // discharge
+  //!< discharge
   double Inew = 1;
   double V, err;
   double tol = 0.002;
@@ -546,7 +546,7 @@ void test_timeStep_CC()
   assert(V < 2 * v1);
   assert(mp->I() == Inew);
 
-  // check individual cells
+  //!< check individual cells
   std::unique_ptr<StorageUnit> cs2[ncel];
   int nout;
   Cell_Bucket *cell1;
@@ -554,13 +554,13 @@ void test_timeStep_CC()
   for (int i = 0; i < ncel; i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() < v1);
-    cell1 = dynamic_cast<Cell_Bucket *>(cs2[i].get()); // Dynamic cast from StorageUnit to Cell_Bucket
+    cell1 = dynamic_cast<Cell_Bucket *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
     assert(cell1->SOC() < soc1);
     err = cell1->SOC() - (0.5 - 1.0 * 5.0 / 3600.0 / cell1->Cap());
     assert(err < tol && err > -tol);
   }
 
-  // charge
+  //!< charge
   Inew = -1;
   mp->setCurrent(Inew);
   mp->timeStep_CC(dt);
@@ -570,7 +570,7 @@ void test_timeStep_CC()
   for (int i = 0; i < ncel; i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() > V / 2.0);
-    cell1 = dynamic_cast<Cell_Bucket *>(cs2[i].get()); // Dynamic cast from StorageUnit to Cell_Bucket
+    cell1 = dynamic_cast<Cell_Bucket *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
     err = cell1->SOC() - (0.5);
     assert(err < tol && err > -tol);
   }
@@ -578,8 +578,8 @@ void test_timeStep_CC()
 
 void test_Modules_s_ECM(bool testErrors)
 {
-  // test series modules make out of ECM cells
-  // this just repeats the other tests but with a different Cell_Bucket type
+  //!< test series modules make out of ECM cells
+  //!< this just repeats the other tests but with a different Cell_Bucket type
   constexpr int ncel = 2;
   int nin = settings::STORAGEUNIT_NSTATES_MAX;
   int nin1 = settings::CELL_NSTATE_MAX;
@@ -594,8 +594,8 @@ void test_Modules_s_ECM(bool testErrors)
   Cell_ECM *cell1;
   std::string n = "na";
 
-  // getStates - setStates
-  cp2->setSOC(0.6); // change cell 2 to verify the order is correct
+  //!< getStates - setStates
+  cp2->setSOC(0.6); //!< change cell 2 to verify the order is correct
   cp1->getStates(s1, nin1, nout1);
   cp2->getStates(s2, nin1, nout2);
   double T = settings::T_ENV;
@@ -609,8 +609,8 @@ void test_Modules_s_ECM(bool testErrors)
     assert(s1[i] == s[i]);
     assert(s2[i] == s[nout1 + i]);
   }
-  cp3->setSOC(0.4);      // change SOC of a cell
-  double Tnew = 273 + 1; // change T
+  cp3->setSOC(0.4);      //!< change SOC of a cell
+  double Tnew = 273 + 1; //!< change T
   cp1->getStates(s1, nin1, nout1);
   cp3->getStates(s2, nin1, nout1);
   for (int i = 0; i < nout1; i++) {
@@ -619,7 +619,7 @@ void test_Modules_s_ECM(bool testErrors)
   }
   s[nout1 * 2] = Tnew;
   mp->setStates(s, 1 + 2 * nout1);
-  assert(cp2->SOC() == 0.4); // mp->setStates invoked cp2->setStates, so also c2 should have changed
+  assert(cp2->SOC() == 0.4); //!< mp->setStates invoked cp2->setStates, so also c2 should have changed
   mp->getStates(sout, nin, nout);
   assert(nout == 1 + 2 * nout1);
   assert(sout[nout - 1] == Tnew);
@@ -627,9 +627,9 @@ void test_Modules_s_ECM(bool testErrors)
     assert(s1[i] == sout[i]);
     assert(s2[i] == sout[nout1 + i]);
   }
-  mp->setT(settings::T_ENV); // reset the tenperature, else the thermal model in timeStep will freak out
+  mp->setT(settings::T_ENV); //!< reset the tenperature, else the thermal model in timeStep will freak out
 
-  // getCells - setCells
+  //!< getCells - setCells
   std::unique_ptr<StorageUnit> cs2[ncel];
   double socnew = 0.4;
   cp22->setSOC(socnew);
@@ -638,26 +638,26 @@ void test_Modules_s_ECM(bool testErrors)
   cp3->setSOC(0.5);
   cs[1] = cp22;
   mp->setSUs(cs, ncel);
-  // check using getCells
+  //!< check using getCells
   int nn;
   mp->getSUs(cs2, ncel, nn);
-  cell1 = dynamic_cast<Cell_ECM *>(cs2[1].get()); // Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC() == socnew);                 // the new soc should be 0.1
-  assert(cp2->SOC() == 0.5);                      // we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
-  // try updating the number of cells
+  cell1 = dynamic_cast<Cell_ECM *>(cs2[1].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+  assert(cell1->SOC() == socnew);                 //!< the new soc should be 0.1
+  assert(cp2->SOC() == 0.5);                      //!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
+  //!< try updating the number of cells
   ncel++;
   std::unique_ptr<StorageUnit> cs3[ncel] = { cp1, cp22, cp3 };
   mp->setSUs(cs3, ncel);
-  // check using getCells
+  //!< check using getCells
   std::unique_ptr<StorageUnit> cs4[ncel];
   mp->getSUs(cs4, ncel, nn);
-  cell1 = dynamic_cast<Cell_ECM *>(cs4[1].get()); // Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC() == socnew);                 // cells[1] is cell22 with new soc
-  cell1 = dynamic_cast<Cell_ECM *>(cs4[2].get()); // Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC() == 0.5);                    // cells[2] is cell3 with standard soc
+  cell1 = dynamic_cast<Cell_ECM *>(cs4[1].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+  assert(cell1->SOC() == socnew);                 //!< cells[1] is cell22 with new soc
+  cell1 = dynamic_cast<Cell_ECM *>(cs4[2].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+  assert(cell1->SOC() == 0.5);                    //!< cells[2] is cell3 with standard soc
   assert(mp->getNSUs() == ncel);
 
-  // timeStep_CC
+  //!< timeStep_CC
   ncel = 2;
   std::unique_ptr<Cell_ECM> cp111(new Cell_ECM);
   std::unique_ptr<Cell_ECM> cp222(new Cell_ECM);
@@ -668,11 +668,11 @@ void test_Modules_s_ECM(bool testErrors)
   double v1 = cp1->V();
   double soc1 = cp1->SOC();
   mp->setSUs(cs, ncel, checkCells, true);
-  // time step with 0 current
+  //!< time step with 0 current
   double dt = 5;
   mp->timeStep_CC(dt);
   assert(mp->V() == 2 * v1);
-  // discharge
+  //!< discharge
   double Inew = 1;
   double tol = 0.002;
   mp->setCurrent(Inew);
@@ -681,17 +681,17 @@ void test_Modules_s_ECM(bool testErrors)
   double err;
   assert(V < 2 * v1);
   assert(mp->I() == Inew);
-  // check individual cells
+  //!< check individual cells
   mp->getSUs(cs2, ncel, nout);
   for (int i = 0; i < ncel; i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() < v1);
-    cell1 = dynamic_cast<Cell_ECM *>(cs2[i].get()); // Dynamic cast from StorageUnit to Cell_Bucket
+    cell1 = dynamic_cast<Cell_ECM *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
     assert(cell1->SOC() < soc1);
     err = cell1->SOC() - (0.5 - 1.0 * 5.0 / 3600.0 / cell1->Cap());
     assert(err < tol && err > -tol);
   }
-  // charge
+  //!< charge
   Inew = -1;
   mp->setCurrent(Inew);
   mp->timeStep_CC(dt);
@@ -701,7 +701,7 @@ void test_Modules_s_ECM(bool testErrors)
   for (int i = 0; i < ncel; i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() > V / 2.0);
-    cell1 = dynamic_cast<Cell_ECM *>(cs2[i].get()); // Dynamic cast from StorageUnit to Cell_Bucket
+    cell1 = dynamic_cast<Cell_ECM *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
     err = cell1->SOC() - (0.5);
     assert(err < tol && err > -tol);
   }
@@ -709,8 +709,8 @@ void test_Modules_s_ECM(bool testErrors)
 
 void test_Modules_s_SPM(bool testErrors)
 {
-  // test series modules make out of ECM cells
-  // this just repeats the other tests but with a different Cell_Bucket type
+  //!< test series modules make out of ECM cells
+  //!< this just repeats the other tests but with a different Cell_Bucket type
   constexpr int ncel = 2;
   int nin = settings::STORAGEUNIT_NSTATES_MAX;
   int nin1 = settings::CELL_NSTATE_MAX;
@@ -725,8 +725,8 @@ void test_Modules_s_SPM(bool testErrors)
   Cell_SPM *cell1;
   std::string n = "na";
 
-  // getStates - setStates
-  cp2->setSOC(0.6); // change cell 2 to verify the order is correct
+  //!< getStates - setStates
+  cp2->setSOC(0.6); //!< change cell 2 to verify the order is correct
   cp1->getStates(s1, nin1, nout1);
   cp2->getStates(s2, nin1, nout2);
   double T = settings::T_ENV;
@@ -740,8 +740,8 @@ void test_Modules_s_SPM(bool testErrors)
     assert(s1[i] == s[i]);
     assert(s2[i] == s[nout1 + i]);
   }
-  cp3->setSOC(0.1);      // change SOC of a cell
-  double Tnew = 273 + 1; // change T
+  cp3->setSOC(0.1);      //!< change SOC of a cell
+  double Tnew = 273 + 1; //!< change T
   cp1->getStates(s1, nin1, nout1);
   cp3->getStates(s2, nin1, nout1);
   for (int i = 0; i < nout1; i++) {
@@ -750,7 +750,7 @@ void test_Modules_s_SPM(bool testErrors)
   }
   s[nout1 * 2] = Tnew;
   mp->setStates(s, 1 + 2 * nout1);
-  assert(cp2->SOC() == 0.1); // mp->setStates invoked cp2->setStates, so also c2 should have changed
+  assert(cp2->SOC() == 0.1); //!< mp->setStates invoked cp2->setStates, so also c2 should have changed
   mp->getStates(sout, nin, nout);
   assert(nout == 1 + 2 * nout1);
   assert(sout[nout - 1] == Tnew);
@@ -759,7 +759,7 @@ void test_Modules_s_SPM(bool testErrors)
     assert(s2[i] == sout[nout1 + i]);
   }
 
-  // getCells - setCells
+  //!< getCells - setCells
   std::unique_ptr<StorageUnit> cs2[ncel];
   /*	double socnew = 0.1;
   cp22->setSOC(socnew);
@@ -768,26 +768,26 @@ void test_Modules_s_SPM(bool testErrors)
   cp3->setSOC(0.5);
   cs[1] = cp22;
   mp->setSUs(cs,ncel);
-  // check using getCells
+  //!< check using getCells
   int nn;
   mp->getSUs(cs2, ncel, nn);
-  cell1 = dynamic_cast<Cell_SPM*>(cs2[1].get()); 	// Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC()==socnew);			// the new soc should be 0.1
-  assert(cp2->SOC()==0.5);					// we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
-  // try updating the number of cells
+  cell1 = dynamic_cast<Cell_SPM*>(cs2[1].get()); 	//!< Dynamic cast from StorageUnit to Cell_Bucket
+  assert(cell1->SOC()==socnew);			//!< the new soc should be 0.1
+  assert(cp2->SOC()==0.5);					//!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
+  //!< try updating the number of cells
   ncel++;
   std::unique_ptr<StorageUnit> cs3[ncel] = {cp1, cp22, cp3};
   mp->setSUs(cs3,ncel);
-  // check using getCells
+  //!< check using getCells
   std::unique_ptr<StorageUnit> cs4[ncel];
   mp->getSUs(cs4, ncel, nn);
-  cell1 = dynamic_cast<Cell_SPM*>(cs4[1].get()); 	// Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC()==socnew);		// cells[1] is cell22 with new soc
-  cell1 = dynamic_cast<Cell_SPM*>(cs4[2].get()); 	// Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC()==0.5);			// cells[2] is cell3 with standard soc
+  cell1 = dynamic_cast<Cell_SPM*>(cs4[1].get()); 	//!< Dynamic cast from StorageUnit to Cell_Bucket
+  assert(cell1->SOC()==socnew);		//!< cells[1] is cell22 with new soc
+  cell1 = dynamic_cast<Cell_SPM*>(cs4[2].get()); 	//!< Dynamic cast from StorageUnit to Cell_Bucket
+  assert(cell1->SOC()==0.5);			//!< cells[2] is cell3 with standard soc
   assert(mp->getNSUs()==ncel);
 */
-  // timeStep_CC
+  //!< timeStep_CC
   ncel = 2;
   std::unique_ptr<Cell_SPM> cp111(new Cell_SPM);
   std::unique_ptr<Cell_SPM> cp222(new Cell_SPM);
@@ -798,11 +798,11 @@ void test_Modules_s_SPM(bool testErrors)
   double v1 = cp1->V();
   double soc1 = cp1->SOC();
   mp->setSUs(cs, ncel, checkCells, true);
-  // time step with 0 current
+  //!< time step with 0 current
   double dt = 5;
   mp->timeStep_CC(dt);
   assert(mp->V() == 2 * v1);
-  // discharge
+  //!< discharge
   double Inew = 1;
   double tol = 0.002;
   mp->setCurrent(Inew);
@@ -811,17 +811,17 @@ void test_Modules_s_SPM(bool testErrors)
   double err;
   assert(V < 2 * v1);
   assert(mp->I() == Inew);
-  // check individual cells
+  //!< check individual cells
   mp->getSUs(cs2, ncel, nout);
   for (int i = 0; i < ncel; i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() < v1);
-    cell1 = dynamic_cast<Cell_SPM *>(cs2[i].get()); // Dynamic cast from StorageUnit to Cell_Bucket
+    cell1 = dynamic_cast<Cell_SPM *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
     assert(cell1->SOC() < soc1);
     err = cell1->SOC() - (0.5 - 1.0 * 5.0 / 3600.0 / cell1->Cap());
     assert(err < tol && err > -tol);
   }
-  // charge
+  //!< charge
   Inew = -1;
   mp->setCurrent(Inew);
   mp->timeStep_CC(dt);
@@ -831,7 +831,7 @@ void test_Modules_s_SPM(bool testErrors)
   for (int i = 0; i < ncel; i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() > V / 2.0);
-    cell1 = dynamic_cast<Cell_SPM *>(cs2[i].get()); // Dynamic cast from StorageUnit to Cell_Bucket
+    cell1 = dynamic_cast<Cell_SPM *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
     err = cell1->SOC() - (0.5);
     assert(err < tol && err > -tol);
   }
@@ -839,7 +839,7 @@ void test_Modules_s_SPM(bool testErrors)
 
 void test_Hierarchichal()
 {
-  // test series modules made out of other series modules
+  //!< test series modules made out of other series modules
 
   double tol = 0.001;
   constexpr int ncel1 = 2;
@@ -860,14 +860,14 @@ void test_Hierarchichal()
   std::unique_ptr<StorageUnit> SU3[ncel3] = { cp5, cp6, cp7 };
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp1(new Module_s(n1, T, true, false, ncel1, 1, 2)); // middle level modules are pass through
+  std::unique_ptr<Module_s> mp1(new Module_s(n1, T, true, false, ncel1, 1, 2)); //!< middle level modules are pass through
   std::unique_ptr<Module_s> mp2(new Module_s(n2, T, true, false, ncel2, 1, 2));
   std::unique_ptr<Module_s> mp3(new Module_s(n3, T, true, false, ncel3, 1, 2));
   mp1->setSUs(SU1, ncel1, checkCells);
   mp2->setSUs(SU2, ncel2, checkCells);
   mp3->setSUs(SU3, ncel3, checkCells);
 
-  // make the hierarichical module
+  //!< make the hierarichical module
   int nm = 3;
   std::string n4 = "H4";
   std::unique_ptr<StorageUnit> MU[nm] = { mp1, mp2, mp3 };
@@ -883,24 +883,24 @@ void test_Hierarchichal()
   assert(cp4->getFullID() == "H4_H2_cell");
   assert(cp5->getFullID() == "H4_H3_cell");
 
-  // set a CC current
+  //!< set a CC current
   double Inew = -5;
   mp->setCurrent(Inew);
   assert(mp1->I() == Inew);
   assert(cp3->I() == Inew);
   assert(cp7->I() == Inew);
 
-  // time a CC time step
+  //!< time a CC time step
   Vini = mp->V();
   double dt = 5;
   mp->timeStep_CC(dt);
-  assert(std::abs(cp1->SOC() - (0.5 - Inew * dt / 3600.0 / cp1->Cap())) < tol); // the SOC must have increased (check just 1 cell out of all 7)
+  assert(std::abs(cp1->SOC() - (0.5 - Inew * dt / 3600.0 / cp1->Cap())) < tol); //!< the SOC must have increased (check just 1 cell out of all 7)
   assert(mp->V() > Vini);
 }
 
 void test_Hierarchical_Cross()
 {
-  // test series-modules made out of parallel-modules
+  //!< test series-modules made out of parallel-modules
 
   double tol = settings::MODULE_P_I_ABSTOL;
   constexpr int ncel1 = 2;
@@ -921,14 +921,14 @@ void test_Hierarchical_Cross()
   std::unique_ptr<StorageUnit> SU3[ncel3] = { cp5, cp6, cp7 };
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_p> mp1(new Module_p(n1, T, true, false, ncel1, 1, 2)); // middle level modules are pass through
+  std::unique_ptr<Module_p> mp1(new Module_p(n1, T, true, false, ncel1, 1, 2)); //!< middle level modules are pass through
   std::unique_ptr<Module_p> mp2(new Module_p(n2, T, true, false, ncel2, 1, 2));
   std::unique_ptr<Module_p> mp3(new Module_p(n3, T, true, false, ncel3, 1, 2));
   mp1->setSUs(SU1, ncel1, checkCells);
   mp2->setSUs(SU2, ncel2, checkCells);
   mp3->setSUs(SU3, ncel3, checkCells);
 
-  // make the hierarichical series-module
+  //!< make the hierarichical series-module
   int nm = 3;
   std::string n4 = "4";
   std::unique_ptr<StorageUnit> MU[nm] = { mp1, mp2, mp3 };
@@ -939,62 +939,62 @@ void test_Hierarchical_Cross()
   assert(Vini == mp1->V() + mp2->V() + mp3->V());
   assert(Vini == 3 * cp1->V());
 
-  // set a CC current
+  //!< set a CC current
   double Inew = -5;
   mp->setCurrent(Inew);
-  assert(std::abs(mp->I() - Inew) < tol);                   // no longer exact since it involves parallel modules
-  assert(std::abs(cp3->I() - Inew / mp2->getNSUs()) < tol); // 2nd module has 2 cells, so current should split in 2
-  assert(std::abs(cp7->I() - Inew / mp3->getNSUs()) < tol); // 3rd module has 3 cells, so current should split in 3
+  assert(std::abs(mp->I() - Inew) < tol);                   //!< no longer exact since it involves parallel modules
+  assert(std::abs(cp3->I() - Inew / mp2->getNSUs()) < tol); //!< 2nd module has 2 cells, so current should split in 2
+  assert(std::abs(cp7->I() - Inew / mp3->getNSUs()) < tol); //!< 3rd module has 3 cells, so current should split in 3
 
-  // time a CC time step
+  //!< time a CC time step
   Vini = mp->V();
   double dt = 5;
   mp->timeStep_CC(dt);
-  assert(std::abs(cp1->SOC() - (0.5 - Inew * dt / 3600.0 / cp1->Cap())) < tol); // the SOC must have increased (check just 1 cell out of all 7)
+  assert(std::abs(cp1->SOC() - (0.5 - Inew * dt / 3600.0 / cp1->Cap())) < tol); //!< the SOC must have increased (check just 1 cell out of all 7)
   assert(mp->V() > Vini);
 }
 
-// void test_copy_s()
-// {
-// 	/*
-// 	 * test the copy-function
-// 	 */
+//!< void test_copy_s()
+//!< {
+//!< 	/*
+//!< 	 * test the copy-function
+//!< 	 */
 
-// 	// make module
-// 	constexpr int ncel = 2;
-// 	std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-// 	std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-// 	std::unique_ptr<StorageUnit> cs[ncel] = {cp1, cp2};
-// 	std::string n = "na";
-// 	double v1 = cp1->V();
-// 	double T = settings::T_ENV;
-// 	bool checkCells = false;
-// 	std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-// 	mp->setSUs(cs, ncel, checkCells, true);
+//!< 	//!< make module
+//!< 	constexpr int ncel = 2;
+//!< 	std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
+//!< 	std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
+//!< 	std::unique_ptr<StorageUnit> cs[ncel] = {cp1, cp2};
+//!< 	std::string n = "na";
+//!< 	double v1 = cp1->V();
+//!< 	double T = settings::T_ENV;
+//!< 	bool checkCells = false;
+//!< 	std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
+//!< 	mp->setSUs(cs, ncel, checkCells, true);
 
-// 	// copy this one and check they are identical
-// 	std::unique_ptr<StorageUnit> cn = mp->copy();
-// 	Module_s *c22 = dynamic_cast<Module_s *>(cn.get()); // Dynamic cast from StorageUnit to Cell_Bucket
-// 	assert(mp->V() == c22->V());
-// 	std::unique_ptr<StorageUnit> corig[ncel], cnew[ncel];
-// 	int nout;
-// 	mp->getSUs(corig, ncel, nout);
-// 	c22->getSUs(cnew, ncel, nout);
-// 	for (int i = 0; i < mp->getNSUs(); i++)
-// 		assert(corig[i]->V() == cnew[i]->V());
+//!< 	//!< copy this one and check they are identical
+//!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
+//!< 	Module_s *c22 = dynamic_cast<Module_s *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+//!< 	assert(mp->V() == c22->V());
+//!< 	std::unique_ptr<StorageUnit> corig[ncel], cnew[ncel];
+//!< 	int nout;
+//!< 	mp->getSUs(corig, ncel, nout);
+//!< 	c22->getSUs(cnew, ncel, nout);
+//!< 	for (int i = 0; i < mp->getNSUs(); i++)
+//!< 		assert(corig[i]->V() == cnew[i]->V());
 
-// 	// change the copied version, and ensure the old one is still the same
-// 	c22->setCurrent(1 * ncel, false, false); // discharge
-// 	for (int t = 0; t < 10; t++)
-// 		c22->timeStep_CC(2, false);
-// 	mp->getSUs(corig, ncel, nout);
-// 	c22->getSUs(cnew, ncel, nout);
-// 	for (int i = 0; i < mp->getNSUs(); i++)
-// 	{
-// 		assert(corig[i]->V() == v1);
-// 		assert(cnew[i]->V() < v1);
-// 	}
-// }
+//!< 	//!< change the copied version, and ensure the old one is still the same
+//!< 	c22->setCurrent(1 * ncel, false, false); //!< discharge
+//!< 	for (int t = 0; t < 10; t++)
+//!< 		c22->timeStep_CC(2, false);
+//!< 	mp->getSUs(corig, ncel, nout);
+//!< 	c22->getSUs(cnew, ncel, nout);
+//!< 	for (int i = 0; i < mp->getNSUs(); i++)
+//!< 	{
+//!< 		assert(corig[i]->V() == v1);
+//!< 		assert(cnew[i]->V() < v1);
+//!< 	}
+//!< }
 
 void test_CoolSystem_s()
 {
@@ -1021,30 +1021,30 @@ void test_CoolSystem_s()
    * 	Qcool and Qheat both decrease by same fraction
    */
 
-  // Parameters from Cell_SPM which are needed to calculate the heat balance
+  //!< Parameters from Cell_SPM which are needed to calculate the heat balance
   double rho = 1626;
   double Cp = 750;
-  double L = 1.6850 * pow(10, -4);    // thickness of one layer
-  double width = 0.1;                 // width of the pouch
-  double height = 0.2;                // height of the pouch
-  int nlayers = 31;                   // number of layers in the pouch
-  double Acell = width * height;      // geometric surface area of the pouch
-  double elec_surf = Acell * nlayers; // total 'unrolled' surface area of the electrodes
+  double L = 1.6850 * pow(10, -4);    //!< thickness of one layer
+  double width = 0.1;                 //!< width of the pouch
+  double height = 0.2;                //!< height of the pouch
+  int nlayers = 31;                   //!< number of layers in the pouch
+  double Acell = width * height;      //!< geometric surface area of the pouch
+  double elec_surf = Acell * nlayers; //!< total 'unrolled' surface area of the electrodes
 
-  // General settings
+  //!< General settings
   double T = settings::T_ENV;
   bool checkCells = true;
   double Icha, Idis;
   double Irest = 0;
   double dt = 2;
-  int N = 100; // number of steps per charge / discharge / rest
+  int N = 100; //!< number of steps per charge / discharge / rest
 
-  // Loop for each setting of the cool controller
+  //!< Loop for each setting of the cool controller
   for (int coolControl = 1; coolControl < 6; coolControl++) {
 
-    // ****************************************************************************************************************************************************
-    // Make a simple module with one SPM cell
-    // cout<<"module_s_test start coolsystem test with a single cell for cool control setting "<<coolControl<<endl;
+    //!< ****************************************************************************************************************************************************
+    //!< Make a simple module with one SPM cell
+    //!< cout<<"module_s_test start coolsystem test with a single cell for cool control setting "<<coolControl<<endl;
     int ncel = 1;
     std::unique_ptr<Cell_SPM> cp0(new Cell_SPM);
     std::unique_ptr<StorageUnit> cs[ncel] = { cp0 };
@@ -1053,44 +1053,44 @@ void test_CoolSystem_s()
     mp->setSUs(cs, ncel, checkCells, true);
     double Tini[1] = { cp0->T() };
 
-    // do a few 1C cycles (note just some time steps since we don't have the Cycler
+    //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp0->Cap();
     Idis = cp0->Cap();
     for (int i = 0; i < 5; i++) {
-      // charge
+      //!< charge
       mp->setCurrent(Icha);
       for (int t = 0; t < N; t++)
         mp->timeStep_CC(dt);
-      // rest
+      //!< rest
       mp->setCurrent(Irest);
       for (int t = 0; t < N; t++)
         mp->timeStep_CC(dt);
-      // discharge
+      //!< discharge
       mp->setCurrent(Idis);
       for (int t = 0; t < N; t++)
         mp->timeStep_CC(dt);
-      // rest
+      //!< rest
       mp->setCurrent(Irest);
       for (int t = 0; t < N; t++)
         mp->timeStep_CC(dt);
     }
 
-    // check the energy balance of the outer module
-    double Qgen = cp0->thermal_getTotalHeat();         // total heat generated by cells
-    double Qcool = mp->getCoolSystem()->getHeatEvac(); // total heat extracted by the coolsystem from the cells
+    //!< check the energy balance of the outer module
+    double Qgen = cp0->thermal_getTotalHeat();         //!< total heat generated by cells
+    double Qcool = mp->getCoolSystem()->getHeatEvac(); //!< total heat extracted by the coolsystem from the cells
     double Tnew[1] = { cp0->T() };
-    double Qheat = 0; // total energy in heating up the cells
+    double Qheat = 0; //!< total energy in heating up the cells
     for (int i = 0; i < 1; i++)
       Qheat += (Tnew[i] - Tini[i]) * (rho * Cp * L * elec_surf);
-    // cout<<"\t Total heat balance of coolsystem single cell "<<coolControl<<" is "<<Qgen<<", "<<Qheat<<", "<<Qcool<<" and error "<<abs(Qgen - Qcool - Qheat)<<endl<<flush;
-    //  note: Qheat < 0 means the cell has cooled down compared to its initial value
-    //  	that is possible because cells are made at T_env (which is 20), but the HVAC coolsystem can cool the SU as cold as controlAC_onoff_Toff, which is 15
-    //  	so cells can cool down 5 degrees
+    //!< cout<<"\t Total heat balance of coolsystem single cell "<<coolControl<<" is "<<Qgen<<", "<<Qheat<<", "<<Qcool<<" and error "<<abs(Qgen - Qcool - Qheat)<<endl<<flush;
+    //!<  note: Qheat < 0 means the cell has cooled down compared to its initial value
+    //!<  	that is possible because cells are made at T_env (which is 20), but the HVAC coolsystem can cool the SU as cold as controlAC_onoff_Toff, which is 15
+    //!<  	so cells can cool down 5 degrees
     assert(std::abs(Qgen - Qcool - Qheat) / std::abs(Qgen) < 1e-10);
 
-    // **********************************************************************************************************************************************************
-    // Make a simple module with SPM cells
-    // cout<<"module_s_test start coolsystem test with a simple module for cool control setting "<<coolControl<<endl;
+    //!< **********************************************************************************************************************************************************
+    //!< Make a simple module with SPM cells
+    //!< cout<<"module_s_test start coolsystem test with a simple module for cool control setting "<<coolControl<<endl;
     int ncel2 = 4;
     std::unique_ptr<Cell_SPM> cp1(new Cell_SPM);
     std::unique_ptr<Cell_SPM> cp2(new Cell_SPM);
@@ -1102,44 +1102,44 @@ void test_CoolSystem_s()
     mp2->setSUs(cs2, ncel2, checkCells, true);
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
 
-    // do a few 1C cycles (note just some time steps since we don't have the Cycler
+    //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp1->Cap();
     Idis = cp1->Cap();
     for (int i = 0; i < 5; i++) {
-      // charge
+      //!< charge
       mp2->setCurrent(Icha);
       for (int t = 0; t < N; t++)
         mp2->timeStep_CC(dt);
-      // rest
+      //!< rest
       mp2->setCurrent(Irest);
       for (int t = 0; t < N; t++)
         mp2->timeStep_CC(dt);
-      // discharge
+      //!< discharge
       mp2->setCurrent(Idis);
       for (int t = 0; t < N; t++)
         mp2->timeStep_CC(dt);
-      // rest
+      //!< rest
       mp2->setCurrent(Irest);
       for (int t = 0; t < N; t++)
         mp2->timeStep_CC(dt);
     }
 
-    // check the energy balance of the outer module
-    double Qgen2 = cp1->thermal_getTotalHeat() + cp2->thermal_getTotalHeat() + cp3->thermal_getTotalHeat() + cp4->thermal_getTotalHeat(); // total heat generated by cells
-    double Qcool2 = mp2->getCoolSystem()->getHeatEvac();                                                                                  // total heat extracted by the coolsystem from the cells
+    //!< check the energy balance of the outer module
+    double Qgen2 = cp1->thermal_getTotalHeat() + cp2->thermal_getTotalHeat() + cp3->thermal_getTotalHeat() + cp4->thermal_getTotalHeat(); //!< total heat generated by cells
+    double Qcool2 = mp2->getCoolSystem()->getHeatEvac();                                                                                  //!< total heat extracted by the coolsystem from the cells
     double Tnew2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
-    double Qheat2 = 0; // total energy in heating up the cells
+    double Qheat2 = 0; //!< total energy in heating up the cells
     for (int i = 0; i < 4; i++)
       Qheat2 += (Tnew2[i] - Tini2[i]) * (rho * Cp * L * elec_surf);
-    // cout<<"\t Total heat balance of coolsystem simple module "<<coolControl<<" is "<<Qgen2<<", "<<Qheat2<<", "<<Qcool2<<" and error "<<abs(Qgen2 - Qcool2 - Qheat2)<<endl<<flush;
-    //  note: Qheat < 0 means the cell has cooled down compared to its initial value
-    //  	that is possible because cells are made at T_env (which is 20), but the HVAC coolsystem can cool the SU as cold as controlAC_onoff_Toff, which is 15
-    //  	so cells can cool down 5 degrees
+    //!< cout<<"\t Total heat balance of coolsystem simple module "<<coolControl<<" is "<<Qgen2<<", "<<Qheat2<<", "<<Qcool2<<" and error "<<abs(Qgen2 - Qcool2 - Qheat2)<<endl<<flush;
+    //!<  note: Qheat < 0 means the cell has cooled down compared to its initial value
+    //!<  	that is possible because cells are made at T_env (which is 20), but the HVAC coolsystem can cool the SU as cold as controlAC_onoff_Toff, which is 15
+    //!<  	so cells can cool down 5 degrees
     assert(std::abs(Qgen2 - Qcool2 - Qheat2) / std::abs(Qgen2) < 1e-10);
 
-    // ******************************************************************************************************************************************************
-    // make the hierarchical module
-    // cout<<"Module_s_test start coolsystem test with a complex module for cool control setting "<<coolControl<<endl;
+    //!< ******************************************************************************************************************************************************
+    //!< make the hierarchical module
+    //!< cout<<"Module_s_test start coolsystem test with a complex module for cool control setting "<<coolControl<<endl;
     int ncel11 = 2;
     int ncel22 = 2;
     int ncel33 = 3;
@@ -1156,7 +1156,7 @@ void test_CoolSystem_s()
     std::unique_ptr<StorageUnit> SU1[ncel11] = { cp11, cp22 };
     std::unique_ptr<StorageUnit> SU2[ncel22] = { cp33, cp44 };
     std::unique_ptr<StorageUnit> SU3[ncel33] = { cp55, cp66, cp77 };
-    std::unique_ptr<Module_s> mp11(new Module_s(n11, T, true, false, ncel11, coolControl, 2)); // pass through cool system
+    std::unique_ptr<Module_s> mp11(new Module_s(n11, T, true, false, ncel11, coolControl, 2)); //!< pass through cool system
     std::unique_ptr<Module_s> mp22(new Module_s(n22, T, true, false, ncel22, coolControl, 2));
     std::unique_ptr<Module_s> mp33(new Module_s(n33, T, true, false, ncel33, coolControl, 2));
     mp11->setSUs(SU1, ncel11, checkCells);
@@ -1169,52 +1169,52 @@ void test_CoolSystem_s()
     mp44->setSUs(MU, nm, checkCells, true);
     double Tini22[7] = { cp11->T(), cp22->T(), cp33->T(), cp44->T(), cp55->T(), cp66->T(), cp77->T() };
 
-    // do a few 1C cycles (note just some time steps since we don't have the Cycler
+    //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp11->Cap();
     Idis = cp11->Cap();
     for (int i = 0; i < 5; i++) {
-      // charge
+      //!< charge
       mp44->setCurrent(Icha);
       for (int t = 0; t < N; t++)
         mp44->timeStep_CC(dt);
-      // rest
+      //!< rest
       mp44->setCurrent(Irest);
       for (int t = 0; t < N; t++)
         mp44->timeStep_CC(dt);
-      // discharge
+      //!< discharge
       mp44->setCurrent(Idis);
       for (int t = 0; t < N; t++)
         mp44->timeStep_CC(dt);
-      // rest
+      //!< rest
       mp44->setCurrent(Irest);
       for (int t = 0; t < N; t++)
         mp44->timeStep_CC(dt);
     }
 
     double Qgen3, Qcool3, Qheat3;
-    // check balance of module mp11
-    Qgen3 = cp11->thermal_getTotalHeat() + cp22->thermal_getTotalHeat();                                                     // total heat generated by cells
-    Qcool3 = mp11->getCoolSystem()->getHeatEvac();                                                                           // total heat extracted by the coolsystem from the cells
-    Qheat3 = -((Tini22[0] - cp11->T()) * (rho * Cp * L * elec_surf) + (Tini22[1] - cp22->T()) * (rho * Cp * L * elec_surf)); // total energy in heating up the cells
+    //!< check balance of module mp11
+    Qgen3 = cp11->thermal_getTotalHeat() + cp22->thermal_getTotalHeat();                                                     //!< total heat generated by cells
+    Qcool3 = mp11->getCoolSystem()->getHeatEvac();                                                                           //!< total heat extracted by the coolsystem from the cells
+    Qheat3 = -((Tini22[0] - cp11->T()) * (rho * Cp * L * elec_surf) + (Tini22[1] - cp22->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
     assert(std::abs(Qgen3 - Qcool3 - Qheat3) / std::abs(Qgen3) < 1e-10);
-    // check balance of module mp22
-    Qgen3 = cp33->thermal_getTotalHeat() + cp44->thermal_getTotalHeat();                                                     // total heat generated by cells
-    Qcool3 = mp22->getCoolSystem()->getHeatEvac();                                                                           // total heat extracted by the coolsystem from the cells
-    Qheat3 = -((Tini22[2] - cp33->T()) * (rho * Cp * L * elec_surf) + (Tini22[3] - cp44->T()) * (rho * Cp * L * elec_surf)); // total energy in heating up the cells
+    //!< check balance of module mp22
+    Qgen3 = cp33->thermal_getTotalHeat() + cp44->thermal_getTotalHeat();                                                     //!< total heat generated by cells
+    Qcool3 = mp22->getCoolSystem()->getHeatEvac();                                                                           //!< total heat extracted by the coolsystem from the cells
+    Qheat3 = -((Tini22[2] - cp33->T()) * (rho * Cp * L * elec_surf) + (Tini22[3] - cp44->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
     assert(std::abs(Qgen3 - Qcool3 - Qheat3) / std::abs(Qgen3) < 1e-10);
-    // check balance of module mp33
-    Qgen3 = cp55->thermal_getTotalHeat() + cp66->thermal_getTotalHeat() + cp77->thermal_getTotalHeat();                                                                             // total heat generated by cells
-    Qcool3 = mp33->getCoolSystem()->getHeatEvac();                                                                                                                                  // total heat extracted by the coolsystem from the cells
-    Qheat3 = -((Tini22[4] - cp55->T()) * (rho * Cp * L * elec_surf) + (Tini22[5] - cp66->T()) * (rho * Cp * L * elec_surf) + (Tini22[6] - cp77->T()) * (rho * Cp * L * elec_surf)); // total energy in heating up the cells
+    //!< check balance of module mp33
+    Qgen3 = cp55->thermal_getTotalHeat() + cp66->thermal_getTotalHeat() + cp77->thermal_getTotalHeat();                                                                             //!< total heat generated by cells
+    Qcool3 = mp33->getCoolSystem()->getHeatEvac();                                                                                                                                  //!< total heat extracted by the coolsystem from the cells
+    Qheat3 = -((Tini22[4] - cp55->T()) * (rho * Cp * L * elec_surf) + (Tini22[5] - cp66->T()) * (rho * Cp * L * elec_surf) + (Tini22[6] - cp77->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
     assert(std::abs(Qgen3 - Qcool3 - Qheat3) / std::abs(Qgen3) < 1e-10);
 
-    // check balance of the top level module
+    //!< check balance of the top level module
     Qgen3 = mp11->getCoolSystem()->getHeatEvac() + mp22->getCoolSystem()->getHeatEvac() + mp33->getCoolSystem()->getHeatEvac();
     Qcool3 = mp44->getCoolSystem()->getHeatEvac();
     Qheat3 = mp11->getCoolSystem()->getHeatabsorbed() + mp22->getCoolSystem()->getHeatabsorbed() + mp33->getCoolSystem()->getHeatabsorbed();
     assert(std::abs(Qgen3 - Qcool3 - Qheat3) / std::abs(Qgen3) < 1e-10);
 
-    // check balance of total system
+    //!< check balance of total system
     Qgen3 = cp11->thermal_getTotalHeat() + cp22->thermal_getTotalHeat();
     Qgen3 += cp33->thermal_getTotalHeat() + cp44->thermal_getTotalHeat();
     Qgen3 += cp55->thermal_getTotalHeat() + cp66->thermal_getTotalHeat() + cp77->thermal_getTotalHeat();
@@ -1223,22 +1223,22 @@ void test_CoolSystem_s()
     Qheat3 += -((Tini22[2] - cp33->T()) * (rho * Cp * L * elec_surf) + (Tini22[3] - cp44->T()) * (rho * Cp * L * elec_surf));
     Qheat3 += -((Tini22[4] - cp55->T()) * (rho * Cp * L * elec_surf) + (Tini22[5] - cp66->T()) * (rho * Cp * L * elec_surf) + (Tini22[6] - cp77->T()) * (rho * Cp * L * elec_surf));
     Qheat3 += mp11->getCoolSystem()->getHeatabsorbed() + mp22->getCoolSystem()->getHeatabsorbed() + mp33->getCoolSystem()->getHeatabsorbed();
-    // cout<<"\t Total heat balance of coolsystem complex module "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
+    //!< cout<<"\t Total heat balance of coolsystem complex module "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
     assert(std::abs(Qgen3 - Qcool3 - Qheat3) / std::abs(Qgen3) < 1e-10);
 
-    // Comparison of cool system performance in the different control strategies: print out the following statement
-    // cout<<"Total heat balance of coolsystem complex module "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
-    // note: Qheat < 0 means the cell has cooled down compared to its initial value
-    // 	that is possible because cells are made at T_env (which is 20), but the HVAC coolsystem can cool the SU as cold as controlAC_onoff_Toff, which is 15
-    // 	so cells can cool down 5 degrees
+    //!< Comparison of cool system performance in the different control strategies: print out the following statement
+    //!< cout<<"Total heat balance of coolsystem complex module "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
+    //!< note: Qheat < 0 means the cell has cooled down compared to its initial value
+    //!< 	that is possible because cells are made at T_env (which is 20), but the HVAC coolsystem can cool the SU as cold as controlAC_onoff_Toff, which is 15
+    //!< 	so cells can cool down 5 degrees
   }
 }
 
-// ***************************************************************** test all functions *************************************************************************
+//!< ***************************************************************** test all functions *************************************************************************
 void test_Module_s_testAll(bool testErrors)
 {
-  // if we test the errors, suppress error messages
-  // "Pure" unit tests (series modules with Cells)
+  //!< if we test the errors, suppress error messages
+  //!< "Pure" unit tests (series modules with Cells)
   test_Constructor();
   test_BasicGetters();
   test_BasicGetters_s();
@@ -1250,20 +1250,20 @@ void test_Module_s_testAll(bool testErrors)
   test_setT();
 
   test_setStates(testErrors);
-  test_validCells(testErrors); // includes setState
+  test_validCells(testErrors); //!< includes setState
   test_validStates(testErrors);
-  test_setCells(testErrors); // (includes validCells)
+  test_setCells(testErrors); //!< (includes validCells)
 
   test_timeStep_CC();
   test_copy_s();
 
-  // Combinations
+  //!< Combinations
   test_Modules_s_ECM(testErrors);
   test_Modules_s_SPM(testErrors);
-  test_Hierarchichal();      // series of series
-  test_Hierarchical_Cross(); // series of parallel
+  test_Hierarchichal();      //!< series of series
+  test_Hierarchical_Cross(); //!< series of parallel
 
-  // coolsystem (includes hierarchical modules and uses SPM cells)
+  //!< coolsystem (includes hierarchical modules and uses SPM cells)
   test_CoolSystem_s();
 }
 } // namespace slide::unit_tests

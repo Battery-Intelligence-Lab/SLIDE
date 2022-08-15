@@ -64,7 +64,7 @@ void State::initialise(z_type &zpi, z_type &zni, double Ti, double deltai, doubl
    * 11 		this function is called when the initial states have already been initialised
    * 12 		the state suggested is illegal
    */
-  // Set the state variables
+  //!< Set the state variables
   std::copy(zpi.begin(), zpi.end(), this->begin());
   std::copy(zni.begin(), zni.end(), this->begin() + zpi.size());
   get_T() = Ti;
@@ -95,12 +95,12 @@ void State::setT(double Ti)
    * 13 		illegal value of T
    */
 
-  // the temperature limits are defined in State.hpp
-  if (Ti < settings::Tmin_K) // check the temperature is above 0 degrees
+  //!< the temperature limits are defined in State.hpp
+  if (Ti < settings::Tmin_K) //!< check the temperature is above 0 degrees
   {
     std::cerr << "Error in State::setT. The temperature " << Ti << "K is too low. The minimum value is " << settings::Tmin_K << std::endl;
     throw 13;
-  } else if (Ti > settings::Tmax_K) // check the temperature is below 60 degrees
+  } else if (Ti > settings::Tmax_K) //!< check the temperature is below 60 degrees
   {
     std::cerr << "Error in State::setT. The temperature " << Ti << "K is too high. The maximum value is " << settings::Tmax_K << std::endl;
     throw 13;
@@ -125,7 +125,7 @@ void State::overwriteGeometricStates(double thickpi, double thickni, double epi,
    * ani 		effective surface area of the porous anode [m2 m-3]
    */
 
-  // set the states
+  //!< set the states
   this->get_thickp() = thickpi;
   this->get_thickn() = thickni;
   this->get_ep() = epi;
@@ -147,7 +147,7 @@ void State::overwriteCharacterisationStates(double Dpi, double Dni, double ri)
    * r 	specific resistance of the combined electrodes [Ohm m2]
    */
 
-  // Set the states
+  //!< Set the states
   this->get_Dp() = Dpi;
   this->get_Dn() = Dni;
   this->get_r() = ri;

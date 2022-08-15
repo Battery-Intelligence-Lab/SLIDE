@@ -25,7 +25,7 @@ namespace slide {
 class CoolSystem_open : public CoolSystem
 {
 protected:
-  double h{ 90 }; // cooling constant for perfect heat exchange
+  double h{ 90 }; //!< cooling constant for perfect heat exchange
 public:
   CoolSystem_open();
   CoolSystem_open(int Ncells, int control);

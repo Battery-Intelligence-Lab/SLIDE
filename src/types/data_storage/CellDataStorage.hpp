@@ -18,10 +18,10 @@ template <int N>
 struct CellDataStorage
 {
   template <typename T>
-  inline void initialise(T *) {} // Do nothing.
+  inline void initialise(T *) {} //!< Do nothing.
 
   template <typename... T>
-  inline void storeCumulativeData(T...) {} // Do nothing.
+  inline void storeCumulativeData(T...) {} //!< Do nothing.
 
   template <typename... T>
   inline void storeInstantenousData(T...)
@@ -29,21 +29,21 @@ struct CellDataStorage
     if constexpr (settings::printBool::printCrit)
       std::cout << "ERROR in Cell::storeData, the settings in constant.h are forbidding from storing data.\n";
 
-  } // Do nothing.
+  } //!< Do nothing.
   inline CellCumulativeData getThroughputData() { return {}; }
   inline void setThroughputData(CellCumulativeData) {}
 };
 
 template <>
-struct CellDataStorage<1> // Store as histogram.
+struct CellDataStorage<1> //!< Store as histogram.
 {
-  CellCumulativeData tData; // Throughput Data
+  CellCumulativeData tData; //!< Throughput Data
   CellCommonHist hist;
 
   template <typename T>
-  inline void initialise(T *ths) // Initialise the histograms.
+  inline void initialise(T *ths) //!< Initialise the histograms.
   {
-    hist.I = Histogram<>(-ths->Cap(), ths->Cap()); // 1C charge/discharge
+    hist.I = Histogram<>(-ths->Cap(), ths->Cap()); //!< 1C charge/discharge
     hist.V = Histogram<>(ths->Vmin(), ths->Vmax());
     hist.T = Histogram<>(ths->Tmin(), ths->Tmax());
   }
@@ -72,11 +72,11 @@ struct CellDataStorage<1> // Store as histogram.
 template <>
 struct CellDataStorage<2>
 {
-  CellCumulativeData tData;      // Throughput Data
-  std::vector<CommonData> cData; // Common data
+  CellCumulativeData tData;      //!< Throughput Data
+  std::vector<CommonData> cData; //!< Common data
 
   template <typename T>
-  inline void initialise(T *) {} // Do nothing.
+  inline void initialise(T *) {} //!< Do nothing.
 
   inline void storeCumulativeData(auto dt, auto dAh, auto dWh)
   {

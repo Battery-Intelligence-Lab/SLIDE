@@ -23,7 +23,7 @@
 #include <ctime>
 
 namespace slide {
-Module_p::Module_p() { ID = "moduleP"; } // note this constructor should never be used. It can't determine which coolsystem to use
+Module_p::Module_p() { ID = "moduleP"; } //!< note this constructor should never be used. It can't determine which coolsystem to use
 
 Module_p::Module_p(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
   : Module_p()
@@ -51,9 +51,9 @@ Module_p::Module_p(std::string IDi, double Ti, bool print, bool pari, int Ncells
   ID = IDi;
   par = pari;
 
-  // Set the module temperature
-  therm.A = 0.0042 * 10 * Ncells; // thermally active surface area. The first number is the thermal active surface area of a cell
-  double Q0 = 0;                  // constant ancillary losses. There are none since a module only has cells
+  //!< Set the module temperature
+  therm.A = 0.0042 * 10 * Ncells; //!< thermally active surface area. The first number is the thermal active surface area of a cell
+  double Q0 = 0;                  //!< constant ancillary losses. There are none since a module only has cells
 
   if (cooltype == 1)
     cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0);
@@ -65,10 +65,10 @@ Module_p::Module_p(std::string IDi, double Ti, bool print, bool pari, int Ncells
   cool->setT(Ti);
 }
 
-// functions from Module_base
+//!< functions from Module_base
 double Module_p::Cap()
 {
-  // the capacity is the sum  of the capacity of each cell
+  //!< the capacity is the sum  of the capacity of each cell
   double cap{ 0 };
 
   for (auto &SU : SUs)
@@ -79,8 +79,8 @@ double Module_p::Cap()
 
 double Module_p::Vmin()
 {
-  // the voltage limits are the most constraining limits of all cells
-  // ie the highest Vmin
+  //!< the voltage limits are the most constraining limits of all cells
+  //!< ie the highest Vmin
   double vm{ 0 };
 
   for (auto &SU : SUs)
@@ -91,8 +91,8 @@ double Module_p::Vmin()
 
 double Module_p::VMIN()
 {
-  // the voltage limits are the most constraining limits of all cells
-  // ie the highest Vmin
+  //!< the voltage limits are the most constraining limits of all cells
+  //!< ie the highest Vmin
   double vm{ 0 };
   for (auto &SU : SUs)
     vm = std::max(vm, SU->VMIN());
@@ -102,8 +102,8 @@ double Module_p::VMIN()
 
 double Module_p::Vmax()
 {
-  // the voltage limits are the most constraining limits of all cells
-  // ie the lowest Vmax
+  //!< the voltage limits are the most constraining limits of all cells
+  //!< ie the lowest Vmax
   double vm = std::numeric_limits<double>::max();
   for (auto &SU : SUs)
     vm = std::min(vm, SU->Vmax());
@@ -112,8 +112,8 @@ double Module_p::Vmax()
 
 double Module_p::VMAX()
 {
-  // the voltage limits are the most constraining limits of all cells
-  // ie the lowest Vmax
+  //!< the voltage limits are the most constraining limits of all cells
+  //!< ie the lowest Vmax
   double vm = std::numeric_limits<double>::max();
   for (auto &SU : SUs)
     vm = std::min(vm, SU->VMAX());
@@ -122,7 +122,7 @@ double Module_p::VMAX()
 
 double Module_p::I()
 {
-  // the current is the sum  of the current of each cell. Returns 0 if empty.
+  //!< the current is the sum  of the current of each cell. Returns 0 if empty.
   double i{ 0 };
   for (auto &SU : SUs)
     i += SU->I();
@@ -132,7 +132,7 @@ double Module_p::I()
 
 double Module_p::getOCV(bool print)
 {
-  // the voltage is the same across all cells, so just return the V of the first cell
+  //!< the voltage is the same across all cells, so just return the V of the first cell
   double v{ 0 };
   for (auto &SU : SUs)
     v += SU->getOCV(print);
@@ -150,14 +150,14 @@ double Module_p::getRtot()
    * parallel: 1/Rtot = sum( 1/R_i )
    */
 
-  // If there are no cells connected, return 0
+  //!< If there are no cells connected, return 0
   if (SUs.empty())
     return 0;
 
-  // check if there are contact resistances only until SUs size. // #CHECK why are we checking this?
+  //!< check if there are contact resistances only until SUs size. //!< #CHECK why are we checking this?
   const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
 
-  if (noRc) // no contact resistance
+  if (noRc) //!< no contact resistance
   {
     double rtot = 0;
     for (auto &SU : SUs)
@@ -166,13 +166,13 @@ double Module_p::getRtot()
     return 1.0 / rtot;
   }
 
-  // with contact resistance
-  // start from the cell furthest away
+  //!< with contact resistance
+  //!< start from the cell furthest away
   double rtot = Rcontact.back() + SUs.back()->getRtot();
 
-  // then iteratively come closer, every time Rcontact[i] + (Rcell[i] \\ Rtot)
-  // 				= Rc[i] + Rcell[i]*Rtot / (Rcel[i]*Rtot)
-  for (int i = getNSUs() - 2; i >= 0; i--) // #CHECK bug if there are less than 2 SUs.
+  //!< then iteratively come closer, every time Rcontact[i] + (Rcell[i] \\ Rtot)
+  //!< 				= Rc[i] + Rcell[i]*Rtot / (Rcel[i]*Rtot)
+  for (int i = getNSUs() - 2; i >= 0; i--) //!< #CHECK bug if there are less than 2 SUs.
     rtot = Rcontact[i] + (SUs[i]->getRtot() * rtot) / (SUs[i]->getRtot() + rtot);
 
   return rtot;
@@ -203,13 +203,13 @@ double Module_p::getVi(size_t i, bool print)
     throw 10;
   }
 
-  double v = SUs[i]->V(print); // the voltage of cell i
+  double v = SUs[i]->V(print); //!< the voltage of cell i
   if (v == 0)
     return 0;
 
   for (size_t j = 0; j <= i; j++) {
-    double Ij{ 0 };                        // the current through parallel resistance j
-    for (size_t k = j; k < getNSUs(); k++) // the sum of all currents 'behind' this resistance, i.e. from j to the last one
+    double Ij{ 0 };                        //!< the current through parallel resistance j
+    for (size_t k = j; k < getNSUs(); k++) //!< the sum of all currents 'behind' this resistance, i.e. from j to the last one
       Ij += SUs[k]->I();
     v -= Rcontact[j] * Ij;
   }
@@ -219,20 +219,20 @@ double Module_p::getVi(size_t i, bool print)
 
 double Module_p::V(bool print)
 {
-  // Return the mean voltage of all cells, since there can be a small difference between the voltages of cells
+  //!< Return the mean voltage of all cells, since there can be a small difference between the voltages of cells
 
-  // if the stored value is up to date, return that one
+  //!< if the stored value is up to date, return that one
   if (Vmodule_valid)
     return Vmodule;
 
-  // Else calculate the new voltage
+  //!< Else calculate the new voltage
   Vmodule = 0;
   for (size_t i = 0; i < SUs.size(); i++) {
     const auto v = getVi(i, print);
     if (v == 0)
       return 0;
 
-    Vmodule += getVi(i, print); // #CHECK there is definitely something fishy. getVi already does some calculations.
+    Vmodule += getVi(i, print); //!< #CHECK there is definitely something fishy. getVi already does some calculations.
   }
 
   Vmodule /= SUs.size();
@@ -285,57 +285,57 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   Clock clk;
 #endif
 
-  // variables
-  const size_t nIterationsMax = 1000 * getNSUs();                      // allow a maximum number of iterations // Very big iteration....
-  const double dImin = settings::MODULE_P_I_ABSTOL / 10.0 / getNSUs(); // allow a minimum change in current
-  double dI;                                                           // change in current in this iteration
-  const bool verb = print && (settings::printBool::printCrit);         // print if the (global) verbose-setting is above the threshold
-  Vmodule_valid = false;                                               // we are changing the current to individual cells, so the stored voltage is no longer valid
+  //!< variables
+  const size_t nIterationsMax = 1000 * getNSUs();                      //!< allow a maximum number of iterations //!< Very big iteration....
+  const double dImin = settings::MODULE_P_I_ABSTOL / 10.0 / getNSUs(); //!< allow a minimum change in current
+  double dI;                                                           //!< change in current in this iteration
+  const bool verb = print && (settings::printBool::printCrit);         //!< print if the (global) verbose-setting is above the threshold
+  Vmodule_valid = false;                                               //!< we are changing the current to individual cells, so the stored voltage is no longer valid
 
-  // get cell voltages
-  std::array<double, settings::MODULE_NSUs_MAX> Vo, Iold; // #CHECK if we should make them vector.
+  //!< get cell voltages
+  std::array<double, settings::MODULE_NSUs_MAX> Vo, Iold; //!< #CHECK if we should make them vector.
 
-  // voltage and initial current of each cell // #CHECK it is a constant value SU.
+  //!< voltage and initial current of each cell //!< #CHECK it is a constant value SU.
   for (size_t i = 0; i < getNSUs(); i++) {
     Vo[i] = getVi(i, print);
     Iold[i] = SUs[i]->I();
   }
 
-  // check if there are contact resistances #CHECK if we can do better.
+  //!< check if there are contact resistances #CHECK if we can do better.
   const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
 
-  // variables
-  double f;             // fraction of the cell current to change per iteration
-  size_t imax_prev = 0; // index of cell with std::max voltage in previous iteration
+  //!< variables
+  double f;             //!< fraction of the cell current to change per iteration
+  size_t imax_prev = 0; //!< index of cell with std::max voltage in previous iteration
   size_t imin_prev = 0;
-  double dV;          // voltage difference between min and std::max
-  double dV_prev = 0; // voltage difference with the previous value of f
-  size_t k = 0;       // iteration with this value of f
-  size_t ktot = 0;    // total number of iterations
+  double dV;          //!< voltage difference between min and std::max
+  double dV_prev = 0; //!< voltage difference with the previous value of f
+  size_t k = 0;       //!< iteration with this value of f
+  size_t ktot = 0;    //!< total number of iterations
 
   bool reached = false;
 
-  // Initial value of the change in current per iteration
-  double Cmean = 0; // mean crate of the current in the module
+  //!< Initial value of the change in current per iteration
+  double Cmean = 0; //!< mean crate of the current in the module
   for (auto &SU : SUs)
     Cmean += std::abs(SU->I()) / SU->Cap();
 
   Cmean = Cmean / SUs.size();
 
-  if (Cmean < 1e-3) // if the current of each cell is 0
-    Cmean = 0.1;    // then use dI of 0.1C to equalise the currents
+  if (Cmean < 1e-3) //!< if the current of each cell is 0
+    Cmean = 0.1;    //!< then use dI of 0.1C to equalise the currents
 
-  // iterate until the voltages are satisfactory close
-  while (!reached) // #CHECK if this algorithm is efficient.
+  //!< iterate until the voltages are satisfactory close
+  while (!reached) //!< #CHECK if this algorithm is efficient.
   {
 
-    // find the cells with the smallest and largest V
+    //!< find the cells with the smallest and largest V
     const auto [minIter, maxIter] = std::minmax_element(std::begin(Vo), std::begin(Vo) + getNSUs());
 
-    size_t imin = std::distance(std::begin(Vo), minIter); // indices with extreme voltages.
+    size_t imin = std::distance(std::begin(Vo), minIter); //!< indices with extreme voltages.
     size_t imax = std::distance(std::begin(Vo), maxIter);
 
-    // stop iterating if this difference is below the threshold
+    //!< stop iterating if this difference is below the threshold
     dV = *maxIter - *minIter;
     if (dV < settings::MODULE_P_V_ABSTOL || dV / Vo[imax] < settings::MODULE_P_V_RELTOL)
       reached = true;
@@ -351,37 +351,37 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
      * 		else 		f = 0.05
      */
     if (ktot == 0) {
-      const int Nseries = static_cast<int>((Vmax() - Vmin()) / 1.5); // #CHECK this probably takes some time.
+      const int Nseries = static_cast<int>((Vmax() - Vmin()) / 1.5); //!< #CHECK this probably takes some time.
       if (dV > 1.0 * Nseries)
-        f = 0.3; // for 1V, change 30% of the cell current
+        f = 0.3; //!< for 1V, change 30% of the cell current
       else if (dV > 0.1 * Nseries)
-        f = 0.2; // for 0.1V, change 10% of the cell current
+        f = 0.2; //!< for 0.1V, change 10% of the cell current
       else
-        f = 0.05; // else, change 5% of the cell current
+        f = 0.05; //!< else, change 5% of the cell current
 
       if ((Vo[imin] - SUs[imin]->Vmin() < 0.2) || (SUs[imax]->Vmax() - Vo[imax] < 0.1))
-        f = 0.02; // if one of the children is close to its voltage limits, change 2% of the cell current
+        f = 0.02; //!< if one of the children is close to its voltage limits, change 2% of the cell current
     }
 
-    // initialise the voltage difference with this value of f;
+    //!< initialise the voltage difference with this value of f;
     if (k == 0)
       dV_prev = dV;
 
-    // If the difference is too large, swap currents
+    //!< If the difference is too large, swap currents
     if (!reached) {
 
-      // swap currents
-      dI = f * Cmean * SUs[imax]->Cap(); // current we swap in this iteration
-      // dI = f * std::max(std::abs(SUs[imax]->I()), std::abs(SUs[imin]->I())); 	// current we swap this iteration. f*Icell, where Icell is smallest of the currents of both cells
-      SUs[imax]->setCurrent(SUs[imax]->I() + dI, false, print); // don't check the voltages, since at the end of a full (dis)charge, all cells will be just over their allowed limit
-      SUs[imin]->setCurrent(SUs[imin]->I() - dI, false, print); // and then this would throw 2
+      //!< swap currents
+      dI = f * Cmean * SUs[imax]->Cap(); //!< current we swap in this iteration
+      //!< dI = f * std::max(std::abs(SUs[imax]->I()), std::abs(SUs[imin]->I())); 	//!< current we swap this iteration. f*Icell, where Icell is smallest of the currents of both cells
+      SUs[imax]->setCurrent(SUs[imax]->I() + dI, false, print); //!< don't check the voltages, since at the end of a full (dis)charge, all cells will be just over their allowed limit
+      SUs[imin]->setCurrent(SUs[imin]->I() - dI, false, print); //!< and then this would throw 2
       k++;
       ktot++;
 
-      // update voltages
-      if (noRc) { // no contact resistance, so only for cells which change current, does the V change
+      //!< update voltages
+      if (noRc) { //!< no contact resistance, so only for cells which change current, does the V change
         try {
-          Vo[imax] = getVi(imax, print); // #CHECK if getVi is throwing.
+          Vo[imax] = getVi(imax, print); //!< #CHECK if getVi is throwing.
           Vo[imin] = getVi(imin, print);
         } catch (int e) {
           std::cout << "Error " << e << " in redistributeCurrent iteration " << ktot << " for module "
@@ -390,8 +390,8 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
                     << " with dI = " << dI << ", dV = " << dV << ", Vmax = " << Vo[imax]
                     << ", Vmin = " << Vo[imin] << ". Giving up.\n";
 
-          // try to recover by almost reverting the changes
-          // (If you fully rever, you will get an eternal loop since the next iteration will repeat the same mistake)
+          //!< try to recover by almost reverting the changes
+          //!< (If you fully rever, you will get an eternal loop since the next iteration will repeat the same mistake)
           try {
             SUs[imax]->setCurrent(SUs[imax]->I() - 0.95 * dI, false, print);
             SUs[imin]->setCurrent(SUs[imin]->I() + 0.95 * dI, false, print);
@@ -401,7 +401,7 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
           } catch (int e) {
             std::cout << "Even after resetting the changes, we still get error " << e
                       << " so we are restoring the original currents and giving up.\n";
-            SUs[imax]->setCurrent(SUs[imax]->I() - 0.05 * dI, false, print); // don't check the voltage, it should be fine but we are not sure
+            SUs[imax]->setCurrent(SUs[imax]->I() - 0.05 * dI, false, print); //!< don't check the voltage, it should be fine but we are not sure
             SUs[imin]->setCurrent(SUs[imin]->I() + 0.05 * dI, false, print);
             reached = true;
           }
@@ -419,7 +419,7 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
                     << " for module " << getFullID() << " when getting the voltage after setting currents of "
                     << SUs[imax]->I() + dI << " and " << SUs[imin]->I() - dI << " with dI = " << dI
                     << ", dV = " << dV << ", Vmax = " << Vo[imax] << ", Vmin = " << Vo[imin] << ". Giving up\n";
-          // try to recover by almost reverting the changes
+          //!< try to recover by almost reverting the changes
           try {
             SUs[imax]->setCurrent(SUs[imax]->I() - 0.95 * dI, false, print);
             SUs[imin]->setCurrent(SUs[imin]->I() + 0.95 * dI, false, print);
@@ -429,15 +429,15 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
           } catch (int e) {
             std::cout << "Even after resetting the changes, we still get error " << e
                       << " so we are restoring the original currents and giving up.\n";
-            SUs[imax]->setCurrent(SUs[imax]->I() - 0.05 * dI, false, print); // don't check the voltage, it should be fine but we are not sure
+            SUs[imax]->setCurrent(SUs[imax]->I() - 0.05 * dI, false, print); //!< don't check the voltage, it should be fine but we are not sure
             SUs[imin]->setCurrent(SUs[imin]->I() + 0.05 * dI, false, print);
             reached = true;
           }
         }
-      } // end update the voltages
+      } //!< end update the voltages
 
-      // if dI is too big, we are simply swapping current from one cell to the other and then back
-      // avoid an eternal loop by reducing f in this case
+      //!< if dI is too big, we are simply swapping current from one cell to the other and then back
+      //!< avoid an eternal loop by reducing f in this case
       if (imax_prev == imin && imin_prev == imax) {
         f /= 2.0;
         k = 0;
@@ -445,15 +445,15 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
       imax_prev = imax;
       imin_prev = imin;
 
-      // If dV is decreasing and we have done enough iterations, decrease f slowly
+      //!< If dV is decreasing and we have done enough iterations, decrease f slowly
       if (k > getNSUs() && dV < dV_prev / 2.0) {
         f = f / 2.0;
         k = 0;
       }
 
-      // avoid eternal loop, if dI is too small, or we have done too many iterations, give up
+      //!< avoid eternal loop, if dI is too small, or we have done too many iterations, give up
       if ((ktot > nIterationsMax) || dI < dImin) {
-        // find the cells with the smallest and largest V
+        //!< find the cells with the smallest and largest V
         const auto [min, max] = std::minmax_element(std::begin(Vo), std::begin(Vo) + getNSUs());
 
         imin = std::distance(std::begin(Vo), min);
@@ -482,20 +482,20 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
     auto status = checkVoltage(v, print);
 
     if (isStatusWarning(status)) {
-      // valid range -> keep old states, but throw 2 to notify something is not as it should be
+      //!< valid range -> keep old states, but throw 2 to notify something is not as it should be
       if (verb)
         std::cerr << "Error in Module_p::redistributeCurrent(). The voltage of one of the cells is "
                      "outside the allowed limits. allowing it for now.\n";
       std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       return status;
-    } else if (isStatusBad(status)) { // outside safety limits (< VMIN and discharge || > VMAX and charge)
-      // safety limits -> restore old states and throw 3
+    } else if (isStatusBad(status)) { //!< outside safety limits (< VMIN and discharge || > VMAX and charge)
+      //!< safety limits -> restore old states and throw 3
       if (verb)
         std::cerr << "Error in Module_p::redistributeCurrent(). The voltage of one of the cells is "
                      "outside the safety limits. Restoring the old currents and throwing 3.\n";
 
       for (size_t i = 0; i < getNSUs(); i++)
-        SUs[i]->setCurrent(Iold[i], false, print); // don't check the voltage since we restore the original currents, which should be valid
+        SUs[i]->setCurrent(Iold[i], false, print); //!< don't check the voltage since we restore the original currents, which should be valid
 
       std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       return status;
@@ -503,7 +503,7 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   }
 
 #if TIMING
-  timeData.redistributeCurrent += clk.duration(); // time in seconds
+  timeData.redistributeCurrent += clk.duration(); //!< time in seconds
 #endif
   return Status::Success;
 }
@@ -527,69 +527,69 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
   Clock clk;
 #endif
 
-  // Gains in the PI controllers
-  // fraction of current changes set in various steps
-  const double f2 = 0.5; // allocated 50% of the change in current proportional to the resistance
-  const double f3 = 0.2; // allocate 20% of the change in current per cell in each iteration in step 3
-                         // note, this is always relative to the error, i.e f* (Inew-I())/N
-                         // so it will automatically become smaller, it is more the gain of a P controller
+  //!< Gains in the PI controllers
+  //!< fraction of current changes set in various steps
+  const double f2 = 0.5; //!< allocated 50% of the change in current proportional to the resistance
+  const double f3 = 0.2; //!< allocate 20% of the change in current per cell in each iteration in step 3
+                         //!< note, this is always relative to the error, i.e f* (Inew-I())/N
+                         //!< so it will automatically become smaller, it is more the gain of a P controller
 
-  // check if there are contact resistances #CHECK why
+  //!< check if there are contact resistances #CHECK why
   const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
 
-  const bool verb = print && (settings::printBool::printCrit); // print if the (global) verbose-setting is above the threshold
-  double dI = Inew - I();                                      // total change in current needed
-  double v = 0;                                                // end voltage
-  double vn;                                                   // voltage of cell n
+  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
+  double dI = Inew - I();                                      //!< total change in current needed
+  double v = 0;                                                //!< end voltage
+  double vn;                                                   //!< voltage of cell n
 
-  // Change the current if needed
+  //!< Change the current if needed
   if (dI != 0) {
-    double dIi = dI / getNSUs(); // initial guess for change in current per cell (uniform if all cells are equal)
-    dIi = dIi / 2.0;             // in first step, change half the current
-    Vmodule_valid = false;       // we are changing the current, so the stored voltage is no longer valid
+    double dIi = dI / getNSUs(); //!< initial guess for change in current per cell (uniform if all cells are equal)
+    dIi = dIi / 2.0;             //!< in first step, change half the current
+    Vmodule_valid = false;       //!< we are changing the current, so the stored voltage is no longer valid
 
-    // STEP 1: CHANGE ICELL BY dIi/2 AND SEE HOW CELL VOLTAGE CHANGES to estimate resistance
+    //!< STEP 1: CHANGE ICELL BY dIi/2 AND SEE HOW CELL VOLTAGE CHANGES to estimate resistance
     std::array<double, settings::MODULE_NSUs_MAX> Vo, Ri, Iold; //#CHECK these probably need to be vectors since NSUs will increase.
-    double Rtot = 0;                                            // total resistance of the parallel module, 1/Rtot = sum ( 1/R(i) )
+    double Rtot = 0;                                            //!< total resistance of the parallel module, 1/Rtot = sum ( 1/R(i) )
     for (size_t i = 0; i < getNSUs(); i++) {
-      Vo[i] = getVi(i, print); // terminal voltage reached from cell i
+      Vo[i] = getVi(i, print); //!< terminal voltage reached from cell i
       Iold[i] = SUs[i]->I();
-      SUs[i]->setCurrent(SUs[i]->I() + dIi, false, print); // don't check the voltage since this is an intermediate step
+      SUs[i]->setCurrent(SUs[i]->I() + dIi, false, print); //!< don't check the voltage since this is an intermediate step
     }
 
     for (size_t i = 0; i < getNSUs(); i++) {
       vn = getVi(i, print);
       Ri[i] = (Vo[i] - vn) / dIi;
-      Ri[i] = std::max(Ri[i], 1e-5); // avoid R=0, which would give a NaN. Instead give very small value
+      Ri[i] = std::max(Ri[i], 1e-5); //!< avoid R=0, which would give a NaN. Instead give very small value
       Rtot += 1.0 / Ri[i];
     }
 
     Rtot = 1.0 / Rtot;
 
-    // STEP 2 FROM INITIAL CELL CURRENTS, INCREASE THEIR VALUE PROPORTIONALLY TO THEIR RESISTANCE
-    // at Iold(i), V(i) == V(j)
-    // 	if linear, dI(i) will change V(i) by -Ri*dI(i)
-    // 	current divider rule: dI(i) = (Rtot / R(i)) dItot
+    //!< STEP 2 FROM INITIAL CELL CURRENTS, INCREASE THEIR VALUE PROPORTIONALLY TO THEIR RESISTANCE
+    //!< at Iold(i), V(i) == V(j)
+    //!< 	if linear, dI(i) will change V(i) by -Ri*dI(i)
+    //!< 	current divider rule: dI(i) = (Rtot / R(i)) dItot
     for (size_t i = 0; i < SUs.size(); i++) {
       dIi = f2 * dI * Rtot / Ri[i];
-      SUs[i]->setCurrent(Iold[i] + dIi, false, print); // don't check the voltage since this is an intermediate step
+      SUs[i]->setCurrent(Iold[i] + dIi, false, print); //!< don't check the voltage since this is an intermediate step
     }
 
-    for (size_t i = 0; i < SUs.size(); i++) // only get voltage once all currents are set, since through contactR I[j] affects V[k]
+    for (size_t i = 0; i < SUs.size(); i++) //!< only get voltage once all currents are set, since through contactR I[j] affects V[k]
       Vo[i] = getVi(i, print);
 
-    // STEP 3 ITERATE TO INCREASE THE VOLTAGE OF THE MOST-DIFFERENT CELL
-    // if dI > 0, we are discharging more (or charging less), so the cell with the highest voltage should get a larger discharge (smaller charge) current
-    // if dI < 0, we are charging more (or discharging less), so the cell with the lowest voltage should get a larger charge (smaller discharge) current
-    // every iteration, allocate 10% of the remaining current per cell
-    bool reached = false; // boolean indicating we are exactly at the correct current
-    bool almost = false;  // boolean indicating wether we are almost there (i.e. one more iteration)
-    size_t ind;           // index of the cell which should be changed
+    //!< STEP 3 ITERATE TO INCREASE THE VOLTAGE OF THE MOST-DIFFERENT CELL
+    //!< if dI > 0, we are discharging more (or charging less), so the cell with the highest voltage should get a larger discharge (smaller charge) current
+    //!< if dI < 0, we are charging more (or discharging less), so the cell with the lowest voltage should get a larger charge (smaller discharge) current
+    //!< every iteration, allocate 10% of the remaining current per cell
+    bool reached = false; //!< boolean indicating we are exactly at the correct current
+    bool almost = false;  //!< boolean indicating wether we are almost there (i.e. one more iteration)
+    size_t ind;           //!< index of the cell which should be changed
                           //		int k=0;//
     while (!reached) {
-      dIi = f3 * (Inew - I()) / SUs.size(); // if uniform, each cell should get (Inew-I())/Ncell. Allocate a fraction f of this amount now
+      dIi = f3 * (Inew - I()) / SUs.size(); //!< if uniform, each cell should get (Inew-I())/Ncell. Allocate a fraction f of this amount now
 
-      // if the remaining current is smaller than dI, then allocate all of the remaining current
+      //!< if the remaining current is smaller than dI, then allocate all of the remaining current
       if (almost || std::abs(I() - Inew) < std::abs(dIi)) {
         almost = true;
         dIi = Inew - I();
@@ -600,50 +600,50 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
       else
         ind = std::distance(std::begin(Vo), std::max_element(std::begin(Vo), std::begin(Vo) + SUs.size()));
 
-      SUs[ind]->setCurrent(SUs[ind]->I() + dIi, false, print); // don't check the voltage since this is an intermediate step
+      SUs[ind]->setCurrent(SUs[ind]->I() + dIi, false, print); //!< don't check the voltage since this is an intermediate step
 
-      if (noRc) // no Rcontact so only voltage of cell ind changes
+      if (noRc) //!< no Rcontact so only voltage of cell ind changes
         Vo[ind] = getVi(ind, print);
       else
-        for (size_t i = 0; i < getNSUs(); i++) // voltage of all cells changes
+        for (size_t i = 0; i < getNSUs(); i++) //!< voltage of all cells changes
           Vo[i] = getVi(i, print);
 
-      // check tolerances
-      if (almost) // we have done the final step where we allocate all the remaining current
+      //!< check tolerances
+      if (almost) //!< we have done the final step where we allocate all the remaining current
         reached = true;
-      if (std::abs(Inew - I()) < settings::MODULE_P_I_ABSTOL) // we are very close (absolutely) so next time allocate all remaining current
+      if (std::abs(Inew - I()) < settings::MODULE_P_I_ABSTOL) //!< we are very close (absolutely) so next time allocate all remaining current
         almost = true;
-      if (std::abs(Inew - I()) < settings::MODULE_P_I_RELTOL * Inew) // relative
+      if (std::abs(Inew - I()) < settings::MODULE_P_I_RELTOL * Inew) //!< relative
         almost = true;
     }
 
-    // check the voltages are valid
+    //!< check the voltages are valid
     if (checkV) {
       const auto status = checkVoltage(v, print);
       if (isStatusWarning(status)) {
-        // valid range -> keep old states, but throw 2 to notify something is not as it should be
+        //!< valid range -> keep old states, but throw 2 to notify something is not as it should be
         if (verb)
           std::cout << "Error in Module_p::setCurrent(). The voltage of one of the cells is outside the allowed limits. allowing it for now.\n";
         std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         return status;
-      } else if (isStatusBad(status)) { // outside safety limits (< VMIN and discharge || > VMAX and charge)
-        // safety limits -> restore old states and throw 3
+      } else if (isStatusBad(status)) { //!< outside safety limits (< VMIN and discharge || > VMAX and charge)
+        //!< safety limits -> restore old states and throw 3
         if (verb)
           std::cout << "Error in Module_p::setCurrent(). The voltage of one of the cells is outside the safety limits. Restoring the old currents and throwing 3.\n";
 
         for (size_t i = 0; i < getNSUs(); i++)
-          SUs[i]->setCurrent(Iold[i], false, print); // don't check the voltage since we restore the original currents, which should be valid
+          SUs[i]->setCurrent(Iold[i], false, print); //!< don't check the voltage since we restore the original currents, which should be valid
 
         std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         return status;
       }
     }
 
-  } // if dI != 0
+  } //!< if dI != 0
   else
-    v = V(print); // the current does not change, so just return the voltage
+    v = V(print); //!< the current does not change, so just return the voltage
 
-  // check the voltage difference is between the tolerance
+  //!< check the voltage difference is between the tolerance
   if (checkV) {
     const bool val = validSUs(SUs, print);
     if (!val) {
@@ -652,9 +652,9 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
                   << "after setting the module voltage to reach a total current of " << Inew
                   << ". Trying to recover by redistributing the current.\n";
 
-      // redistribute the current, if that is successful, we have valid cell voltages
+      //!< redistribute the current, if that is successful, we have valid cell voltages
       try {
-        auto status = redistributeCurrent(checkV, print); // #CHECK this is utterly wrong.
+        auto status = redistributeCurrent(checkV, print); //!< #CHECK this is utterly wrong.
         if (status != Status::Success)
           throw 100000;
       } catch (int) {
@@ -663,7 +663,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
                        "the cell voltages after setting the new current, "
                        " but redistributeCurrent() failed too. Give up and throwing 15";
         std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
-        throw 15; // Why 15?
+        throw 15; //!< Why 15?
       }
     }
   }
@@ -671,7 +671,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
   //	std::cout<<"setCurrent() for SU "<<getFullID()<<" finishing.\n"; //
 
 #if TIMING
-  timeData.setCurrent += clk.duration(); // time in seconds
+  timeData.setCurrent += clk.duration(); //!< time in seconds
 #endif
   return Status::Success;
 }
@@ -695,24 +695,24 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   std::clock_t tstart = std::clock();
 #endif
 
-  const bool verb = print && (settings::printBool::printCrit); // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   double v;
 
-  // get the old currents so we can revert if needed
-  std::vector<double> Iolds; // #CHECK we need to remove vector somehow?
+  //!< get the old currents so we can revert if needed
+  std::vector<double> Iolds; //!< #CHECK we need to remove vector somehow?
   Iolds.clear();
 
   for (auto &SU : SUs)
     Iolds.push_back(SU->I());
 
-  // allocate the current uniformly
+  //!< allocate the current uniformly
   try {
     for (size_t i = 0; i < getNSUs(); i++) {
 
       auto status = SUs[i]->setCurrent(Inew / getNSUs(), checkV, print);
 
-      // voltage of cell i is outside the valid range, but within safety limits
-      // indicate this happened but continue setting states
+      //!< voltage of cell i is outside the valid range, but within safety limits
+      //!< indicate this happened but continue setting states
       if (isStatusWarning(status)) {
         if (verb)
           std::cout << "warning in Module_p::setCurrent, the voltage of cell " << i << " with id "
@@ -723,14 +723,14 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
           std::cout << "ERROR " << (int)status << " in Module_p::setCurrent when setting the current of cell "
                     << i << " with id " << SUs[i]->getFullID() << " for Inew = " << Inew / getNSUs()
                     << ". Try to recover using the iterative version of setCurrent.\n";
-        // throw error, the catch statement will use the iterative function
+        //!< throw error, the catch statement will use the iterative function
       }
 
-    } // loop
+    } //!< loop
 
-    // Redistribute the current to equalise the voltages
+    //!< Redistribute the current to equalise the voltages
     try {
-      redistributeCurrent(checkV, print); // this will check the voltage limits if needed
+      redistributeCurrent(checkV, print); //!< this will check the voltage limits if needed
       v = V();
     } catch (int e) {
       if (e == 2) {
@@ -745,14 +745,14 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
         throw e;
       }
     }
-  } // try allocating uniform current
+  } //!< try allocating uniform current
   catch (int) {
-    // revert to the old current
+    //!< revert to the old current
     for (size_t i = 0; i < getNSUs(); i++)
       SUs[i]->setCurrent(Iolds[i], false, true);
 
     try {
-      setI_iterative(Inew, checkV, print); // this will check the voltage limits if needed
+      setI_iterative(Inew, checkV, print); //!< this will check the voltage limits if needed
       v = V();
       if (verb)
         std::cout << "Module_p::setCurrent, We managed to recover using the iterative version. Continue as normal.\n";
@@ -767,12 +767,12 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
       std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw e;
     }
-  } // catch statement of uniform allocation
+  } //!< catch statement of uniform allocation
 
 #if TIMING
-  timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
+  timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
 #endif
-  return Status::Success; // #CHECK problem
+  return Status::Success; //!< #CHECK problem
 }
 
 bool Module_p::validSUs(moduleSUs_span_t c, bool print)
@@ -786,18 +786,18 @@ bool Module_p::validSUs(moduleSUs_span_t c, bool print)
 #if TIMING
   std::clock_t tstart = std::clock();
 #endif
-  const bool verb = print && (settings::printBool::printCrit); // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  // Check the voltage of each cell is valid and within the error tolerance #CHECK it is better to supply both module and Rcontact.
+  //!< Check the voltage of each cell is valid and within the error tolerance #CHECK it is better to supply both module and Rcontact.
   auto Vi = [N = getNSUs(), c, print, this](size_t i) {
     double v = c[i]->V(print);
 
     if (c.size() != N)
       return v;
 
-    for (size_t j = 0; j <= i; j++) { // account for the contact resistances
+    for (size_t j = 0; j <= i; j++) { //!< account for the contact resistances
       double Ij = 0;
-      for (size_t k = j; k < N; k++) // the sum of all currents 'behind' this resistance, i.e. from j to the last one
+      for (size_t k = j; k < N; k++) //!< the sum of all currents 'behind' this resistance, i.e. from j to the last one
         Ij += c[k]->I();
       v -= Rcontact[j] * Ij;
     }
@@ -808,24 +808,24 @@ bool Module_p::validSUs(moduleSUs_span_t c, bool print)
   size_t i_min{}, i_max{};
   double V_min{ 1e16 }, V_max{ 0 };
 
-  for (size_t i = 0; i < c.size(); i++) // find the cells with the smallest and largest V
+  for (size_t i = 0; i < c.size(); i++) //!< find the cells with the smallest and largest V
   {
     const auto V_i = Vi(i);
     if (V_i < V_min) {
       V_min = V_i;
-      i_min = i; // cell with the smallest voltage
+      i_min = i; //!< cell with the smallest voltage
     }
 
     if (V_i > V_max) {
       V_max = V_i;
-      i_max = i; // cell with the largest voltage
+      i_max = i; //!< cell with the largest voltage
     }
   }
 
-  // Check that this limit is below the absolute or relative threshold
+  //!< Check that this limit is below the absolute or relative threshold
   const double dV = V_max - V_min;
   bool result{ true };
-  if (dV > settings::MODULE_P_V_ABSTOL && dV > settings::MODULE_P_V_RELTOL * V_max) // #CHECK if this should be || not &&
+  if (dV > settings::MODULE_P_V_ABSTOL && dV > settings::MODULE_P_V_RELTOL * V_max) //!< #CHECK if this should be || not &&
   {
     if (verb) {
       std::cout << "error in Module_p::validSUs for SU = " << getFullID() << ", the maximum voltage is in cell"
@@ -835,10 +835,10 @@ bool Module_p::validSUs(moduleSUs_span_t c, bool print)
                 << settings::MODULE_P_V_RELTOL * V_max << '\n';
     }
     result = false;
-  } // else the voltage is valid
+  } //!< else the voltage is valid
 
 #if TIMING
-  timeData.validSUs += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
+  timeData.validSUs += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
 #endif
   return result;
 }
@@ -868,7 +868,7 @@ void Module_p::timeStep_CC(double dt, bool addData, int nstep)
     throw 10;
   }
 
-  // we simply take one CC time step on every cell
+  //!< we simply take one CC time step on every cell
   auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, addData, nstep); };
 
   try {
@@ -880,29 +880,29 @@ void Module_p::timeStep_CC(double dt, bool addData, int nstep)
     throw e;
   }
 
-  // **************************************************** Calculate the thermal model once for the nstep * dt time period *****************************************************************
+  //!< **************************************************** Calculate the thermal model once for the nstep * dt time period *****************************************************************
 
-  // update the time since the last update of the thermal model
+  //!< update the time since the last update of the thermal model
   if (!blockDegAndTherm) {
     therm.time += nstep * dt;
 
-    // Increase the heat from the contact resistances
-    double Ii = 0; // current through resistor I
+    //!< Increase the heat from the contact resistances
+    double Ii = 0; //!< current through resistor I
     for (size_t i = 0; i < SUs.size(); i++) {
       for (size_t j = i; j < SUs.size(); j++)
-        Ii += SUs[j]->I(); // resistor i sees the currents through the cells 'behind' them
+        Ii += SUs[j]->I(); //!< resistor i sees the currents through the cells 'behind' them
 
       therm.Qcontact += Rcontact[i] * std::pow(Ii, 2) * nstep * dt;
     }
 
-    // If this module has a parent module, this parent will call the thermal model with the correct parameters
-    // which will include heat exchange with the module's neighbours and cooling from the cooling system of the parent module.
+    //!< If this module has a parent module, this parent will call the thermal model with the correct parameters
+    //!< which will include heat exchange with the module's neighbours and cooling from the cooling system of the parent module.
 
-    // if there is no parent, this module is the top-level.
-    // It then directly exchanges heat with the environment at a fixed temperature
-    // If there is no parent, assume we update T every nstep*dt. So update the temperature now
+    //!< if there is no parent, this module is the top-level.
+    //!< It then directly exchanges heat with the environment at a fixed temperature
+    //!< If there is no parent, assume we update T every nstep*dt. So update the temperature now
     if (!parent) {
-      // double check that we have an HVAC coolsystem (see constructor)
+      //!< double check that we have an HVAC coolsystem (see constructor)
       if (typeid(*getCoolSystem()) != typeid(CoolSystem_HVAC)) {
         std::cerr << "ERROR in module_p::timeStep_CC in module " << getFullID() << ". this is a top-level"
                   << "module but does not have an HVAC coolsystem for active cooling with the environment.\n";
@@ -910,24 +910,24 @@ void Module_p::timeStep_CC(double dt, bool addData, int nstep)
         throw 14;
       }
 
-      // Call the thermal model without heat exchanges with neighbours or parents (since this module doesn't have any)
-      // 	Heat exchange between this module and the environment is done by the AC-part of the HVAC coolsystem
-      // 	heat exchange between this module and its children is done the conventional way by the HVAC coolsystem
-      // set the new temperature since we have calculated all the temperatures so there is no risk for inconsistency
+      //!< Call the thermal model without heat exchanges with neighbours or parents (since this module doesn't have any)
+      //!< 	Heat exchange between this module and the environment is done by the AC-part of the HVAC coolsystem
+      //!< 	heat exchange between this module and its children is done the conventional way by the HVAC coolsystem
+      //!< set the new temperature since we have calculated all the temperatures so there is no risk for inconsistency
       double Tneigh[1], Kneigh[1], Aneigh[1];
-      // Make the arrays even though they will not be used (length should be 0 but I don't think you can make an array of length 0)
-      setT(thermalModel(0, Tneigh, Kneigh, Aneigh, therm.time)); // the 0 signals there are no neighbours or parents
+      //!< Make the arrays even though they will not be used (length should be 0 but I don't think you can make an array of length 0)
+      setT(thermalModel(0, Tneigh, Kneigh, Aneigh, therm.time)); //!< the 0 signals there are no neighbours or parents
 
       /*
-      double Tneigh[1] = {settings::T_ENV};							// T of environment
-      double Kneigh[1] = {cool->getH()}; 					// h to environment is same as to children, since the speed of the coolant is the same
-      double Aneigh[1] = {therm.A};						// A to the environment is the A of this module
-      // note that this will have more heat exchange than to children, since A = min(A_this, A_parent)
-      // 	children will have a smaller A themselves, so the resulting A = A_child < A of this module
+      double Tneigh[1] = {settings::T_ENV};							//!< T of environment
+      double Kneigh[1] = {cool->getH()}; 					//!< h to environment is same as to children, since the speed of the coolant is the same
+      double Aneigh[1] = {therm.A};						//!< A to the environment is the A of this module
+      //!< note that this will have more heat exchange than to children, since A = min(A_this, A_parent)
+      //!< 	children will have a smaller A themselves, so the resulting A = A_child < A of this module
       setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
     }
 
-    // control the cooling system
+    //!< control the cooling system
     double Tlocal = 0;
     for (auto &SU : SUs)
       Tlocal = std::max(Tlocal, SU->T());
@@ -935,15 +935,15 @@ void Module_p::timeStep_CC(double dt, bool addData, int nstep)
     cool->control(Tlocal, getThotSpot());
   }
 
-  Vmodule_valid = false; // we have changed the SOC/concnetration, so the stored voltage is no longer valid
+  Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
-  // check if the cell's voltage is valid
+  //!< check if the cell's voltage is valid
   if (!validSUs(SUs, false)) {
     try {
-      auto status = redistributeCurrent(false, true); // don't check the currents
+      auto status = redistributeCurrent(false, true); //!< don't check the currents
 
       if (status != Status::Success)
-        throw 100000; // #CHECK
+        throw 100000; //!< #CHECK
     } catch (int e) {
       std::cout << "error in Module_p::timeStep_CC when redistributing the current. Throwing the error on " << e << '\n';
       std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
@@ -952,7 +952,7 @@ void Module_p::timeStep_CC(double dt, bool addData, int nstep)
   }
 
 #if TIMING
-  timeData.timeStep += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); // time in seconds
+  timeData.timeStep += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
 #endif
 }
 
@@ -974,7 +974,7 @@ void Module_p::setTimings(TimingData_Module_p td)
 
 Module_p *Module_p::copy()
 {
-  // check the type of coolsystem we have #CHECK for a better way.
+  //!< check the type of coolsystem we have #CHECK for a better way.
   int cooltype = 0;
   if (typeid(*getCoolSystem()) == typeid(CoolSystem_HVAC))
     cooltype = 1;

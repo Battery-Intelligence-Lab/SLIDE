@@ -28,9 +28,9 @@ namespace slide {
 class Cell : public StorageUnit
 {
 protected:
-  double cap{ 16 }; // capacity [Ah]
-  //	virtual double &getI() = 0; // Direct assignment of current
-  //	virtual double &getV() = 0; // Direct assignment of voltage.
+  double cap{ 16 }; //!< capacity [Ah]
+  //	virtual double &getI() = 0; //!< Direct assignment of current
+  //	virtual double &getV() = 0; //!< Direct assignment of voltage.
   CellData<settings::DATASTORE_CELL> cellData;
 
 public:
@@ -51,24 +51,24 @@ public:
   constexpr double Tmax() { return limits.Tmax; }
   constexpr double Tmin() { return limits.Tmin; }
 
-  // virtual double V(bool print = true) = 0;   // crit is an optional argument
-  // virtual double getOCV(bool print = true) = 0; // crit is an optional argument
+  //!< virtual double V(bool print = true) = 0;   //!< crit is an optional argument
+  //!< virtual double getOCV(bool print = true) = 0; //!< crit is an optional argument
 
-  double getVhigh() final { return V(); } // return the voltage of the cell with the highest voltage
-  double getVlow() final { return V(); }  // return the voltage of the cell with the lowest voltage
+  double getVhigh() final { return V(); } //!< return the voltage of the cell with the highest voltage
+  double getVlow() final { return V(); }  //!< return the voltage of the cell with the lowest voltage
 
   virtual double getThotSpot() override { return T(); }
 
-  virtual std::span<double> viewVariations() { return {}; } // Return the parameters of this cell's variation
-  // void getStates(getStates_t s) = 0;
+  virtual std::span<double> viewVariations() { return {}; } //!< Return the parameters of this cell's variation
+  //!< void getStates(getStates_t s) = 0;
 
-  // double getRtot() = 0;
+  //!< double getRtot() = 0;
 
   virtual Status checkCurrent(bool checkV, bool print) noexcept
   {
     double v;
     Status Vstatus = checkV ? checkVoltage(v, print) : Status::Success;
-    // #CHECK Current checking part is missing!
+    //!< #CHECK Current checking part is missing!
     return Vstatus;
   }
 
@@ -88,36 +88,36 @@ public:
     return free::check_voltage(v, *this);
   }
 
-  size_t getNcells() override { return 1; } // this is a single cell
+  size_t getNcells() override { return 1; } //!< this is a single cell
 
   virtual void getVariations(double var[], int nin, int &nout) { nout = 0; }
 
   virtual Status setSOC(double SOCnew, bool checkV = true, bool print = true) = 0;
   virtual double SOC() = 0;
 
-  // virtual int getNstates() = 0;
+  //!< virtual int getNstates() = 0;
 
-  // thermal model
-  // virtual double getThermalSurface() = 0; // todo not implemented
+  //!< thermal model
+  //!< virtual double getThermalSurface() = 0; //!< todo not implemented
   virtual double thermalModel(int Nneighb, double Tneighb[], double Kneighb[], double Aneighb[], double tim) override
   {
     /*
      * Calculate the thermal model of this cell
      */
-    // todo not implemented #CHECK
-    // need something similar as SPM cell (keep track of heat generation and time)
-    // and then here you can solve the ODE
+    //!< todo not implemented #CHECK
+    //!< need something similar as SPM cell (keep track of heat generation and time)
+    //!< and then here you can solve the ODE
     return T();
   }
 
-  // void setT(double Tnew) = 0;
+  //!< void setT(double Tnew) = 0;
 
-  // virtual bool validStates(bool print = true) = 0;
-  //  virtual bool validStates(double s[], int n, double &soc, double &t, double &i, bool print = true) = 0;
-  // virtual void timeStep_CC(double dt, bool addData = false, int steps = 1) = 0;
+  //!< virtual bool validStates(bool print = true) = 0;
+  //!<  virtual bool validStates(double s[], int n, double &soc, double &t, double &i, bool print = true) = 0;
+  //!< virtual void timeStep_CC(double dt, bool addData = false, int steps = 1) = 0;
 
-  // dataStorage
-  void storeData() override // Add another data point in the array.
+  //!< dataStorage
+  void storeData() override //!< Add another data point in the array.
   {
     cellData.storeInstantenousData(I(), V(), SOC(), T());
   }
@@ -134,12 +134,12 @@ public:
 
   void setThroughput(CellCumulativeData data) { cellData.setThroughputData(data); }
 
-  // #if DATASTORE_CELL == 1
-  // 		virtual const CellCommonHist &getHists()
-  // 		{
-  // 			return hist;
-  // 		};
-  // #endif
+  //!< #if DATASTORE_CELL == 1
+  //!< 		virtual const CellCommonHist &getHists()
+  //!< 		{
+  //!< 			return hist;
+  //!< 		};
+  //!< #endif
 };
 
 } // namespace slide

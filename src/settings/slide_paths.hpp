@@ -16,7 +16,7 @@
 #include <filesystem>
 
 inline std::filesystem::path operator+(const std::filesystem::path &lhs, const std::string &rhs)
-{ // To make path type compatible with strings.
+{ //!< To make path type compatible with strings.
   const std::filesystem::path temp{ rhs };
   return lhs / temp;
 }
@@ -24,8 +24,8 @@ inline std::filesystem::path operator+(const std::filesystem::path &lhs, const s
 namespace PathVar {
 namespace fs = std::filesystem;
 
-#ifdef SLIDE_ROOT_DIR // SLIDE_CMAKE_MACROS
-// If path macros are defined in CMake, then use them.
+#ifdef SLIDE_ROOT_DIR //!< SLIDE_CMAKE_MACROS
+//!< If path macros are defined in CMake, then use them.
 const auto root_folder = fs::path(SLIDE_ROOT_DIR).make_preferred();
 #else
 const static fs::path root_folder{ "../.." };

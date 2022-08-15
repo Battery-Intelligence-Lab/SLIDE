@@ -16,7 +16,7 @@
 #include <string>
 #include <algorithm>
 
-// common implementation for all base-modules
+//!< common implementation for all base-modules
 namespace slide {
 void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
 {
@@ -32,10 +32,10 @@ void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
 
   const bool verb = print && (settings::printBool::printCrit);
 
-  // check the cells don't have parents yet (unless it is this module)
+  //!< check the cells don't have parents yet (unless it is this module)
   for (size_t i = 0; i < c.size(); i++) {
     auto p = c[i]->getParent();
-    if (p != nullptr && p != this) // #CHECK probably cannot be this since it is a unique_ptr
+    if (p != nullptr && p != this) //!< #CHECK probably cannot be this since it is a unique_ptr
     {
       if (verb)
         std::cerr << "ERROR in Module::setCells, SU " << i << ", already has a parent "
@@ -45,7 +45,7 @@ void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
     }
   }
 
-  // check the cells are valid according to this module layout
+  //!< check the cells are valid according to this module layout
   if (checkCells && !validSUs(c, print)) {
     if (verb)
       std::cerr << "ERROR in Module::setCells, the cells are "
@@ -54,17 +54,17 @@ void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
     throw 10;
   }
 
-  // connect the cells to this module
-  Vmodule_valid = false; // we are changing the SUs, so the stored voltage is no longer valid
+  //!< connect the cells to this module
+  Vmodule_valid = false; //!< we are changing the SUs, so the stored voltage is no longer valid
 
   SUs.clear();
   Rcontact.clear();
   size_t r{ 0 };
   for (auto &SU : c) {
     r += SU->getNcells();
-    SU->setParent(this); // Set the parent of all cells/ Does not throw.
+    SU->setParent(this); //!< Set the parent of all cells/ Does not throw.
     SUs.push_back(std::move(SU));
-    Rcontact.push_back(0); // Make Rcontact zero? #CHECK
+    Rcontact.push_back(0); //!< Make Rcontact zero? #CHECK
   }
 
   Ncells = r;
@@ -80,15 +80,15 @@ Status Module::checkVoltage(double &v, bool print) noexcept
    * 			i.e. if one cell is outside the safety limits and the rest is fine, than the one outside the safety limits is returned
    */
 
-  // const bool printCrit = print && (settings::printBool::printCrit);		// print if the (global) verbose-setting is above the threshold
-  // const bool printNonCrit = print && (settings::printBool::printNonCrit); // print if the (global) verbose-setting is above the threshold
+  //!< const bool printCrit = print && (settings::printBool::printCrit);		//!< print if the (global) verbose-setting is above the threshold
+  //!< const bool printNonCrit = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  // check the voltage of the module
-  // v = V(print); -> Hey we dont need to calculate this anymore.
-  // #CHECK here was a not useful chuck of code for repeated checking.
-  // We may have constant limits for module voltage.
+  //!< check the voltage of the module
+  //!< v = V(print); -> Hey we dont need to calculate this anymore.
+  //!< #CHECK here was a not useful chuck of code for repeated checking.
+  //!< We may have constant limits for module voltage.
 
-  // check the voltages of the connected cells
+  //!< check the voltages of the connected cells
   double vi;
   auto res = Status::Success;
   for (const auto &SU : SUs) {
@@ -102,21 +102,21 @@ Status Module::checkVoltage(double &v, bool print) noexcept
 
 double Module::getVhigh()
 {
-  // return the voltage of the cell with the highest voltage
-  // 	note CELL not child SU
+  //!< return the voltage of the cell with the highest voltage
+  //!< 	note CELL not child SU
   double Vhigh = Vmin(); //#CHECK
   for (const auto &SU : SUs)
-    Vhigh = std::max(Vhigh, SU->getVhigh()); // will be called recursively to the cell levels
+    Vhigh = std::max(Vhigh, SU->getVhigh()); //!< will be called recursively to the cell levels
 
   return Vhigh;
 }
 
 double Module::getVlow()
 {
-  // return the voltage of the cell with the lowest voltage note CELL not child SU
+  //!< return the voltage of the cell with the lowest voltage note CELL not child SU
   double Vlow = Vmax(); //#CHECK
   for (const auto &SU : SUs)
-    Vlow = std::min(Vlow, SU->getVlow()); // will be called recursively to the cell levels
+    Vlow = std::min(Vlow, SU->getVlow()); //!< will be called recursively to the cell levels
 
   return Vlow;
 }
@@ -129,9 +129,9 @@ void Module::getStates(getStates_t s)
    * where s0 is the array with the states of the first cell of this module
    */
   for (const auto &SU : SUs)
-    SU->getStates(s); // pass a vector, the next nsi locations will be automatically filled with the states of cell i
+    SU->getStates(s); //!< pass a vector, the next nsi locations will be automatically filled with the states of cell i
 
-  s.push_back(T()); // store the module temperature
+  s.push_back(T()); //!< store the module temperature
 }
 
 bool Module::validStates(bool print)
@@ -148,9 +148,9 @@ bool Module::validStates(bool print)
    * This is a slow function, so only execute it if you have to
    */
 
-  const bool verb = print && (settings::printBool::printNonCrit); // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  // check the resulting state is valid
+  //!< check the resulting state is valid
   bool val = validSUs(verb); //#CHECK validSUs does not take vector.
 
   return val;
@@ -184,12 +184,12 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
 
   std::span<const double> spn_orig{ sorig };
 
-  Vmodule_valid = false; // we are changing the states, so the stored voltage is no longer valid
+  Vmodule_valid = false; //!< we are changing the states, so the stored voltage is no longer valid
 
-  // set the new cell states
+  //!< set the new cell states
   for (size_t i = 0; i < getNSUs(); i++) {
 
-    const Status status = SUs[i]->setStates(s, checkV, print); //  set the states
+    const Status status = SUs[i]->setStates(s, checkV, print); //!<  set the states
 
     if (verb && isStatusWarning(status))
       std::cout << "warning in Module::setStates, the voltage of cell " << i << " with id "
@@ -200,19 +200,19 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
                   << ". Restoring the old states, status: " << getStatusMessage(status) << '\n';
 
       for (size_t j = 0; j <= i; j++)
-        SUs[i]->setStates(spn_orig, false, print); // restore the original states without checking validity (they should be valid)
+        SUs[i]->setStates(spn_orig, false, print); //!< restore the original states without checking validity (they should be valid)
 
       return status;
     }
 
-  } // end loop to set the cell states
+  } //!< end loop to set the cell states
 
-  // set the module temperature
-  assert(s[0] >= PhyConst::Kelvin); // #CHECK here we are checking but should we?
+  //!< set the module temperature
+  assert(s[0] >= PhyConst::Kelvin); //!< #CHECK here we are checking but should we?
   setT(s[0]);
   s = s.last(s.size() - 1);
 
-  // check that the cells are valid for this module configuration (same I if series, same V if parallel)
+  //!< check that the cells are valid for this module configuration (same I if series, same V if parallel)
   /*
    * Note: only check this if checkV is on, else you can get an eternal loop if the initial state is not valid.
    * (in that case, setState(sorig) will also fail, and call its own setState(sorig), etc.)
@@ -230,7 +230,7 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
     }
   }
 
-  return Status::Success; // return success.
+  return Status::Success; //!< return success.
 }
 
 double Module::thermalModel_cell()
@@ -239,17 +239,17 @@ double Module::thermalModel_cell()
    * Calculate the thermal model of each cell individually
    */
 
-  // array with the new temperatures of the child SUs
+  //!< array with the new temperatures of the child SUs
   double Tnew[settings::MODULE_NSUs_MAX];
 
-  // dummy arrays
+  //!< dummy arrays
   double Tsu[1], Ksu[1], Asu[1];
   Tsu[0] = 0;
   Ksu[0] = 0;
   Asu[0] = 0;
   double tim = 0;
 
-  // calculate cells' temperature
+  //!< calculate cells' temperature
   for (size_t i = 0; i < getNSUs(); i++) {
     try {
       Tnew[i] = SUs[i]->thermalModel(3, Tsu, Ksu, Asu, tim);
@@ -262,11 +262,11 @@ double Module::thermalModel_cell()
     }
   }
 
-  // Set all the new temperatures to the children
+  //!< Set all the new temperatures to the children
   for (size_t i = 0; i < getNSUs(); i++)
     SUs[i]->setT(Tnew[i]);
 
-  // the temperature of a module doesn't change
+  //!< the temperature of a module doesn't change
   return T();
 }
 
@@ -286,13 +286,13 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
    * 99 	invalid module temperature
    */
 
-  // Check the time keeping
+  //!< Check the time keeping
   if constexpr (settings::printBool::printNonCrit)
     if (therm.time > 15 * 60)
       std::cout << "Warning in Module::thermalModel, the time since this function was called last is very large, "
                 << therm.time << " which might lead to excessive temperature variations.\n";
 
-  // then check whether our internal time keeping matches up with the external one
+  //!< then check whether our internal time keeping matches up with the external one
   if (std::abs(therm.time - tim) > 1) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module::thermalModel of SU " << getFullID() << ", according to the cell's internal timing, "
@@ -302,47 +302,47 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
     throw 98;
   }
 
-  // Only calculate the thermal model if time has actually passed. Else the cooling temperature will become NaN since the volume is 0
+  //!< Only calculate the thermal model if time has actually passed. Else the cooling temperature will become NaN since the volume is 0
   if (tim != 0) {
-    // array with the new temperatures of the child SUs
+    //!< array with the new temperatures of the child SUs
     double Tnew[settings::MODULE_NSUs_MAX];
 
-    // ************************************************************* heat exchange with child SUs *******************************************************************
-    // Make the arrays for heat exchange to each child SU.
-    // They have max length 3 (cooling from here, and 2 neighbours)
-    double Tsu[3], Ksu[3], Asu[3]; // parent, left neighbour, right neighbour
+    //!< ************************************************************* heat exchange with child SUs *******************************************************************
+    //!< Make the arrays for heat exchange to each child SU.
+    //!< They have max length 3 (cooling from here, and 2 neighbours)
+    double Tsu[3], Ksu[3], Asu[3]; //!< parent, left neighbour, right neighbour
 
-    // The first element is the cooling from the parent module to the child SUs
+    //!< The first element is the cooling from the parent module to the child SUs
     Tsu[0] = T();
     Ksu[0] = cool->getH();
     Asu[0] = therm.A;
 
-    // Loop to cool each child SU
+    //!< Loop to cool each child SU
     for (size_t i = 0; i < getNSUs(); i++) {
 
-      // left cell
-      Ksu[1] = therm.k_cell2cell; // conductive heat exchange via long sides of cell
+      //!< left cell
+      Ksu[1] = therm.k_cell2cell; //!< conductive heat exchange via long sides of cell
 
       if (i > 0) {
-        Tsu[1] = SUs[i - 1]->T(); // left is cell i-1
+        Tsu[1] = SUs[i - 1]->T(); //!< left is cell i-1
         Asu[1] = SUs[i - 1]->getThermalSurface();
-      } else { // left is module
+      } else { //!< left is module
         Asu[1] = getThermalSurface();
         Tsu[1] = T();
       }
 
-      // right cell
+      //!< right cell
       Ksu[2] = therm.k_cell2cell;
-      if (i + 1 < getNSUs()) // Last cell. getNSUs() is unsigned therefore getNSUs() -1 is omitted.
+      if (i + 1 < getNSUs()) //!< Last cell. getNSUs() is unsigned therefore getNSUs() -1 is omitted.
       {
         Asu[2] = SUs[i + 1]->getThermalSurface();
         Tsu[2] = SUs[i + 1]->T();
-      } else { // right is edge of module
+      } else { //!< right is edge of module
         Asu[2] = getThermalSurface();
         Tsu[2] = T();
       }
 
-      // calculate thermal balance of the child SU
+      //!< calculate thermal balance of the child SU
       try {
         Tnew[i] = SUs[i]->thermalModel(3, Tsu, Ksu, Asu, tim);
       } catch (int e) {
@@ -354,51 +354,51 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
       }
     }
 
-    // The cooling fluid in the module heats up from cooling all cells
+    //!< The cooling fluid in the module heats up from cooling all cells
     double Etot = 0;
     for (size_t i = 0; i < getNSUs(); i++) {
       const double Atherm = std::min(Asu[0], SUs[i]->getThermalSurface());
       Etot += Ksu[0] * Atherm * (SUs[i]->T() - T()) * tim;
 
-      // additional cooling to the first and last cell of the stack (which both have 1 edge from the coolsystem)
+      //!< additional cooling to the first and last cell of the stack (which both have 1 edge from the coolsystem)
       if (i == 0)
         Etot += Ksu[1] * Atherm * (SUs[i]->T() - T()) * tim;
 
-      if (i == getNSUs() - 1) // #CHECK problem.
+      if (i == getNSUs() - 1) //!< #CHECK problem.
         Etot += Ksu[2] * Atherm * (SUs[i]->T() - T()) * tim;
     }
 
-    // Add up the heat generated in all the contact resistances of this Module
+    //!< Add up the heat generated in all the contact resistances of this Module
     Etot += therm.Qcontact;
 
-    double Echildren = Etot; // cooling energy extracted from the children
+    double Echildren = Etot; //!< cooling energy extracted from the children
 
-    // *********************************************************** Heat exchange with neighbours and parent **********************************************************
+    //!< *********************************************************** Heat exchange with neighbours and parent **********************************************************
 
-    // The module exchanges heat with its parent and neighbours
+    //!< The module exchanges heat with its parent and neighbours
     for (int i = 0; i < Nneighbours; i++) {
       const double Atherm = std::min(Aneighb[i], therm.A);
       Etot += Kneighbours[i] * Atherm * (Tneighbours[i] - T()) * tim;
     }
 
-    // *************************************************************** New coolant temperature *******************************************************************
+    //!< *************************************************************** New coolant temperature *******************************************************************
 
-    // Calculate the new temperature of the coolant
-    // rho * cp * dT/dt = Qtot / V
-    // 		where 	Qtot is total power in W
-    // 				V is the total volume of fluid over the time period, the product of the flow rate and the time (therm_v*tim)
-    // so integrated over time this is
-    // rho * cp * (Tnew - Told) = Etot / V
+    //!< Calculate the new temperature of the coolant
+    //!< rho * cp * dT/dt = Qtot / V
+    //!< 		where 	Qtot is total power in W
+    //!< 				V is the total volume of fluid over the time period, the product of the flow rate and the time (therm_v*tim)
+    //!< so integrated over time this is
+    //!< rho * cp * (Tnew - Told) = Etot / V
     double Tcool_new = cool->dstate(Etot, Echildren, tim);
 
-    // Set all the new temperatures to the children
+    //!< Set all the new temperatures to the children
     for (size_t i = 0; i < getNSUs(); i++)
       SUs[i]->setT(Tnew[i]);
 
-    // reset the time since the last update of the thermal model
+    //!< reset the time since the last update of the thermal model
     therm.time = 0;
 
-    // Check the new temperature is valid
+    //!< Check the new temperature is valid
     if (Tcool_new < PhyConst::Kelvin || Tcool_new > PhyConst::Kelvin + 75.0 || std::isnan(Tcool_new)) {
       if constexpr (settings::printBool::printCrit) {
         std::cerr << "ERROR in Module::thermalModel of SU " << getFullID() << ", the new temperature of " << Tcool_new << " is outside the allowed range from (273+0) K to (273+75) K";
@@ -408,11 +408,11 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
       throw 99;
     }
 
-    // return the new cooling temperature
+    //!< return the new cooling temperature
     return Tcool_new;
 
-  }    // if(tim != 0)
-  else // no time has passed -> no heat generated -> just return present temperature
+  }    //!< if(tim != 0)
+  else //!< no time has passed -> no heat generated -> just return present temperature
     return T();
 }
 
@@ -434,18 +434,18 @@ double Module::thermalModel(int Nneighbours, double Tneighbours[], double Kneigh
     else if constexpr (settings::T_MODEL == 2)
       Tout = thermalModel_coupled(Nneighbours, Tneighbours, Kneighbours, Aneighb, tim);
   } catch (int e) {
-    // indicate we have ran the thermal model
+    //!< indicate we have ran the thermal model
     therm.time = 0;
     therm.Qcontact = 0;
     std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw e;
   }
 
-  // Reset the cumulative thermal variables
+  //!< Reset the cumulative thermal variables
   therm.time = 0;
   therm.Qcontact = 0;
 
-  // control the cooling system is done at the time integration function
+  //!< control the cooling system is done at the time integration function
   return Tout;
 }
 
@@ -462,15 +462,15 @@ double Module::getCoolingLoad()
    * This means we start again from 0, so the next time this function is called it will return the amount of energy consumed since now.
    */
 
-  double Etot = getCoolSystem()->getEoperation(); // energy to run coolsystem of this module
-  getCoolSystem()->reset_Eoperation();            // reset to 0
+  double Etot = getCoolSystem()->getEoperation(); //!< energy to run coolsystem of this module
+  getCoolSystem()->reset_Eoperation();            //!< reset to 0
 
-  // loop for the children, and if they are modules, add their cooling energy
+  //!< loop for the children, and if they are modules, add their cooling energy
   for (auto &SU : SUs)
-    if (auto m = dynamic_cast<Module *>(SU.get())) // cast to a module pointer instead of storage unit
+    if (auto m = dynamic_cast<Module *>(SU.get())) //!< cast to a module pointer instead of storage unit
     {
-      Etot += m->getCoolingLoad();            // add energy
-      m->getCoolSystem()->reset_Eoperation(); // reset cooling energy for that child
+      Etot += m->getCoolingLoad();            //!< add energy
+      m->getCoolSystem()->reset_Eoperation(); //!< reset cooling energy for that child
     }
 
   return Etot;

@@ -23,10 +23,10 @@
 namespace slide {
 
 template <typename Tx>
-bool check_is_fixed(Tx &xdat) // Checks if steps are fixed length. #CHECK should not be here.
+bool check_is_fixed(Tx &xdat) //!< Checks if steps are fixed length. #CHECK should not be here.
 {
   const double dt = xdat[1] - xdat[0];
-  const double tol = 0.01 * dt; // Tolerance.
+  const double tol = 0.01 * dt; //!< Tolerance.
 
   bool is_fixed = true;
 
@@ -54,7 +54,7 @@ public:
   explicit XYdata(size_t N) : x(N), y(N) {}
   XYdata(Tx &x, Ty &y) : x(x), y(y) { check_is_fixed(); }
 
-  // XYdata(FixedData x, Ty y) : is_fixed(true), x(x), y(y) {} #CHECK this should be on but error in GCC
+  //!< XYdata(FixedData x, Ty y) : is_fixed(true), x(x), y(y) {} #CHECK this should be on but error in GCC
 
   void reserve(int n) { x.reserve(n), y.reserve(n); }
   void clear() { x.clear(), y.clear(); }
@@ -89,7 +89,7 @@ using XYdata_ss = XYdata<std::span<double>, std::span<double>>;
 template <typename Tpath>
 void loadCSV_2col(Tpath &&name, slide::XYdata_vv &data, int n = 0)
 {
-  // slide::XYdata_vv overload.
+  //!< slide::XYdata_vv overload.
   loadCSV_2col(name, data.x, data.y, n);
 }
 

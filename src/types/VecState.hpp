@@ -17,7 +17,7 @@
 namespace slide {
 class VecStates
 {
-  static std::vector<double> st, dst, bst; // states, dstates, backup_states
+  static std::vector<double> st, dst, bst; //!< states, dstates, backup_states
   static std::vector<std::array<int, 2>> locs{ { 0, 0 } };
   static size_t current_id{ 0 };
 
@@ -35,10 +35,10 @@ public:
 
   VecStates() : VecStates(0){};
 
-  // auto begin() { return std::begin(*root) + beg; }
-  // auto end() { return std::begin(*root) + en; }
+  //!< auto begin() { return std::begin(*root) + beg; }
+  //!< auto end() { return std::begin(*root) + en; }
 
-  // auto cbegin() { return std::advance(std::cbegin(*root), beg); }
-  // auto cend() { return std::advance(std::cbegin(*root), en); }
+  //!< auto cbegin() { return std::advance(std::cbegin(*root), beg); }
+  //!< auto cend() { return std::advance(std::cbegin(*root), en); }
 };
 } // namespace slide

@@ -3,7 +3,7 @@
  *
  *  A small class to store variable size arrays
  *  Created on: 05 Apr 2022
- *  // not working yet.
+ *  //!< not working yet.
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 

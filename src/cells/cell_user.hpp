@@ -17,7 +17,7 @@ namespace slide {
 class Cell_user : public Cell
 {
 public:
-  // constructors
+  //!< constructors
   Cell_user(const struct slide::Model_SPM &, int verbosei);
   Cell_user(const slide::Model_SPM &M, const DEG_ID &, int verbosei);
 };

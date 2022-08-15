@@ -25,7 +25,7 @@ namespace slide {
 template <size_t N>
 auto S_update(slide::Matrix<double, N, N> &S, std::array<double, N> w, double alpha, double n)
 {
-  constexpr double gamma = 0.5; // a parameter determining the speed of adaptation of the proposal density covariance matrix.
+  constexpr double gamma = 0.5; //!< a parameter determining the speed of adaptation of the proposal density covariance matrix.
   constexpr double alpha_star = 0.234;
 
   const double m = std::pow(n, -gamma) * (alpha - alpha_star) / slide::norm_sq<2>(w);
@@ -45,7 +45,7 @@ auto S_update(slide::Matrix<double, N, N> &S, std::array<double, N> w, double al
       for (size_t o = 0; o <= i; o++)
         S_new[i][j] += S[i][o] * I[o][j];
 
-  return S_new; // S_new;
+  return S_new; //!< S_new;
 }
 
 template <size_t N_PARAM, size_t N_OUTPUT = 1>
@@ -119,7 +119,7 @@ struct Prior
   {
     for (const auto b_i : b)
       if (b_i <= 0)
-        return std::pair(-1e25, false); // -Inf
+        return std::pair(-1e25, false); //!< -Inf
 
     double sum{ 0 };
     for (size_t i = 0; i < b.size(); i++)
@@ -130,10 +130,10 @@ struct Prior
 };
 
 using LL_Result = std::array<double, 5>;
-// struct LL_Result
-// {
-//     double LLout{0}, LLout1{0}, LLout2{0}, P{}, err_sqr{};
-// };
+//!< struct LL_Result
+//!< {
+//!<     double LLout{0}, LLout1{0}, LLout2{0}, P{}, err_sqr{};
+//!< };
 
 template <typename ThetaType, typename PriorType, typename CostType, typename SettingsType>
 auto LL(const ThetaType &theta_cand, PriorType &prior, const CostType &costFun, const size_t Nobservations, const SettingsType &mcmcSettings)
@@ -141,7 +141,7 @@ auto LL(const ThetaType &theta_cand, PriorType &prior, const CostType &costFun, 
   auto [P, flag] = prior(theta_cand.param);
 
   if (!flag)
-    return std::pair(LL_Result{}, false); // std::pair(P, flag);
+    return std::pair(LL_Result{}, false); //!< std::pair(P, flag);
   else {
     auto err_sqr = costFun(theta_cand.scale(mcmcSettings.theta_scalar));
 
@@ -151,7 +151,7 @@ auto LL(const ThetaType &theta_cand, PriorType &prior, const CostType &costFun, 
     const double LLout2 = 0.5 * err_sqr / R_volt_exp;
     double LLout = -P + LLout1 + LLout2;
 
-    return std::pair(LL_Result{ LLout, LLout1, LLout2, P, err_sqr }, flag); //   std::pair(LLout, true);
+    return std::pair(LL_Result{ LLout, LLout1, LLout2, P, err_sqr }, flag); //!<   std::pair(LLout, true);
   }
 }
 

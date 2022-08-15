@@ -25,9 +25,9 @@ namespace slide {
 class Cell_Bucket : public Cell
 {
 protected:
-  State_Bucket st{ 0, 0.5, settings::T_ENV }; // I, T, SOC
-  XYdata_ff OCV;                              // SOC vs voltage curve.
-  double Rdc{ 2e-3 };                         // DC resistance [Ohm]
+  State_Bucket st{ 0, 0.5, settings::T_ENV }; //!< I, T, SOC
+  XYdata_ff OCV;                              //!< SOC vs voltage curve.
+  double Rdc{ 2e-3 };                         //!< DC resistance [Ohm]
 
 public:
   Cell_Bucket();
@@ -37,24 +37,24 @@ public:
   inline double I() override { return st.I(); }
   double V(bool print = true) override;
 
-  void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }         // returns the states of the cell collectively.
-  std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); } // returns the individual states.
+  void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }         //!< returns the states of the cell collectively.
+  std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); } //!< returns the individual states.
 
   auto &getStateObj() { return st; }
 
-  double getOCV(bool print = true) override; // crit is an optional argument
-  // virtual int getNstates() { return S.size() + 1; } // +1 for current
+  double getOCV(bool print = true) override; //!< crit is an optional argument
+  //!< virtual int getNstates() { return S.size() + 1; } //!< +1 for current
 
-  double getRtot() override { return Rdc; } // Return the total resistance, V = OCV - I*Rtot
+  double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override;
   Status setSOC(double SOCnew, bool checkV = true, bool print = true) override;
   Status setStates(setStates_t s, bool checkV = true, bool print = true) override;
 
-  // thermal model
+  //!< thermal model
   inline double T() override { return st.T(); }
   inline double getThotSpot() override { return T(); }
-  double getThermalSurface() override { return 0; }; // Not implemented?
+  double getThermalSurface() override { return 0; }; //!< Not implemented?
   inline void setT(double Tnew) override { st.T() = Tnew; }
 
   bool validStates(bool print = true) override;
@@ -62,15 +62,15 @@ public:
 
   Cell_Bucket *copy() override { return new Cell_Bucket(*this); }
 
-  // dataStorage
-  // virtual void storeData();
-  // virtual void writeData(std::string prefix){}; // #CHECK implement.
+  //!< dataStorage
+  //!< virtual void storeData();
+  //!< virtual void writeData(std::string prefix){}; //!< #CHECK implement.
 };
 
 inline Cell_Bucket::Cell_Bucket()
 {
   ID = "Cell_Bucket";
-  // OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
+  //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 11);
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
 
@@ -80,9 +80,9 @@ inline Cell_Bucket::Cell_Bucket()
 inline Cell_Bucket::Cell_Bucket(std::string IDi, double capin, double SOCin) : Cell_Bucket()
 {
   if (!free::check_SOC(SOCin))
-    throw 10; // #CHECK we need error codes.
+    throw 10; //!< #CHECK we need error codes.
 
-  // #CHECK also check capacity if negative? Use bool instead of throwing?
+  //!< #CHECK also check capacity if negative? Use bool instead of throwing?
   ID = std::move(IDi);
   cap = capin;
   st.SOC() = SOCin;
@@ -135,7 +135,7 @@ inline Status Cell_Bucket::setCurrent(double Inew, bool checkV, bool print)
   const double Iold = I();
   st.I() = Inew;
 
-  const auto status = checkCurrent(checkV, print); // #CHECK this pattern is repeated in all cells.
+  const auto status = checkCurrent(checkV, print); //!< #CHECK this pattern is repeated in all cells.
 
   if (isStatusBad(status))
     st.I() = Iold;
@@ -157,7 +157,7 @@ inline double Cell_Bucket::V(bool print)
    * 1 	if SOC is outside the allowed range
    * 			passed on from linear interpolation
    */
-  const bool verb = print && (settings::printBool::printCrit); // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   try {
     const double ocv = getOCV(print);
     return ocv - Rdc * I();
@@ -168,7 +168,7 @@ inline double Cell_Bucket::V(bool print)
   }
 }
 
-inline Status Cell_Bucket::setSOC(double SOCnew, bool checkV, bool print) // Also not used except test functions.
+inline Status Cell_Bucket::setSOC(double SOCnew, bool checkV, bool print) //!< Also not used except test functions.
 {
   /*
    * checkV	true, the voltage is checked after setting the current
@@ -195,10 +195,10 @@ inline Status Cell_Bucket::setSOC(double SOCnew, bool checkV, bool print) // Als
 
   if (checkV) {
     double v;
-    const auto status = checkVoltage(v, print); // get the voltage Does not throw anymore!
+    const auto status = checkVoltage(v, print); //!< get the voltage Does not throw anymore!
 
     if (isStatusBad(status))
-      st.SOC() = SOCold; // Restore states here.
+      st.SOC() = SOCold; //!< Restore states here.
 
     return status;
   }
@@ -210,15 +210,15 @@ inline Status Cell_Bucket::setStates(setStates_t s, bool checkV, bool print)
 {
   /*
    */
-  auto st_old = st; // Back-up values.
+  auto st_old = st; //!< Back-up values.
 
-  std::copy(s.begin(), s.begin() + st.size(), st.begin()); // Copy states.
-  s = s.last(s.size() - st.size());                        // Remove first Nstates elements from span.
+  std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
+  s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
 
   const Status status = free::check_Cell_states(*this, checkV);
 
   if (isStatusBad(status))
-    st = st_old; // Restore states here.
+    st = st_old; //!< Restore states here.
 
   return status;
 }
@@ -229,10 +229,10 @@ inline bool Cell_Bucket::validStates(bool print)
    * note: does NOT check the voltage, only whether all fields are in the allowed range
    */
 
-  const bool verb = print && settings::printBool::printCrit; // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
-  // Check if all fields are present & extract their values
-  // are all in the allowed range? #CHECK change to some error codes.
+  //!< Check if all fields are present & extract their values
+  //!< are all in the allowed range? #CHECK change to some error codes.
 
   bool range = free::check_SOC(SOC());
 
@@ -242,7 +242,7 @@ inline bool Cell_Bucket::validStates(bool print)
                 << " <= T <= " << Tmax() << ", value is " << T() << '\n';
     range = false;
   }
-  // there is no range on the current
+  //!< there is no range on the current
   return range;
 }
 
@@ -258,10 +258,10 @@ inline void Cell_Bucket::timeStep_CC(double dt, bool addData, int nstep)
     throw 10;
   }
 
-  // take the specified number of time steps
+  //!< take the specified number of time steps
   for (int t = 0; t < nstep; t++) {
-    // Using forward Euler time integration.
-    // Currently, only the SOC of the cell will change
+    //!< Using forward Euler time integration.
+    //!< Currently, only the SOC of the cell will change
     st.SOC() -= st.I() * dt / (3600.0 * Cap());
 
     if (addData)

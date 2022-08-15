@@ -20,7 +20,7 @@ class FixedData;
 
 template <typename T, bool extrapolation = true>
 class FixedDataIter
-{ // For more information, see: https://internalpointers.com/post/writing-custom-iterators-modern-cpp
+{ //!< For more information, see: https://internalpointers.com/post/writing-custom-iterators-modern-cpp
 public:
   using iterator_category = std::input_iterator_tag;
   using difference_type = int;
@@ -30,26 +30,26 @@ public:
 
   FixedDataIter(FixedData<T, extrapolation> *const f_data_ptr, int n) : f_data_ptr{ f_data_ptr }, n{ n } {}
 
-  FixedDataIter &operator++() // Prefix increment
+  FixedDataIter &operator++() //!< Prefix increment
   {
     n++;
     return *this;
   }
 
-  FixedDataIter operator++(int) // Postfix increment
+  FixedDataIter operator++(int) //!< Postfix increment
   {
     FixedDataIter temp = *this;
     ++(*this);
     return temp;
   }
 
-  FixedDataIter &operator--() // Prefix decrement
+  FixedDataIter &operator--() //!< Prefix decrement
   {
     n--;
     return *this;
   }
 
-  FixedDataIter operator--(int) // Postfix decrement
+  FixedDataIter operator--(int) //!< Postfix decrement
   {
     FixedDataIter temp = *this;
     --(*this);
@@ -104,7 +104,7 @@ public:
   T operator[](int i) const
   {
 
-    if constexpr (!extrapolation) // Extrapolation will be deprecated.
+    if constexpr (!extrapolation) //!< Extrapolation will be deprecated.
     {
       if (i >= n || i < 0) {
         std::cout << i << ' ' << n << '\n';
@@ -116,7 +116,7 @@ public:
     return x;
   }
 
-  T operator()(int i) const // Can extrapolate (go out of bounds).
+  T operator()(int i) const //!< Can extrapolate (go out of bounds).
   {
     return F(x_min, dx, i);
   }
@@ -133,7 +133,7 @@ public:
 
   T prev(T x_current) noexcept
   {
-    // Gets previous point compared to the current point x_current
+    //!< Gets previous point compared to the current point x_current
     auto temp_data = *this;
     temp_data.x_min = x_current;
     return temp_data(-1);
@@ -141,7 +141,7 @@ public:
 
   T next(T x_current) noexcept
   {
-    // Gets next point compared to the current point x_current
+    //!< Gets next point compared to the current point x_current
     auto temp_data = *this;
     temp_data.x_min = x_current;
     return temp_data(+1);

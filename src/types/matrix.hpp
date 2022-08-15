@@ -18,7 +18,7 @@
 
 namespace slide {
 template <typename T, size_t ROW, size_t COL>
-using Matrix = std::array<std::array<T, COL>, ROW>; // See source: http://cpptruths.blogspot.com/2011/10/multi-dimensional-arrays-in-c11.html
+using Matrix = std::array<std::array<T, COL>, ROW>; //!< See source: http://cpptruths.blogspot.com/2011/10/multi-dimensional-arrays-in-c11.html
 
 template <size_t N, size_t M = N>
 auto eye(double k = 1.0)
@@ -53,7 +53,7 @@ auto ones(double k = 1.0)
 template <int N>
 void cholUpdate(slide::Matrix<double, N, N> &L, std::array<double, N> x, bool isDowndate = false)
 {
-  // In-place rank-one update for Cholesky
+  //!< In-place rank-one update for Cholesky
   for (int k = 0; k < N; k++) {
     const double Lk = L[k][k];
     const double s = x[k] / Lk;

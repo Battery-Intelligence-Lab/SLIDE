@@ -18,8 +18,8 @@ namespace slide::unit_tests {
 
 void test_constructor_ECM()
 {
-  // Cell_ECM();
-  // Cell_ECM(double capin, double SOCin);
+  //!< Cell_ECM();
+  //!< Cell_ECM(double capin, double SOCin);
 
   Cell_ECM c1;
   assert(c1.Cap() == 16);
@@ -44,24 +44,24 @@ void test_constructor_ECM()
 
 void test_getStates_ECM(bool testErrors)
 {
-  // void getStates(double s[], int nin, int&nout);
+  //!< void getStates(double s[], int nin, int&nout);
   Cell_ECM c1;
   int nin = settings::CELL_NSTATE_MAX;
   std::vector<double> s;
   int n;
 
   c1.getStates(s);
-  assert(s[0] == 0.5);             // soc
-  assert(s[1] == 0);               // Ir
-  assert(s[2] == settings::T_ENV); // T
-  assert(s[3] == 0);               // current
+  assert(s[0] == 0.5);             //!< soc
+  assert(s[1] == 0);               //!< Ir
+  assert(s[2] == settings::T_ENV); //!< T
+  assert(s[3] == 0);               //!< current
 
   std::span<double> spn{ s };
 
   if (testErrors) {
     try {
-      // cout<<"There must be an error message after this line"<<endl<<flush; 	// changed global verbose variable
-      // c1.getStates(s); // this must throw an error
+      //!< cout<<"There must be an error message after this line"<<endl<<flush; 	//!< changed global verbose variable
+      //!< c1.getStates(s); //!< this must throw an error
       assert(false);
     } catch (...) {
     }
@@ -70,22 +70,22 @@ void test_getStates_ECM(bool testErrors)
 
 void test_getV_ECM(bool testErrors)
 {
-  // double V(bool print = true); // crit is an optional argument
+  //!< double V(bool print = true); //!< crit is an optional argument
   Cell_ECM c1;
 
-  // normal cell, should give no errors
+  //!< normal cell, should give no errors
   assert(c1.V(false) == 3.2);
   assert(c1.V(true) == 3.2);
   assert(c1.V() == 3.2);
 
-  // set to charging and check the voltage has increased
+  //!< set to charging and check the voltage has increased
   c1.setCurrent(-1);
   double V = c1.V();
   assert(V > 3.2);
   c1.timeStep_CC(5);
   assert(c1.V() > V);
 
-  // set to discharge
+  //!< set to discharge
   V = c1.V();
   c1.setCurrent(1);
   assert(c1.V() < V);
@@ -93,12 +93,12 @@ void test_getV_ECM(bool testErrors)
   c1.timeStep_CC(5);
   assert(c1.V() < V);
 
-  // cell with SOC out of range
-  Cell_ECM c2(1, 1); // make a cell with soC equal to 1
+  //!< cell with SOC out of range
+  Cell_ECM c2(1, 1); //!< make a cell with soC equal to 1
   c2.setCurrent(-1, false, false);
-  c2.timeStep_CC(3600); // charge further for one hour, now the SOC should be close to 2
+  c2.timeStep_CC(3600); //!< charge further for one hour, now the SOC should be close to 2
   try {
-    // cout<<"There should be no error message after this line"<<endl<<flush;	// changed global verbose variable
+    //!< cout<<"There should be no error message after this line"<<endl<<flush;	//!< changed global verbose variable
     c2.V(false);
     assert(false);
   } catch (...) {
@@ -106,13 +106,13 @@ void test_getV_ECM(bool testErrors)
 
   if (testErrors) {
     try {
-      // cout<<"There should be an error message after this line"<<endl<<flush;	// changed global verbose variable
+      //!< cout<<"There should be an error message after this line"<<endl<<flush;	//!< changed global verbose variable
       c2.V(true);
       assert(false);
     } catch (...) {
     }
     try {
-      // cout<<"There should be another error message after this line"<<endl<<flush;	// changed global verbose variable
+      //!< cout<<"There should be another error message after this line"<<endl<<flush;	//!< changed global verbose variable
       c2.V();
       assert(false);
     } catch (...) {
@@ -122,12 +122,12 @@ void test_getV_ECM(bool testErrors)
 
 void test_setStates_ECM(bool testErrors)
 {
-  // double setStates(double s[], int nin, bool checkV = true, bool print = true);
+  //!< double setStates(double s[], int nin, bool checkV = true, bool print = true);
   Cell_ECM c1;
   int nin = settings::CELL_NSTATE_MAX;
   int n;
 
-  // set valid new states
+  //!< set valid new states
   double soc, ir, i, t;
   soc = 0.75;
   ir = 1;
@@ -139,25 +139,25 @@ void test_setStates_ECM(bool testErrors)
 
   s.clear();
   c1.getStates(s);
-  assert(s[0] == soc); // soc
-  assert(s[1] == ir);  // Ir
-  assert(s[2] == t);   // T
-  assert(s[3] == i);   // current
+  assert(s[0] == soc); //!< soc
+  assert(s[1] == ir);  //!< Ir
+  assert(s[2] == t);   //!< T
+  assert(s[3] == i);   //!< current
 
-  // set invalid states
+  //!< set invalid states
   if (testErrors) {
     soc = 2;
     t = 0;
     s[0] = soc;
     s[2] = t;
     try {
-      // cout<<"There must be three error messages, one about invalid SOC and one invalid T, and one illegal state"<<endl<<flush;	// changed global verbose variable
+      //!< cout<<"There must be three error messages, one about invalid SOC and one invalid T, and one illegal state"<<endl<<flush;	//!< changed global verbose variable
       c1.setStates(spn);
       assert(false);
     } catch (...) {
     };
 
-    // set states which violate voltage
+    //!< set states which violate voltage
     soc = 1;
     ir = -5;
     t = 273 + 25;
@@ -167,7 +167,7 @@ void test_setStates_ECM(bool testErrors)
     s[2] = t;
     s[3] = i;
     try {
-      // cout<<"There must be one error message about an error when getting the voltage"<<endl<<flush;	// changed global verbose variable
+      //!< cout<<"There must be one error message about an error when getting the voltage"<<endl<<flush;	//!< changed global verbose variable
       c1.setStates(s, n);
       assert(false);
     } catch (...) {
@@ -177,11 +177,11 @@ void test_setStates_ECM(bool testErrors)
 
 void test_validStates_ECM()
 {
-  // bool validStates(double s[], int nin);
+  //!< bool validStates(double s[], int nin);
   Cell_ECM c1;
   int nin = settings::CELL_NSTATE_MAX;
 
-  // set valid new states
+  //!< set valid new states
   double soc, ir, i, t;
   soc = 1;
   ir = 1;
@@ -191,24 +191,24 @@ void test_validStates_ECM()
 
   assert(c1.validStates(s, nin));
 
-  // set invalid states
-  s[0] = 2; // soc
+  //!< set invalid states
+  s[0] = 2; //!< soc
   assert(!c1.validStates(s, nin));
-  s[0] = 0.5; // soc
-  s[2] = 0;   // T
+  s[0] = 0.5; //!< soc
+  s[2] = 0;   //!< T
   assert(!c1.validStates(s, nin));
 }
 
 void test_timeStep_CC_ECM()
 {
-  // void timeStep_CC(double dt);
+  //!< void timeStep_CC(double dt);
   Cell_ECM c1;
   double I = -1;
   double dt = 5;
   double tol = 0.002;
 
-  // soc initial = 0.5 and capacity = 10
-  // so SOC_end = 0.5 + 1*5/3600 = 0.5014
+  //!< soc initial = 0.5 and capacity = 10
+  //!< so SOC_end = 0.5 + 1*5/3600 = 0.5014
   c1.setCurrent(I);
   c1.timeStep_CC(dt);
   double err = c1.SOC() - 0.5014;
@@ -232,7 +232,7 @@ void testCell_ECM(bool testErrors)
    * 				if false, we only test things which should go well
    */
 
-  // if we test the errors, suppress error messages
+  //!< if we test the errors, suppress error messages
   test_constructor_ECM();
   test_getStates_ECM(testErrors);
   test_getV_ECM(testErrors);

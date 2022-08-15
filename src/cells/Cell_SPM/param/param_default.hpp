@@ -1,6 +1,6 @@
 #pragma once
 
-// This file is for default parameter values.
+//!< This file is for default parameter values.
 
 #include "SEIparam_default.hpp"
 #include "LAMparam_default.hpp"

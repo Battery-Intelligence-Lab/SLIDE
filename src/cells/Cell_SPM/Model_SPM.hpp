@@ -17,34 +17,34 @@
 #include "../../utility/utility.hpp"
 
 namespace slide {
-// Define a structure with the matrices of the spatial discretisation of the solid diffusion PDE
-// See the matlab script modelSetup.m
-// This class has 326 elements. So it should be allocated in heap once.
+//!< Define a structure with the matrices of the spatial discretisation of the solid diffusion PDE
+//!< See the matlab script modelSetup.m
+//!< This class has 326 elements. So it should be allocated in heap once.
 struct Model_SPM
 {
   constexpr static auto nch = settings::nch;
-  std::array<double, 4> Input; // array with the input parameters of the MATLAB files
+  std::array<double, 4> Input; //!< array with the input parameters of the MATLAB files
 
-  std::array<double, nch> xch; // location of the Chebyshev nodes in the positive domain EXCLUDING centre and surface
+  std::array<double, nch> xch; //!< location of the Chebyshev nodes in the positive domain EXCLUDING centre and surface
 
-  // state space model
+  //!< state space model
   //	dzpos/dt = Ap*zpos + Bp*jp		time derivative of (transformed) concentration at the inner nodes
   //	dzneg/dt = An*zneg + Bn*jn
   //	cp = Cp*zpos + Dp*jp			actual concentration [mol m-3] of the nodes (surface, inner)
-  // 	cn = Cn*zpos + Dn*jn
+  //!< 	cn = Cn*zpos + Dn*jn
 
-  std::array<double, nch> Ap, An; // only main diagonal is non-zero, so only store those values
+  std::array<double, nch> Ap, An; //!< only main diagonal is non-zero, so only store those values
   std::array<double, nch> Bp, Bn;
 
   slide::Matrix<double, nch + 1, nch> Cp, Cn;
 
-  std::array<double, nch + 1> Cc, Dp, Dn; // matrix to get the concentration at the centre node
+  std::array<double, nch + 1> Cc, Dp, Dn; //!< matrix to get the concentration at the centre node
 
-  slide::Matrix<double, nch, nch> Vp, Vn; // inverse of the eigenvectors for the positive/negative electrode
+  slide::Matrix<double, nch, nch> Vp, Vn; //!< inverse of the eigenvectors for the positive/negative electrode
 
-  slide::Matrix<double, 2 * nch + 3, 2 * nch + 3> Q; // Matrix for Chebyshev integration
+  slide::Matrix<double, 2 * nch + 3, 2 * nch + 3> Q; //!< Matrix for Chebyshev integration
 
-  Model_SPM() // #CHECK do not do file reading at the constructor.
+  Model_SPM() //!< #CHECK do not do file reading at the constructor.
   {
     /*
      * Constructor to initialise the matrices of the spatial discretisation of the solid diffusion PDE.
@@ -52,7 +52,7 @@ struct Model_SPM
      * This function reads those csv files.
      */
     try {
-      // Read the data which have one column (arrays)
+      //!< Read the data which have one column (arrays)
       loadCSV_1col(PathVar::data + "Cheb_Nodes.csv", xch);
       loadCSV_1col(PathVar::data + "Cheb_An.csv", An);
       loadCSV_1col(PathVar::data + "Cheb_Ap.csv", Ap);
@@ -63,7 +63,7 @@ struct Model_SPM
       loadCSV_1col(PathVar::data + "Cheb_Dp.csv", Dp);
       loadCSV_1col(PathVar::data + "Cheb_input.csv", Input);
 
-      // Read the data which have multiple columns (matrices)
+      //!< Read the data which have multiple columns (matrices)
       loadCSV_mat(PathVar::data + "Cheb_Cn.csv", Cn);
       loadCSV_mat(PathVar::data + "Cheb_Cp.csv", Cp);
       loadCSV_mat(PathVar::data + "Cheb_Vn.csv", Vn);
@@ -76,7 +76,7 @@ struct Model_SPM
     }
   }
 
-  static Model_SPM *makeModel() // #CHECK make other type of models possible.
+  static Model_SPM *makeModel() //!< #CHECK make other type of models possible.
   {
     static Model_SPM M;
     return &M;

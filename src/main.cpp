@@ -9,7 +9,7 @@
  * See the licence file LICENCE.txt for more information.
  */
 
-// Include header files
+//!< Include header files
 #include <ctime>
 #include <thread>
 #include <array>
@@ -25,44 +25,44 @@ int main()
 {
   /*
    * This function decides what will be simulated.
-   * In the code below, you have to uncomment the line which you want to execute (to uncomment, remove the // in front of the line)
-   * and comment all the other lines in the blocks with FUNCTION CALLS (to comment in, add // in front of the lines)
+   * In the code below, you have to uncomment the line which you want to execute (to uncomment, remove the //!<in front of the line)
+   * and comment all the other lines in the blocks with FUNCTION CALLS (to comment in, add //!<in front of the lines)
    */
 
-  // print that you start simulations
-  // slide::unit_tests::test_all();
+  //!< print that you start simulations
+  //!< slide::unit_tests::test_all();
 
   std::cout << "Start simulations" << std::endl;
 
-  // Make a clock to measure how long the simulation takes
+  //!< Make a clock to measure how long the simulation takes
   slide::Clock clk;
-  // Read the values for the matrices for the spatial discretisation of the solid diffusion PDE.
-  // these values are calculated by the MATLAB-script 'modelSetup.m', which writes them to csv files.
-  // Here, we only need to read these csv files
+  //!< Read the values for the matrices for the spatial discretisation of the solid diffusion PDE.
+  //!< these values are calculated by the MATLAB-script 'modelSetup.m', which writes them to csv files.
+  //!< Here, we only need to read these csv files
 
-  // slide::Model_SPM M; // Initialised at constructor.
-  //  Look for extra settings at Constants.hpp (such as verbosity)
+  //!< slide::Model_SPM M; //!<Initialised at constructor.
+  //!<  Look for extra settings at Constants.hpp (such as verbosity)
 
-  // Choose the prefix, a string with which the names of all subfolders with the outputfiles will start (the folders will be called prefix_xxxx).
-  // This is typically a number, and the reason why we use it is that results of previous simulations are not overwritten.
-  // i.e. for one simulation, use pref "0", then the next simulation could have pref "1".
-  // this ensures the results of the second simulation are written in different files and folders, rather than overwriting the files from the first simulation
-  const std::string pref = "0"; // todo
-                                //  will be used to name a folder with the results, so must comply with the naming convention on your operating system
-                                //  letters, numbers, underscores and dots are fine
-                                //  don't use spaces
-                                //  don't use forbidden characters, e.g. for Windows the following are not allowed < > : " \ | / ? *
-                                //  https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
+  //!< Choose the prefix, a string with which the names of all subfolders with the outputfiles will start (the folders will be called prefix_xxxx).
+  //!< This is typically a number, and the reason why we use it is that results of previous simulations are not overwritten.
+  //!< i.e. for one simulation, use pref "0", then the next simulation could have pref "1".
+  //!< this ensures the results of the second simulation are written in different files and folders, rather than overwriting the files from the first simulation
+  const std::string pref = "0"; //!< todo
+                                //!<  will be used to name a folder with the results, so must comply with the naming convention on your operating system
+                                //!<  letters, numbers, underscores and dots are fine
+                                //!<  don't use spaces
+                                //!<  don't use forbidden characters, e.g. for Windows the following are not allowed < > : " \ | / ? *
+                                //!<  https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
 
-  // Choose which cell should be used for the simulations
-  // const int cellType = slide::cellType::KokamNMC;
-  // which cell to use for the simulation.
-  // 0 	high power Kokam NMC cell (18650)
-  // 1 	high energy LG Chem NMC cell (18650)
-  // 2 	user cell (template class provided for where the user can define his own parameters)
+  //!< Choose which cell should be used for the simulations
+  //!< const int cellType = slide::cellType::KokamNMC;
+  //!< which cell to use for the simulation.
+  //!< 0 	high power Kokam NMC cell (18650)
+  //!< 1 	high energy LG Chem NMC cell (18650)
+  //!< 2 	user cell (template class provided for where the user can define his own parameters)
 
-  // Choose which degradation models to use for the simulations
-  // The models are identified by a number, see DEG_ID in DEG_ID.hpp and below
+  //!< Choose which degradation models to use for the simulations
+  //!< The models are identified by a number, see DEG_ID in DEG_ID.hpp and below
   /* SEI_id 		identification for which model(s) to use for SEI growth
    * 					0	no SEI growth
    * 					1 	kinetic model only (Tafel kinetics)
@@ -108,367 +108,367 @@ int main()
    * 					1	Yang et al's model for thermodynamic plating (Tafel kinetics)
    * 							ref: Yang, Leng, Zhang, Ge, Wang, Journal of Power Sources 360, 2017
    */
-  // For now, assume we want to include 'Pinson&Bazant'-SEI growth, 'Delacourt'-LAM, 'Kindermann'-LAM and 'Yang'-lithium plating
+  //!< For now, assume we want to include 'Pinson&Bazant'-SEI growth, 'Delacourt'-LAM, 'Kindermann'-LAM and 'Yang'-lithium plating
   slide::DEG_ID deg;
-  deg.SEI_id.add_model(2); // Pinson & Bazant SEI growth
-  deg.SEI_porosity = 0;    // don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+  deg.SEI_id.add_model(2); //!< Pinson & Bazant SEI growth
+  deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
 
-  deg.CS_id.add_model(0); // no surface cracks
-  deg.CS_diffusion = 0;   // don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+  deg.CS_id.add_model(0); //!< no surface cracks
+  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
 
-  // there are 2 LAM models (Delacourt and Kindermann)
-  deg.LAM_id.add_model(2); // Delacourt LAM
-  deg.LAM_id.add_model(3); // Kindermann LAM
+  //!< there are 2 LAM models (Delacourt and Kindermann)
+  deg.LAM_id.add_model(2); //!< Delacourt LAM
+  deg.LAM_id.add_model(3); //!< Kindermann LAM
 
-  deg.pl_id = 1; // Yang lithium plating
+  deg.pl_id = 1; //!< Yang lithium plating
 
   std::cout << "Used ageing model: " << deg.print() << '\n';
 
-  // Then the user has to choose what is simulated.
-  // In the code below, uncomment the line which calls the function you want to execute (uncommenting means removing the // in front of the line)
-  // and comment all the other lines (commenting means putting // in front of the line)
+  //!< Then the user has to choose what is simulated.
+  //!< In the code below, uncomment the line which calls the function you want to execute (uncommenting means removing the //!<in front of the line)
+  //!< and comment all the other lines (commenting means putting //!<in front of the line)
 
-  auto numThreads = std::thread::hardware_concurrency(); // asd
+  auto numThreads = std::thread::hardware_concurrency(); //!< asd
   std::cout << "Available number of threads : " << numThreads << '\n';
 
   //
-  // Benchmarks:
+  //!< Benchmarks:
 
-  // slide::benchmarks::run_Cell_Bucket();
+  //!< slide::benchmarks::run_Cell_Bucket();
   slide::benchmarks::run_Cell_SPM();
 
-  // Slide-pack tests:
+  //!< Slide-pack tests:
 
-  // std::cout << "Cell_Bucket:\n";
-  // {
-  // 	std::unique_ptr<slide::StorageUnit> cb_ptr = std::make_unique<slide::Cell_Bucket>();
+  //!< std::cout << "Cell_Bucket:\n";
+  //!<{
+  //!<	std::unique_ptr<slide::StorageUnit> cb_ptr = std::make_unique<slide::Cell_Bucket>();
 
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
-  // 	cb_ptr->setCurrent(cb_ptr->Cap() / 2.0);
-  // 	std::cout << "Current: " << cb_ptr->I() << '\n';
+  //!<	cb_ptr->setCurrent(cb_ptr->Cap() / 2.0);
+  //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  // 	cb_ptr->timeStep_CC(2, true, 900);
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+  //!<	cb_ptr->timeStep_CC(2, true, 900);
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
-  // 	auto u = cb_ptr->viewStates();
+  //!<	auto u = cb_ptr->viewStates();
 
-  // 	for (auto x : u)
-  // 		std::cout << x << ' ';
+  //!<	for (auto x : u)
+  //!<		std::cout << x << ' ';
 
-  // 	std::cout << "\n\n"
-  // 			  << std::endl;
-  // }
+  //!<	std::cout << "\n\n"
+  //!<			  << std::endl;
+  //!<}
 
-  // std::cout << "Cell_Bucket with procedure:\n";
-  // {
-  // 	bool balance = true;
-  // 	bool capspread = true;
-  // 	bool Rcellspread = true;
-  // 	bool degratespread = true;
-  // 	bool contactR = true;
-  // 	bool CV = false;
-  // 	double Vbal = 3.5; // rebalance to 3.1V
-  // 	int ndata = 60;	   // how often to store data (if 0, nothing is stored, not even usage stats)
-  // 	slide::Procedure p(balance, Vbal, ndata, false);
-  // 	std::cout << "Size of a Procedure: " << sizeof(p) << '\n';
+  //!< std::cout << "Cell_Bucket with procedure:\n";
+  //!<{
+  //!<	bool balance = true;
+  //!<	bool capspread = true;
+  //!<	bool Rcellspread = true;
+  //!<	bool degratespread = true;
+  //!<	bool contactR = true;
+  //!<	bool CV = false;
+  //!<	double Vbal = 3.5; //!<rebalance to 3.1V
+  //!<	int ndata = 60;	   //!<how often to store data (if 0, nothing is stored, not even usage stats)
+  //!<	slide::Procedure p(balance, Vbal, ndata, false);
+  //!<	std::cout << "Size of a Procedure: " << sizeof(p) << '\n';
 
-  // 	using namespace slide;
-  // 	constexpr int ncp = 2;
-  // 	constexpr int coolControl = 5;
-  // 	double Rc4[] = {0.0075 * 1e-3, 0.0073 * 1e-3};
+  //!<	using namespace slide;
+  //!<	constexpr int ncp = 2;
+  //!<	constexpr int coolControl = 5;
+  //!<	double Rc4[] = {0.0075 * 1e-3, 0.0073 * 1e-3};
 
-  // 	std::unique_ptr<StorageUnit> CinpM[2];
+  //!<	std::unique_ptr<StorageUnit> CinpM[2];
 
-  // 	CinpM[0] = std::make_unique<Cell_Bucket>();
-  // 	CinpM[1] = std::make_unique<Cell_Bucket>();
+  //!<	CinpM[0] = std::make_unique<Cell_Bucket>();
+  //!<	CinpM[1] = std::make_unique<Cell_Bucket>();
 
-  // 	auto mip = std::make_unique<Module_p>("p1", settings::T_ENV, true, false, ncp, coolControl, 1); // print warning messages, single-threaded, pass through coolsystem
+  //!<	auto mip = std::make_unique<Module_p>("p1", settings::T_ENV, true, false, ncp, coolControl, 1); //!<print warning messages, single-threaded, pass through coolsystem
 
-  // 	mip->setSUs(CinpM, false, true);
-  // 	mip->setRcontact(Rc4);
+  //!<	mip->setSUs(CinpM, false, true);
+  //!<	mip->setRcontact(Rc4);
 
-  // 	p.useCaseAge(mip.get(), CV);
-  // }
+  //!<	p.useCaseAge(mip.get(), CV);
+  //!<}
 
-  // std::cout << "Cell_ECM:\n";
-  // {
-  // 	std::unique_ptr<slide::StorageUnit> cb_ptr = std::make_unique<slide::Cell_ECM>();
+  //!< std::cout << "Cell_ECM:\n";
+  //!<{
+  //!<	std::unique_ptr<slide::StorageUnit> cb_ptr = std::make_unique<slide::Cell_ECM>();
 
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
-  // 	cb_ptr->setCurrent(5);
-  // 	std::cout << "Current: " << cb_ptr->I() << '\n';
+  //!<	cb_ptr->setCurrent(5);
+  //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  // 	cb_ptr->timeStep_CC(0.1, true, 3600);
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+  //!<	cb_ptr->timeStep_CC(0.1, true, 3600);
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
-  // 	auto u = cb_ptr->viewStates();
+  //!<	auto u = cb_ptr->viewStates();
 
-  // 	for (auto x : u)
-  // 		std::cout << x << ' ';
+  //!<	for (auto x : u)
+  //!<		std::cout << x << ' ';
 
-  // 	std::cout << "\n\n";
-  // }
+  //!<	std::cout << "\n\n";
+  //!<}
 
-  // std::cout << "Cell_SPM:\n";
-  // {
-  // 	auto cb_ptr = std::make_unique<slide::Cell_SPM>(); // std::unique_ptr<slide::StorageUnit>
+  //!< std::cout << "Cell_SPM:\n";
+  //!<{
+  //!<	auto cb_ptr = std::make_unique<slide::Cell_SPM>(); //!<std::unique_ptr<slide::StorageUnit>
 
-  // 	cb_ptr->deg_id = deg;
+  //!<	cb_ptr->deg_id = deg;
 
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
-  // 	cb_ptr->setCurrent(cb_ptr->Cap() / 2.0);
-  // 	std::cout << "Current: " << cb_ptr->I() << '\n';
+  //!<	cb_ptr->setCurrent(cb_ptr->Cap() / 2.0);
+  //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  // 	cb_ptr->timeStep_CC(2, true, 900);
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+  //!<	cb_ptr->timeStep_CC(2, true, 900);
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
-  // 	auto u = cb_ptr->viewStates();
+  //!<	auto u = cb_ptr->viewStates();
 
-  // 	// for (auto x : u)
-  // 	// 	std::cout << x << ' ';
+  //!<	//!<for (auto x : u)
+  //!<	//!<	std::cout << x << ' ';
 
-  // 	std::cout << "\n\n";
-  // }
+  //!<	std::cout << "\n\n";
+  //!<}
 
-  // std::cout << "Cell_SPM and Cycler tests:\n";
-  // {
-  // 	slide::Cycler cyc;
+  //!< std::cout << "Cell_SPM and Cycler tests:\n";
+  //!<{
+  //!<	slide::Cycler cyc;
 
-  // 	auto cb_ptr = std::make_unique<slide::Cell_SPM>(); // std::unique_ptr<slide::StorageUnit>
+  //!<	auto cb_ptr = std::make_unique<slide::Cell_SPM>(); //!<std::unique_ptr<slide::StorageUnit>
 
-  // 	cb_ptr->deg_id = deg;
+  //!<	cb_ptr->deg_id = deg;
 
-  // 	std::string pref = "TEST";
-  // 	const bool diagnostic = true;
+  //!<	std::string pref = "TEST";
+  //!<	const bool diagnostic = true;
 
-  // 	cyc.initialise(cb_ptr.get(), pref);
-  // 	cyc.setDiagnostic(diagnostic);
-
-  // 	double Ah, Wh, v;
-  // 	const double dt = 1;
-  // 	constexpr unsigned Ncycle = 20; // 365 * 10; // 10 year
-  // 	constexpr unsigned Ncheck = 10; // do a checkup ever month
-  // 	constexpr unsigned Nbal = 7;	// balance every week
+  //!<	cyc.initialise(cb_ptr.get(), pref);
+  //!<	cyc.setDiagnostic(diagnostic);
+
+  //!<	double Ah, Wh, v;
+  //!<	const double dt = 1;
+  //!<	constexpr unsigned Ncycle = 20; //!<365 * 10; //!<10 year
+  //!<	constexpr unsigned Ncheck = 10; //!<do a checkup ever month
+  //!<	constexpr unsigned Nbal = 7;	//!<balance every week
 
-  // 	std::vector<std::array<double, 3>> res(29);
+  //!<	std::vector<std::array<double, 3>> res(29);
 
-  // 	int ndt_data = 10;
+  //!<	int ndt_data = 10;
 
-  // 	auto u = cb_ptr->viewStates();
+  //!<	auto u = cb_ptr->viewStates();
 
-  // 	for (size_t i = 0; i < 29; i++)
-  // 		res[i][0] = u[i];
+  //!<	for (size_t i = 0; i < 29; i++)
+  //!<		res[i][0] = u[i];
 
-  // 	cyc.CC(-cb_ptr->Cap(), cb_ptr->Vmin(), 100, dt, ndt_data, Ah, Wh); // 4) 1C discharge
+  //!<	cyc.CC(-cb_ptr->Cap(), cb_ptr->Vmin(), 100, dt, ndt_data, Ah, Wh); //!<4) 1C discharge
 
-  // 	for (size_t i = 0; i < 29; i++)
-  // 		res[i][1] = u[i];
+  //!<	for (size_t i = 0; i < 29; i++)
+  //!<		res[i][1] = u[i];
 
-  // 	const auto succ = cyc.rest(4 * 3600, dt, ndt_data, Ah, Wh); // 1) 4h rest
-  // 	if (succ != slide::Status::ReachedTimeLimit)
-  // 	{
-  // 		std::cout << "Error in useAge when resting 1 in cycle.\n";
-  // 	}
+  //!<	const auto succ = cyc.rest(4 * 3600, dt, ndt_data, Ah, Wh); //!<1) 4h rest
+  //!<	if (succ != slide::Status::ReachedTimeLimit)
+  //!<	{
+  //!<		std::cout << "Error in useAge when resting 1 in cycle.\n";
+  //!<	}
 
-  // 	for (size_t i = 0; i < 29; i++)
-  // 		res[i][2] = u[i];
+  //!<	for (size_t i = 0; i < 29; i++)
+  //!<		res[i][2] = u[i];
 
-  // 	std::cout.setf(std::ios::fixed, std::ios::floatfield);
+  //!<	std::cout.setf(std::ios::fixed, std::ios::floatfield);
 
-  // 	for (auto item : res)
-  // 		std::cout << std::setprecision(10) << item[0] << "\t" << item[1] << "\t" << item[2] << '\n';
+  //!<	for (auto item : res)
+  //!<		std::cout << std::setprecision(10) << item[0] << "\t" << item[1] << "\t" << item[2] << '\n';
 
-  // 	std::cout << "\n\n";
+  //!<	std::cout << "\n\n";
 
-  // 	std::cout << "Ah: " << Ah << "   Wh: " << Wh << '\n';
+  //!<	std::cout << "Ah: " << Ah << "   Wh: " << Wh << '\n';
 
-  // 	cyc.writeData();
-  // }
+  //!<	cyc.writeData();
+  //!<}
 
-  // {
-  // 	// Simulations with a large battery
-  // 	bool balance = true;
-  // 	bool capspread = true;
-  // 	bool Rcellspread = true;
-  // 	bool degratespread = true;
-  // 	bool contactR = true;
-  // 	bool CV = false;
-  // 	double Vbal = 3.5; // rebalance to 3.1V
-  // 	int ndata = 60;	   // how often to store data (if 0, nothing is stored, not even usage stats)
-  // 	slide::Procedure p(balance, Vbal, ndata, false);
-
-  // 	int coolControl = 5;
-  // 	// shared_ptr<StorageUnit> su = makeBattery(balance, capspread, Rcellspread, degratespread, contactR,coolControl); 	// 20s15s9p, i.e. 20 cells in s module, 15 modules in s string, 9 strings in p battery
-  // 	// shared_ptr<StorageUnit> su = makeBattery2(balance, capspread, Rcellspread, degratespread, contactR,coolControl);	// 9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
-  // 	// shared_ptr<StorageUnit> su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR,coolControl,"",1);	// 9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
-  // 	// p->cycleAge(su, CV);
-
-  // 	// loop for control settings, 1-2-3-4-5
-  // 	//	for(int coolControl = 1; coolControl < 6; coolControl++){
-  // 	//		try{
-  // 	// shared_ptr<StorageUnit> su = makeBattery(balance, capspread, Rcellspread, degratespread, contactR, coolControl); 	// 20s15s9p, i.e. 20 cells in s module, 15 modules in s string, 9 strings in p battery
-  // 	// shared_ptr<StorageUnit> su = makeBattery2(balance, capspread, Rcellspread, degratespread, contactR,coolControl);	// 9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
-  // 	//	auto su = slide::makeBattery_TestParallel(capspread, Rcellspread, degratespread, contactR, coolControl, "useCase", 1); // 9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
-  // 	// p->cycleAge(su, CV);
-
-  // 	auto su = std::make_unique<slide::Cell_Bucket>(); // std::unique_ptr<slide::StorageUnit>
-
-  // 	p.useCaseAge(su.get(), CV);
-  // 	//		}catch(...){};
-  // 	//	}
-  // }
-
-  // std::cout << "Make battery test:\n";
-  // {
-
-  // 	// Simulations with a large battery
-  // 	bool balance = true;
-  // 	bool capspread = true;
-  // 	bool Rcellspread = true;
-  // 	bool degratespread = true;
-  // 	bool contactR = true;
-  // 	bool CV = false;
-  // 	double Vbal = 3.5; // rebalance to 3.1V
-  // 	int ndata = 60;	   // how often to store data (if 0, nothing is stored, not even usage stats)
-
-  // 	// slide::Procedure p(balance, Vbal, ndata, false);
-
-  // 	int coolControl = 5;
-  // 	//
-
-  // 	// // Get the battery from makeBattery
-  // 	// int coolControl = 1; // just for naming since there is no thermal model
-  // 	// bool capspread = false;
-  // 	// bool Rcellspread = false;
-  // 	// bool degratespread = false;
-  // 	// bool contactR = true;
-  // 	// todo	std::shared_ptr<StorageUnit> su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR,coolControl,IDaddition,1);
-
-  // 	// degrade the battery
-  // 	// todo	degrade(su);
-
-  // 	// Sensitivty with 10 times higher Rcontact
-  // 	std::string IDaddition = "_noThermalModel_HighRContact";
-  // 	auto cb_ptr = slide::makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-
-  // 	cb_ptr->setBlockDegAndTherm(true) ;
-
-  // 	// p.useCaseAge(su2.get(), CV);
-
-  // 	// auto cb_ptr = makeBattery(); // std::unique_ptr<slide::StorageUnit>
-
-  // 	// cb_ptr->deg_id = deg;
-
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
-
-  // 	cb_ptr->setCurrent(5);
-  // 	std::cout << "Current: " << cb_ptr->I() << '\n';
-
-  // 	cb_ptr->timeStep_CC(1, true, 360);
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
-
-  // 	// auto u = cb_ptr->viewStates();
-
-  // 	// // for (auto x : u)
-  // 	// // 	std::cout << x << ' ';
-
-  // 	// std::cout << "\n\n";
-  // }
-
-  // std::cout << "Make battery test with Cyclers:\n";
-  // {
-  // 	// Simulations with a large battery
-  // 	bool balance = true;
-  // 	bool capspread = true;
-  // 	bool Rcellspread = true;
-  // 	bool degratespread = true;
-  // 	bool contactR = true;
-  // 	bool CV = false;
-  // 	double Vbal = 3.5; // rebalance to 3.1V
-  // 	int ndata = 60;	   // how often to store data (if 0, nothing is stored, not even usage stats)
-  // 	// slide::Procedure p(balance, Vbal, ndata, false);
-  // 	int coolControl = 5;
-  // 	//
-  // 	// // Get the battery from makeBattery
-  // 	// int coolControl = 1; // just for naming since there is no thermal model
-  // 	// bool capspread = false;
-  // 	// bool Rcellspread = false;
-  // 	// bool degratespread = false;
-  // 	// bool contactR = true;
-  // 	// todo	std::shared_ptr<StorageUnit> su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR,coolControl,IDaddition,1);
-  // 	// degrade the battery
-  // 	// todo	degrade(su);
-  // 	// Sensitivty with 10 times higher Rcontact
-  // 	std::string IDaddition = "_noThermalModel_HighRContact";
-  // 	auto cb_ptr = slide::makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  // 	cb_ptr->setBlockDegAndTherm(true);
-  // 	// p.useCaseAge(su2.get(), CV);
-  // 	// auto cb_ptr = makeBattery(); // std::unique_ptr<slide::StorageUnit>
-  // 	// cb_ptr->deg_id = deg;
-  // 	slide::Cycler cyc;
-  // 	cyc.initialise(cb_ptr.get(), "VkCycler");
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
-  // 	double Ah, Wh;
-  // 	cyc.CC(5, 4, 360, 1, 10, Ah, Wh);
-  // 	// cb_ptr->setCurrent(5);
-  // 	// std::cout << "Current: " << cb_ptr->I() << '\n';
-  // 	// cb_ptr->timeStep_CC(0.1, true, 3600);
-  // 	std::cout << "Voltage: " << cb_ptr->V() << '\n';
-  // 	// auto u = cb_ptr->viewStates();
-  // 	// // for (auto x : u)
-  // 	// // 	std::cout << x << ' ';
-  // 	// std::cout << "\n\n";
-  // }
-
-  // {
-  // 	// Simulations with a large battery
-  // 	bool balance = true;
-  // 	bool capspread = true;
-  // 	bool Rcellspread = true;
-  // 	bool degratespread = true;
-  // 	bool contactR = true;
-  // 	bool CV = false;
-  // 	double Vbal = 3.5; // rebalance to 3.1V
-  // 	int ndata = 60;	   // how often to store data (if 0, nothing is stored, not even usage stats)
-  // 	slide::Procedure p(balance, Vbal, ndata, false);
-
-  // 	int coolControl = 5;
-  // 	// shared_ptr<StorageUnit> su = makeBattery(balance, capspread, Rcellspread, degratespread, contactR,coolControl); 	// 20s15s9p, i.e. 20 cells in s module, 15 modules in s string, 9 strings in p battery
-  // 	// shared_ptr<StorageUnit> su = makeBattery2(balance, capspread, Rcellspread, degratespread, contactR,coolControl);	// 9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
-  // 	// shared_ptr<StorageUnit> su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR,coolControl,"",1);	// 9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
-  // 	// p->cycleAge(su, CV);
-
-  // 	// loop for control settings, 1-2-3-4-5
-  // 	//	for(int coolControl = 1; coolControl < 6; coolControl++){
-  // 	//		try{
-  // 	// shared_ptr<StorageUnit> su = makeBattery(balance, capspread, Rcellspread, degratespread, contactR, coolControl); 	// 20s15s9p, i.e. 20 cells in s module, 15 modules in s string, 9 strings in p battery
-  // 	// shared_ptr<StorageUnit> su = makeBattery2(balance, capspread, Rcellspread, degratespread, contactR,coolControl);	// 9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
-  // 	auto su = slide::makeBattery_TestParallel(capspread, Rcellspread, degratespread, contactR, coolControl, "useCase", 1); // 9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
-  // 	// p->cycleAge(su, CV);
-  // 	p.useCaseAge(su.get(), CV);
-  // 	//		}catch(...){};
-  // 	//	}
-  // }
-
-  // Current Work section:
-
-  // *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
-  //  slide::estimateOCVparameters(); // OCV parametrisation
-  // slide::estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
-
-  // *********************************************** CYCLING FUNCTION CALLS ********************************************************
-  // CCCV(M, pref, deg, cellType, settings::verbose); // a cell does a few CCCV cycles
-  // FollowCurrent(M, pref, deg, cellType, settings::verbose); // a cell follows the current profile specified in a csv file
-
-  // *********************************************** DEGRADATION FUNCTION CALLS ********************************************************
-  // CalendarAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of calendar degradation experiments
-  // CycleAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of cycle degradation experiments
-  // ProfileAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of drive cycle degradation experiments
-
-  // *********************************************** END ********************************************************
-  // Now all the simulations have finished. Print this message, as well as how long it took to do the simulations
+  //!<{
+  //!<	//!<Simulations with a large battery
+  //!<	bool balance = true;
+  //!<	bool capspread = true;
+  //!<	bool Rcellspread = true;
+  //!<	bool degratespread = true;
+  //!<	bool contactR = true;
+  //!<	bool CV = false;
+  //!<	double Vbal = 3.5; //!<rebalance to 3.1V
+  //!<	int ndata = 60;	   //!<how often to store data (if 0, nothing is stored, not even usage stats)
+  //!<	slide::Procedure p(balance, Vbal, ndata, false);
+
+  //!<	int coolControl = 5;
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery(balance, capspread, Rcellspread, degratespread, contactR,coolControl); 	//!<20s15s9p, i.e. 20 cells in s module, 15 modules in s string, 9 strings in p battery
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery2(balance, capspread, Rcellspread, degratespread, contactR,coolControl);	//!<9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR,coolControl,"",1);	//!<9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
+  //!<	//!<p->cycleAge(su, CV);
+
+  //!<	//!<loop for control settings, 1-2-3-4-5
+  //!<	//	for(int coolControl = 1; coolControl < 6; coolControl++){
+  //!<	//		try{
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery(balance, capspread, Rcellspread, degratespread, contactR, coolControl); 	//!<20s15s9p, i.e. 20 cells in s module, 15 modules in s string, 9 strings in p battery
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery2(balance, capspread, Rcellspread, degratespread, contactR,coolControl);	//!<9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
+  //!<	//	auto su = slide::makeBattery_TestParallel(capspread, Rcellspread, degratespread, contactR, coolControl, "useCase", 1); //!<9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
+  //!<	//!<p->cycleAge(su, CV);
+
+  //!<	auto su = std::make_unique<slide::Cell_Bucket>(); //!<std::unique_ptr<slide::StorageUnit>
+
+  //!<	p.useCaseAge(su.get(), CV);
+  //!<	//		}catch(...){};
+  //!<	//	}
+  //!<}
+
+  //!< std::cout << "Make battery test:\n";
+  //!<{
+
+  //!<	//!<Simulations with a large battery
+  //!<	bool balance = true;
+  //!<	bool capspread = true;
+  //!<	bool Rcellspread = true;
+  //!<	bool degratespread = true;
+  //!<	bool contactR = true;
+  //!<	bool CV = false;
+  //!<	double Vbal = 3.5; //!<rebalance to 3.1V
+  //!<	int ndata = 60;	   //!<how often to store data (if 0, nothing is stored, not even usage stats)
+
+  //!<	//!<slide::Procedure p(balance, Vbal, ndata, false);
+
+  //!<	int coolControl = 5;
+  //!<	//
+
+  //!<	//!<//!<Get the battery from makeBattery
+  //!<	//!<int coolControl = 1; //!<just for naming since there is no thermal model
+  //!<	//!<bool capspread = false;
+  //!<	//!<bool Rcellspread = false;
+  //!<	//!<bool degratespread = false;
+  //!<	//!<bool contactR = true;
+  //!<	//!<todo	std::shared_ptr<StorageUnit> su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR,coolControl,IDaddition,1);
+
+  //!<	//!<degrade the battery
+  //!<	//!<todo	degrade(su);
+
+  //!<	//!<Sensitivty with 10 times higher Rcontact
+  //!<	std::string IDaddition = "_noThermalModel_HighRContact";
+  //!<	auto cb_ptr = slide::makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
+
+  //!<	cb_ptr->setBlockDegAndTherm(true) ;
+
+  //!<	//!<p.useCaseAge(su2.get(), CV);
+
+  //!<	//!<auto cb_ptr = makeBattery(); //!<std::unique_ptr<slide::StorageUnit>
+
+  //!<	//!<cb_ptr->deg_id = deg;
+
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+
+  //!<	cb_ptr->setCurrent(5);
+  //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
+
+  //!<	cb_ptr->timeStep_CC(1, true, 360);
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+
+  //!<	//!<auto u = cb_ptr->viewStates();
+
+  //!<	//!<//!<for (auto x : u)
+  //!<	//!<//!<	std::cout << x << ' ';
+
+  //!<	//!<std::cout << "\n\n";
+  //!<}
+
+  //!< std::cout << "Make battery test with Cyclers:\n";
+  //!<{
+  //!<	//!<Simulations with a large battery
+  //!<	bool balance = true;
+  //!<	bool capspread = true;
+  //!<	bool Rcellspread = true;
+  //!<	bool degratespread = true;
+  //!<	bool contactR = true;
+  //!<	bool CV = false;
+  //!<	double Vbal = 3.5; //!<rebalance to 3.1V
+  //!<	int ndata = 60;	   //!<how often to store data (if 0, nothing is stored, not even usage stats)
+  //!<	//!<slide::Procedure p(balance, Vbal, ndata, false);
+  //!<	int coolControl = 5;
+  //!<	//
+  //!<	//!<//!<Get the battery from makeBattery
+  //!<	//!<int coolControl = 1; //!<just for naming since there is no thermal model
+  //!<	//!<bool capspread = false;
+  //!<	//!<bool Rcellspread = false;
+  //!<	//!<bool degratespread = false;
+  //!<	//!<bool contactR = true;
+  //!<	//!<todo	std::shared_ptr<StorageUnit> su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR,coolControl,IDaddition,1);
+  //!<	//!<degrade the battery
+  //!<	//!<todo	degrade(su);
+  //!<	//!<Sensitivty with 10 times higher Rcontact
+  //!<	std::string IDaddition = "_noThermalModel_HighRContact";
+  //!<	auto cb_ptr = slide::makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
+  //!<	cb_ptr->setBlockDegAndTherm(true);
+  //!<	//!<p.useCaseAge(su2.get(), CV);
+  //!<	//!<auto cb_ptr = makeBattery(); //!<std::unique_ptr<slide::StorageUnit>
+  //!<	//!<cb_ptr->deg_id = deg;
+  //!<	slide::Cycler cyc;
+  //!<	cyc.initialise(cb_ptr.get(), "VkCycler");
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+  //!<	double Ah, Wh;
+  //!<	cyc.CC(5, 4, 360, 1, 10, Ah, Wh);
+  //!<	//!<cb_ptr->setCurrent(5);
+  //!<	//!<std::cout << "Current: " << cb_ptr->I() << '\n';
+  //!<	//!<cb_ptr->timeStep_CC(0.1, true, 3600);
+  //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
+  //!<	//!<auto u = cb_ptr->viewStates();
+  //!<	//!<//!<for (auto x : u)
+  //!<	//!<//!<	std::cout << x << ' ';
+  //!<	//!<std::cout << "\n\n";
+  //!< }
+
+  //!<{
+  //!<	//!<Simulations with a large battery
+  //!<	bool balance = true;
+  //!<	bool capspread = true;
+  //!<	bool Rcellspread = true;
+  //!<	bool degratespread = true;
+  //!<	bool contactR = true;
+  //!<	bool CV = false;
+  //!<	double Vbal = 3.5; //!<rebalance to 3.1V
+  //!<	int ndata = 60;	   //!<how often to store data (if 0, nothing is stored, not even usage stats)
+  //!<	slide::Procedure p(balance, Vbal, ndata, false);
+
+  //!<	int coolControl = 5;
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery(balance, capspread, Rcellspread, degratespread, contactR,coolControl); 	//!<20s15s9p, i.e. 20 cells in s module, 15 modules in s string, 9 strings in p battery
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery2(balance, capspread, Rcellspread, degratespread, contactR,coolControl);	//!<9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR,coolControl,"",1);	//!<9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
+  //!<	//!<p->cycleAge(su, CV);
+
+  //!<	//!<loop for control settings, 1-2-3-4-5
+  //!<	//	for(int coolControl = 1; coolControl < 6; coolControl++){
+  //!<	//		try{
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery(balance, capspread, Rcellspread, degratespread, contactR, coolControl); 	//!<20s15s9p, i.e. 20 cells in s module, 15 modules in s string, 9 strings in p battery
+  //!<	//!<shared_ptr<StorageUnit> su = makeBattery2(balance, capspread, Rcellspread, degratespread, contactR,coolControl);	//!<9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
+  //!<	auto su = slide::makeBattery_TestParallel(capspread, Rcellspread, degratespread, contactR, coolControl, "useCase", 1); //!<9ps1520s, i.e. 9 cells in p module, 15 modules in s string, 20 strings in s battery
+  //!<	//!<p->cycleAge(su, CV);
+  //!<	p.useCaseAge(su.get(), CV);
+  //!<	//		}catch(...){};
+  //!<	//	}
+  //!<}
+
+  //!< Current Work section:
+
+  //!<*********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
+  //!< slide::estimateOCVparameters(); //!<OCV parametrisation
+  //!< slide::estimateCharacterisation(); //!<parametrisation of diffusion constant, rate constant and DC resistance
+
+  //!<*********************************************** CYCLING FUNCTION CALLS ********************************************************
+  //!< CCCV(M, pref, deg, cellType, settings::verbose); //!<a cell does a few CCCV cycles
+  //!< FollowCurrent(M, pref, deg, cellType, settings::verbose); //!<a cell follows the current profile specified in a csv file
+
+  //!<*********************************************** DEGRADATION FUNCTION CALLS ********************************************************
+  //!< CalendarAgeing(M, pref, deg, cellType, settings::verbose); //!<simulates a bunch of calendar degradation experiments
+  //!< CycleAgeing(M, pref, deg, cellType, settings::verbose); //!<simulates a bunch of cycle degradation experiments
+  //!< ProfileAgeing(M, pref, deg, cellType, settings::verbose); //!<simulates a bunch of drive cycle degradation experiments
+
+  //!<*********************************************** END ********************************************************
+  //!< Now all the simulations have finished. Print this message, as well as how long it took to do the simulations
   std::cout << "finished all simulations in " << clk << ".\n";
 }

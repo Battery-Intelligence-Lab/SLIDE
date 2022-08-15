@@ -22,29 +22,29 @@ namespace slide {
 class CoolSystem_HVAC : public CoolSystem
 {
 protected:
-  double Q_ac; // cooling power from the AC system [W]. This value will be controlled similarly to the flowrate inside the container
-  double COP;  // coefficient of performance of the AC system [-]
+  double Q_ac; //!< cooling power from the AC system [W]. This value will be controlled similarly to the flowrate inside the container
+  double COP;  //!< coefficient of performance of the AC system [-]
 
-  double controlAC_onoff_Ton;  // T when the AC unit switches on
-  double controlAC_onoff_Toff; // T when the AC unit switches off, ie minimum temperature
-  double controlAC_onoff_Q;    // cooling power when on
-  double controlAC_prop_T;     // T to which the proportional control cools the container
-  double controlAC_prop_gain;  // gain of the proportional controller for the AC unit
+  double controlAC_onoff_Ton;  //!< T when the AC unit switches on
+  double controlAC_onoff_Toff; //!< T when the AC unit switches off, ie minimum temperature
+  double controlAC_onoff_Q;    //!< cooling power when on
+  double controlAC_prop_T;     //!< T to which the proportional control cools the container
+  double controlAC_prop_gain;  //!< gain of the proportional controller for the AC unit
 
-  double getACoperatingPower(double Qac, double t); // calculate the operating power of the AC unit
+  double getACoperatingPower(double Qac, double t); //!< calculate the operating power of the AC unit
 
-  // Data storage
+  //!< Data storage
   friend struct CoolSystem_HVACData;
 
 public:
-  CoolSystem_HVACData HVACdata; // #CHECK -> needs to be protected.
+  CoolSystem_HVACData HVACdata; //!< #CHECK -> needs to be protected.
 
   CoolSystem_HVAC();
   CoolSystem_HVAC(size_t Ncells, int control, double Q0);
 
   double getQcoolAC_tot() { return HVACdata.cData.QcoolAC; };
 
-  double dstate(double Etot, double Echildren, double t) override; // calculate the new coolant temperature from a heat exchange of Etot
+  double dstate(double Etot, double Echildren, double t) override; //!< calculate the new coolant temperature from a heat exchange of Etot
   void control(double Thot_local, double Thot_global) override;
 
   virtual void storeData(size_t Ncells) override;

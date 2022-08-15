@@ -19,7 +19,7 @@ void testLosses()
 {
   slide::Converter c;
 
-  // print the efficiency for a 1C charge for a small cell
+  //!< print the efficiency for a 1C charge for a small cell
   double I = 16;
   double v, loss, relloss;
   /*for(int i=0;i<16;i++){
@@ -29,26 +29,26 @@ void testLosses()
 
           std::cout<<"V = "<<v/(15.0*20.0)<<", I = "<<I<<", loss = "<<loss<<" W or "<<relloss*100<<" %"<<endl;
 
-          // check the losses are between 0 and 15 %
+          //!< check the losses are between 0 and 15 %
           assert(relloss > 0);
-          assert(relloss < 0.15);											// even at 0 W input, the losses are about 1.5 kW due to constant terms (switching, losses on DC bus, etc)
+          assert(relloss < 0.15);											//!< even at 0 W input, the losses are about 1.5 kW due to constant terms (switching, losses on DC bus, etc)
   }*/
 
-  // print the efficiency for a 1C charge for a large battery (for 9p, 15s 20s)
+  //!< print the efficiency for a 1C charge for a large battery (for 9p, 15s 20s)
   I = 9 * 16;
   for (int i = 0; i < 16; i++) {
     v = 15 * 20 * (2.7 + i / 10.0);
     loss = c.getLosses(v, I);
     relloss = loss / (I * v);
 
-    // check the losses are between 0 and 15 %
+    //!< check the losses are between 0 and 15 %
     assert(relloss > 0);
     assert(relloss < 0.15);
 
-    // cout<<"V = "<<v/(15.0*20.0)<<", I = "<<I<<", loss = "<<loss<<" W or "<<relloss*100<<" %"<<endl;
+    //!< cout<<"V = "<<v/(15.0*20.0)<<", I = "<<I<<", loss = "<<loss<<" W or "<<relloss*100<<" %"<<endl;
   }
 
-  // print losses for a number of batteries
+  //!< print losses for a number of batteries
   v = 3.7;
   I = 16;
   /*cout<<"Losses for a single cell are "<<c.getLosses(v,I)<<" W or "<<c.getLosses(v,I)/(I*v)*100<<" %"<<endl;
@@ -64,7 +64,7 @@ void testLosses()
    * 100s 10p = 2.2 kW 		2.2 W per cell
    */
 
-  /*// EPFL battery: 9p * 15s * 20s7p
+  /*//!< EPFL battery: 9p * 15s * 20s7p
   I = 16 * 9 * 7;
   v = 4.2 * 15 * 20;
   c.setPower(I*v);

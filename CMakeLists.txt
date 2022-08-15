@@ -91,25 +91,26 @@ enable_doxygen(src doxygen-docs)
 
 # generate_export_header(${PROJECT_NAME})
 
-# set(LIB_NAME ${PROJECT_NAME})
+set(LIB_NAME slide-lib)
 
-#add_library(${LIB_NAME} STATIC)
+add_library(${LIB_NAME} INTERFACE)
 
-# target_link_libraries(${LIB_NAME}
-#   INTERFACE
-#     src
-#   )
+target_link_libraries(${LIB_NAME}
+  INTERFACE
+    src
+  )
 
 
 # # install header
 # install(FILES "src/slide.hpp" DESTINATION include)
+include(GNUInstallDirs)
 
-# install (TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
-#         ARCHIVE DESTINATION lib
-#         LIBRARY DESTINATION lib
-#         RUNTIME DESTINATION bin
-#         INCLUDES DESTINATION include
-# )
+install (TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include
+)
 
 
 # install(EXPORT MyProject-targets DESTINATION lib/cmake/MyProject)

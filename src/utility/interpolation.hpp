@@ -43,9 +43,9 @@ auto linInt_noexcept(bool bound, Tx &xdat, const Ty &ydat, int nin, double x, bo
    * status     0 if successful, 1 if x>first and -1 if x < last
    */
 
-  double yy{ 0.0 }; // Some programs depend on 0.0 initial condition when status != 0, do not change.
-  int status = 0;   // Set the status as inverse of bound. So that first two branches of if are invalid if bound is true.
-  // check that x is within the limits of the data points
+  double yy{ 0.0 }; //!< Some programs depend on 0.0 initial condition when status != 0, do not change.
+  int status = 0;   //!< Set the status as inverse of bound. So that first two branches of if are invalid if bound is true.
+  //!< check that x is within the limits of the data points
 
   if (bound) {
     if (x < xdat[0]) {
@@ -58,28 +58,28 @@ auto linInt_noexcept(bool bound, Tx &xdat, const Ty &ydat, int nin, double x, bo
   }
 
   if (x <= xdat[0])
-    yy = ydat[0]; // if x is below the minimum value, return the y value of the first data point
+    yy = ydat[0]; //!< if x is below the minimum value, return the y value of the first data point
   else if (x >= xdat[nin - 1])
-    yy = ydat[nin - 1]; // if x is above the maximum value, return the y value of the last data point
+    yy = ydat[nin - 1]; //!< if x is above the maximum value, return the y value of the last data point
   else {
-    // scan the data points
+    //!< scan the data points
     int i_low{ 0 };
-    // For fixed step no need to iterate:
+    //!< For fixed step no need to iterate:
 
     if (is_fixed) {
       double dt = xdat[1] - xdat[0];
       i_low = static_cast<int>((x - xdat[0]) / dt) + 1;
     } else {
-      // binary search algorithm:
-      // i_low will be the first index which compares greater than x;
-      // const auto it = std::find_if(std::begin(xdat), std::begin(xdat) + nin, [x](double element) { return (x < element); }); -> Linear search if needed.
+      //!< binary search algorithm:
+      //!< i_low will be the first index which compares greater than x;
+      //!< const auto it = std::find_if(std::begin(xdat), std::begin(xdat) + nin, [x](double element) { return (x < element); }); -> Linear search if needed.
       const auto it = std::lower_bound(xdat.begin(), xdat.begin() + nin, x);
       i_low = static_cast<int>(it - xdat.begin());
     }
 
-    const double xr = xdat[i_low]; // then that point is the point 'to the right' of x
+    const double xr = xdat[i_low]; //!< then that point is the point 'to the right' of x
     const double yr = ydat[i_low];
-    const double xl = xdat[i_low - 1]; // while the previous point is the point 'to the left' of x
+    const double xl = xdat[i_low - 1]; //!< while the previous point is the point 'to the left' of x
     const double yl = ydat[i_low - 1];
     yy = yl + (yr - yl) * (x - xl) / (xr - xl);
   }

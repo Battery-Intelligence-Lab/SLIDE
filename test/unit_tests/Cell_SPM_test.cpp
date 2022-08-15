@@ -20,8 +20,8 @@ namespace slide::unit_tests {
 
 void test_constructor_SPM()
 {
-  // Cell_SPM();
-  // Cell_SPM(double capin, double SOCin);
+  //!< Cell_SPM();
+  //!< Cell_SPM(double capin, double SOCin);
 
   Cell_SPM c1;
   assert(c1.Cap() == 16);
@@ -34,7 +34,7 @@ void test_constructor_SPM()
 
 void test_getStates_SPM()
 {
-  // void getStates(double s[], int nin, int&nout);
+  //!< void getStates(double s[], int nin, int&nout);
   Cell_SPM c1;
   int nin = settings::CELL_NSTATE_MAX;
   double s[nin];
@@ -44,8 +44,8 @@ void test_getStates_SPM()
 
   c1.getStates(s, nin, n);
 
-  // 0 to nch = zp
-  // nch to 2*nch = zn
+  //!< 0 to nch = zp
+  //!< nch to 2*nch = zn
   assert(std::abs(s[0]) < tol2);
   assert(std::abs(s[1]) < tol2);
   assert(std::abs(s[2]) < tol2);
@@ -57,30 +57,30 @@ void test_getStates_SPM()
   assert(std::abs(s[settings::nch + 3] - 0.289437188135) < tol2);
   assert(std::abs(s[settings::nch + 4]) < tol2);
 
-  assert(s[2 * settings::nch + 0] == 1e-9);                                                           // delta
-  assert(s[2 * settings::nch + 1] == 0);                                                              // lli
-  assert(s[2 * settings::nch + 2] == 70 * 1e-6);                                                      // thickp
-  assert(s[2 * settings::nch + 3] == 73.5 * 1e-6);                                                    // thickn
-  assert(s[2 * settings::nch + 4] == 0.5);                                                            // ep
-  assert(s[2 * settings::nch + 5] == 0.5);                                                            // en
-  assert(s[2 * settings::nch + 6] == 1.5 / (8.5 * 1e-6));                                             // ap
-  assert(s[2 * settings::nch + 7] == 1.5 / (1.25 * 1e-5));                                            // an
-  assert(std::abs(s[2 * settings::nch + 8] - 0.01 * 1.5 / (1.25 * 1e-5) * 0.62 * 73.5 * 1e-6) < tol); // CS
-  assert(s[2 * settings::nch + 9] == 8 * 1e-14);                                                      // Dp
-  assert(s[2 * settings::nch + 10] == 7 * 1e-14);                                                     // Dn
-  assert(s[2 * settings::nch + 11] == 0.0028);                                                        // rp
-  assert(s[2 * settings::nch + 12] == 0.0028);                                                        // rn
-  assert(s[2 * settings::nch + 13] == 0.0002325);                                                     // rcc
-  assert(s[2 * settings::nch + 14] == 0);                                                             // delta_pl
-  assert(s[2 * settings::nch + 15] == 0.5);                                                           // SOC
-  assert(s[2 * settings::nch + 16] == settings::T_ENV);                                               // T
-  assert(s[2 * settings::nch + 17] == 0);                                                             // I
+  assert(s[2 * settings::nch + 0] == 1e-9);                                                           //!< delta
+  assert(s[2 * settings::nch + 1] == 0);                                                              //!< lli
+  assert(s[2 * settings::nch + 2] == 70 * 1e-6);                                                      //!< thickp
+  assert(s[2 * settings::nch + 3] == 73.5 * 1e-6);                                                    //!< thickn
+  assert(s[2 * settings::nch + 4] == 0.5);                                                            //!< ep
+  assert(s[2 * settings::nch + 5] == 0.5);                                                            //!< en
+  assert(s[2 * settings::nch + 6] == 1.5 / (8.5 * 1e-6));                                             //!< ap
+  assert(s[2 * settings::nch + 7] == 1.5 / (1.25 * 1e-5));                                            //!< an
+  assert(std::abs(s[2 * settings::nch + 8] - 0.01 * 1.5 / (1.25 * 1e-5) * 0.62 * 73.5 * 1e-6) < tol); //!< CS
+  assert(s[2 * settings::nch + 9] == 8 * 1e-14);                                                      //!< Dp
+  assert(s[2 * settings::nch + 10] == 7 * 1e-14);                                                     //!< Dn
+  assert(s[2 * settings::nch + 11] == 0.0028);                                                        //!< rp
+  assert(s[2 * settings::nch + 12] == 0.0028);                                                        //!< rn
+  assert(s[2 * settings::nch + 13] == 0.0002325);                                                     //!< rcc
+  assert(s[2 * settings::nch + 14] == 0);                                                             //!< delta_pl
+  assert(s[2 * settings::nch + 15] == 0.5);                                                           //!< SOC
+  assert(s[2 * settings::nch + 16] == settings::T_ENV);                                               //!< T
+  assert(s[2 * settings::nch + 17] == 0);                                                             //!< I
 
   assert(c1.SOC() == 0.5);
   assert(c1.I() == 0);
   assert(c1.T() == settings::T_ENV);
-  assert(std::abs(c1.getCp_surface(c1.getZp()) - 35421.3) < 0.1); // allow slightly larger error since we approximated all elements of the initial array and matrix
-  assert(std::abs(c1.getCn_surface(c1.getZn()) - 14644.5) < 0.1); // concentration ~ 10,000 so 0.1 is still a relative error of e-5
+  assert(std::abs(c1.getCp_surface(c1.getZp()) - 35421.3) < 0.1); //!< allow slightly larger error since we approximated all elements of the initial array and matrix
+  assert(std::abs(c1.getCn_surface(c1.getZn()) - 14644.5) < 0.1); //!< concentration ~ 10,000 so 0.1 is still a relative error of e-5
   assert(c1.getDelta() == 1e-9);
   assert(std::abs(c1.getCS() - 0.0441 * 31.0 / 25.0) < tol);
   assert(c1.getDelta_pl() == 0);
@@ -104,18 +104,18 @@ void test_getV_SPM(bool testErrors)
   Cell_SPM c1;
   double tol = 0.01;
 
-  // normal cell, should give no errors
+  //!< normal cell, should give no errors
   double Vini = 3.68136;
   assert(std::abs(c1.V(false) - Vini) < tol);
   assert(std::abs(c1.V(true) - Vini) < tol);
   assert(std::abs(c1.V() - Vini) < tol);
 
-  // set to charging and check the voltage has increased
+  //!< set to charging and check the voltage has increased
   c1.setCurrent(-1);
   double V = c1.V();
   assert(V > Vini);
 
-  // set to discharge
+  //!< set to discharge
   V = c1.V();
   c1.setCurrent(1);
   assert(c1.V() < V);
@@ -126,7 +126,7 @@ void test_setStates_SPM(bool testErrors)
 {
   Cell_SPM c1;
 
-  // set valid new states
+  //!< set valid new states
   double zp[settings::nch], zn[settings::nch];
   double T, delta, LLI, thickp, thickn, ep, en, ap, an, CS, Dp, Dn, rp, rn, rcc, delta_pl, SOC, I;
   T = 273 + 45;
@@ -175,7 +175,7 @@ void test_setStates_SPM(bool testErrors)
   sini[2 * settings::nch + 15] = SOC;
   sini[2 * settings::nch + 16] = T;
   sini[2 * settings::nch + 17] = I;
-  c1.setStates(sini, 2 * settings::nch + 18, true); // this checks states are valid
+  c1.setStates(sini, 2 * settings::nch + 18, true); //!< this checks states are valid
 
   assert(c1.SOC() == SOC);
   assert(c1.I() == I);
@@ -196,25 +196,25 @@ void test_setStates_SPM(bool testErrors)
   assert(c1.getrdcn() == rn);
   assert(c1.getrdccc() == rcc);
 
-  // set invalid states
+  //!< set invalid states
   if (testErrors) {
 
-    // test with Ap != 3*e/R
+    //!< test with Ap != 3*e/R
     ap = 3 * ep / 8.5 * pow(10, -6);
     sini[2 * settings::nch + 6] = ap;
     try {
-      c1.setStates(sini, 2 * settings::nch + 18, true); // this checks states are valid
+      c1.setStates(sini, 2 * settings::nch + 18, true); //!< this checks states are valid
       assert(false);
     } catch (...) {
     };
     sini[2 * settings::nch + 6] = 3 * ep / (8.5 * pow(10, -6));
 
-    // test with negative uniform concentration
+    //!< test with negative uniform concentration
     zp[3] = -zp[3];
     for (int i = 0; i < settings::nch; i++)
       sini[i] = zp[i];
     try {
-      c1.setStates(sini, 2 * settings::nch + 18, true); // this checks states are valid
+      c1.setStates(sini, 2 * settings::nch + 18, true); //!< this checks states are valid
       assert(false);
     } catch (...) {
     };
@@ -223,18 +223,18 @@ void test_setStates_SPM(bool testErrors)
 
 void test_timeStep_CC_SPM()
 {
-  // void timeStep_CC(double dt);
+  //!< void timeStep_CC(double dt);
   Cell_SPM c1;
   double soc = c1.SOC();
 
-  // set to charging and check the voltage has increased
+  //!< set to charging and check the voltage has increased
   c1.setCurrent(-1);
   double V = c1.V();
   c1.timeStep_CC(5);
   assert(c1.V() > V);
   assert(c1.SOC() > soc);
 
-  // set to discharge
+  //!< set to discharge
   V = c1.V();
   soc = c1.SOC();
   c1.setCurrent(1);
@@ -257,7 +257,7 @@ void testCell_SPM(bool testErrors)
    * 				if false, we only test things which should go well
    */
 
-  // if we test the errors, suppress error messages
+  //!< if we test the errors, suppress error messages
 
   test_constructor_SPM();
   test_getStates_SPM();

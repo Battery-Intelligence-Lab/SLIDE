@@ -11,33 +11,33 @@
 #include <cstdint>
 
 namespace slide {
-enum class Status : int_fast8_t // -128 to 127 = 1 byte.
+enum class Status : int_fast8_t //!< -128 to 127 = 1 byte.
 {
   ReachedCurrentLimit = -6,
   ReachedVoltageLimit,
   ReachedTimeLimit,
-  ReachedSmallCurrent, // Not sure if this is an error?
+  ReachedSmallCurrent, //!< Not sure if this is an error?
   Invalid_Vset,
   SafeVoltage,
-  // Upper part is from cycler!
-  Success, // = 0
+  //!< Upper part is from cycler!
+  Success, //!< = 0
   Vmin_violation,
   Vmax_violation,
   VMIN_violation,
   VMAX_violation,
-  VMINsafety_violation, // 0.99 VMIN
-  VMAXsafety_violation, // 1.01 VMAX
+  VMINsafety_violation, //!< 0.99 VMIN
+  VMAXsafety_violation, //!< 1.01 VMAX
   V_not_calculated,
   SOC_limits_violation,
   Invalid_states,
   Invalid_SUs,
-  ParallelUnit_failed, // throw 14.
+  ParallelUnit_failed, //!< throw 14.
   RedistributeCurrent_failed,
   timeStep_CC_failed,
   Unknown_problem = 127,
 
-  // Auxillary definitions:
-  Critical = VMIN_violation, // Non-critical status definition.
+  //!< Auxillary definitions:
+  Critical = VMIN_violation, //!< Non-critical status definition.
   NotSafe = VMINsafety_violation
 };
 
@@ -46,7 +46,7 @@ auto inline isStatusSuccessful(Status status) { return status == Status::Success
 auto inline isStatusFailed(Status status) { return !isStatusSuccessful(status); }
 auto inline isStatusOK(Status status) { return (status < Status::Critical); }
 auto inline isStatusBad(Status status) { return !isStatusOK(status); }
-auto inline isStatusWarning(Status status) { return ((status != Status::Success) && isStatusOK(status)); } // Not successful but voltage is in limits.
+auto inline isStatusWarning(Status status) { return ((status != Status::Success) && isStatusOK(status)); } //!< Not successful but voltage is in limits.
 auto inline isStatusSafe(Status status) { return status < Status::NotSafe; }
 auto inline isLimitsReached(Status status) { return status < Status::ReachedTimeLimit; }
 

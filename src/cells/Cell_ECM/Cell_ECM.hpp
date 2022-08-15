@@ -27,32 +27,32 @@ class Cell_ECM : public Cell
 {
 
 protected:
-  State_ECM st{ 0, 0, 0.5, 288 }; // States I, Ir, SOC, T;
-  // parameters:
-  double Rp{ 15.8e-3 }, Cp{ 38e3 }; // parallel resistance and capacitance
-  XYdata_ff OCV;                    // SOC vs voltage curve.
-  double Rdc{ 2e-3 };               // DC resistance [Ohm]
+  State_ECM st{ 0, 0, 0.5, 288 }; //!< States I, Ir, SOC, T;
+  //!< parameters:
+  double Rp{ 15.8e-3 }, Cp{ 38e3 }; //!< parallel resistance and capacitance
+  XYdata_ff OCV;                    //!< SOC vs voltage curve.
+  double Rdc{ 2e-3 };               //!< DC resistance [Ohm]
 
 public:
   Cell_ECM();
   Cell_ECM(double capin, double SOCin);
 
   inline double I() override { return st.I(); }
-  inline double getIr() { return st.Ir(); } // current through the parallel resistance
+  inline double getIr() { return st.Ir(); } //!< current through the parallel resistance
   inline double SOC() override { return st.SOC(); }
   inline double T() override { return st.T(); }
 
-  // overwrite from Cell
+  //!< overwrite from Cell
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }
 
   auto &getStateObj() { return st; }
 
-  double V(bool print = true) override; // crit is an optional argument
+  double V(bool print = true) override; //!< crit is an optional argument
   Status setStates(setStates_t s, bool checkStates = true, bool print = true) override;
 
-  double getRtot() override { return Rdc; }          // Return the total resistance, V = OCV - I*Rtot
-  double getThermalSurface() override { return 0; }; // Not implemented?
+  double getRtot() override { return Rdc; }          //!< Return the total resistance, V = OCV - I*Rtot
+  double getThermalSurface() override { return 0; }; //!< Not implemented?
   double getOCV(bool print = true) override;         //
 
   Status setSOC(double SOCnew, bool checkV = true, bool print = true) override;
@@ -65,12 +65,12 @@ public:
   Cell_ECM *copy() override { return new Cell_ECM(*this); }
 };
 
-// Implementation:
+//!< Implementation:
 
 inline Cell_ECM::Cell_ECM()
 {
   cap = 16;
-  // OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
+  //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 11);
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
 
@@ -80,7 +80,7 @@ inline Cell_ECM::Cell_ECM()
 inline Cell_ECM::Cell_ECM(double capin, double SOCin) : Cell_ECM()
 {
 
-  // check that the input argument is valid
+  //!< check that the input argument is valid
   if (!free::check_SOC(SOCin))
     throw 10;
 
@@ -143,7 +143,7 @@ inline Status Cell_ECM::setCurrent(double Inew, bool checkV, bool print)
   return status;
 }
 
-inline Status Cell_ECM::setSOC(double SOCnew, bool checkV, bool print) // Also not used except test functions.
+inline Status Cell_ECM::setSOC(double SOCnew, bool checkV, bool print) //!< Also not used except test functions.
 {
   /*
    * checkV	true, the voltage is checked after setting the current
@@ -170,10 +170,10 @@ inline Status Cell_ECM::setSOC(double SOCnew, bool checkV, bool print) // Also n
 
   if (checkV) {
     double v;
-    const auto status = checkVoltage(v, print); // get the voltage Does not throw anymore!
+    const auto status = checkVoltage(v, print); //!< get the voltage Does not throw anymore!
 
     if (isStatusBad(status))
-      st.SOC() = SOCold; // Restore states here.
+      st.SOC() = SOCold; //!< Restore states here.
 
     return status;
   }
@@ -196,7 +196,7 @@ inline double Cell_ECM::V(bool print)
    * 			passed on from linear interpolation
    */
 
-  const bool verb = print && (settings::printBool::printCrit); // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   double ocv;
 
   try {
@@ -213,15 +213,15 @@ inline Status Cell_ECM::setStates(setStates_t s, bool checkV, bool print)
 {
   /*
    */
-  auto st_old = st; // Back-up values.
+  auto st_old = st; //!< Back-up values.
 
-  std::copy(s.begin(), s.begin() + st.size(), st.begin()); // Copy states.
-  s = s.last(s.size() - st.size());                        // Remove first Nstates elements from span.
+  std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
+  s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
 
   const Status status = free::check_Cell_states(*this, checkV);
 
   if (isStatusBad(status))
-    st = st_old; // Restore states here.
+    st = st_old; //!< Restore states here.
 
   return status;
 }
@@ -234,9 +234,9 @@ inline bool Cell_ECM::validStates(bool print)
    * 10 invalid array (wrong length)
    */
 
-  const bool verb = print && (settings::printBool::printCrit); // print if the (global) verbose-setting is above the threshold
+  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  // check if each value is in the allowed range
+  //!< check if each value is in the allowed range
 
   bool range = free::check_SOC(SOC());
 
@@ -247,7 +247,7 @@ inline bool Cell_ECM::validStates(bool print)
                 << ", value is " << T() << '\n';
     range = false;
   }
-  // there is no range on the current (Ir or I)
+  //!< there is no range on the current (Ir or I)
 
   return range;
 }
@@ -265,14 +265,14 @@ inline void Cell_ECM::timeStep_CC(double dt, bool addData, int nstep)
     throw 10;
   }
 
-  // take the specified number of time steps
+  //!< take the specified number of time steps
   for (int t = 0; t < nstep; t++) {
-    // Using forward Euler time integration.
+    //!< Using forward Euler time integration.
     st.SOC() -= dt * st.I() / (3600 * Cap());
     st.Ir() -= dt * (st.Ir() + st.I()) / (Rp * Cp);
     //	dIr/dt =-1/RC Ir - 1/RC I
 
-    if (addData) // increase the cumulative variables of this cell
+    if (addData) //!< increase the cumulative variables of this cell
       storeData();
   }
 }

@@ -53,29 +53,29 @@ CoolSystem::CoolSystem()
    *
    */
 
-  // Coolant properties
-  fluid_rho = 1.225;  // density  kg / m3
-  fluid_cp = 1.005e3; // heat capacity  [J / kg K]
-  Across = 25e-6;     // per cell value (in next constructor this is multiplied by nrCells)
-                      // 	= 0.0675 m2 for 2700 cells. Our orange jet in the lab has A = 0.07 m2
-  eta = 0.5;          // assume 50% efficiency
+  //!< Coolant properties
+  fluid_rho = 1.225;  //!< density  kg / m3
+  fluid_cp = 1.005e3; //!< heat capacity  [J / kg K]
+  Across = 25e-6;     //!< per cell value (in next constructor this is multiplied by nrCells)
+                      //!< 	= 0.0675 m2 for 2700 cells. Our orange jet in the lab has A = 0.07 m2
+  eta = 0.5;          //!< assume 50% efficiency
 
-  // System controls
-  constexpr double V_perCell{ 1.0 }; // this might be unrealistically high, but we need a high number for the numerical stability of the system. See dstate
+  //!< System controls
+  constexpr double V_perCell{ 1.0 }; //!< this might be unrealistically high, but we need a high number for the numerical stability of the system. See dstate
 
-  constexpr auto n_modules = settings::MODULE_NSUs_MAX; // Because we do not know number of modules.
+  constexpr auto n_modules = settings::MODULE_NSUs_MAX; //!< Because we do not know number of modules.
 
-  flowrate = settings::cool::flowrate_perCell * n_modules; // #CHECK Why multiply with Module NSUs_MAX;
+  flowrate = settings::cool::flowrate_perCell * n_modules; //!< #CHECK Why multiply with Module NSUs_MAX;
   fluid_V = V_perCell * n_modules;
-  control_strategy = 1;                      // #CHECK -> magic number to enum.
-  control_onoff_Ton = PhyConst::Kelvin + 35; // on/off control: go on at 35 degrees
+  control_strategy = 1;                      //!< #CHECK -> magic number to enum.
+  control_onoff_Ton = PhyConst::Kelvin + 35; //!< on/off control: go on at 35 degrees
   const auto t1 = settings::T_ENV + 5;
-  control_onoff_Toff = std::max(C_to_Kelvin(25), t1); // on/off control: go off at 25 degrees, or 5 degrees above environmental temperature
+  control_onoff_Toff = std::max(C_to_Kelvin(25), t1); //!< on/off control: go off at 25 degrees, or 5 degrees above environmental temperature
   control_onoff_flr = flowrate;
   control_prop_T = PhyConst::Kelvin + 25;
-  control_prop_gain = 1.0 / (control_onoff_Ton - control_prop_T); // 1 at the T where the on/off control would go on
+  control_prop_gain = 1.0 / (control_onoff_Ton - control_prop_T); //!< 1 at the T where the on/off control would go on
 
-  // Data storage
+  //!< Data storage
   coolData.initialise(*this);
 }
 
@@ -99,9 +99,9 @@ CoolSystem::CoolSystem(size_t Ncellsi, int control) : CoolSystem()
    * 				5	proportional to T of hottest cell, with a minimum of 20% flow rate (else it is off)
    */
   Ncells = Ncellsi;
-  Across = 0.000025 * Ncells; // values: see previous constructor
+  Across = 0.000025 * Ncells; //!< values: see previous constructor
   flowrate = settings::cool::flowrate_perCell * Ncells;
-  fluid_V = 1.0 * Ncells; // this might be unrealistically high, but we need a high number for the numerical stability of the system. See dstate
+  fluid_V = 1.0 * Ncells; //!< this might be unrealistically high, but we need a high number for the numerical stability of the system. See dstate
 
   control_strategy = control;
   control_onoff_flr = flowrate;
@@ -110,7 +110,7 @@ CoolSystem::CoolSystem(size_t Ncellsi, int control) : CoolSystem()
 void CoolSystem::setT(double Tnew)
 {
 
-  // Check the new temperature is valid
+  //!< Check the new temperature is valid
   if (Tnew < PhyConst::Kelvin || Tnew > PhyConst::Kelvin + 75.0 || std::isnan(Tnew)) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in CoolSystem::setT, the new temperature of "
@@ -119,7 +119,7 @@ void CoolSystem::setT(double Tnew)
     throw 99;
   }
 
-  // set the new temperature
+  //!< set the new temperature
   Tcoolant = Tnew;
 }
 
@@ -155,21 +155,21 @@ double CoolSystem::getH()
    * 		water 50 - 10000
    */
 
-  if (flowrate == 0) // if the coolsystem is off (v == 0), h must be 0 as well
-    return 0;        // #CHECK -> double should not be compared to zero.
+  if (flowrate == 0) //!< if the coolsystem is off (v == 0), h must be 0 as well
+    return 0;        //!< #CHECK -> double should not be compared to zero.
 
-  // speed of thw fluid
+  //!< speed of thw fluid
 
   const double v = flowrate / Across;
   const double h = 12.12 - 1.16 * v + 11.6 * std::sqrt(v);
 
   return h;
-  // speed 		h (approximate)
-  // 0			12
-  // 2			26
-  // 5			32
-  // 10			37
-  // 20			41
+  //!< speed 		h (approximate)
+  //!< 0			12
+  //!< 2			26
+  //!< 5			32
+  //!< 10			37
+  //!< 20			41
 }
 
 double CoolSystem::dstate(double Qtotal, double Qchildren, double t)
@@ -198,19 +198,19 @@ double CoolSystem::dstate(double Qtotal, double Qchildren, double t)
    * 		Note that this is not necessarily unrealistic, in a real battery the air will be mixed in the container, so the heat capacity of modules is ever larger than assumed here
    */
 
-  // calculate the new temperature
+  //!< calculate the new temperature
   const double Tnew = T() + Qtotal / (fluid_rho * fluid_cp * fluid_V);
 
-  // increase the power required to run the cooling system
-  // power scales like speed ^ 3 and rho ^1 (kinetic energy/mass * flow rate = rho * A * v * v^2 / 2)
-  // 		see also https://fluidflowinfo.com/fan-performance-and-fan-laws/, and my undergrad course on wind energy [fan = opposite wind turbine]
-  const double v = flowrate / Across; // speed of the fluid
+  //!< increase the power required to run the cooling system
+  //!< power scales like speed ^ 3 and rho ^1 (kinetic energy/mass * flow rate = rho * A * v * v^2 / 2)
+  //!< 		see also https://fluidflowinfo.com/fan-performance-and-fan-laws/, and my undergrad course on wind energy [fan = opposite wind turbine]
+  const double v = flowrate / Across; //!< speed of the fluid
   const double E = (fluid_rho * Across * v * v * v / 2) / eta;
-  // this is the power to speed up air from stationary to the required speed with effiency eta [W]
-  // with given parameters, this results in 661 W (our orange jet from the lab consumes 500 W)
+  //!< this is the power to speed up air from stationary to the required speed with effiency eta [W]
+  //!< with given parameters, this results in 661 W (our orange jet from the lab consumes 500 W)
 
-  // update the mean cooling power
-  coolData.storeCumulativeData(Qchildren, Qtotal, t, E * t); // increase the total energy
+  //!< update the mean cooling power
+  coolData.storeCumulativeData(Qchildren, Qtotal, t, E * t); //!< increase the total energy
   return Tnew;
 }
 
@@ -231,51 +231,51 @@ void CoolSystem::control(double Thot_local, double Thot_global)
    * Thot_global 	the global hot spot of the module or battery [K]
    */
 
-  // variables
+  //!< variables
   double Terr;
 
   switch (control_strategy) {
-  case 1: // always on
+  case 1: //!< always on
     break;
-  case 2: // on/off depending on child T
+  case 2: //!< on/off depending on child T
 
-    // determine whether the cooling system is on or off
+    //!< determine whether the cooling system is on or off
     if (Thot_local >= control_onoff_Ton)
       flowrate = control_onoff_flr;
     if (Thot_local <= control_onoff_Toff)
       flowrate = 0;
     break;
 
-  case 3: // on/off depending on global hot spot temperature
+  case 3: //!< on/off depending on global hot spot temperature
 
-    // determine whether the cooling system is on or off
+    //!< determine whether the cooling system is on or off
     if (Thot_global >= control_onoff_Ton)
       flowrate = control_onoff_flr;
     if (Thot_global <= control_onoff_Toff)
       flowrate = 0;
     break;
 
-  case 4: // proportional to T of hottest child SU
-    // proportionally increase flow rate
+  case 4: //!< proportional to T of hottest child SU
+    //!< proportionally increase flow rate
     Terr = Thot_local - control_prop_T;
-    Terr = std::max(Terr, 0.0);         // ensure we never go negative
-    if (control_prop_gain * Terr > 0.2) // avoid very small flow rates (which would give extremely large dT)
+    Terr = std::max(Terr, 0.0);         //!< ensure we never go negative
+    if (control_prop_gain * Terr > 0.2) //!< avoid very small flow rates (which would give extremely large dT)
       flowrate = control_onoff_flr * control_prop_gain * Terr;
     else
       flowrate = 0;
     break;
 
-  case 5: // proportional to global hot spot temperature
-    // proportionally increase flow rate
+  case 5: //!< proportional to global hot spot temperature
+    //!< proportionally increase flow rate
     Terr = Thot_global - control_prop_T;
-    Terr = std::max(Terr, 0.0);         // ensure we never go negative
-    if (control_prop_gain * Terr > 0.2) // avoid very small flow rates (which would give extremely large dT)
+    Terr = std::max(Terr, 0.0);         //!< ensure we never go negative
+    if (control_prop_gain * Terr > 0.2) //!< avoid very small flow rates (which would give extremely large dT)
       flowrate = control_onoff_flr * control_prop_gain * Terr;
     else
       flowrate = 0;
     break;
 
-  default: // always on
+  default: //!< always on
     break;
   }
 }

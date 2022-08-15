@@ -17,7 +17,7 @@
 
 namespace slide {
 template <typename T>
-class PtrInterval // std::span is same size. It is now postponed.
+class PtrInterval //!< std::span is same size. It is now postponed.
 {
   T *begin_ptr{ nullptr };
   T *end_ptr{ nullptr };

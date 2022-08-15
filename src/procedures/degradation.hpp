@@ -23,7 +23,7 @@
 #include "Cell.hpp"
 #include "settings/settings.hpp"
 
-// Definitions of custom datatypes:
+//!< Definitions of custom datatypes:
 struct CycleAgeingConfig
 {
   double Vma{ 4.2 };
@@ -40,7 +40,7 @@ struct CycleAgeingConfig
   double Ti() const { return Tc + PhyConst::Kelvin; }
   std::string get_name(const std::string &pref) const
   {
-    // Example output: pref + "T45_1C1D_SOC0-100";
+    //!< Example output: pref + "T45_1C1D_SOC0-100";
     return pref + "T" + std::to_string((int)Tc) + "_" + std::to_string((int)Ccha) + "C" + std::to_string((int)Cdis) + "D" + "_" + "SOC" + std::to_string((int)SOCmi) + "-" + std::to_string((int)SOCma);
   }
 };
@@ -56,7 +56,7 @@ struct CalendarAgeingConfig
   double Ti() const { return Tc + PhyConst::Kelvin; }
   std::string get_name(const std::string &pref) const
   {
-    // Example output: pref + "Cal-T45_SOC100";
+    //!< Example output: pref + "Cal-T45_SOC100";
     return pref + "Cal-T" + std::to_string((int)Tc) + "_SOC" + std::to_string((int)SOC);
   }
 };
@@ -77,25 +77,25 @@ struct ProfileAgeingConfig
   double Ti() const { return Tc + PhyConst::Kelvin; }
   std::string get_name(const std::string &pref) const
   {
-    // Example output: pref + "T45_1C1D_SOC0-100";
+    //!< Example output: pref + "T45_1C1D_SOC0-100";
     return pref + namePrefix + "-T" + std::to_string((int)Tc) + "_" + "SOC" + std::to_string((int)SOCmi) + "-" + std::to_string((int)SOCma);
   }
 };
 
-// Auxiliary functions for multi-threaded simulations
-void Calendar_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, // simulate one calendar ageing experiment
+//!< Auxiliary functions for multi-threaded simulations
+void Calendar_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one calendar ageing experiment
                   double V, double Ti, int Time, int mode, int timeCycleData, int timeCheck, struct checkUpProcedure &proc, std::string name);
-void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, double Vma, double Vmi, // simulate one cycle ageing experiment
+void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, double Vma, double Vmi, //!< simulate one cycle ageing experiment
                double Ccha, bool CVcha, double Icutcha, double Cdis, bool CVdis, double Icutdis, double Ti, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, std::string name);
-void Profile_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, std::string profName, int n, int limit, // simulate one drive cycle ageing experiment
+void Profile_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, std::string profName, int n, int limit, //!< simulate one drive cycle ageing experiment
                  double Vma, double Vmi, double Ti, int timeCycleData, int nrProfiles, int nrCap, struct checkUpProcedure &proc, std::string name);
 
-// Degradation experiments
-void CycleAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);    // simulate a range of cycle ageing experiments (different temperatures, SOC windows, currents)
-void CalendarAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose); // simulate a range of calendar ageing experiments (different temperatures, SOC levels)
-void ProfileAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);  // simulate a range of drive cycle experiments (different cycles, different temperatures, etc.)
+//!< Degradation experiments
+void CycleAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);    //!< simulate a range of cycle ageing experiments (different temperatures, SOC windows, currents)
+void CalendarAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose); //!< simulate a range of calendar ageing experiments (different temperatures, SOC levels)
+void ProfileAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);  //!< simulate a range of drive cycle experiments (different cycles, different temperatures, etc.)
 
-// Configuration struct for above-given functions.
+//!< Configuration struct for above-given functions.
 
-void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, // simulate one cycle ageing experiment
+void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one cycle ageing experiment
                const struct CycleAgeingConfig &cycAgConfig, bool CVcha, double Icutcha, bool CVdis, double Icutdis, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, const std::string &pref);

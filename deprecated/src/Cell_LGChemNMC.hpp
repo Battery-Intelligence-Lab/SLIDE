@@ -12,15 +12,14 @@
 
 #pragma once
 
-#include "Cell_KokamNMC.hpp" // includes Cell.hpp, State.hpp and Model.hpp
+#include "Cell.hpp"
 
 namespace slide {
 class Cell_LGChemNMC : public Cell_SPM
 {
 private:
 public:
-  // constructor
-  Cell_LGChemNMC(Model_SPM *, int verbosei);
+  Cell_LGChemNMC(Model_SPM *, int verbosei); //!< constructor
   Cell_LGChemNMC(Model_SPM *M, DEG_ID &, int verbosei);
 };
 } // namespace slide

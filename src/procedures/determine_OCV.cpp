@@ -58,45 +58,45 @@ bool validOCV(bool checkRange, slide::XYdata_vv &data)
    * bool 		true if the OCV curve has the correct format
    */
 
-  // Check if the range of the first column is valid
-  bool range;                                                                 // boolean to indicate of the first column has the correct range
-  if (checkRange) {                                                           // check the first column has the correct range, from 0 to 1
-    range = std::abs(data.x[0]) < 1e-5 && std::abs(data.x.back() - 1) < 1e-5; // allow a small error of e-5
+  //!< Check if the range of the first column is valid
+  bool range;                                                                 //!< boolean to indicate of the first column has the correct range
+  if (checkRange) {                                                           //!< check the first column has the correct range, from 0 to 1
+    range = std::abs(data.x[0]) < 1e-5 && std::abs(data.x.back() - 1) < 1e-5; //!< allow a small error of e-5
     if (!range)
       std::cerr << "illegal value in deterimineOCV::validOCV: the range of the first column is wrong. It goes from "
                 << data.x[0] << " to " << data.x.back() << " instead of from 0 to 1.\n";
-  } else { // check the first column has the correct starting point, 0
+  } else { //!< check the first column has the correct starting point, 0
     range = std::abs(data.x[0]) < 1e-5;
     if (!range)
       std::cerr << "illegal value in deterimineOCV::validOCV: the range of the first column is wrong. It starts at "
                 << data.x[0] << " instead of starting at 0.\n";
   }
 
-  // Loop through the curve to check that the values of the first column are increasing and the voltages in the second column are realistic.
-  bool decreasei = false;   // boolean to indicate if this row has a decreasing value in the 1st column
-  bool decrease = false;    // boolean to indicate if there are decreasing values in the 1st column
-  bool unrealistic = false; // boolean to indicate if there is an unrealistic value in the 2nd column
+  //!< Loop through the curve to check that the values of the first column are increasing and the voltages in the second column are realistic.
+  bool decreasei = false;   //!< boolean to indicate if this row has a decreasing value in the 1st column
+  bool decrease = false;    //!< boolean to indicate if there are decreasing values in the 1st column
+  bool unrealistic = false; //!< boolean to indicate if there is an unrealistic value in the 2nd column
   for (size_t i = 0; i < data.size(); i++) {
-    // check for increasing values
+    //!< check for increasing values
     if (i > 0)
       decreasei = (data.x[i] <= data.x[i - 1]);
-    if (decreasei) { // print an error message
+    if (decreasei) { //!< print an error message
       std::cerr << "illegal value in deterimineOCV::validOCV: the first column has decreasing or double values at rows "
                 << i - 1 << " and " << i << ".\n"
                 << "values are " << data.x[i - 1] << " and " << data.x[i] << ".\n";
-      decrease = true; // we have found a decreasing value
+      decrease = true; //!< we have found a decreasing value
     }
 
-    // check for realistic voltages
-    if ((data.y[i] < 0) || (data.y[i] > 10)) { // print an error message
+    //!< check for realistic voltages
+    if ((data.y[i] < 0) || (data.y[i] > 10)) { //!< print an error message
       std::cerr << "illegal value in deterimineOCV::validOCV: the second column has an illegal value of "
                 << data.y[i] << " at row " << i << ". The values have to be between 0 and 10.\n";
-      unrealistic = true; // we have found an unrealistic value
+      unrealistic = true; //!< we have found an unrealistic value
     }
   }
 
-  // return true if the format is correct
-  return range && !decrease && !unrealistic; // the range must be correct and we cannot have any decreasing or unrealistic values
+  //!< return true if the format is correct
+  return range && !decrease && !unrealistic; //!< the range must be correct and we cannot have any decreasing or unrealistic values
 }
 
 
@@ -137,19 +137,19 @@ auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OC
    * fn	 	array with the lithium fraction in the anode at 100% SOC, 50% SOC and 0% SOC
    */
 
-  // *********************************************************** 1 variables ***********************************************************************
+  //!< *********************************************************** 1 variables ***********************************************************************
   using namespace PhyConst;
-  // Variables
-  const double n = 1.0;       // number of electrons involved in the reaction
-  double Ah = 0;              // discharged charge up to now
-  const double I = 0.1 * cap; // magnitude of the discharge current [A]
-  const double dt = 5;        // time step to use in the simulation [s]
-  const bool bound = true;    // check the surface concentration is within the allowed limits when doing linear interpolation.
-  bool end = false;           // boolean to check if we have reached the end voltage
+  //!< Variables
+  const double n = 1.0;       //!< number of electrons involved in the reaction
+  double Ah = 0;              //!< discharged charge up to now
+  const double I = 0.1 * cap; //!< magnitude of the discharge current [A]
+  const double dt = 5;        //!< time step to use in the simulation [s]
+  const bool bound = true;    //!< check the surface concentration is within the allowed limits when doing linear interpolation.
+  bool end = false;           //!< boolean to check if we have reached the end voltage
 
-  // If we store a data point for every time step, the output arrays will be very long.
-  // Therefore, store only one value every 'nstore' time steps
-  const size_t nstore = 100; // store one data point every 100 time steps
+  //!< If we store a data point for every time step, the output arrays will be very long.
+  //!< Therefore, store only one value every 'nstore' time steps
+  const size_t nstore = 100; //!< store one data point every 100 time steps
 
   bool flag{ true };
   double ocvpi, ocvni, v;
@@ -160,16 +160,16 @@ auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OC
     std::tie(ocvpi, flag_ocvpi) = slide::linInt_noexcept(bound, OCVp.x, OCVp.y, OCVp.size(), sp);
     std::tie(ocvni, flag_ocvni) = slide::linInt_noexcept(bound, OCVn.x, OCVn.y, OCVn.size(), sn);
 
-    return ocvpi - ocvni; // OCV = OCV_cathode - OCV_anode, cell voltage in this time step
+    return ocvpi - ocvni; //!< OCV = OCV_cathode - OCV_anode, cell voltage in this time step
   };
 
   auto store = [&]() {
-    OCV.x.push_back(Ah);           // discharge charge
-    OCV.y.push_back(v);            // open circuit voltage
-    OCVanode.x.push_back(sn);      // anode lithium fraction
-    OCVanode.y.push_back(ocvni);   // anode potential
-    OCVcathode.x.push_back(sp);    // cathode lithium fraction
-    OCVcathode.y.push_back(ocvpi); // cathode potential
+    OCV.x.push_back(Ah);           //!< discharge charge
+    OCV.y.push_back(v);            //!< open circuit voltage
+    OCVanode.x.push_back(sn);      //!< anode lithium fraction
+    OCVanode.y.push_back(ocvni);   //!< anode potential
+    OCVcathode.x.push_back(sp);    //!< cathode lithium fraction
+    OCVcathode.y.push_back(ocvpi); //!< cathode potential
   };
 
   auto step = [&]() {
@@ -181,17 +181,17 @@ auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OC
       sn -= I * dt / (n * F) / AMn / cmaxn;
 
       end = v <= Vend || sp <= 0 || sp >= 1 || sn <= 0 || sn >= 1;
-      // if (sp_n != 1 && sn_n != 1)
-      // 	std::cout << "V = " << V << " ocvpi = " << ocvpi << " ocvni = " << ocvni << " sp = " << sp << " sn = " << sn << '\n';
+      //!< if (sp_n != 1 && sn_n != 1)
+      //!< 	std::cout << "V = " << V << " ocvpi = " << ocvpi << " ocvni = " << ocvni << " sp = " << sp << " sn = " << sn << '\n';
     }
   };
 
-  // Store the lithium fractions at the start (=100% SOC)
+  //!< Store the lithium fractions at the start (=100% SOC)
   fp[0] = sp;
   fn[0] = sn;
 
-  // *********************************************************** 2 discharge & measure voltage ***********************************************************************
-  // std::cout << "===========================\n";
+  //!< *********************************************************** 2 discharge & measure voltage ***********************************************************************
+  //!< std::cout << "===========================\n";
   v = interpolate();
   store();
   while (!end) {
@@ -199,18 +199,18 @@ auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OC
     store();
   }
 
-  // // *********************************************************** 3 output parameters ***********************************************************************
+  //!< //!< *********************************************************** 3 output parameters ***********************************************************************
 
-  // Store the lithium fractions at the end (= 0% SOC)
+  //!< Store the lithium fractions at the end (= 0% SOC)
   fp[2] = sp;
   fn[2] = sn;
 
-  // Then the lithium fractions at 50% SOC are the average between the fractions at 100% and 0%
-  // This is true because SOC is defined based on charge throughput, which is directly (linearly) linked with the lithium concentration
+  //!< Then the lithium fractions at 50% SOC are the average between the fractions at 100% and 0%
+  //!< This is true because SOC is defined based on charge throughput, which is directly (linearly) linked with the lithium concentration
   fp[1] = (fp[0] + fp[2]) / 2.0;
   fn[1] = (fn[0] + fn[2]) / 2.0;
 
-  return flag; // Flag is never false.
+  return flag; //!< Flag is never false.
 }
 
 auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, double cap, const double AMp, const double AMn, const double cmaxp,
@@ -249,28 +249,28 @@ auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OC
    * fn	 	array with the lithium fraction in the anode at 100% SOC, 50% SOC and 0% SOC
    */
 
-  // *********************************************************** 1 variables ***********************************************************************
+  //!< *********************************************************** 1 variables ***********************************************************************
   using namespace PhyConst;
-  // Variables
-  constexpr double n = 1.0;    // number of electrons involved in the reaction
-  double Ah = 0;               // discharged charge up to now
-  const double I = 0.1 * cap;  // magnitude of the discharge current [A]
-  const double dt = 5;         // time step to use in the simulation [s]
-  constexpr bool bound = true; // check the surface concentration is within the allowed limits when doing linear interpolation.
-  bool end = false;            // boolean to check if we have reached the end voltage
+  //!< Variables
+  constexpr double n = 1.0;    //!< number of electrons involved in the reaction
+  double Ah = 0;               //!< discharged charge up to now
+  const double I = 0.1 * cap;  //!< magnitude of the discharge current [A]
+  const double dt = 5;         //!< time step to use in the simulation [s]
+  constexpr bool bound = true; //!< check the surface concentration is within the allowed limits when doing linear interpolation.
+  bool end = false;            //!< boolean to check if we have reached the end voltage
 
   double v, ocvpi, ocvni;
   bool flag{ true };
 
-  // If we store a data point for every time step, the output arrays will be very long.
-  // Therefore, store only one value every 'nstore' time steps
-  constexpr size_t nstore = 100; // store one data point every 100 time steps
+  //!< If we store a data point for every time step, the output arrays will be very long.
+  //!< Therefore, store only one value every 'nstore' time steps
+  constexpr size_t nstore = 100; //!< store one data point every 100 time steps
 
-  // Store the lithium fractions at the start (=100% SOC)
+  //!< Store the lithium fractions at the start (=100% SOC)
   fp[0] = sp;
   fn[0] = sn;
 
-  // *********************************************************** 2 discharge & measure voltage ***********************************************************************
+  //!< *********************************************************** 2 discharge & measure voltage ***********************************************************************
 
   auto interpolate = [&]() {
     bool status_ocvpi, status_ocvni;
@@ -283,12 +283,12 @@ auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OC
       flag = false;
     }
 
-    v = ocvpi - ocvni; // OCV = OCV_cathode - OCV_anode, cell voltage in this time step
+    v = ocvpi - ocvni; //!< OCV = OCV_cathode - OCV_anode, cell voltage in this time step
   };
 
   auto store = [&]() {
-    OCV.x.push_back(Ah); // discharge charge
-    OCV.y.push_back(v);  // open circuit voltage
+    OCV.x.push_back(Ah); //!< discharge charge
+    OCV.y.push_back(v);  //!< open circuit voltage
   };
 
   auto step = [&]() {
@@ -314,14 +314,14 @@ auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OC
 
   store();
 
-  // // *********************************************************** 3 output parameters ***********************************************************************
+  //!< //!< *********************************************************** 3 output parameters ***********************************************************************
 
-  // Store the lithium fractions at the end (= 0% SOC)
+  //!< Store the lithium fractions at the end (= 0% SOC)
   fp[2] = sp;
   fn[2] = sn;
 
-  // Then the lithium fractions at 50% SOC are the average between the fractions at 100% and 0%
-  // This is true because SOC is defined based on charge throughput, which is directly (linearly) linked with the lithium concentration
+  //!< Then the lithium fractions at 50% SOC are the average between the fractions at 100% and 0%
+  //!< This is true because SOC is defined based on charge throughput, which is directly (linearly) linked with the lithium concentration
   fp[1] = (fp[0] + fp[2]) / 2.0;
   fn[1] = (fn[0] + fn[2]) / 2.0;
 
@@ -337,13 +337,13 @@ void discharge(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, doubl
    * Throwing version of discharge_noexcept, see "discharge_noexcept" for further information.
    */
 
-  // *********************************************************** 1 variables ***********************************************************************
+  //!< *********************************************************** 1 variables ***********************************************************************
 
   const auto flag = discharge_noexcept(OCVp, OCVn, cap, AMp, AMn, cmaxp, cmaxn, sp, sn, Vend, OCV, OCVanode, OCVcathode, fp, fn);
 
   if (!flag) {
     std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
-    throw 1; // It can only throw due to IntLin therefore, its error code it 1.
+    throw 1; //!< It can only throw due to IntLin therefore, its error code it 1.
   }
 }
 
@@ -385,28 +385,28 @@ void readOCVinput(const std::string &namepos, const std::string &nameneg, const 
     OCVn.setCurve(PathVar::data + nameneg);
     OCVcell.setCurve(PathVar::data + namecell);
   } catch (int e) {
-    // std::cout << "Throw test: " << 80 << '\n';
+    //!< std::cout << "Throw test: " << 80 << '\n';
     std::cerr << "ERROR in determineOCV::readOCVinput, an error " << e << " happened while reading the files. Throwing the error on.\n";
     std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw e;
   }
 
-  // Check the OCV curves are valid
-  const bool valp = validOCV(true, OCVp); // check the cathode OCV curve. The first column must go from 0-1
+  //!< Check the OCV curves are valid
+  const bool valp = validOCV(true, OCVp); //!< check the cathode OCV curve. The first column must go from 0-1
   if (!valp) {
     std::cerr << "ERROR in determineOCV::readOCVinput, the file with the cathode OCV curve " << namepos << " has an illegal format.\n";
     std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10000;
   }
 
-  const bool valn = validOCV(true, OCVn); // check the anode OCV curve. The first column must go from 0-1
+  const bool valn = validOCV(true, OCVn); //!< check the anode OCV curve. The first column must go from 0-1
   if (!valn) {
     std::cerr << "ERROR in determineOCV::readOCVinput, the file with the anode OCV curve " << nameneg << " has an illegal format.\n";
     std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10000;
   }
 
-  const bool valcell = validOCV(false, OCVcell); // check the cell OCV curve. The first column must start at 0 but can end anywhere
+  const bool valcell = validOCV(false, OCVcell); //!< check the cell OCV curve. The first column must start at 0 but can end anywhere
   if (!valcell) {
     std::cerr << "ERROR in determineOCV::readOCVinput, the file with the cell OCV curve " << namecell << " has an illegal format.\n";
     std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
@@ -431,19 +431,19 @@ double calculateError(bool bound, slide::XYdata_vv &OCVcell, slide::XYdata_vv &O
    * rmse		RMSE between both curves
    */
 
-  double rmse = 0; // root mean square error
+  double rmse = 0; //!< root mean square error
 
-  // loop through all data points
+  //!< loop through all data points
   for (size_t i = 0; i < OCVcell.size(); i++) {
-    // Get the simulated OCV at the discharged charge of this point on the measured OCV curve of the cell
+    //!< Get the simulated OCV at the discharged charge of this point on the measured OCV curve of the cell
     auto [Vsimi, status] = slide::linInt_noexcept(bound, OCVsim.x, OCVsim.y, OCVsim.size(), OCVcell.x[i]);
-    // if status is not 0 then the simulated voltage is already set to 0;
+    //!< if status is not 0 then the simulated voltage is already set to 0;
 
-    const double err = OCVcell.y[i] - Vsimi; // Calculate the error
-    rmse += err * err;                       // sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
+    const double err = OCVcell.y[i] - Vsimi; //!< Calculate the error
+    rmse += err * err;                       //!< sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
   }
 
-  // Calculate the RMSE
+  //!< Calculate the RMSE
   rmse = std::sqrt(rmse / OCVcell.size());
   return rmse;
 }
@@ -453,47 +453,47 @@ auto cost_OCV(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, const 
 {
 
   using namespace PhyConst;
-  // Variables
-  constexpr double n = 1.0;    // number of electrons involved in the reaction
-  double Ah = 0;               // discharged charge up to now
-  constexpr bool bound = true; // check the surface concentration is within the allowed limits when doing linear interpolation.
-  bool end = false;            // boolean to check if we have reached the end voltage
+  //!< Variables
+  constexpr double n = 1.0;    //!< number of electrons involved in the reaction
+  double Ah = 0;               //!< discharged charge up to now
+  constexpr bool bound = true; //!< check the surface concentration is within the allowed limits when doing linear interpolation.
+  bool end = false;            //!< boolean to check if we have reached the end voltage
 
   const auto Vend = OCVcell.y.back();
 
-  double sqr_err = 0; // square error
-  double v = 0;       // Simulation OCV.
+  double sqr_err = 0; //!< square error
+  double v = 0;       //!< Simulation OCV.
 
   for (size_t i = 0; i < OCVcell.size(); i++) {
-    // Original equations:
-    // Ah += I * dt / 3600;  -> I*dt = dAs
-    // sp += I * dt / (n * F) / AMp / cmaxp;
-    // sn -= I * dt / (n * F) / AMn / cmaxn;
+    //!< Original equations:
+    //!< Ah += I * dt / 3600;  -> I*dt = dAs
+    //!< sp += I * dt / (n * F) / AMp / cmaxp;
+    //!< sn -= I * dt / (n * F) / AMn / cmaxn;
 
     if (!end) {
 
       const auto Ah_cell = OCVcell.x[i];
 
-      const auto dAh = Ah_cell - Ah; // Ah need to be added to reach cell's Ah.
-      const auto dAs = dAh * 3600.0; // Ah += I * dt / 3600;  I*dt = dAs, Amper seconds
+      const auto dAh = Ah_cell - Ah; //!< Ah need to be added to reach cell's Ah.
+      const auto dAs = dAh * 3600.0; //!< Ah += I * dt / 3600;  I*dt = dAs, Amper seconds
 
       Ah = Ah_cell;
       sp += dAs / (n * F) / AMp / cmaxp;
       sn -= dAs / (n * F) / AMn / cmaxn;
 
-      const auto [ocvpi, status_ocvpi] = slide::linInt_noexcept(bound, OCVp.x, OCVp.y, OCVp.size(), sp); // #TODO: convert to interp
+      const auto [ocvpi, status_ocvpi] = slide::linInt_noexcept(bound, OCVp.x, OCVp.y, OCVp.size(), sp); //!< #TODO: convert to interp
       const auto [ocvni, status_ocvni] = slide::linInt_noexcept(bound, OCVn.x, OCVn.y, OCVn.size(), sn);
 
       if (status_ocvpi || status_ocvni)
         v = 0;
       else
-        v = ocvpi - ocvni; // OCV = OCV_cathode - OCV_anode, cell voltage in this time step
+        v = ocvpi - ocvni; //!< OCV = OCV_cathode - OCV_anode, cell voltage in this time step
     } else {
       v = 0;
     }
 
-    const double err = OCVcell.y[i] - v; // Calculate the error
-    sqr_err += err * err;                // sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
+    const double err = OCVcell.y[i] - v; //!< Calculate the error
+    sqr_err += err * err;                //!< sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
 
     end = v <= Vend || sp < 0 || sp > 1 || sn < 0 || sn > 1;
   }
@@ -523,28 +523,28 @@ void fitAMnAndStartingPoints(int hierarchy, int ap, double AMp, slide::FixedData
    * par 				parameters giving the lowest error (AMp, AMn, sp, sn)
    */
 
-  // *********************************************************** 1 variables ***********************************************************************
+  //!< *********************************************************** 1 variables ***********************************************************************
 
-  // variables
-  double errmin = 1e10; // lowest error encountered so far
+  //!< variables
+  double errmin = 1e10; //!< lowest error encountered so far
 
-  // *********************************************************** 2 loop through the search space ***********************************************************************
-  for (const auto AMn : AMn_space)   // loop for the search space of AMn
-    for (const auto sp : sp_space)   // loop through the search space of sp / avoid that the starting points go out of range (the lithium fraction has to be between 0 and 1)
-      for (const auto sn : sn_space) // loop through the search space of sn / avoid that the starting points go out of range (the lithium fraction has to be between 0 and 1)
+  //!< *********************************************************** 2 loop through the search space ***********************************************************************
+  for (const auto AMn : AMn_space)   //!< loop for the search space of AMn
+    for (const auto sp : sp_space)   //!< loop through the search space of sp / avoid that the starting points go out of range (the lithium fraction has to be between 0 and 1)
+      for (const auto sn : sn_space) //!< loop through the search space of sn / avoid that the starting points go out of range (the lithium fraction has to be between 0 and 1)
       {
-        // Simulate the OCV curve with these parameters and calculate the error between the simulated and measured OCV curve
-        const auto erri = cost_OCV(OCVp, OCVn, AMp, AMn, sp, sn, cmaxp, cmaxn, OCVcell); // calculates total squared error.
+        //!< Simulate the OCV curve with these parameters and calculate the error between the simulated and measured OCV curve
+        const auto erri = cost_OCV(OCVp, OCVn, AMp, AMn, sp, sn, cmaxp, cmaxn, OCVcell); //!< calculates total squared error.
 
-        // Store the minimum error & parameters leading to this error
-        if (erri < errmin) { // check if the error of this combination is lower than the best fit so far
+        //!< Store the minimum error & parameters leading to this error
+        if (erri < errmin) { //!< check if the error of this combination is lower than the best fit so far
           par = { AMp, AMn, sp, sn };
           errmin = erri;
         }
       }
 
-  // Return the minimum error
-  *err = std::sqrt(errmin / OCVcell.size()); // RMSE error.
+  //!< Return the minimum error
+  *err = std::sqrt(errmin / OCVcell.size()); //!< RMSE error.
 }
 
 auto hierarchicalOCVfit(int hmax, slide::FixedData<double> AMp_space, slide::FixedData<double> AMn_space, slide::FixedData<double> sp_space,
@@ -583,19 +583,19 @@ auto hierarchicalOCVfit(int hmax, slide::FixedData<double> AMp_space, slide::Fix
    * par 			parameters giving the lowest error (AMp, AMn, sp, sn)
    */
 
-  std::vector<std::array<double, 4>> par_arr(AMp_space.size()); // parameters [AMp AMn sp sn] giving the lowest error for that amount of cathode active material
+  std::vector<std::array<double, 4>> par_arr(AMp_space.size()); //!< parameters [AMp AMn sp sn] giving the lowest error for that amount of cathode active material
   std::vector<double> err_arr(AMp_space.size());
 
-  std::array<double, 4> par; // Optimal parameters.
-  double err;                // lowest error.
+  std::array<double, 4> par; //!< Optimal parameters.
+  double err;                //!< lowest error.
 
-  slide::XYdata_vv OCVp(100), OCVn(100), OCVcell(100); // Temp vectors
+  slide::XYdata_vv OCVp(100), OCVn(100), OCVcell(100); //!< Temp vectors
   readOCVinput(namepos, nameneg, namecell, OCVp, OCVn, OCVcell);
 
-  // Loop for each level in the search
+  //!< Loop for each level in the search
   for (int h = 0; h < hmax; h++) {
 
-    // print the search space of this level
+    //!< print the search space of this level
     std::cout << "Start hierarchy level " << h << " with the following search spaces: \n"
               << "AMp: from " << AMp_space.front() << " to " << AMp_space.back() << " in " << AMp_space.size() << " steps with magnitude " << AMp_space.dstep() << '\n'
               << "AMn: from " << AMn_space.front() << " to " << AMn_space.back() << " in " << AMn_space.size() << " steps with magnitude " << AMn_space.dstep() << '\n'
@@ -603,30 +603,30 @@ auto hierarchicalOCVfit(int hmax, slide::FixedData<double> AMp_space, slide::Fix
               << "sn: from " << sn_space.front() << " to " << sn_space.back() << " in " << sn_space.size() << " steps with magnitude " << sn_space.dstep() << '\n';
 
     auto task_indv = [&](int i) {
-      const double AMp1 = AMp_space[i]; // amount of cathode active material for each
+      const double AMp1 = AMp_space[i]; //!< amount of cathode active material for each
       fitAMnAndStartingPoints(h, i, AMp1, AMn_space, sp_space, sn_space, cmaxp, cmaxn, &err_arr[i], par_arr[i], OCVp, OCVn, OCVcell);
     };
 
-    slide::run(task_indv, AMp_space.size()); // Loop through the search space of AMp
+    slide::run(task_indv, AMp_space.size()); //!< Loop through the search space of AMp
 
     const auto minIndex = std::min_element(err_arr.begin(), err_arr.end()) - err_arr.begin();
-    par = par_arr[minIndex]; // Make the output parameters
+    par = par_arr[minIndex]; //!< Make the output parameters
     err = err_arr[minIndex];
 
-    writeOCVParam(h, par); // Print the best fit, and write in a CSV file
+    writeOCVParam(h, par); //!< Print the best fit, and write in a CSV file
 
-    // Calculate the best fit in this level
-    // Update the search space
+    //!< Calculate the best fit in this level
+    //!< Update the search space
 
-    const auto [AMp, AMn, sp, sn] = par; // the best fit parameters in this level of the hierarchy
+    const auto [AMp, AMn, sp, sn] = par; //!< the best fit parameters in this level of the hierarchy
 
     AMp_space = slide::linspace_fix(AMp_space.prev(AMp), AMp_space.next(AMp), AMp_space.size());
     AMn_space = slide::linspace_fix(AMn_space.prev(AMn), AMn_space.next(AMn), AMn_space.size());
-    sp_space = slide::linspace_fix(std::max(sp_space.prev(sp), 0.0), std::min(sp_space.next(sp), 1.0), sp_space.size()); // min to limit it to 1<.
-    sn_space = slide::linspace_fix(std::max(sn_space.prev(sn), 0.0), std::min(sn_space.next(sn), 1.0), sn_space.size()); // max to limit it to >0
+    sp_space = slide::linspace_fix(std::max(sp_space.prev(sp), 0.0), std::min(sp_space.next(sp), 1.0), sp_space.size()); //!< min to limit it to 1<.
+    sn_space = slide::linspace_fix(std::max(sn_space.prev(sn), 0.0), std::min(sn_space.next(sn), 1.0), sn_space.size()); //!< max to limit it to >0
   }
 
-  return std::pair(par, err); // Return parameters and error.
+  return std::pair(par, err); //!< Return parameters and error.
 }
 
 void estimateOCVparameters()
@@ -666,78 +666,78 @@ void estimateOCVparameters()
    * 		The sixth column gives the simulated cathode OCV (vs Li/Li+)
    */
 
-  // *********************************************************** 1 USER INPUT ***********************************************************************
+  //!< *********************************************************** 1 USER INPUT ***********************************************************************
   using namespace PhyConst;
 
-  // input parameters
-  std::string namepos = "OCVfit_cathode.csv"; // name of the file with the OCV curve of the cathode
-  const int np = 49;                          // number of data points on the cathode OCV curve
-  std::string nameneg = "OCVfit_anode.csv";   // name of the file with the OCV curve of the anode
-  const int nn = 63;                          // number of data points on the anode OCV curve
-  std::string namecell = "OCVfit_cell.csv";   // name of the file with the OCV curve of the cell
-  const int ncell = 74;                       // number of data points on the cell OCV curve
-  double cmaxp = 51385;                       // maximum li-concentration in the cathode [mol m-3]
-  double cmaxn = 30555;                       // maximum li-concentration in the anode [mol m-3]
+  //!< input parameters
+  std::string namepos = "OCVfit_cathode.csv"; //!< name of the file with the OCV curve of the cathode
+  const int np = 49;                          //!< number of data points on the cathode OCV curve
+  std::string nameneg = "OCVfit_anode.csv";   //!< name of the file with the OCV curve of the anode
+  const int nn = 63;                          //!< number of data points on the anode OCV curve
+  std::string namecell = "OCVfit_cell.csv";   //!< name of the file with the OCV curve of the cell
+  const int ncell = 74;                       //!< number of data points on the cell OCV curve
+  double cmaxp = 51385;                       //!< maximum li-concentration in the cathode [mol m-3]
+  double cmaxn = 30555;                       //!< maximum li-concentration in the anode [mol m-3]
 
-  // names of the output files
-  std::string nameparam = "OCVfit_parameters.csv"; // name of the output file in which the parameters of the best fit will be written
-  std::string nameOCV = "OCVfit_sim.csv";          // name of the output file in which the OCV curve with the best parameters will be written
+  //!< names of the output files
+  std::string nameparam = "OCVfit_parameters.csv"; //!< name of the output file in which the parameters of the best fit will be written
+  std::string nameOCV = "OCVfit_sim.csv";          //!< name of the output file in which the OCV curve with the best parameters will be written
 
-  // Read the OCV curves
+  //!< Read the OCV curves
   slide::XYdata_vv OCVp(np), OCVn(nn), OCVcell(ncell);
   try {
     readOCVinput(namepos, nameneg, namecell, OCVp, OCVn, OCVcell);
   } catch (int e) {
-    // std::cout << "Throw test: " << 81 << '\n';
+    //!< std::cout << "Throw test: " << 81 << '\n';
     std::cerr << "Error in determineOCV::estimateOCVparameters, the input files have the wrong format.\n";
-    return; // stop calculating because we can't do anything
+    return; //!< stop calculating because we can't do anything
   }
 
-  // ****************************************** 2 define the search space for fitting parameters ***********************************************************************
+  //!< ****************************************** 2 define the search space for fitting parameters ***********************************************************************
 
-  // We can play with 4 parameters:
-  // AMp 	the amount of active material on the positive electrode
-  // AMn 	the amount of active material on the negative electrode
-  // sp	the starting point on the positive electrode OCV curve
-  // sn 	the starting point on the negative electrode OCV curve
+  //!< We can play with 4 parameters:
+  //!< AMp 	the amount of active material on the positive electrode
+  //!< AMn 	the amount of active material on the negative electrode
+  //!< sp	the starting point on the positive electrode OCV curve
+  //!< sn 	the starting point on the negative electrode OCV curve
 
-  // estimate the amount of active material needed to reach the cell capacity:
-  constexpr double n = 1.0;                                // number of electrons involved in the reaction
-  const double cap = OCVcell.x.back();                     // capacity of the cell [Ah] (the discharge Ah at the last point on the OCV curve)
-  const double AMp_guess = cap * 3600.0 / (n * F * cmaxp); // the total charge in an electrode in Ah is given by; n * F * cmax * AM / 3600
+  //!< estimate the amount of active material needed to reach the cell capacity:
+  constexpr double n = 1.0;                                //!< number of electrons involved in the reaction
+  const double cap = OCVcell.x.back();                     //!< capacity of the cell [Ah] (the discharge Ah at the last point on the OCV curve)
+  const double AMp_guess = cap * 3600.0 / (n * F * cmaxp); //!< the total charge in an electrode in Ah is given by; n * F * cmax * AM / 3600
   const double AMn_guess = cap * 3600.0 / (n * F * cmaxn);
 
-  // // Define the search space for the amount of active material on each electrode
-  constexpr double step = 0.1; // take steps of 10% of the guessed active material
-  constexpr double AMmax = 5;  // the maximum amount of active material is 5 times the guessed amount
-  constexpr double AMmin = 0;  // the minimum amount of active material is 0, actually should not be zero since it is a divisor.
+  //!< //!< Define the search space for the amount of active material on each electrode
+  constexpr double step = 0.1; //!< take steps of 10% of the guessed active material
+  constexpr double AMmax = 5;  //!< the maximum amount of active material is 5 times the guessed amount
+  constexpr double AMmin = 0;  //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
 
-  // // Define the search space for the initial lithium fractions at each electrode
-  constexpr double df = 0.1;   // take steps of 10% of the lithium fraction
-  constexpr double fmin = 0.0; // the minimum lithium fraction is 0
-  constexpr double fmax = 1.0; // the maximum lithium fraction is 1
+  //!< //!< Define the search space for the initial lithium fractions at each electrode
+  constexpr double df = 0.1;   //!< take steps of 10% of the lithium fraction
+  constexpr double fmin = 0.0; //!< the minimum lithium fraction is 0
+  constexpr double fmax = 1.0; //!< the maximum lithium fraction is 1
 
-  // Define the search space for the amount of active material on each electrode
-  auto AMp_space = slide::range_fix(AMmin * AMp_guess, AMmax * AMp_guess + 3.2 * step * AMp_guess, step * AMp_guess); // From 0 to 5x of guessed active material with 10% steps.
+  //!< Define the search space for the amount of active material on each electrode
+  auto AMp_space = slide::range_fix(AMmin * AMp_guess, AMmax * AMp_guess + 3.2 * step * AMp_guess, step * AMp_guess); //!< From 0 to 5x of guessed active material with 10% steps.
   auto AMn_space = slide::range_fix(AMmin * AMn_guess, AMmax * AMn_guess, step * AMn_guess);
 
-  // Define the search space for the initial lithium fractions at each electrode
-  auto sp_space = slide::range_fix(fmin, fmax, df); // From 0 to 1 lithium fraction
+  //!< Define the search space for the initial lithium fractions at each electrode
+  auto sp_space = slide::range_fix(fmin, fmax, df); //!< From 0 to 1 lithium fraction
   auto sn_space = slide::range_fix(fmin, fmax, df);
 
-  // ***************************************************** 3 Fit the parameters ***********************************************************************
+  //!< ***************************************************** 3 Fit the parameters ***********************************************************************
 
-  // Call the hierarchical search algorithm, which does the fitting
-  constexpr int hmax = 2;                                                                                                               // number of levels in the hierarchy to consider.
-  const auto [par, err] = hierarchicalOCVfit(hmax, AMp_space, AMn_space, sp_space, sn_space, namepos, nameneg, namecell, cmaxp, cmaxn); // parameters of the best fit and lowest error.
+  //!< Call the hierarchical search algorithm, which does the fitting
+  constexpr int hmax = 2;                                                                                                               //!< number of levels in the hierarchy to consider.
+  const auto [par, err] = hierarchicalOCVfit(hmax, AMp_space, AMn_space, sp_space, sn_space, namepos, nameneg, namecell, cmaxp, cmaxn); //!< parameters of the best fit and lowest error.
 
-  // ***************************************************** 4 write outputs ***********************************************************************
+  //!< ***************************************************** 4 write outputs ***********************************************************************
 
-  // Print the best fit
+  //!< Print the best fit
   std::cout << "The best fit is: AMp = " << par[0] << ", AMn = " << par[1] << ", sp = " << par[2] << ", sn = " << par[3] << ".\n";
   std::ofstream output;
 
-  // write the parameters in a csv file
+  //!< write the parameters in a csv file
   output.open(PathVar::results + nameparam, std::ios_base::out);
   output << "AMp" << ',' << par[0] << '\n'
          << "AMn" << ',' << par[1] << '\n'
@@ -745,41 +745,41 @@ void estimateOCVparameters()
          << "start neg" << ',' << par[3] << '\n';
   output.close();
 
-  // Simulate the best-fit OCV curve
-  const double Vend = OCVcell.y.back(); // minimum voltage of the OCV curve
+  //!< Simulate the best-fit OCV curve
+  const double Vend = OCVcell.y.back(); //!< minimum voltage of the OCV curve
 
-  slide::XYdata_vv OCVsim, OCVnsim, OCVpsim;                       // array for the simulated OCV curve and voltage of each electrode
-  constexpr int nin = 200;                                         // size hint for the array to store the simulated OCV curve
-  OCVsim.reserve(nin), OCVnsim.reserve(nin), OCVpsim.reserve(nin); // reserve some size.
+  slide::XYdata_vv OCVsim, OCVnsim, OCVpsim;                       //!< array for the simulated OCV curve and voltage of each electrode
+  constexpr int nin = 200;                                         //!< size hint for the array to store the simulated OCV curve
+  OCVsim.reserve(nin), OCVnsim.reserve(nin), OCVpsim.reserve(nin); //!< reserve some size.
 
-  double fp[3], fn[3]; // arrays to store the lithium fractions at 100%, 50% and 0% SOC
+  double fp[3], fn[3]; //!< arrays to store the lithium fractions at 100%, 50% and 0% SOC
   discharge(OCVp, OCVn, cap, par[0], par[1], cmaxp, cmaxn, par[2], par[3], Vend, OCVsim, OCVnsim, OCVpsim, fp, fn);
-  // Write this best-fit OCV curve in a csv file so the user can check it using the matlab script readEstimateOCV.m
+  //!< Write this best-fit OCV curve in a csv file so the user can check it using the matlab script readEstimateOCV.m
   output.open(PathVar::results + nameOCV);
   for (size_t i = 0; i < OCVsim.x.size(); i++)
     output << OCVsim.x[i] << ',' << OCVsim.y[i] << ',' << OCVnsim.x[i] << ','
            << OCVnsim.y[i] << ',' << OCVpsim.x[i] << ',' << OCVpsim.y[i] << '\n';
   output.close();
 
-  // From the 4 fitted values, we need to determine the following parameters, needed by the single particle model implemented in Cell
-  // elec_surf 	the geometric surface area of the electrode
-  // thickp		the thickness of the cathode
-  // thickn		the thickness of the anode
-  // ep			the volume fraction of active material on the cathode
-  // en 			the volume fraction of active material on the anode
-  // cinip 		the initial lithium fraction for the cathode
-  // cinin 		the initial lithium fraction for the anode
+  //!< From the 4 fitted values, we need to determine the following parameters, needed by the single particle model implemented in Cell
+  //!< elec_surf 	the geometric surface area of the electrode
+  //!< thickp		the thickness of the cathode
+  //!< thickn		the thickness of the anode
+  //!< ep			the volume fraction of active material on the cathode
+  //!< en 			the volume fraction of active material on the anode
+  //!< cinip 		the initial lithium fraction for the cathode
+  //!< cinin 		the initial lithium fraction for the anode
 
-  // Assume the volume fractions are 50% and the electrode surface is 0.0982 m2.
-  // Then we can calculate the thickness of the electrodes to give the desired amount of active material, which is given by:
-  // 		AM = elec_surf * thick * e
+  //!< Assume the volume fractions are 50% and the electrode surface is 0.0982 m2.
+  //!< Then we can calculate the thickness of the electrodes to give the desired amount of active material, which is given by:
+  //!< 		AM = elec_surf * thick * e
   constexpr double ep = 0.5;
   constexpr double en = 0.5;
   constexpr double elec_surf = 0.0982;
   const double thickp = par[0] / (elec_surf * ep);
   const double thickn = par[1] / (elec_surf * en);
 
-  // Append these parameters in the csv file where we had written the fitted parameters
+  //!< Append these parameters in the csv file where we had written the fitted parameters
   output.open(PathVar::results + nameparam, std::ios_base::app);
   output << "cathode volume fraction ep" << ',' << ep << '\n';
   output << "anode volume fraction en" << ',' << en << '\n';
@@ -797,7 +797,7 @@ void estimateOCVparameters()
   output << "minimum voltage of the cell" << ',' << OCVcell.y[ncell - 1] << '\n';
   output << "The error on the OCV curve with this fit is" << ',' << err << '\n';
 
-  // then note down the settings used to get this fit
+  //!< then note down the settings used to get this fit
   output << '\n';
   output << "Below are the settings which produced this result\n";
   output << "maximum li-concentration in the cathode" << ',' << cmaxp << '\n';
@@ -807,7 +807,7 @@ void estimateOCVparameters()
   output << "name of the file with the cell's OCV curve" << ',' << namecell << '\n';
   output << "capacity of the cell" << ',' << cap << '\n';
 
-  // the search space
+  //!< the search space
   output << '\n';
   output << "Below are the settings of the initial search space\n";
   output << "relative step size in the search for active material" << ',' << step << '\n';
@@ -822,11 +822,11 @@ void estimateOCVparameters()
 
 void writeOCVParam(int h, const std::array<double, 4> &par)
 {
-  // Print the best fit, and write in a CSV file
+  //!< Print the best fit, and write in a CSV file
   std::cout << "The best fit in hierarchy " << h << " is: AMp = " << par[0]
             << ", AMn = " << par[1] << ", sp = " << par[2] << ", sn = " << par[3] << ".\n";
 
-  std::ofstream output; // write the parameters
+  std::ofstream output; //!< write the parameters
   const auto na = "OCVFit_" + std::to_string(h) + "_param.csv";
   output.open(PathVar::results + na, std::ios_base::out);
   output << "AMp" << ',' << par[0] << '\n';

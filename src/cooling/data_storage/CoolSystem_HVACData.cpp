@@ -22,14 +22,14 @@ void CoolSystem_HVACData::storeData(CoolSystem_HVAC &cs)
 {
   if (cs.coolData.cData.time != 0)
     storeData(cs, tData);
-} // Do nothing.
+} //!< Do nothing.
 
 void CoolSystem_HVACData::writeData(CoolSystem_HVAC &cs, const std::string &prefix)
 {
   writeData(cs, prefix, tData);
 }
 
-// N=1
+//!< N=1
 void CoolSystem_HVACData::initialise(CoolSystem_HVAC &cs, CoolSystem_HVACHist_t &data, double Qac_per_cell)
 {
   constexpr double Qacmin = 0;
@@ -48,7 +48,7 @@ void CoolSystem_HVACData::storeData(CoolSystem_HVAC &cs, CoolSystem_HVACHist_t &
   data.Eac.add(Eacmean / cs.Ncells);
   data.Qac.add(cs.Q_ac / cs.Ncells);
 
-  // reset variables to calculate the mean
+  //!< reset variables to calculate the mean
   cData.Eac = 0;
 }
 
@@ -56,10 +56,10 @@ void CoolSystem_HVACData::storeData(CoolSystem_HVAC &cs, CoolSystem_HVACInst_t &
 {
   const double Eacmean = cData.Eac / cs.coolData.cData.time;
 
-  data.push_back({ cs.Q_ac, Eacmean }); // flow rate
+  data.push_back({ cs.Q_ac, Eacmean }); //!< flow rate
 }
 
-// ----- writeData ------
+//!< ----- writeData ------
 
 auto CoolSystem_HVACData::openFile(const std::string &prefix)
 {
@@ -68,7 +68,7 @@ auto CoolSystem_HVACData::openFile(const std::string &prefix)
     name += "_coolSystemStats.csv";
   else if constexpr (settings::DATASTORE_COOL == 2)
     name += "_coolSystemData.csv";
-  // name of the file, start with the full hierarchy-ID to identify this cell
+  //!< name of the file, start with the full hierarchy-ID to identify this cell
   /*
    * 1 gives the number of cells
    * 2, 3 are empty
@@ -78,7 +78,7 @@ auto CoolSystem_HVACData::openFile(const std::string &prefix)
    * 107-206 gives the edges of the bins of the histogram: edge(i-1) < bin(i) < edge(i)
    */
 
-  // append the new data to the existing file
+  //!< append the new data to the existing file
   std::ofstream file(name, std::ios_base::app);
 
   if (!file.is_open()) {
@@ -92,7 +92,7 @@ auto CoolSystem_HVACData::openFile(const std::string &prefix)
 void CoolSystem_HVACData::writeData(CoolSystem_HVAC &cs, const std::string &prefix, CoolSystem_HVACHist_t &data)
 {
   auto file = openFile(prefix);
-  // write the number of cells and the total operating energy [J]
+  //!< write the number of cells and the total operating energy [J]
   file << data.Qac << '\n'
        << data.Eac << '\n';
 

@@ -30,18 +30,18 @@ namespace slide {
 template <typename StoredClass, int N>
 struct DataStore
 {
-  // Will be filled in future.
+  //!< Will be filled in future.
 };
 
-template <int N, typename T> // Takes vector or array:
+template <int N, typename T> //!< Takes vector or array:
 double norm_sq(const T &x)
 {
   if constexpr (N < -1)
     throw 12345;
   else if (N == -1)
-    throw 12344; // Infinite norm
+    throw 12344; //!< Infinite norm
   else if (N == 0)
-    throw 333456; // 0 norm
+    throw 333456; //!< 0 norm
   else {
     double sum = 0;
     for (const auto &x_i : x)
@@ -49,10 +49,10 @@ double norm_sq(const T &x)
 
     return sum;
   }
-  throw 345789; // This should not happen.
+  throw 345789; //!< This should not happen.
 }
 
-template <int N, typename T> // Takes vector or array:
+template <int N, typename T> //!< Takes vector or array:
 double norm(const T &x)
 {
   const double norm_square = norm_sq(x);
@@ -72,14 +72,14 @@ class card_prod
 struct GammaDensityFunctor
 {
   double a, inv_b, scale;
-  GammaDensityFunctor() = delete; // Even it is delete, it constructs with default values.
+  GammaDensityFunctor() = delete; //!< Even it is delete, it constructs with default values.
   GammaDensityFunctor(double a, double b) : a(a), inv_b(1 / b), scale(1 / std::tgamma(a) / std::pow(b, a)) {}
   double operator()(double x) { return scale * std::exp(-inv_b * x) * std::pow(x, a - 1); }
 };
 
 } // namespace slide
 
-// Array operations to make summing/subtracting arrays easier.
+//!< Array operations to make summing/subtracting arrays easier.
 
 template <typename T, size_t N>
 auto arrSum(const std::array<T, N> &a1, const std::array<T, N> &a2, double b1, double b2)

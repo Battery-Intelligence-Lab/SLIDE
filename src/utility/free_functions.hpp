@@ -32,13 +32,13 @@ auto getV(T const &SU)
 template <typename T>
 auto getVmin(T const &SU)
 {
-  // return SU.V();
+  //!< return SU.V();
 }
 
 template <bool Print = settings::printBool::printCrit>
 auto inline check_SOC(double SOCnew, double SOC_min = 0, double SOC_max = 1)
 {
-  if (SOCnew < SOC_min || SOCnew > SOC_max) // check that the input argument is valid
+  if (SOCnew < SOC_min || SOCnew > SOC_max) //!< check that the input argument is valid
   {
     if constexpr (Print)
       std::cerr << "ERROR in some Cell, illegal input value of SOC: "
@@ -52,25 +52,25 @@ auto inline check_SOC(double SOCnew, double SOC_min = 0, double SOC_max = 1)
 template <bool Print = settings::printBool::printCrit>
 auto inline check_Cell_states(auto &su, bool checkV)
 {
-  if (!su.validStates(Print)) // check if valid state
+  if (!su.validStates(Print)) //!< check if valid state
   {
     if constexpr (Print)
-      std::cerr << "ERROR in " << su.getID() << "::setStates, illegal State.\n"; // #CHECK here add some type id.
+      std::cerr << "ERROR in " << su.getID() << "::setStates, illegal State.\n"; //!< #CHECK here add some type id.
 
     return Status::Invalid_states;
   }
 
-  // check the voltage if desired
+  //!< check the voltage if desired
   if (checkV) {
     double v;
-    return su.checkVoltage(v, Print); // get the voltage Does not throw anymore!
+    return su.checkVoltage(v, Print); //!< get the voltage Does not throw anymore!
   }
 
   return Status::Success;
 }
 
 template <bool Print = true>
-auto inline check_voltage(double &v, auto &su) // Check voltage.
+auto inline check_voltage(double &v, auto &su) //!< Check voltage.
 {
   /*
    * -2 	V < VMIN				discharging and outside safety range, cycling should be halted asap to avoid numerical errors
@@ -83,8 +83,8 @@ auto inline check_voltage(double &v, auto &su) // Check voltage.
    * then occasionally, V can be slightly above or below Vlimit
    */
 
-  constexpr bool printCrit = (settings::printBool::printCrit) && Print;       // print if the (global) verbose-setting is above the threshold
-  constexpr bool printNonCrit = (settings::printBool::printNonCrit) && Print; // print if the (global) verbose-setting is above the threshold
+  constexpr bool printCrit = (settings::printBool::printCrit) && Print;       //!< print if the (global) verbose-setting is above the threshold
+  constexpr bool printNonCrit = (settings::printBool::printNonCrit) && Print; //!< print if the (global) verbose-setting is above the threshold
 
   try {
     v = su.V(Print);
@@ -101,9 +101,9 @@ auto inline check_voltage(double &v, auto &su) // Check voltage.
     return Status::V_not_calculated;
   }
 
-  // lower limits
+  //!< lower limits
   if (v > (su.Vmin() - settings::MODULE_P_V_ABSTOL) && v < (su.Vmax() + settings::MODULE_P_V_ABSTOL)) {
-    return Status::Success; // Just to put this here, probably first if will be executed most of the time.
+    return Status::Success; //!< Just to put this here, probably first if will be executed most of the time.
   } else if (v < (su.Vmin() - settings::MODULE_P_V_ABSTOL) && su.isDischarging()) {
     if (printNonCrit)
       std::cout << "The voltage of cell " << su.getFullID() << " is " << v
@@ -112,7 +112,7 @@ auto inline check_voltage(double &v, auto &su) // Check voltage.
                 << " centigrade and I = " << su.I() << '\n';
 
     return Status::Vmin_violation;
-  } else if (v > (su.Vmax() + settings::MODULE_P_V_ABSTOL) && su.isCharging()) // #CHECK
+  } else if (v > (su.Vmax() + settings::MODULE_P_V_ABSTOL) && su.isCharging()) //!< #CHECK
   {
     if (printNonCrit)
       std::cout << "The voltage of cell " << su.getFullID() << " is " << v
@@ -130,7 +130,7 @@ auto inline check_voltage(double &v, auto &su) // Check voltage.
                 << " centigrade and I = " << su.I() << '\n';
 
     return Status::VMIN_violation;
-  } else if (v > su.VMAX() && su.isCharging()) // upper limits
+  } else if (v > su.VMAX() && su.isCharging()) //!< upper limits
   {
     if (printCrit)
       std::cout << "The voltage of cell " << su.getFullID() << " is " << v
@@ -141,16 +141,16 @@ auto inline check_voltage(double &v, auto &su) // Check voltage.
     return Status::VMAX_violation;
   }
 
-  return Status::Unknown_problem; // We don't know what happened...
+  return Status::Unknown_problem; //!< We don't know what happened...
 }
 
 template <bool Print = settings::printBool::printCrit>
 auto inline check_safety(double vi, auto &cyc)
 {
-  const auto SafetyVmin = cyc.getSafetyVmin(); // #CHECK this requires some calculations!
+  const auto SafetyVmin = cyc.getSafetyVmin(); //!< #CHECK this requires some calculations!
   const auto SafetyVmax = cyc.getSafetyVmax();
 
-  if (vi < SafetyVmin) // #CHECK this requires some calculations!
+  if (vi < SafetyVmin) //!< #CHECK this requires some calculations!
   {
     if constexpr (Print)
       std::cout << "Error in Cycler::??, the voltage of " << vi
@@ -158,7 +158,7 @@ auto inline check_safety(double vi, auto &cyc)
                 << SafetyVmin << " V." << '\n';
 
     return Status::VMINsafety_violation;
-  } else if (vi > SafetyVmax) // #CHECK this requires some calculations!
+  } else if (vi > SafetyVmax) //!< #CHECK this requires some calculations!
   {
     if constexpr (Print)
       std::cout << "Error in Cycler::??, the voltage of " << vi
@@ -171,10 +171,10 @@ auto inline check_safety(double vi, auto &cyc)
 }
 
 template <bool Print = true>
-auto inline check_current(bool checkV, auto &su) // Check voltage.
+auto inline check_current(bool checkV, auto &su) //!< Check voltage.
 {
 
-  // TBC
+  //!< TBC
 }
 
 } // namespace slide::free
