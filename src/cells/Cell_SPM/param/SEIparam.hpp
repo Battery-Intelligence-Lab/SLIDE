@@ -37,5 +37,15 @@ struct SEIparam
 
   auto begin() noexcept { return &sei_porosity; }
   auto end() noexcept { return &sei4D_T + 1; }
+
+  auto &operator*=(double a)
+  {
+    for (auto &item : *this)
+      item *= a;
+
+    return *this;
+  }
 };
+
+
 } // namespace slide::param

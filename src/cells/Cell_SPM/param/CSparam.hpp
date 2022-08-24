@@ -28,5 +28,13 @@ struct CSparam
 
   [[nodiscard]] constexpr auto begin() noexcept { return &CS1alpha; }
   [[nodiscard]] constexpr auto end() noexcept { return &CS_diffusion + 1; }
+
+  auto &operator*=(double a)
+  {
+    for (auto &item : *this)
+      item *= a;
+
+    return *this;
+  }
 };
 } // namespace slide::param

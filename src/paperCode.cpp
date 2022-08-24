@@ -226,8 +226,7 @@ void degradation_1cell()
   constexpr int par = 9 * 7;
 
   //!< Make one cell with standard parameters//!<Degradation settings
-  slide::DEG_ID deg;
-  //!< Kinetic SEI + porosity + Dai/Laresgoiti LAM
+  slide::DEG_ID deg; //!< Kinetic SEI + porosity + Dai/Laresgoiti LAM
 
   deg.SEI_id.add_model(4); //!< add model 4.
   deg.SEI_porosity = 1;
@@ -237,6 +236,7 @@ void degradation_1cell()
 
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
+
 
   auto mc = std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1); //!< cell-to-cell variation parameters are 0
 

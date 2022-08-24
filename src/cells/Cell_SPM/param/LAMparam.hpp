@@ -31,5 +31,13 @@ struct LAMparam //!< #CHECK if begin and end is ok for alignment.
 
   [[nodiscard]] constexpr auto begin() noexcept { return &lam1p; }
   [[nodiscard]] constexpr auto end() noexcept { return &lam4n + 1; }
+
+  auto &operator*=(double a)
+  {
+    for (auto &item : *this)
+      item *= a;
+
+    return *this;
+  }
 };
 } // namespace slide::param

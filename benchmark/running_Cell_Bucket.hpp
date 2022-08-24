@@ -47,14 +47,16 @@ inline void run_Cell_SPM()
   auto c = Cell_SPM();
   auto cyc = Cycler(&c, ID);
 
+  double Ah, Wh, dtime;
   for (size_t i{ 0 }; i < N; i++) {
-    double Ah, Wh, dtime;
+
 
     cyc.CCCV(1, 4, 0.1, 1, 0, Ah, Wh, dtime);
     cyc.CCCV(1, 3, 0.1, 1, 0, Ah, Wh, dtime);
   }
 
-  std::cout << "V: " << c.V() << "\n";
+  std::cout << "V: " << c.V() << '\n';
+  std::cout << "Wh: " << Wh << '\n';
   std::cout << "Finished run_Cell_SPM in " << clk << ".\n";
 };
 

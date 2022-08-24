@@ -731,17 +731,11 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
   geo.elec_surf *= capf; //!< surface area of the electrodes (current to current density)
 
   //!< set the degradation factor
-  for (auto &sei_param : sei_p)
-    sei_param *= var_degSEI;
+  sei_p *= var_degSEI;
+  csparam *= var_degSEI;
+  lam_p *= var_degLAM;
+  plparam *= var_degSEI;
 
-  for (auto &cs_param : csparam)
-    cs_param *= var_degSEI;
-
-  for (auto &lam_param : lam_p)
-    lam_param *= var_degLAM;
-
-  for (auto &pl_param : plparam)
-    pl_param *= var_degSEI;
 
   //!< set the degradation ID and related settings
   deg_id = degid;
