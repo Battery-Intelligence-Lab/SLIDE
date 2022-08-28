@@ -8,12 +8,15 @@
 
 ### Current priority: 
 
+
 - [ ] Add CTest support for tests
 - [ ] Add static analysers: include-what-you-use, valgrind, etc. 
 - [ ] Doxygen integration - adapting commenting style. 
 - [ ] CPack and installation improvements. 
 - [ ] Figure out why OBJECT libraries cause linker error. We converted everything to STATIC
 - [ ] Check #CHECK tags in the code.  
+- [ ] Add variable data storage (Vk is working on)
+  - [ ] Create enum for storable data. 
 
 
 ### From SLIDE v2: 
@@ -358,7 +361,7 @@ slide_pack integration:
 - [x] removing getVi for series module. and getSUVoltages for all. 
 - [ ] Consider making test functions friend and getVi protected. 
 - [ ] "HVAC coolsystem for active cooling with the environment" obligation should be  removed. 
-- [ ] XYdata_ss  for span. 
+- [x] XYdata_ss  for span. 
 - [ ] Minor updates: 
   - [x] i in Cycler::rest is removed. 
 - [ ] VMAX and VMIN in modules calculated VMAX and VMIN by summing then checks if each cells has a violation. That would give the same result. 
