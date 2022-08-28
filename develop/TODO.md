@@ -17,6 +17,7 @@
 - [ ] Check #CHECK tags in the code.  
 - [ ] Add variable data storage (Vk is working on)
   - [ ] Create enum for storable data. 
+  - [ ] Why are we using different vector<struct> anyway? We can use just a big vector + deserializer? 
 
 
 ### From SLIDE v2: 
