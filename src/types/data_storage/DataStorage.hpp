@@ -7,6 +7,8 @@
  */
 
 
+#pragma once
+
 struct DataStorage
 {
   enum Index : size_t //!< Index variables for:

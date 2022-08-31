@@ -42,7 +42,7 @@ inline void run_Cell_SPM()
   std::string ID = "temp";
   Clock clk;
 
-  constexpr size_t N = 200;
+  constexpr size_t N = 5;
 
   auto c = Cell_SPM();
   auto cyc = Cycler(&c, ID);

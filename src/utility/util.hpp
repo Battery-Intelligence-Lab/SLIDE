@@ -27,6 +27,7 @@
 #include "../settings/settings.hpp"
 #include "slide_aux.hpp"
 #include "util_debug.hpp"
+#include "units.hpp"
 
 namespace slide {
 struct Clock
@@ -48,10 +49,7 @@ inline std::ostream &operator<<(std::ostream &ofs, const Clock &clk)
   return ofs;
 }
 
-constexpr auto abs_sqrt(auto x)
-{
-  return std::sqrt(std::abs(x));
-}
+constexpr auto abs_sqrt(auto x) { return std::sqrt(std::abs(x)); }
 
 template <typename T, typename FilePath>
 void output_printer(std::vector<T> vec, const FilePath &save_path)
@@ -174,9 +172,6 @@ constexpr std::array<double, N> linspace(double x1, double x2)
 
   return out;
 }
-
-constexpr inline double C_to_Kelvin(double Celsius) { return PhyConst::Kelvin + Celsius; }
-constexpr inline double K_to_Celsius(double Kelvin) { return Kelvin - PhyConst::Kelvin; }
 
 } // namespace slide
 

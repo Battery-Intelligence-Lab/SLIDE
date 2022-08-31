@@ -8,7 +8,6 @@
 #pragma once
 
 #include <array>
-#include <cstdlib> //!< for size_t
 
 namespace slide {
 struct State_Bucket : public std::array<double, 3>
@@ -19,6 +18,12 @@ struct State_Bucket : public std::array<double, 3>
     i_SOC,
     i_T, //!< cell temperature [K]
     N_states,
+  };
+
+  constexpr static std::array<const char *, N_states> description{
+    "Current [A]",
+    "SOC [-]",
+    "Temperature [K]"
   };
 
   inline auto &I() { return (*this)[i_I]; }     //!< Current, [I]

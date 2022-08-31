@@ -11,7 +11,8 @@ namespace slide {
 
 enum class DataStoragePolicy {
 
-  no_storage = 0
+  no_storage = 0,
+
 
 };
 
