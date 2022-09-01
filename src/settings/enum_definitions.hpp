@@ -19,7 +19,7 @@ enum printLevel {
 
 };
 
-enum cellDataStorageLevel {
+enum class cellDataStorageLevel {
   noStorage = 0,
   storeCumulativeData,
   storeHistogramData,
