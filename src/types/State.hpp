@@ -1,32 +1,24 @@
 /*
- * State_Bucket.hpp
+ * State.hpp
  *
- *  Created on: 12 Apr 2022
+ * Generic State class to hold time, Ah, Wh.
+ *
+ *  Created on: 02 Sep 2022
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
 #pragma once
 
-#include <array>
-#include "../../types/State.hpp"
 
 namespace slide {
-struct State_Bucket
-  : public State
-  , public std::array<double, 3 + State::N_states>
+struct State
 {
   enum Index : size_t //!< Index variables for:
   {
-    i_I = State::N_states,
-    i_SOC,
-    i_T, //!< cell temperature [K]
+    i_time,
+    i_Ah,
+    i_Wh,
     N_states,
-  };
-
-  constexpr static std::array<const char *, N_states> description{
-    "Current [A]",
-    "SOC [-]",
-    "Temperature [K]"
   };
 
   inline auto &I() { return (*this)[i_I]; }     //!< Current, [I]
