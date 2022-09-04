@@ -132,6 +132,13 @@ constexpr auto CVcurrentFindingMethod = CVcurrentAlgorithm::falsePosition;
 //!< printLevel_bool::
 } // namespace slide::settings
 
+
+namespace slide::settings::data {
+constexpr bool storeCumulativeData = (DATASTORE_CELL >= cellDataStorageLevel::storeCumulativeData);
+constexpr size_t N_CumulativeData = storeCumulativeData ? 3 : 0;
+} // namespace slide::settings::data
+
+
 namespace slide::settings::printBool {
 constexpr auto printCrit = settings::verbose >= printLevel::printCrit;                               //!< threshold of verbose of when to print error messages for critical errors
 constexpr auto printNonCrit = settings::verbose >= printLevel::printNonCrit;                         //!< threshold of verbose of when to print error messages for noncritical errors

@@ -7,13 +7,10 @@
 
 #pragma once
 
-#include <array>
 #include "../../types/State.hpp"
 
 namespace slide {
-struct State_Bucket
-  : public State
-  , public std::array<double, 3 + State::N_states>
+struct State_Bucket : public State<3>
 {
   enum Index : size_t //!< Index variables for:
   {

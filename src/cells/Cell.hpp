@@ -31,7 +31,7 @@ protected:
   double cap{ 16 }; //!< capacity [Ah]
   //	virtual double &getI() = 0; //!< Direct assignment of current
   //	virtual double &getV() = 0; //!< Direct assignment of voltage.
-  CellData<settings::DATASTORE_CELL> cellData;
+  // CellData<settings::DATASTORE_CELL> cellData;
 
 public:
   constexpr static CellLimits limits{ defaultCellLimits };
