@@ -18,30 +18,9 @@
 namespace slide {
 inline void writeData(std::ofstream &file, CellCommonHist &hist)
 {
-  {
-    auto I_bins = hist.I.viewBinValues();
-    auto V_bins = hist.V.viewBinValues();
-    auto T_bins = hist.T.viewBinValues();
-
-    //!< write bin values
-    for (size_t i = 0; i < I_bins.size(); i++)
-      file << I_bins[i] << ',' << V_bins[i] << ',' << T_bins[i] << '\n'; //!< #CHECK change how you write the values to remove repetition.
-    file << "\n\n";
-  }
-
-  {
-    auto I_edges = hist.I.getEdgeValues();
-    auto V_edges = hist.V.getEdgeValues();
-    auto T_edges = hist.T.getEdgeValues();
-
-    //!< write bin edges
-    for (size_t i = 0; i < I_edges.size(); i++)
-      file << I_edges[i] << ',' << V_edges[i] << ',' << T_edges[i] << '\n';
-    //!< data is in bin i if edge[i-1] <= data < edge[i]
-    //!< except bin[0] if data < edge[0]
-    //!<    and bin[N] if data >= edge[N-1] #CHECK if it is still true.
-    file << "\n\n\n";
-  }
+  file << hist.I << "\n\n";
+  file << hist.V << "\n\n";
+  file << hist.T << "\n\n\n";
 }
 
 inline void writeVarAndStates(std::ofstream &file, std::span<double> varstate, std::span<double> state)
@@ -51,26 +30,24 @@ inline void writeVarAndStates(std::ofstream &file, std::span<double> varstate, s
     file << var << ',';
   file << '\n';
 
-  for (const auto st_i : state)
+  for (const auto st_i : state) // Time and Throughput data is written here if available.
     file << st_i << ',';
   file << "\n\n\n";
 }
 
-inline void writeData(std::ofstream &file, CellCumulativeData tData)
+inline void writeData(std::ofstream &file, std::vector<double> &data)
 {
-  //!< write throughput data, cell-to-cell variations and the battery state:
-  file << tData.Time << ',' << tData.Ah << ',' << tData.Wh << '\n';
-}
+  for (size_t i{}; i < data.size(); i++) {
+    if (i % 7 == 0) {
+      if (i != 0)
+        file << '\n';
+    } else
+      file << ',';
 
-inline void writeData(std::ofstream &file, std::vector<CommonData> &cData)
-{
-  for (const auto &c : cData)
-    file << c.I << ',' << c.V << ',' << c.SOC
-         << ',' << c.T << ',' << c.Ah << ',' << c.Wh
-         << ',' << c.Time << '\n';
+    file << data[i];
+  }
 
-  //!< reset the index to 0 since we can overwrite the stored data
-  cData.clear();
+  data.clear(); //!< reset the index to 0 since we can overwrite the stored data
 }
 
 template <int N, typename SU_t, typename storage_t>
@@ -109,16 +86,16 @@ struct CellDataWriter
    * 	2 	cycling data (I, V, T at every time step) in file xxx_cellData.csv
    */
 
-  inline std::string getName(auto *ths, const std::string &prefix)
+  inline std::string getName(auto &cell, const std::string &prefix)
   {
     //!< name of the file, start with the full hierarchy-ID to identify this cell
-    return prefix + "_" + ths->getFullID() + "_cellData.csv";
+    return prefix + "_" + cell.getFullID() + "_cellData.csv";
   }
 
-  inline std::ofstream openFile(auto *ths, const std::string &prefix)
+  inline std::ofstream openFile(auto &cell, const std::string &prefix)
   {
     //!< store histograms and degradation state of cell utilisation
-    std::string name = getName(ths, prefix); //!< name of the file
+    std::string name = getName(cell, prefix); //!< name of the file
     std::ofstream file(name, std::ios_base::app);
 
     if (!file.is_open()) {
@@ -130,10 +107,10 @@ struct CellDataWriter
     return file;
   }
 
-  inline void writeData(auto *ths, const std::string &prefix, auto &storage)
+  inline void writeData(auto &cell, const std::string &prefix, auto &storage)
   {
-    auto file = openFile(ths, prefix);
-    writeDataImpl<N>(file, ths, storage);
+    auto file = openFile(cell, prefix);
+    writeDataImpl<N>(file, cell, storage);
     file.close();
   }
 };

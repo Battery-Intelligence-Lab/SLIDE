@@ -29,18 +29,20 @@ class Cell : public StorageUnit
 {
 protected:
   double cap{ 16 }; //!< capacity [Ah]
+
   CellData<settings::DATASTORE_CELL> cellData;
 
 public:
   constexpr static CellLimits limits{ defaultCellLimits };
 
-  Cell() : StorageUnit("cell") { cellData.initialise(this); }
+  Cell() : StorageUnit("cell") {}
 
   Cell(const std::string &ID_) : StorageUnit(ID_) {}
   virtual ~Cell() = default;
 
   double Cap() final { return cap; }
   virtual void setCapacity(double capacity) { cap = capacity; }
+  void initialise() { cellData.initialise(*this); } // Initialisation functions.
 
   constexpr double Vmin() override { return limits.Vmin; }
   constexpr double VMIN() override { return limits.VMIN; }
@@ -122,15 +124,13 @@ public:
 
   void writeData(const std::string &prefix) override { cellData.writeData(this, prefix); }
 
-  void getThroughput(double &timet, double &Aht, double &Wht)
+  void virtual getThroughput(double &timet, double &Aht, double &Wht)
   {
-    auto x = cellData.getThroughputData();
-    timet = x.Time;
+    CellThroughputData x{};
+    timet = x.time;
     Aht = x.Ah;
     Wht = x.Wh;
   }
-
-  void setThroughput(CellCumulativeData data) { cellData.setThroughputData(data); }
 
   //!< #if DATASTORE_CELL == 1
   //!< 		virtual const CellCommonHist &getHists()

@@ -11,16 +11,17 @@
 
 #include "CellDataStorage.hpp"
 #include "CellDataWriter.hpp"
+#include "../../settings/enum_definitions.hpp"
 
 namespace slide {
-template <int N>
+template <settings::cellDataStorageLevel N>
 struct CellData : public CellDataStorage<N>
 {
   CellDataWriter<N> writer;
 
-  auto writeData(auto *ths, const std::string &prefix)
+  auto writeData(auto &cell, const std::string &prefix)
   {
-    writer.writeData(ths, prefix, *this);
+    writer.writeData(cell, prefix, *this);
   }
 };
 } // namespace slide

@@ -12,10 +12,6 @@
 #include "../Histogram.hpp"
 
 namespace slide {
-struct CellCumulativeData
-{
-  double Ah{ 0 }, Wh{ 0 }, Time{ 0 }; //!< charge throughput, energy throughput, time so far. [s]
-};
 
 struct ProcedureThroughputData
 {
@@ -35,13 +31,14 @@ struct BasicData
   value_type T;   //!< Temperature [K]
 };
 
-struct CommonData : public BasicData, public CellCumulativeData
-{
-};
-
 struct CellCommonHist
 {
   Histogram<> I, V, T; //!< histograms for current, voltage, temperature
+};
+
+struct CellThroughputData
+{
+  double time{}, Ah{}, Wh{};
 };
 
 struct BatteryData
