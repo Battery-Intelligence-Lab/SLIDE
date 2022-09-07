@@ -20,14 +20,24 @@ struct State_Bucket : public State<3>
     N_states,
   };
 
-  constexpr static std::array<const char *, N_states> description{
-    "Current [A]",
-    "SOC [-]",
-    "Temperature [K]"
-  };
-
   inline auto &I() { return (*this)[i_I]; }     //!< Current, [I]
   inline auto &SOC() { return (*this)[i_SOC]; } //!< state of charge [0-1]
   inline auto &T() { return (*this)[i_T]; }     //!< temperature, [K]
+
+  constexpr static auto description(size_t i)
+  {
+    if (i < i_I)
+      return State::description(i);
+    else {
+      if (i == i_I)
+        return "Current [A]";
+      else if (i == i_SOC)
+        return "SOC [-]";
+      else if (i == i_T)
+        return "Temperature [K]";
+      else
+        return "";
+    }
+  }
 };
 } // namespace slide

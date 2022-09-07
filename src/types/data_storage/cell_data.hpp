@@ -35,8 +35,7 @@ struct BasicData
   value_type T;   //!< Temperature [K]
 };
 
-struct CommonData : public BasicData
-  , public CellCumulativeData
+struct CommonData : public BasicData, public CellCumulativeData
 {
 };
 
