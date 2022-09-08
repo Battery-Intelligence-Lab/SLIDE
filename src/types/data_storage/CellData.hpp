@@ -17,11 +17,9 @@ namespace slide {
 template <settings::cellDataStorageLevel N>
 struct CellData : public CellDataStorage<N>
 {
-  CellDataWriter<N> writer;
-
   auto writeData(auto &cell, const std::string &prefix)
   {
-    writer.writeData(cell, prefix, *this);
+    CellDataWriter<N>::writeData(cell, prefix, *this);
   }
 };
 } // namespace slide

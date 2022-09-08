@@ -9,6 +9,8 @@
 
 #include <utility>
 #include <iostream>
+#include <array>
+#include <vector>
 
 #include "../Histogram.hpp"
 #include "cell_data.hpp"
@@ -19,11 +21,11 @@ namespace slide {
 template <settings::cellDataStorageLevel N>
 struct CellDataStorage
 {
-  template <typename Tcell>
-  inline void initialise(Tcell &) {} //!< Do nothing.
+  template <typename Cell_t>
+  inline void initialise(Cell_t &) {} //!< Do nothing.
 
-  template <typename Tcell>
-  inline void storeData(Tcell &)
+  template <typename Cell_t>
+  inline void storeData(Cell_t &)
   {
     if constexpr (settings::printBool::printCrit)
       std::cout << "ERROR in Cell::storeData, the settings in constant.h are forbidding from storing data.\n";
@@ -34,22 +36,22 @@ struct CellDataStorage
 template <>
 struct CellDataStorage<settings::cellDataStorageLevel::storeHistogramData> //!< Store as histogram.
 {
-  CellCommonHist data;
+  std::array<Histogram<>, 3> data;
 
-  template <typename Tcell>
-  inline void initialise(Tcell &cell) //!< Initialise the histograms.
+  template <typename Cell_t>
+  inline void initialise(Cell_t &cell) //!< Initialise the histograms.
   {
-    data.I = Histogram<>(-cell.Cap(), cell.Cap()); //!< 1C charge/discharge
-    data.V = Histogram<>(cell.Vmin(), cell.Vmax());
-    data.T = Histogram<>(cell.Tmin(), cell.Tmax());
+    data[0] = Histogram<>(-cell.Cap(), cell.Cap()); //!< 1C charge/discharge
+    data[1] = Histogram<>(cell.Vmin(), cell.Vmax());
+    data[2] = Histogram<>(cell.Tmin(), cell.Tmax());
   }
 
-  template <typename Tcell>
-  inline void storeData(Tcell &cell)
+  template <typename Cell_t>
+  inline void storeData(Cell_t &cell)
   {
-    data.I.add(cell.I());
-    data.V.add(cell.V());
-    data.T.add(cell.T());
+    data[0].add(cell.I());
+    data[1].add(cell.V());
+    data[2].add(cell.T());
   }
 };
 
@@ -58,11 +60,11 @@ struct CellDataStorage<settings::cellDataStorageLevel::storeTimeData>
 {
   std::vector<double> data; //!< Common data
 
-  template <typename Tcell>
-  inline void initialise(Tcell &) {} //!< Do nothing.
+  template <typename Cell_t>
+  inline void initialise(Cell_t &) {} //!< Do nothing.
 
-  template <typename Tcell>
-  inline void storeData(Tcell &cell)
+  template <typename Cell_t>
+  inline void storeData(Cell_t &cell)
   {
     data.push_back(cell.I());
     data.push_back(cell.V());

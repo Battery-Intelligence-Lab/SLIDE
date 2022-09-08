@@ -107,7 +107,7 @@ struct CellDataWriter
     return file;
   }
 
-  inline void writeData(auto &cell, const std::string &prefix, auto &storage)
+  inline static void writeData(auto &cell, const std::string &prefix, auto &storage)
   {
     auto file = openFile(cell, prefix);
     writeDataImpl<N>(file, cell, storage);

@@ -119,7 +119,7 @@ public:
   //!< dataStorage
   void storeData() override //!< Add another data point in the array.
   {
-    cellData.storeInstantenousData(I(), V(), SOC(), T());
+    cellData.storeData(*this);
   }
 
   void writeData(const std::string &prefix) override { cellData.writeData(this, prefix); }

@@ -1,5 +1,5 @@
 /*
- * DataStoragePolicies.hpp
+ * DataStoragePolicy.hpp
  *
  * This class is created to generic interface to store data.
  *  Created on: 28 Aug 2022
@@ -9,10 +9,12 @@
 
 #pragma once
 
-namespace slide::DataStoragePolicies {
+#include <type_traits>
+
+namespace slide::policy {
 
 template <typename T>
 inline void no_data(T &&) {} // Dont do anything.
 
 
-} // namespace slide::DataStoragePolicies
+} // namespace slide::policy
