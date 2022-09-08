@@ -84,7 +84,7 @@ inline Cell_Bucket::Cell_Bucket(std::string IDi, double capin, double SOCin) : C
 
   //!< #CHECK also check capacity if negative? Use bool instead of throwing?
   ID = std::move(IDi);
-  cap = capin;
+  setCapacity(capin);
   st.SOC() = SOCin;
 }
 

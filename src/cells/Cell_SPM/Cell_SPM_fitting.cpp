@@ -274,7 +274,7 @@ void Cell_SPM::setGeometricParameters(double capnom, double surf, double ep, dou
    * thickn 		thickness of the anode [m]
    */
 
-  cap = capnom;
+  setCapacity(capnom);
   geo.elec_surf = surf;
 
   //!< If you change the volume fraction, you also have to change the effective surface area

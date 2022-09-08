@@ -28,7 +28,7 @@ namespace slide {
 class Cell : public StorageUnit
 {
 protected:
-  double cap{ 16 }; //!< capacity [Ah]
+  double capNom{ 16 }; //!< capacity [Ah]
 
   CellData<settings::DATASTORE_CELL> cellData;
 
@@ -40,8 +40,8 @@ public:
   Cell(const std::string &ID_) : StorageUnit(ID_) {}
   virtual ~Cell() = default;
 
-  double Cap() final { return cap; }
-  virtual void setCapacity(double capacity) { cap = capacity; }
+  double Cap() final { return capNom; }
+  void setCapacity(double capacity) { capNom = capacity; }
   void initialise() { cellData.initialise(*this); } // Initialisation functions.
 
   constexpr double Vmin() override { return limits.Vmin; }
@@ -124,13 +124,7 @@ public:
 
   void writeData(const std::string &prefix) override { cellData.writeData(this, prefix); }
 
-  void virtual getThroughput(double &timet, double &Aht, double &Wht)
-  {
-    CellThroughputData x{};
-    timet = x.time;
-    Aht = x.Ah;
-    Wht = x.Wh;
-  }
+  virtual CellThroughputData getThroughput() { return {}; }
 
   //!< #if DATASTORE_CELL == 1
   //!< 		virtual const CellCommonHist &getHists()

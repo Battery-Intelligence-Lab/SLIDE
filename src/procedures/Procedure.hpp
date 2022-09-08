@@ -51,7 +51,7 @@ public:
   void checkUp_prep(StorageUnit *su);                                 //!< bring the SU to a good voltage
   void checkUp_getCells(StorageUnit *su, std::vector<Cell *> &cells); //!< makes an array with pointers to the individual cells in the battery
   void checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &file, int separator);
-  void checkUp_writeMain(std::vector<Cell *> &cells, std::ofstream &file, int separator);
+  void checkUp_writeMain(std::vector<Cell *> &cells, std::ofstream &file);
   void checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &file, int separator);
 
   //!< cooling system procedures

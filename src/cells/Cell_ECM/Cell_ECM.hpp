@@ -69,7 +69,7 @@ public:
 
 inline Cell_ECM::Cell_ECM()
 {
-  cap = 16;
+  capNom = 16;
   //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 11);
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
@@ -85,7 +85,7 @@ inline Cell_ECM::Cell_ECM(double capin, double SOCin) : Cell_ECM()
     throw 10;
 
   st.SOC() = SOCin;
-  cap = capin;
+  setCapacity(capin);
 }
 
 inline double Cell_ECM::getOCV(bool print)

@@ -403,6 +403,7 @@ slide_pack integration:
 - [ ] "develop" folder is added for developer-related matters. 
 - [ ] License files of individual libraries are moved into the corresponding folders. 
 - [ ] tests folder is created and unit tests are moved into that folder. 
+- [ ] separator variables in checkUp functions seem to be unnecessary; therefore, removing. 
 
 
 ### C++20 changes (yay!):

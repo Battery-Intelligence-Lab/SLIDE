@@ -727,8 +727,8 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
   st.rDCn() *= resf;  //!< anode
 
   //!< set the capacity
-  cap *= capf;           //!< nominal capacity
-  geo.elec_surf *= capf; //!< surface area of the electrodes (current to current density)
+  setCapacity(Cap() * capf); //!< nominal capacity
+  geo.elec_surf *= capf;     //!< surface area of the electrodes (current to current density)
 
   //!< set the degradation factor
   sei_p *= var_degSEI;

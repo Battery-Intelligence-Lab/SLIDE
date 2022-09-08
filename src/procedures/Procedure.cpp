@@ -611,8 +611,9 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
 
   //!< do the main checkup, which writes the throughput, capacity and state of every cell
   try {
-    checkUp_writeMain(cells, file, separator);
+    checkUp_writeMain(cells, file);
   } catch (...) {
+    std::cout << "checkUp_writeMain has throwed! We continue but worth to check probably.\n";
   }
 
   //!< close the file
@@ -725,20 +726,14 @@ void Procedure::checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &
     std::cerr << "Error in checkUp_writeInitial, the file is no open. Skipping this part.\n";
 }
 
-void Procedure::checkUp_writeMain(std::vector<Cell *> &cells, std::ofstream &file, int separator)
+void Procedure::checkUp_writeMain(std::vector<Cell *> &cells, std::ofstream &file)
 {
   /*
    * Write the throughput, capacity and cell state of every cell
    *
    * this function appends at the end of a file, so can be called multiple times
    */
-
-  const int ID_throughput = 3; //!< identification numbers for in first column (indicating what is on the row)
-  const int ID_capacity = 4;
-  const int ID_separator = 9;
-  const int ID_state = 10;
-
-  double dt = 2;
+  const double dt = 2;
 
   //!< if you want to calculate the total heat generation from all cells:
   /*double Qgen = 0;
@@ -750,90 +745,71 @@ for(auto& cell : cells){
 }
 std::cout<<"Total heat generation of all cells is "<< Qgen<<endl;*/
 
-  if (file.is_open()) {
-
-    //!< Write the throughput of each cell
-    double timetot, ahtot, whtot;
-    file << ID_throughput << ',';
-    for (auto &cell : cells) {
-      cell->getThroughput(timetot, ahtot, whtot);
-      file << timetot << ',';
-    }
-    file << '\n';
-    file << ID_throughput << ',';
-    for (auto &cell : cells) {
-      cell->getThroughput(timetot, ahtot, whtot);
-      file << ahtot << ',';
-    }
-    file << '\n';
-    file << ID_throughput << ',';
-    for (auto &cell : cells) {
-      cell->getThroughput(timetot, ahtot, whtot);
-      file << whtot << ',';
-    }
-    file << '\n';
-
-    //!< write the capacity of each cell
-    double cap;
-    file << ID_capacity << ',';
-    for (auto &cell : cells) {
-      try {
-
-        //!< get every cell to the middle voltage (checkup_prep did total SU, so in series string a small cell might not be at the middle)
-        auto status = cell->setCurrent(0, false, true); //!< ensure we start a check-up with a 0 current
-
-        if (isStatusBad(status))
-          throw 5555; //!< #CHECK -> we are doing this because previously setCurrent was throwing.
-
-        const double vwindow = cell->Vmax() - cell->Vmin();
-        const double V = cell->Vmax() - 0.25 * vwindow; //!< go to a voltage at about 75% SOC
-        Cycler cyc(cell, "checkUp");
-        cell->setBlockDegAndTherm(true);
-        double dtime1;
-        cyc.CCCV(cell->Cap() / 5.0, V, cell->Cap() / 5.0, dt, ndata, ahtot, whtot, dtime1);
-        status = cell->setCurrent(0, false, true); //!< ensure we start a check-up with a 0 current
-
-        if (isStatusBad(status))
-          throw 5555; //!< #CHECK -> we are doing this because previously setCurrent was throwing.
-
-        double dAh, dtime;
-        cap = cyc.testCapacity(dAh, dtime);
-        cell->setBlockDegAndTherm(false);
-      } catch (int e) {
-        std::cout << "Error when measuring the capacity of Cell " << cell->getFullID()
-                  << ", error " << e << ". Recording as 0.\n";
-        cap = 0;
-      }
-      file << cap << ',';
-    }
-    file << '\n';
-
-    //!< write the state of a cell, if an SPM cell, skip the concentration states since they don't give info
-    const size_t start = (typeid(*cells[0]) == typeid(Cell_SPM)) ? 2 * settings::nch : 0;
-    const auto nstate = cells[0]->viewStates().size();
-    for (size_t i{ start }; i < nstate; i++) //!< loop for each state variable (rows)
-    {
-      file << ID_state + i << ',';
-
-      for (auto &cell : cells) //!< loop for each cell (columns)
-        file << cell->viewStates()[i] << ',';
-
-      file << '\n';
-    }
-
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (auto &_ : cells)
-      file << separator << ',';
-    file << '\n';
-
-  } //!< if file is open
-  else
+  if (!file.is_open()) {
     std::cerr << "Error in checkUp_writeMain, the file is not open,"
                  " could not write to it. Skipping this checkup.\n";
+    return;
+  }
+
+  // Capacity checking protocol?
+  auto checkCap = [this, dt](auto &cell) {
+    double cap{ 0 };
+    double dAh, whtot, dtime; // Dummy variables.
+    //!< get every cell to the middle voltage (checkup_prep did total SU, so in series string a small cell might not be at the middle)
+    auto status = cell->setCurrent(0, false, true); //!< ensure we start a check-up with a 0 current
+
+    if (isStatusBad(status)) {
+      std::cout << "Error when measuring the capacity of Cell " << cell->getFullID()
+                << ", error " << getStatusMessage(status) << ". Recording as 0.\n";
+      return cap;
+    }
+
+    const double Vwindow = cell->Vmax() - cell->Vmin();
+    const double V = cell->Vmax() - 0.25 * Vwindow; //!< go to a voltage at about 75% SOC
+    Cycler cyc(cell, "checkUp");
+    cell->setBlockDegAndTherm(true);
+    cyc.CCCV(cell->Cap() / 5.0, V, cell->Cap() / 5.0, dt, ndata, dAh, whtot, dtime);
+    status = cell->setCurrent(0, false, true); //!< ensure we start a check-up with a 0 current
+
+    if (isStatusBad(status)) {
+      std::cout << "Error when measuring the capacity of Cell " << cell->getFullID()
+                << ", error " << getStatusMessage(status) << ". Recording as 0.\n";
+      return cap;
+    }
+
+    cap = cyc.testCapacity(dAh, dtime);
+    cell->setBlockDegAndTherm(false);
+
+    return cap;
+  };
+
+  const size_t start = (typeid(*cells[0]) == typeid(Cell_SPM)) ? 2 * settings::nch : 0;
+  const auto nstate = cells[0]->viewStates().size();
+  //!< Write the throughput of each cell
+  file << "time [s]" << ',' << "Current throughput [Ah]" << ',' << "Energy throughput [Wh]"
+       << "Capacity [Ah]" << ',' << "States" << '\n';
+  for (auto &cell : cells) {
+    const auto th = cell->getThroughput();
+    const auto cap = checkCap(cell);
+
+    file << th.time << ',' << th.Ah << ',' << th.Wh << ','
+         << cap << ',';
+
+
+    const auto st_view = cell->viewStates(); //!< write the state of a cell, if an SPM cell, skip the concentration states since they don't give info
+    for (size_t i{ start }; i < nstate; i++) //!< loop for each state variable (rows)
+    {
+      if (i != start)
+        file << ',';
+      file << st_view[i];
+    }
+
+    file << '\n'
+         << '\n';
+  }
 }
 
-void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &file, int separator)
+void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &file)
 {
   /*
    * Write the usage statistics of every cell
@@ -850,6 +826,7 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
   const int ID_histV = 6;
   const int ID_histT = 7;
   const int ID_separator = 9;
+  const int seperator = 123;
 
   if (file.is_open()) {
     //!< write statistics of the current
