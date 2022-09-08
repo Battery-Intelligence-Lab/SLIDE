@@ -11,9 +11,17 @@
 
 #include "../../settings/enum_definitions.hpp"
 
+
 #include <type_traits>
 
 namespace slide::policy {
+
+template <settings::cellDataStorageLevel N>
+
+
+using CellDataStoragePolicy = std::conditional_t<
+  settings::cellDataStorageLevel == 'I',
+  First, std::conditional_t<T == 'D', Second, Third>>;
 
 
 }
