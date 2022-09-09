@@ -179,7 +179,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
   }
 
   //!< push a write such that if cells still have cycling data, this is written
-  if constexpr (settings::DATASTORE_CELL == 2)
+  if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeTimeData)
     su->writeData(pref); //!< only do if cycling data. Usage statistics are written by the checkup
 }
 
@@ -441,7 +441,7 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
   //!< do a capacity checkup in a separate thread
   if (checkup) {
     //!< push a write such that if cells still have cycling data, this is written
-    if constexpr (settings::DATASTORE_CELL == 2)
+    if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeTimeData)
       if (Ahtot > 0) {
         std::cout << "flush cycling data stored in the cells.\n";
         try {
@@ -581,10 +581,10 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   std::lock_guard<std::mutex> writeGuard(MUTEX_procedure_checkUp); //!< locks the mutex if it is free
   //!< #CHECK remove mutex somehow.
   //!< write the usage stats of all cells in a separate document
-  if constexpr (settings::DATASTORE_CELL == 1) {
+  if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeHistogramData) {
     file_stats.open(name_stats); //!< open and clear whatever was there since we want to write the most recent stats only
     try {
-      checkUp_writeStats(cells, file_stats, separator);
+      checkUp_writeStats(cells, file_stats);
     } catch (...) {
     }
 
@@ -842,8 +842,8 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
 
     //!< write a row with markers to indicate we have finished this section
     file << ID_separator << ',';
-    for (auto &_ : cells)
-      file << separator << ',';
+    // for (auto &_ : cells)
+    //   file << separator << ',';
     file << '\n';
 
     //!< statistics of the voltage
@@ -858,8 +858,8 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
 
     //!< write a row with markers to indicate we have finished this section
     file << ID_separator << ',';
-    for (auto &_ : cells)
-      file << separator << ',';
+    // for (auto &_ : cells)
+    //   file << separator << ',';
     file << '\n';
 
     //!< statistics of the temperature
@@ -874,8 +874,8 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
 
     //!< write a row with markers to indicate we have finished this section
     file << ID_separator << ',';
-    for (auto &_ : cells)
-      file << separator << ',';
+    // for (auto &_ : cells)
+    //   file << separator << ',';
     file << '\n';
 
   } //!< if file is open
