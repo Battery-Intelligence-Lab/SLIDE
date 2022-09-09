@@ -258,11 +258,22 @@ inline void Cell_Bucket::timeStep_CC(double dt, bool addData, int nstep)
     throw 10;
   }
 
+  const auto dth = dt / 3600.0;
+
   //!< take the specified number of time steps
   for (int t = 0; t < nstep; t++) {
     //!< Using forward Euler time integration.
     //!< Currently, only the SOC of the cell will change
-    st.SOC() -= st.I() * dt / (3600.0 * Cap());
+
+    const auto dAh = st.I() * dth;
+
+    st.SOC() -= dAh / Cap();
+
+    if constexpr (settings::data::storeCumulativeData) {
+      st.time() += dt;
+      st.Ah() += std::abs(dAh);
+      st.Wh() += std::abs(dAh * V());
+    }
 
     if (addData)
       storeData();

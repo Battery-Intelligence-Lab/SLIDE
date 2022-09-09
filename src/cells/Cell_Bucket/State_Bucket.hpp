@@ -14,10 +14,10 @@ struct State_Bucket : public State<3>
 {
   enum Index : size_t //!< Index variables for:
   {
-    i_I = State::N_states,
+    i_I,
     i_SOC,
-    i_T, //!< cell temperature [K]
-    N_states,
+    i_T,      //!< cell temperature [K]
+    N_states, // Do not use N_states for total states, use .size()
   };
 
   inline auto &I() { return (*this)[i_I]; }     //!< Current, [I]
@@ -26,7 +26,7 @@ struct State_Bucket : public State<3>
 
   constexpr static auto description(size_t i)
   {
-    if (i < i_I)
+    if (i >= N_states)
       return State::description(i);
     else {
       if (i == i_I)

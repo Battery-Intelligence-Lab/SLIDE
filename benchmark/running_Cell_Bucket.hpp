@@ -27,7 +27,7 @@ inline void run_Cell_Bucket()
   for (size_t i{ 0 }; i < N; i++) {
     double Ah, Wh, dtime;
 
-    cyc.CCCV(1, 4, 0.1, 1, 0, Ah, Wh, dtime);
+    cyc.CCCV(1, 4, 0.1, 1, 1, Ah, Wh, dtime);
     cyc.CCCV(1, 3, 0.1, 1, 0, Ah, Wh, dtime);
   }
 
