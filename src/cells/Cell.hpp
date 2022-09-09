@@ -42,7 +42,7 @@ public:
 
   double Cap() final { return capNom; }
   void setCapacity(double capacity) { capNom = capacity; }
-  void initialise() { cellData.initialise(*this); } // Initialisation functions.
+  virtual void initialise() { cellData.initialise(*this); } // Initialisation functions.
 
   constexpr double Vmin() override { return limits.Vmin; }
   constexpr double VMIN() override { return limits.VMIN; }
@@ -88,7 +88,7 @@ public:
     return free::check_voltage(v, *this);
   }
 
-  size_t getNcells() override { return 1; } //!< this is a single cell
+  size_t getNcells() override final { return 1; } //!< this is a single cell
 
   virtual void getVariations(double var[], int nin, int &nout) { nout = 0; }
 
@@ -117,12 +117,8 @@ public:
   //!< virtual void timeStep_CC(double dt, bool addData = false, int steps = 1) = 0;
 
   //!< dataStorage
-  void storeData() override //!< Add another data point in the array.
-  {
-    cellData.storeData(*this);
-  }
-
-  void writeData(const std::string &prefix) override { cellData.writeData(this, prefix); }
+  virtual void storeData() override { cellData.storeData(*this); } //!< Add another data point in the array.
+  virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); }
 
   virtual CellThroughputData getThroughput() { return {}; }
 
