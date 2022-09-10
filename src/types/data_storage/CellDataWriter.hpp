@@ -17,6 +17,7 @@
 
 #include "../../settings/enum_definitions.hpp"
 #include "cell_data.hpp"
+#include "../../utility/free_functions.hpp"
 
 namespace slide {
 
@@ -86,8 +87,12 @@ struct CellDataWriter
 
   inline static std::ofstream openFile(auto &cell, const std::string &prefix)
   {
-    //!< store histograms and degradation state of cell utilisation
-    std::string name = getName(cell, prefix); //!< name of the file
+    //!< store histograms and degradation state of cell
+    constexpr auto suffix = "cellData.csv";
+    const auto name = free::getName(cell, PathVar::results, prefix, suffix);
+
+
+    //  std::string name = getName(cell, prefix); //!< name of the file
     std::ofstream file(name, std::ios_base::app);
 
     if (!file.is_open()) {

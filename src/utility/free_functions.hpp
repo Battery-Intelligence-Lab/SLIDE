@@ -177,4 +177,10 @@ auto inline check_current(bool checkV, auto &su) //!< Check voltage.
   //!< TBC
 }
 
+inline static auto getName(auto &SU, const auto &folder, const std::string &prefix, const std::string &suffix)
+{
+  //!< name of the file, start with the full hierarchy-ID to identify this cell
+  return folder + (prefix + "_" + SU.getFullID() + "_" + suffix);
+}
+
 } // namespace slide::free
