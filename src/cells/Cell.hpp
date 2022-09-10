@@ -7,13 +7,13 @@
 
 #pragma once
 
+#include "cell_limits.hpp"
 #include "../settings/settings.hpp"
 #include "../StorageUnit.hpp"
 #include "../types/Histogram.hpp"
 #include "../types/data_storage/CellData.hpp"
 #include "../types/Status.hpp"
 #include "../utility/utility.hpp"
-#include "cell_limits.hpp"
 
 #include <cassert>
 #include <iostream>

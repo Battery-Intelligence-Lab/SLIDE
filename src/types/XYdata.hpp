@@ -7,6 +7,10 @@
 
 #pragma once
 
+#include "FixedData.hpp"
+#include "../utility/interpolation.hpp"
+#include "../utility/io/read_CSVfiles.hpp"
+
 #include <stdexcept>
 #include <vector>
 #include <array>
@@ -15,10 +19,6 @@
 #include <filesystem>
 #include <type_traits>
 #include <span>
-
-#include "../utility/interpolation.hpp"
-#include "../utility/io/read_CSVfiles.hpp"
-#include "FixedData.hpp"
 
 namespace slide {
 

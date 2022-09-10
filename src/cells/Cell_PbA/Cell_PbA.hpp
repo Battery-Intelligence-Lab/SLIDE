@@ -12,10 +12,10 @@
 
 #pragma once
 
+#include "State_PbA.hpp"
 #include "../Cell.hpp"
 #include "../../settings/settings.hpp"
 #include "../../utility/utility.hpp"
-#include "State_PbA.hpp"
 
 #include <string>
 #include <vector>

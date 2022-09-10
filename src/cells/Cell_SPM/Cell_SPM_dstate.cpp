@@ -8,6 +8,8 @@
  * See the licence file LICENCE.txt for more information.
  */
 
+#include "Cell_SPM.hpp"
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -16,10 +18,6 @@
 #include <array>
 #include <algorithm>
 #include <utility>
-
-#include "Cell_SPM.hpp"
-#include "../../settings/settings.hpp"
-#include "../../utility/utility.hpp"
 
 namespace slide {
 void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)

@@ -5,14 +5,14 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
+#include "CoolSystem_HVAC.hpp"
+#include "../settings/settings.hpp"
+#include "../utility/util.hpp"
+
 #include <cmath>
 #include <iostream>
 #include <fstream>
 #include <string>
-
-#include "CoolSystem_HVAC.hpp"
-#include "../settings/settings.hpp"
-#include "../utility/util.hpp"
 
 namespace slide {
 CoolSystem_HVAC::CoolSystem_HVAC()

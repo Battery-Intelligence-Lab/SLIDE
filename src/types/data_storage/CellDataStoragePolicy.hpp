@@ -11,7 +11,6 @@
 
 #include "../../settings/enum_definitions.hpp"
 
-
 #include <type_traits>
 
 namespace slide::policy {

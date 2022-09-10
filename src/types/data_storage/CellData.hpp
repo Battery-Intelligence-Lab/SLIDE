@@ -7,11 +7,11 @@
 
 #pragma once
 
-#include <string>
-
 #include "CellDataStorage.hpp"
 #include "CellDataWriter.hpp"
 #include "../../settings/enum_definitions.hpp"
+
+#include <string>
 
 namespace slide {
 template <settings::cellDataStorageLevel N>

@@ -10,11 +10,11 @@
 
 #pragma once
 
+#include "DynamicMatrix.hpp"
+
 #include <cstdlib>
 #include <array>
 #include <cmath>
-
-#include "DynamicMatrix.hpp"
 
 namespace slide {
 template <typename T, size_t ROW, size_t COL>

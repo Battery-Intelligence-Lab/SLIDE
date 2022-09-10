@@ -8,6 +8,8 @@
  * See the licence file LICENCE.txt for more information.
  */
 
+#include "Cell_SPM.hpp"
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -16,10 +18,6 @@
 #include <array>
 #include <algorithm>
 #include <utility>
-
-#include "Cell_SPM.hpp"
-#include "../../utility/utility.hpp"
-#include "../../settings/settings.hpp"
 
 namespace slide {
 double Cell_SPM::getThermalSurface()

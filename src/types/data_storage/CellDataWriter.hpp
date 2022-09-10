@@ -7,6 +7,10 @@
 
 #pragma once
 
+#include "cell_data.hpp"
+#include "../../settings/enum_definitions.hpp"
+#include "../../utility/free_functions.hpp"
+
 #include <string>
 #include <vector>
 #include <fstream>
@@ -14,10 +18,6 @@
 #include <cstdlib>
 #include <array>
 #include <span>
-
-#include "../../settings/enum_definitions.hpp"
-#include "cell_data.hpp"
-#include "../../utility/free_functions.hpp"
 
 namespace slide {
 

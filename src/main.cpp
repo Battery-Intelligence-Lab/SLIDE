@@ -10,6 +10,10 @@
  */
 
 //!< Include header files
+#include "slide.hpp"
+#include "../benchmark/running_Cell_Bucket.hpp"
+
+
 #include <ctime>
 #include <thread>
 #include <array>
@@ -17,9 +21,6 @@
 #include <random>
 #include <cmath>
 #include <iomanip>
-
-#include "slide.hpp"
-#include "../benchmark/running_Cell_Bucket.hpp"
 
 int main()
 {

@@ -10,6 +10,9 @@
 
 #pragma once
 
+#include "../../types/matrix.hpp"
+#include "../util_debug.hpp"
+
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -19,9 +22,6 @@
 #include <map>
 #include <span>
 #include <cstring> //!< -> for memcpy
-
-#include "../../types/matrix.hpp"
-#include "../util_debug.hpp"
 
 namespace slide {
 template <typename Tpath>

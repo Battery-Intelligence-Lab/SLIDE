@@ -20,16 +20,16 @@
  * See the licence file LICENCE.txt for more information.
  */
 
-#include <array>
-#include <thread>
-#include <algorithm>
-
 #include "../cells/cells.hpp"
 #include "determine_OCV.hpp"
 #include "CyclerOld.hpp"
 #include "Cycler.hpp"
 #include "determine_characterisation.hpp"
 #include "../utility/utility.hpp"
+
+#include <array>
+#include <thread>
+#include <algorithm>
 
 namespace slide {
 bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM &M,

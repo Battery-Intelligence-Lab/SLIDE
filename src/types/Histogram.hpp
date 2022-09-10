@@ -9,13 +9,13 @@
 
 #pragma once
 
+#include "../utility/util.hpp"
+
 #include <vector>
 #include <cstdlib>
 #include <algorithm>
 #include <span>
 #include <fstream>
-
-#include "../utility/util.hpp"
 
 namespace slide {
 

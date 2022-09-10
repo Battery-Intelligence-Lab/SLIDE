@@ -9,13 +9,13 @@
 
 #pragma once
 
-#include <string_view>
-#include <memory>
-
 #include "Module.hpp"
 #include "../settings/settings.hpp"
 #include "../cells/Cell.hpp"
 #include "../types/data_storage/cell_data.hpp"
+
+#include <string_view>
+#include <memory>
 
 namespace slide {
 class Module_s : public Module //<DATASTORE_MODULE>

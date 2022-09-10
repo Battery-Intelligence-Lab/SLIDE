@@ -10,15 +10,16 @@
  * See the licence file LICENCE.txt for more information.
  */
 
-#include <cmath>
-#include <iostream>
-#include <array>
 
 #include "Cell_KokamNMC.hpp"
 #include "../../utility/io/read_CSVfiles.hpp"
 #include "../../utility/interpolation.hpp"
 #include "State_SPM.hpp"
 #include "../../param/param_default.hpp"
+
+#include <cmath>
+#include <iostream>
+#include <array>
 
 namespace slide {
 Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)

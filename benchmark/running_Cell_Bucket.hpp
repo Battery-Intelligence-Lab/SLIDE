@@ -19,7 +19,7 @@ inline void run_Cell_Bucket()
   std::string ID = "temp";
   Clock clk;
 
-  constexpr size_t N = 10;
+  constexpr size_t N = 2;
 
   auto c = Cell_Bucket();
   auto cyc = Cycler(&c, ID);

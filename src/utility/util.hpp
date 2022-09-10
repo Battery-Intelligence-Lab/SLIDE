@@ -15,6 +15,11 @@
 //!< Include other util files.
 #pragma once
 
+#include "../settings/settings.hpp"
+#include "slide_aux.hpp"
+#include "util_debug.hpp"
+#include "units.hpp"
+
 #include <string>
 #include <iostream>
 #include <array>
@@ -22,12 +27,6 @@
 #include <vector>
 #include <cmath>
 #include <ctime>
-
-//#include "util_error.hpp"
-#include "../settings/settings.hpp"
-#include "slide_aux.hpp"
-#include "util_debug.hpp"
-#include "units.hpp"
 
 namespace slide {
 struct Clock

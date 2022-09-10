@@ -7,14 +7,14 @@
 
 #pragma once
 
+#include "../Histogram.hpp"
+#include "cell_data.hpp"
+#include "../../settings/enum_definitions.hpp"
+
 #include <utility>
 #include <iostream>
 #include <array>
 #include <vector>
-
-#include "../Histogram.hpp"
-#include "cell_data.hpp"
-#include "../../settings/enum_definitions.hpp"
 
 namespace slide {
 

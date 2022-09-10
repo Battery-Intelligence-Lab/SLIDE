@@ -10,11 +10,11 @@
 
 #pragma once
 
-#include <array>
-
 #include "../../types/matrix.hpp"
 #include "../../settings/settings.hpp"
 #include "../../utility/utility.hpp"
+
+#include <array>
 
 namespace slide {
 //!< Define a structure with the matrices of the spatial discretisation of the solid diffusion PDE

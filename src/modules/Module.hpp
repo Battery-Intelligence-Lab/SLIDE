@@ -7,13 +7,6 @@
 
 #pragma once
 
-#include <vector>
-#include <cstdlib>
-#include <memory>
-#include <iostream>
-#include <span>
-
-//#include "Cell.hpp"
 #include "../settings/settings.hpp"
 #include "../StorageUnit.hpp"
 #include "../cooling/CoolSystem_HVAC.hpp"
@@ -21,6 +14,13 @@
 #include "../types/data_storage/cell_data.hpp"
 #include "../types/data_storage/module_data.hpp"
 #include "../utility/free_functions.hpp"
+
+#include <vector>
+#include <cstdlib>
+#include <memory>
+#include <iostream>
+#include <span>
+
 
 namespace slide {
 struct ModuleThermalParam

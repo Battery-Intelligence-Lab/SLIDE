@@ -12,12 +12,12 @@
 
 #pragma once
 
-#include <string>
-
 #include "enum_definitions.hpp"
 #include "constants.hpp"
 #include "slide_paths.hpp"
 #include "tolerances.hpp"
+
+#include <string>
 
 namespace slide::settings::cool //!< Cooling System Settings.
 {

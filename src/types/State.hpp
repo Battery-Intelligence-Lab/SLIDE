@@ -9,9 +9,9 @@
 
 #pragma once
 
-#include <array>
-
 #include "../settings/settings.hpp"
+
+#include <array>
 
 namespace slide {
 

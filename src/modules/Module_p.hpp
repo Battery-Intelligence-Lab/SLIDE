@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include <string>
-
 #include "Module.hpp"
 #include "../types/data_storage/cell_data.hpp"
+
+#include <string>
 
 namespace slide {
 class Module_p : public Module

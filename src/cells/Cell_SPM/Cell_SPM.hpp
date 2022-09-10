@@ -17,20 +17,18 @@
 
 #pragma once
 
+#include "State_SPM.hpp" //!< class that represents the state of a cell, the state is the collection of all time-varying conditions of the battery
+#include "Model_SPM.hpp" //!< defines a struct with the values for the matrices used in the spatial discretisation of the diffusion PDE
+#include "../Cell.hpp"
+#include "../../utility/utility.hpp"   // Do not remove they are required in cpp files.
+#include "../../settings/settings.hpp" // Do not remove they are required in cpp files.
+#include "param/param_SPM.hpp"
+#include "../../types/OCVcurves.hpp"
+
 #include <vector>
 #include <array>
 #include <iostream>
 #include <memory>
-
-#include "State_SPM.hpp" //!< class that represents the state of a cell, the state is the collection of all time-varying conditions of the battery
-#include "Model_SPM.hpp" //!< defines a struct with the values for the matrices used in the spatial discretisation of the diffusion PDE
-#include "../Cell.hpp"
-#include "../../utility/utility.hpp"
-#include "../../settings/settings.hpp"
-#include "param/param_SPM.hpp"
-#include "../../types/OCVcurves.hpp"
-
-//#include <string>
 
 namespace slide {
 //!< Free functions:

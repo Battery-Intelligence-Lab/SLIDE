@@ -11,8 +11,6 @@
  */
 
 #include "Cell_SPM.hpp"
-#include "../../utility/utility.hpp"
-//#include "../../param/param_default.hpp"
 
 #include <cassert>
 #include <iostream>

@@ -5,12 +5,12 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
+#include "CoolSystem_open.hpp"
+
 #include <cmath>
 #include <iostream>
 #include <fstream>
 #include <string>
-
-#include "CoolSystem_open.hpp"
 
 namespace slide {
 CoolSystem_open::CoolSystem_open() : CoolSystem()

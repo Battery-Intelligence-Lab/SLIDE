@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include <iostream>
-
 #include "../Histogram.hpp"
+
+#include <iostream>
 
 namespace slide {
 

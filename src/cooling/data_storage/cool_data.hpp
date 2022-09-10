@@ -9,6 +9,7 @@
 
 #include "../../types/Histogram.hpp"
 #include "../../settings/settings.hpp"
+
 #include <type_traits>
 #include <vector>
 

@@ -14,17 +14,17 @@
 
 #pragma once
 
+#include "interpolation.hpp"
+#include "../types/matrix.hpp"
+#include "../types/XYdata.hpp"
+#include "../types/FixedData.hpp"
+
 #include <stdexcept>
 #include <vector>
 #include <array>
 #include <functional>
 #include <cmath>
 #include <filesystem>
-
-#include "interpolation.hpp"
-#include "../types/matrix.hpp"
-#include "../types/XYdata.hpp"
-#include "../types/FixedData.hpp"
 
 namespace slide {
 template <typename StoredClass, int N>

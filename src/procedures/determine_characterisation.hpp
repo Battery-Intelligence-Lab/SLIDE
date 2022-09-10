@@ -11,12 +11,12 @@
 
 #pragma once
 
-#include <string>
-
 #include "../cells/cells.hpp"
 #include "../utility/utility.hpp"
 #include "CyclerOld.hpp"
 #include "Cycler.hpp"
+
+#include <string>
 
 namespace slide {
 bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp,

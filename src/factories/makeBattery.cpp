@@ -5,6 +5,8 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
+#include "makeBattery.hpp"
+
 #include "../cells/cells.hpp"
 #include "../modules/Module_s.hpp"
 #include "../modules/Module_p.hpp"
@@ -12,8 +14,6 @@
 #include "../procedures/Procedure.hpp"
 //#include "unit_tests.hpp"
 #include "../settings/settings.hpp"
-
-#include "makeBattery.hpp"
 
 #include <cmath>
 #include <random>

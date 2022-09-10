@@ -10,13 +10,13 @@
  * See the licence file LICENCE.txt for more information.
  */
 
+#include "Cell_LGChemNMC.hpp"
+#include "State_SPM.hpp"
+#include "../../utility/io/read_CSVfiles.hpp"
+#include "../../param/param_default.hpp"
+
 #include <cmath>
 #include <iostream>
-
-#include "Cell_LGChemNMC.hpp"
-#include "../../utility/io/read_CSVfiles.hpp"
-#include "State_SPM.hpp"
-#include "../../param/param_default.hpp"
 
 namespace slide {
 Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
