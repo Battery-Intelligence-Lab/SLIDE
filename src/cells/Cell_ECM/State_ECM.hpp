@@ -7,14 +7,23 @@
 
 #pragma once
 
-#include <array>
+#include "../../types/State.hpp"
 
 namespace slide {
-struct State_ECM : public std::array<double, 4>
+struct State_ECM : public State<4>
 {
-  inline auto &I() { return this->at(0); }   //!< Current, [A], + for discharge, - for charge
-  inline auto &Ir() { return this->at(1); }  //!< Current through the parallel resistance, [I]
-  inline auto &SOC() { return this->at(2); } //!< state of charge [0-1]
-  inline auto &T() { return this->at(3); }   //!< temperature, [K]
+  enum Index : size_t //!< Index variables for:
+  {
+    i_I,
+    i_Ir,
+    i_SOC,
+    i_T,      //!< cell temperature [K]
+    N_states, // Do not use N_states for total states, use .size()
+  };
+
+  inline auto &I() { return (*this)[i_I]; }     //!< Current, [A], + for discharge, - for charge
+  inline auto &Ir() { return (*this)[i_Ir]; }   //!< Current through the parallel resistance, [I]
+  inline auto &SOC() { return (*this)[i_SOC]; } //!< state of charge [0-1]
+  inline auto &T() { return (*this)[i_T]; }     //!< temperature, [K]
 };
 } // namespace slide

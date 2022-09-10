@@ -87,9 +87,7 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, double &Ah, double &Wh
 
   const bool boolStoreData = ndt_data > 0;
   //!< store data point
-  if (boolStoreData)
-    storeData();
-
+  if (boolStoreData) storeData();
   //!< cout<<"resting and voltage is "<<su->V()<<", current = "<<su->I()<<endl;
 
   //!< Variables

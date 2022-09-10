@@ -265,10 +265,12 @@ inline void Cell_ECM::timeStep_CC(double dt, int nstep)
     throw 10;
   }
 
+  const auto dth = dt / 3600.0;
   //!< take the specified number of time steps
   for (int t = 0; t < nstep; t++) {
     //!< Using forward Euler time integration.
-    st.SOC() -= dt * st.I() / (3600 * Cap());
+    const auto dAh = st.I() * dth;
+    st.SOC() -= dAh / Cap();
     st.Ir() -= dt * (st.Ir() + st.I()) / (Rp * Cp);
     //	dIr/dt =-1/RC Ir - 1/RC I
 

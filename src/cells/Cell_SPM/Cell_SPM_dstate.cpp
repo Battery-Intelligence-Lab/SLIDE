@@ -303,7 +303,7 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
   sparam.s_dt = nstep * dt;
 
   //!< *********************************************  Resolve the diffusion model for every dt time step ****************************************************************************************
-
+  const auto dth = dt / 3600.0;
   for (int t = 0; t < nstep; t++) {
     slide::State_SPM d_st{};
     //!< Calculate the time derivatives
@@ -319,6 +319,8 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
     sparam.s_dai_update = false;
     sparam.s_lares_update = false;
 
+
+    const auto dAh = st.I() * dth;
     //!< increase the cumulative variables of this cell
     if constexpr (settings::data::storeCumulativeData) {
       st.time() += dt;

@@ -10,13 +10,14 @@
 #pragma once
 
 #include "../../settings/settings.hpp"
+#include "../../types/State.hpp"
 
 #include <cstdlib>
 #include <array>
 #include <span>
 
 namespace slide {
-class State_SPM : public std::array<double, 29> //!< #CHECK how can we make this so it takes 29=N_states from enum?
+class State_SPM : public State<29> //!< #CHECK how can we make this so it takes 29=N_states from enum?
 {
 public:
   constexpr static auto nch = settings::nch;
