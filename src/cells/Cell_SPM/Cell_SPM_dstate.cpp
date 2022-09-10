@@ -277,7 +277,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
     std::cout << "Cell_SPM::dState terminating with degradation.\n";
 }
 
-void Cell_SPM::timeStep_CC(double dt, bool addData, int nstep)
+void Cell_SPM::timeStep_CC(double dt, int nstep)
 {
   /*
    * take a number of time steps with a constant current
@@ -320,12 +320,10 @@ void Cell_SPM::timeStep_CC(double dt, bool addData, int nstep)
     sparam.s_lares_update = false;
 
     //!< increase the cumulative variables of this cell
-    if (addData) {
-#if DATASTORE_CELL > 0
-      timetot += dt;
-      ahtot += std::abs(I()) * dt / 3600.0;
-      whtot += std::abs(I()) * V() * dt / 3600.0;
-#endif
+    if constexpr (settings::data::storeCumulativeData) {
+      st.time() += dt;
+      st.Ah() += std::abs(dAh);
+      st.Wh() += std::abs(dAh * V());
     }
   }
 

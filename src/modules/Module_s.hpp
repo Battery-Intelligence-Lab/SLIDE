@@ -44,7 +44,7 @@ public:
   bool validSUs(moduleSUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
 
   Module_s *copy() override;
   TimingData_Module_s getTimings();

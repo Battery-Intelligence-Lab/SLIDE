@@ -110,12 +110,6 @@ public:
     return T();
   }
 
-  //!< void setT(double Tnew) = 0;
-
-  //!< virtual bool validStates(bool print = true) = 0;
-  //!<  virtual bool validStates(double s[], int n, double &soc, double &t, double &i, bool print = true) = 0;
-  //!< virtual void timeStep_CC(double dt, bool addData = false, int steps = 1) = 0;
-
   //!< dataStorage
   virtual void storeData() override { cellData.storeData(*this); } //!< Add another data point in the array.
   virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); }

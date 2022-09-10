@@ -276,7 +276,7 @@ public:
   Status setStates(setStates_t sSpan, bool checkV, bool print) override;
   bool validStates(bool print = true) override;
   inline double SOC() override { return st.SOC(); }
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
 
   Cell_SPM *copy() override { return new Cell_SPM(*this); }
   //!< Obsolete functions (do not use):

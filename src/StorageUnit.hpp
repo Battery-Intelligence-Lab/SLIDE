@@ -85,9 +85,9 @@ public:
   virtual void setT(double Tnew) = 0;
 
   //!< functionality
-  virtual bool validStates(bool print = true) = 0;                              //!< checks if a state array is valid
-  virtual StorageUnit *copy() = 0;                                              //!< copy this SU to a new object
-  virtual void timeStep_CC(double dt, bool addData = false, int steps = 1) = 0; //!< take a number of time steps
+  virtual bool validStates(bool print = true) = 0;        //!< checks if a state array is valid
+  virtual StorageUnit *copy() = 0;                        //!< copy this SU to a new object
+  virtual void timeStep_CC(double dt, int steps = 1) = 0; //!< take a number of time steps
 
   //!< Data collection of cycling data (I, V, T, etc. for every cell)
   virtual void storeData() = 0;

@@ -422,7 +422,7 @@ Some new ideas to implement:
   - [x] Cell, Cell_Bucket, Cell_ECM: Instead of increase in *.exe, there is a decrease. 80 kB -> 77 kB
   - [x] Model_SPM, State_SPM. 
   - [x] interpolation.cpp, read_CSVfiles.cpp, slide_aux.cpp, util.cpp, util_error.cpp -> 77 kB -> 76 kB
-
+- [ ] addData parameter in timeStep_CC functions is now useless since it only stores throughputs which are now included in states. So it is removed. 
 
 
 ### Formatting: 

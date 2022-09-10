@@ -134,7 +134,7 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, double &Ah, double &Wh
 
     //!< take a number of time steps
     try {
-      su->timeStep_CC(dti, boolStoreData, nOnce);
+      su->timeStep_CC(dti, nOnce);
     } catch (int e) {
       if constexpr (settings::printBool::printCrit)
         std::cout << "error in Cycler::rest when advancing in time with nOnce = "
@@ -371,7 +371,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
 
     //!< take a number of time steps
     try {
-      su->timeStep_CC(dti, boolStoreData, nOnce);
+      su->timeStep_CC(dti, nOnce);
     } catch (int e) {
       if constexpr (settings::printBool::printCrit)
         std::cout << "error in Cycler::CC when advancing in time with nOnce = "
@@ -634,7 +634,7 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
 
     //!< take a time step
     try {
-      su->timeStep_CC(dti, boolStoreData);
+      su->timeStep_CC(dti);
     } catch (int e) {
       if constexpr (settings::printBool::printCrit)
         std::cout << "error in Cycler::CV of module " << su->getFullID() << " in time step "

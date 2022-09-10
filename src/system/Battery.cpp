@@ -217,11 +217,11 @@ Battery *Battery::copy()
   return copied_ptr;
 }
 
-void Battery::timeStep_CC(double dt, bool addData, int steps)
+void Battery::timeStep_CC(double dt, int steps)
 {
 
   //!< integrate in time for the cells
-  cells->timeStep_CC(dt, addData, steps);
+  cells->timeStep_CC(dt, steps);
 
   //!< increase the losses from the converter
   double l = conv->getLosses(V(), I()) * dt * steps; //!< losses [J] during this period

@@ -285,7 +285,7 @@ bool Module_s::validSUs(moduleSUs_span_t c, bool print)
   return result; //!< else the cells are valid
 }
 
-void Module_s::timeStep_CC(double dt, bool addData, int nstep)
+void Module_s::timeStep_CC(double dt, int nstep)
 {
   /*
    * a time step at constant current is simply a time step of every individual cell
@@ -310,7 +310,7 @@ void Module_s::timeStep_CC(double dt, bool addData, int nstep)
   }
 
   //!< we simply take one CC time step on every cell
-  auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, addData, nstep); };
+  auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, nstep); };
 
   try {
     run(task_indv, getNSUs(), (par ? -1 : 1));

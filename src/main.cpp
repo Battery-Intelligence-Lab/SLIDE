@@ -148,7 +148,7 @@ int main()
   //!<	cb_ptr->setCurrent(cb_ptr->Cap() / 2.0);
   //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  //!<	cb_ptr->timeStep_CC(2, true, 900);
+  //!<	cb_ptr->timeStep_CC(2, 900);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
   //!<	auto u = cb_ptr->viewStates();
@@ -200,7 +200,7 @@ int main()
   //!<	cb_ptr->setCurrent(5);
   //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  //!<	cb_ptr->timeStep_CC(0.1, true, 3600);
+  //!<	cb_ptr->timeStep_CC(0.1, 3600);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
   //!<	auto u = cb_ptr->viewStates();
@@ -222,7 +222,7 @@ int main()
   //!<	cb_ptr->setCurrent(cb_ptr->Cap() / 2.0);
   //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  //!<	cb_ptr->timeStep_CC(2, true, 900);
+  //!<	cb_ptr->timeStep_CC(2, 900);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
   //!<	auto u = cb_ptr->viewStates();
@@ -367,7 +367,7 @@ int main()
   //!<	cb_ptr->setCurrent(5);
   //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  //!<	cb_ptr->timeStep_CC(1, true, 360);
+  //!<	cb_ptr->timeStep_CC(1, 360);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
   //!<	//!<auto u = cb_ptr->viewStates();
@@ -415,7 +415,7 @@ int main()
   //!<	cyc.CC(5, 4, 360, 1, 10, Ah, Wh);
   //!<	//!<cb_ptr->setCurrent(5);
   //!<	//!<std::cout << "Current: " << cb_ptr->I() << '\n';
-  //!<	//!<cb_ptr->timeStep_CC(0.1, true, 3600);
+  //!<	//!<cb_ptr->timeStep_CC(0.1 3600);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
   //!<	//!<auto u = cb_ptr->viewStates();
   //!<	//!<//!<for (auto x : u)

@@ -60,7 +60,7 @@ public:
   inline void setT(double Tnew) override { st.T() = Tnew; }
 
   virtual bool validStates(bool print = true) override;
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
 
   Cell_ECM *copy() override { return new Cell_ECM(*this); }
 };
@@ -252,7 +252,7 @@ inline bool Cell_ECM::validStates(bool print)
   return range;
 }
 
-inline void Cell_ECM::timeStep_CC(double dt, bool addData, int nstep)
+inline void Cell_ECM::timeStep_CC(double dt, int nstep)
 {
   /*
    *	take a time step of dt seconds while keeping the current constant
@@ -272,8 +272,12 @@ inline void Cell_ECM::timeStep_CC(double dt, bool addData, int nstep)
     st.Ir() -= dt * (st.Ir() + st.I()) / (Rp * Cp);
     //	dIr/dt =-1/RC Ir - 1/RC I
 
-    if (addData) //!< increase the cumulative variables of this cell
-      storeData();
+    //!< increase the cumulative variables of this cell
+    if constexpr (settings::data::storeCumulativeData) {
+      st.time() += dt;
+      st.Ah() += std::abs(dAh);
+      st.Wh() += std::abs(dAh * V());
+    }
   }
 }
 } // namespace slide

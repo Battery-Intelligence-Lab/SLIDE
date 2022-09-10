@@ -58,7 +58,7 @@ public:
   inline void setT(double Tnew) override { st.T() = Tnew; }
 
   bool validStates(bool print = true) override;
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
 
   virtual CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
 
@@ -249,7 +249,7 @@ inline bool Cell_Bucket::validStates(bool print)
   return range;
 }
 
-inline void Cell_Bucket::timeStep_CC(double dt, bool addData, int nstep)
+inline void Cell_Bucket::timeStep_CC(double dt, int nstep)
 {
   /*
    *	take a time step of dt seconds while keeping the current constant
@@ -277,9 +277,6 @@ inline void Cell_Bucket::timeStep_CC(double dt, bool addData, int nstep)
       st.Ah() += std::abs(dAh);
       st.Wh() += std::abs(dAh * V());
     }
-
-    if (addData)
-      storeData();
   }
 }
 } // namespace slide

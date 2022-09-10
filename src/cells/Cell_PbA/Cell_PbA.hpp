@@ -123,7 +123,7 @@ public:
   inline void setT(double Tnew) override { st.T() = Tnew; }
 
   bool validStates(bool print = true) override;
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
 
   Cell_PbA *copy() override { return new Cell_PbA(*this); }
 

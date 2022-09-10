@@ -208,7 +208,7 @@ double Cell_PbA::C_deg()
   return C_EOL * std::exp(-c_Z * (1 - st.Zw() / (1.6 * Z_IEC)));
 }
 
-void Cell_PbA::timeStep_CC(double dt, bool addData, int nstep)
+void Cell_PbA::timeStep_CC(double dt, int nstep)
 {
   /*
    *	take a time step of dt seconds while keeping the current constant
@@ -252,8 +252,11 @@ void Cell_PbA::timeStep_CC(double dt, bool addData, int nstep)
     st.f_stratification() += (f_plus() - f_minus()) * dt;
     st.f_stratification() = std::max(st.f_stratification(), 0.0); //!< Cannot be less than 0.
 
-    if (addData)
-      storeData();
+    if constexpr (settings::data::storeCumulativeData) {
+      st.time() += dt;
+      st.Ah() += std::abs(dAh);
+      st.Wh() += std::abs(dAh * V());
+    }
   }
 }
 
