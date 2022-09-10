@@ -66,13 +66,15 @@ struct CellDataStorage<settings::cellDataStorageLevel::storeTimeData>
   template <typename Cell_t>
   inline void storeData(Cell_t &cell)
   {
+    const auto throughputs = cell.getThroughputs();
+
     data.push_back(cell.I());
     data.push_back(cell.V());
     data.push_back(cell.SOC());
     data.push_back(cell.T());
-    data.push_back(0); // time
-    data.push_back(0); // Ah
-    data.push_back(0); // Wh
+    data.push_back(throughputs.time); // time
+    data.push_back(throughputs.Ah);   // Ah
+    data.push_back(throughputs.Wh);   // Wh
   }
 };
 } // namespace slide

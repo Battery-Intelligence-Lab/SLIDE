@@ -57,7 +57,7 @@ inline void writeData(std::ofstream &file, std::vector<double> &data)
 template <settings::cellDataStorageLevel N>
 void writeDataImpl(std::ofstream &file, auto &cell, auto &dataStorage)
 {
-  if constexpr (N >= settings::cellDataStorageLevel::storeCumulativeData)
+  if constexpr (N == settings::cellDataStorageLevel::storeCumulativeData)
     writeVarAndStates(file, cell.viewStates(), cell.viewVariations());
 
   if constexpr (N >= settings::cellDataStorageLevel::storeHistogramData)
@@ -79,34 +79,10 @@ struct CellDataWriter
    * 	2 	cycling data (I, V, T at every time step) in file xxx_cellData.csv
    */
 
-  inline static std::string getName(auto &cell, const std::string &prefix)
-  {
-    //!< name of the file, start with the full hierarchy-ID to identify this cell
-    return prefix + "_" + cell.getFullID() + "_cellData.csv";
-  }
-
-  inline static std::ofstream openFile(auto &cell, const std::string &prefix)
-  {
-    //!< store histograms and degradation state of cell
-    constexpr auto suffix = "cellData.csv";
-    const auto name = free::getName(cell, PathVar::results, prefix, suffix);
-
-
-    //  std::string name = getName(cell, prefix); //!< name of the file
-    std::ofstream file(name, std::ios_base::app);
-
-    if (!file.is_open()) {
-      std::cerr << "ERROR in Cell::writeData, could not open file "
-                << name << '\n';
-      throw 11;
-    }
-
-    return file;
-  }
-
   inline static void writeData(auto &cell, const std::string &prefix, auto &storage)
   {
-    auto file = openFile(cell, prefix);
+    constexpr auto suffix = "cellData.csv";
+    auto file = free::openFile(cell, PathVar::results, prefix, suffix);
     writeDataImpl<N>(file, cell, storage);
     file.close();
   }

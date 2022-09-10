@@ -60,6 +60,9 @@ public:
   bool validStates(bool print = true) override;
   void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
 
+  virtual CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+
+
   Cell_Bucket *copy() override { return new Cell_Bucket(*this); }
 
   //!< dataStorage

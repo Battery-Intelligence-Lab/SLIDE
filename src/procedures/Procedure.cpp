@@ -789,7 +789,7 @@ std::cout<<"Total heat generation of all cells is "<< Qgen<<endl;*/
   file << "time [s]" << ',' << "Current throughput [Ah]" << ',' << "Energy throughput [Wh]"
        << "Capacity [Ah]" << ',' << "States" << '\n';
   for (auto &cell : cells) {
-    const auto th = cell->getThroughput();
+    const auto th = cell->getThroughputs();
     const auto cap = checkCap(cell);
 
     file << th.time << ',' << th.Ah << ',' << th.Wh << ','

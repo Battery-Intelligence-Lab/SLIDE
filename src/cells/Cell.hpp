@@ -120,7 +120,7 @@ public:
   virtual void storeData() override { cellData.storeData(*this); } //!< Add another data point in the array.
   virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); }
 
-  virtual CellThroughputData getThroughput() { return {}; }
+  virtual CellThroughputData getThroughputs() { return {}; }
 
   //!< #if DATASTORE_CELL == 1
   //!< 		virtual const CellCommonHist &getHists()
