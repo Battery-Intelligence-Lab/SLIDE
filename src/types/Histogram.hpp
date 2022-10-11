@@ -48,7 +48,7 @@ public:
      * bins[0] is number of elements less than x_min
      * bins[end] is number of elements more than x_max
      * */
-    auto i = static_cast<int>(1 + (x - x_min) / Nbins);
+    auto i = static_cast<int>(1 + (x - x_min) / dx);
 
     i = std::clamp(i, 0, (int)bins.size() - 1); //!< #CHECK size_t -> int causes warning.
     bins[i]++;

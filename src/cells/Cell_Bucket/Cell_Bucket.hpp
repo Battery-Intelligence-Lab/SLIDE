@@ -78,6 +78,8 @@ inline Cell_Bucket::Cell_Bucket()
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
 
   OCV.check_is_fixed();
+
+  cellData.initialise(*this);
 }
 
 inline Cell_Bucket::Cell_Bucket(std::string IDi, double capin, double SOCin) : Cell_Bucket()

@@ -31,6 +31,7 @@ inline void run_Cell_Bucket()
     cyc.CCCV(1, 3, 0.1, 1, 1, Ah, Wh, dtime);
   }
 
+  c.writeData("test");
   std::cout << "V: " << c.V() << "\n";
 
   std::cout << "Finished run_Cell_Bucket in " << clk << ".\n";

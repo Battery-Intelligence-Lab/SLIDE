@@ -42,7 +42,6 @@ public:
 
   double Cap() final { return capNom; }
   void setCapacity(double capacity) { capNom = capacity; }
-  virtual void initialise() { cellData.initialise(*this); } // Initialisation functions.
 
   constexpr double Vmin() override { return limits.Vmin; }
   constexpr double VMIN() override { return limits.VMIN; }
