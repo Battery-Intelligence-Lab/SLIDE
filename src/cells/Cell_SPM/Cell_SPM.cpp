@@ -319,7 +319,7 @@ double Cell_SPM::V(bool print)
 Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 {
   //!< ID string
-  ID = "cell_SPM";
+  ID = "Cell_SPM";
 
   OCV_curves = OCVcurves::makeOCVcurves(cellType::KokamNMC);
 
@@ -355,6 +355,8 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
   //!< Default values for not defined other param:
 
   csparam.CS4Amax = 5 * st.an() * st.thickn() * geo.elec_surf; //!< assume the maximum crack surface is 5 times the initial anode surface
+
+  cellData.initialise(*this);
 }
 
 //!< int Cell_SPM::getVoltage_ne(bool print, double *v, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp)

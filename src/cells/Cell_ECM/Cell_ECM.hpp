@@ -62,6 +62,9 @@ public:
   virtual bool validStates(bool print = true) override;
   void timeStep_CC(double dt, int steps = 1) override;
 
+  CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+
+
   Cell_ECM *copy() override { return new Cell_ECM(*this); }
 };
 
@@ -69,12 +72,14 @@ public:
 
 inline Cell_ECM::Cell_ECM()
 {
+  ID = "Cell_ECM";
   capNom = 16;
   //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 11);
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
 
   OCV.check_is_fixed();
+  cellData.initialise(*this);
 }
 
 inline Cell_ECM::Cell_ECM(double capin, double SOCin) : Cell_ECM()

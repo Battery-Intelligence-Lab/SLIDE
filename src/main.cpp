@@ -134,8 +134,9 @@ int main()
   //
   //!< Benchmarks:
 
-  slide::benchmarks::run_Cell_Bucket();
-  // slide::benchmarks::run_Cell_SPM();
+  // slide::benchmarks::run_Cell_Bucket();
+  // slide::benchmarks::run_Cell_ECM();
+  slide::benchmarks::run_Cell_SPM();
 
   //!< Slide-pack tests:
 

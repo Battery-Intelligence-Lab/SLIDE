@@ -180,15 +180,9 @@ auto inline check_current(bool checkV, auto &su) //!< Check voltage.
   //!< TBC
 }
 
-inline auto getName(auto &SU, const auto &folder, const std::string &prefix, const std::string &suffix)
-{
-  //!< name of the file, start with the full hierarchy-ID to identify this cell
-  return folder + (prefix + "_" + SU.getFullID() + "_" + suffix);
-}
-
 inline std::ofstream openFile(auto &SU, const auto &folder, const std::string &prefix, const std::string &suffix)
 {
-  const auto name = free::getName(SU, PathVar::results, prefix, suffix);
+  const auto name = PathVar::results + (prefix + "_" + SU.getFullID() + "_" + suffix);
 
   //  std::string name = getName(cell, prefix); //!< name of the file
   std::ofstream file(name, std::ios_base::app); // #TODO app-> initially open then append.

@@ -25,12 +25,7 @@ struct CellDataStorage
   inline void initialise(Cell_t &) {} //!< Do nothing.
 
   template <typename Cell_t>
-  inline void storeData(Cell_t &)
-  {
-    if constexpr (settings::printBool::printCrit)
-      std::cout << "ERROR in Cell::storeData, the settings in constant.h are forbidding from storing data.\n";
-
-  } //!< Do nothing.
+  inline void storeData(Cell_t &) {} //!< Do nothing.
 };
 
 template <>

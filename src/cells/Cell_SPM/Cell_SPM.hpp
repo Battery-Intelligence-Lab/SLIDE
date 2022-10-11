@@ -236,6 +236,7 @@ public:
   //!< {
   //!< 	slide::validState(st, s_ini);
   //!< }
+  CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
 
   void overwriteCharacterisationStates(double Dpi, double Dni, double ri)
   {
