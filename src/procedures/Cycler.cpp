@@ -45,7 +45,7 @@ int Cycler::writeData()
 
 int Cycler::storeData()
 {
-  if (index >= settings::CELL_NDATA_MAX)
+  if (index >= settings::CELL_NDATA_MAX) // #TODO this one should not be here if we want to specialise every cell.
     writeData();
 
   //!< then store the data
@@ -157,7 +157,7 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, double &Ah, double &Wh
     else {
       //!< increase every other iteration, else thermal model might freak out
       if (ninc) { //!< e.g. rest after cycle -> cell needs to cool down before you can take very long time steps
-        nOnce++;  //!< #CHECK Increasing nOnce will cause not saving data regularly. We are probably not saving data every ndata_step
+        nOnce++;  //!< #TODO Increasing nOnce will cause not saving data regularly. We are probably not saving data every ndata_step
         ninc = false;
       } else
         ninc = true;
@@ -252,7 +252,7 @@ Status Cycler::setCurrent(double I, double vlim)
   } else {
     const auto status = free::check_safety(Vnew, *this);
 
-    if (status != Status::SafeVoltage) //!< #CHECK Can also put isStatusSafe but this should be faster
+    if (status != Status::SafeVoltage) //!< #TODO Can also put isStatusSafe but this should be faster
     {
       su->setCurrent(Iini, false, false); //!< reset the initial current (without checking voltage limits again)
       return status;
@@ -268,7 +268,7 @@ Status Cycler::setCurrent(double I, double vlim)
     if (Vini <= vlim && Vnew > vlim)
       return Status::ReachedVoltageLimit;
   } else {
-    if (Vini >= vlim && Vnew < vlim) //!< #CHECK why Vini check?
+    if (Vini >= vlim && Vnew < vlim) //!< #TODO why Vini check?
       return Status::ReachedVoltageLimit;
   }
 
@@ -417,7 +417,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
       break;
     }
 
-    const auto safetyStatus = free::check_safety(vi, *this); //!< #CHECK this is pretty much unnecessary.
+    const auto safetyStatus = free::check_safety(vi, *this); //!< #TODO this is pretty much unnecessary.
 
     if (safetyStatus != Status::SafeVoltage)
       return safetyStatus;
@@ -494,7 +494,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
         if constexpr (prdet)
           std::cout << "- below 3.1V per cell, reducing nOnce by 2 ";
       }
-      if (su->getVlow() < 3.0) //!< #CHECK this are for cells? What about modules?
+      if (su->getVlow() < 3.0) //!< #TODO this are for cells? What about modules?
       {                        //!< this gets directly to the cell level, so we know for sure the value which matters is 3
         nOnce = 1;
         allowUp = false;
@@ -568,7 +568,7 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
    * THROWS
    * 100 		time integration was stopped without the time or voltage limit reached
    */
-  using slide::util::sign; //!< #CHECK normally sign is very sensitive function
+  using slide::util::sign; //!< #TODO normally sign is very sensitive function
   const bool boolStoreData = ndt_data > 0;
 
   //!< Gain of the PI control (similar to Module_p::setCurrent())
@@ -761,12 +761,12 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
   Status succ;
   if (ttot >= tlim)
     succ = Status::ReachedTimeLimit; //!< time limit
-  else if (Itot)                     //!< #CHECK why a bool named Itot? It looks like double.
+  else if (Itot)                     //!< #TODO why a bool named Itot? It looks like double.
   {
     if (Vtolerance)
       succ = Status::ReachedCurrentLimit; //!< current limit
     else
-      succ = Status::ReachedSmallCurrent; //!< #CHECK is this ever possible? current became way too small, but voltage limit still not reached
+      succ = Status::ReachedSmallCurrent; //!< #TODO is this ever possible? current became way too small, but voltage limit still not reached
   } else {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "Error in Cycler::CV, stopped time integration for unclear reason after "
@@ -795,7 +795,7 @@ Status Cycler::CCCV(double I, double Vset, double Ilim, double dt, int ndt_data,
    *
    */
 
-  const double tlim = std::numeric_limits<double>::max(); //!< #CHECK why tlim is not good?
+  const double tlim = std::numeric_limits<double>::max(); //!< #TODO why tlim is not good?
   //!< check all input parameters are sensible
 
   return Cycler::CCCV_with_tlim(I, Vset, Ilim, tlim, dt, ndt_data, Ah, Wh, dtime);
@@ -827,7 +827,7 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
     Ilim = std::abs(Ilim);
   }
 
-  if (Vset < su->Vmin() || Vset > su->Vmax()) //!< #CHECK su Vmax and Vmin require lots of computation
+  if (Vset < su->Vmin() || Vset > su->Vmax()) //!< #TODO su Vmax and Vmin require lots of computation
   {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Cycler::CCCV, the set voltage of " << Vset
@@ -889,7 +889,7 @@ double Cycler::testCapacity(double &Ah, double &ttot)
 
   Ah = 0;
 
-  std::vector<double> sini; //!< #CHECK if it is avoidable.
+  std::vector<double> sini; //!< #TODO if it is avoidable.
   sini.clear();
 
   su->getStates(sini);

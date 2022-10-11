@@ -111,7 +111,7 @@ double Converter::getLosses(double Vin, double Iin)
   //!< filter
   constexpr double R = 13.6e-3;                            //!< Value from Schimpe (for resistance of grid interface)
   constexpr double Cdc = 3e-3;                             //!< DC link capacitance
-  constexpr double dV = 1;                                 //!< DC ripple voltage, wild guess since I can't find a value #CHECK if is correct?
+  constexpr double dV = 1;                                 //!< DC ripple voltage, wild guess since I can't find a value #TODO if is correct?
   constexpr double Rg = 13.6e-3;                           //!< value from Schimpe (resistance to grid)
   constexpr double Ri = 13.6e-3;                           //!< value from Schimpe (resistance to inverter)
   double FIL_cdc = R * std::pow(2 * pi * f * Cdc * dV, 2); //!< losses in capacitor on DC bus

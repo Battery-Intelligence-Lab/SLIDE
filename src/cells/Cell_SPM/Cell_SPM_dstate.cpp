@@ -103,7 +103,7 @@ void Cell_SPM::dState_thermal(bool print, double &dQgen)
   //!< Calculate the overpotentials if needed
   auto [etap, etan] = calcOverPotential(cps, cns, i_app);
 
-  constexpr int electr = 0;    //!< #CHECK why don't we use in the new one?
+  constexpr int electr = 0;    //!< #TODO why don't we use in the new one?
   if constexpr (electr == 2) { //!< only consider negative electrode, ignore the positive electrode
     jp = 0;
     Dpt = 0;
@@ -247,7 +247,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
 
   //!< Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + ipl/nF)
   for (size_t j = 0; j < nch; j++)
-    dzn_pl[j] = (M->Bn[j] * ipl / (npl * F)); //!< #CHECK (npl * F) division is unnecessary it is already multiple in the function.
+    dzn_pl[j] = (M->Bn[j] * ipl / (npl * F)); //!< #TODO (npl * F) division is unnecessary it is already multiple in the function.
 
   //!< output
   for (size_t j = 0; j < nch; j++)                           //!< dzp += 0 //!< dzp should be added from diffusion function
@@ -359,7 +359,7 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
       double Atherm[1] = { getThermalSurface() }; //!< calculate the surface of this cell
 
       const auto new_T = thermalModel(1, Tneigh, Kneigh, Atherm, Therm_time);
-      setT(new_T); //!< #CHECK in slide-pack it does not check the temperature.
+      setT(new_T); //!< #TODO in slide-pack it does not check the temperature.
     }
 
     //!< ******************************************************* Calculate the degradation model once for the nstep * dt time period **************************************************************

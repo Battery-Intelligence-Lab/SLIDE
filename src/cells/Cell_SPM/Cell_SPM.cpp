@@ -114,7 +114,7 @@ Status Cell_SPM::setCurrent(double Inew, bool checkV, bool print)
 
     st.I() = old_I;
     st.V() = old_V;
-    Vcell_valid = Vcell_valid_old; //!< #CHECK in future make it into states.
+    Vcell_valid = Vcell_valid_old; //!< #TODO in future make it into states.
   }
 
   return status;
@@ -175,7 +175,7 @@ void Cell_SPM::getC(double cp[], double cn[]) noexcept
   //!< Calculate concentration at the surface and inner nodes using the matrices from the spatial discretisation of the solid diffusion PDE
   //!< 	cp = M->Cp[:][:] * zp[:] + M->Dp*jp/Dpt
   //!< 	cn = M->Cn[:][:] * zn[:] + M->Dn*jn/Dnt
-  for (size_t i = 0; i < nch + 1; i++) //!< Problem here!!!!!!! #CHECK
+  for (size_t i = 0; i < nch + 1; i++) //!< Problem here!!!!!!! #TODO
   {                                    //!< loop to calculate at each surface + inner node
     double cpt{ 0 }, cnt{ 0 };
     for (unsigned j = 0; j < nch; j++) {
@@ -290,8 +290,8 @@ double Cell_SPM::V(bool print)
     //!< the cell OCV at the reference temperature is OCV_p - OCV_n
     //!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
     //!< then the overpotentials and the resistive voltage drop are added
-    const auto entropic_effect = (st.T() - T_ref) * dOCV;                          //!< (st.T() - T_ref) * dOCV; #CHECK entropic effect is zero.
-    st.V() = (OCV_p - OCV_n + entropic_effect) + (etapi - etani) - getRdc() * I(); //#CHECK make Vcell_valid true.
+    const auto entropic_effect = (st.T() - T_ref) * dOCV;                          //!< (st.T() - T_ref) * dOCV; #TODO entropic effect is zero.
+    st.V() = (OCV_p - OCV_n + entropic_effect) + (etapi - etani) - getRdc() * I(); //#TODO make Vcell_valid true.
     Vcell_valid = true;                                                            //!< we now have the most up to date value stored
 
     //!< //!< make the output variables
@@ -497,7 +497,7 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
 
   if (isStatusBad(status)) {
     st = st_old;        //!< Restore states here.
-    Vcell_valid = true; //!< #CHECK if this is ok.
+    Vcell_valid = true; //!< #TODO if this is ok.
   }
 
   return status;
@@ -539,7 +539,7 @@ bool Cell_SPM::validStates(bool print)
 
   if (std::abs(st.ap() - app) / st.ap() > tol) {
     if (verb)
-      std::cerr << "SOME ERROR #CHECK!\n";
+      std::cerr << "SOME ERROR #TODO!\n";
     range = false;
   }
 
@@ -547,7 +547,7 @@ bool Cell_SPM::validStates(bool print)
 
   if (std::abs(st.an() - ann) / st.an() > tol) {
     if (verb)
-      std::cerr << "SOME ERROR #CHECK!\n";
+      std::cerr << "SOME ERROR #TODO!\n";
     range = false;
   }
 
@@ -629,7 +629,7 @@ void Cell_SPM::setT(double Ti)
    * Ti		uniform cell temperature, 273 <= T <= 333 [K]
    */
 
-  st.T() = Ti; //!< #CHECK if we need to check if we are in limits.  if T is in limits.
+  st.T() = Ti; //!< #TODO if we need to check if we are in limits.  if T is in limits.
 
   //!< the stress values stored in the class variables for stress are no longer valid because the state has changed
   sparam.s_dai_update = false;
@@ -698,7 +698,7 @@ void Cell_SPM::setC(double cp0, double cn0)
   st.zn(ind) = znu;
 
   //!< Set the cell current to 0 to reflect the boundary condition for a fully uniform concentration
-  st.I() = 0; //!< #CHECK we do not do this.
+  st.I() = 0; //!< #TODO we do not do this.
 
   //!< the stress values stored in the class variables for stress are no longer valid because the state has changed
   sparam.s_dai_update = false;

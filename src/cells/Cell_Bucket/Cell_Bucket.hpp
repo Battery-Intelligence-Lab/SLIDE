@@ -67,7 +67,7 @@ public:
 
   //!< dataStorage
   //!< virtual void storeData();
-  //!< virtual void writeData(std::string prefix){}; //!< #CHECK implement.
+  //!< virtual void writeData(std::string prefix){}; //!< #TODO implement.
 };
 
 inline Cell_Bucket::Cell_Bucket()
@@ -85,9 +85,9 @@ inline Cell_Bucket::Cell_Bucket()
 inline Cell_Bucket::Cell_Bucket(std::string IDi, double capin, double SOCin) : Cell_Bucket()
 {
   if (!free::check_SOC(SOCin))
-    throw 10; //!< #CHECK we need error codes.
+    throw 10; //!< #TODO we need error codes.
 
-  //!< #CHECK also check capacity if negative? Use bool instead of throwing?
+  //!< #TODO also check capacity if negative? Use bool instead of throwing?
   ID = std::move(IDi);
   setCapacity(capin);
   st.SOC() = SOCin;
@@ -140,7 +140,7 @@ inline Status Cell_Bucket::setCurrent(double Inew, bool checkV, bool print)
   const double Iold = I();
   st.I() = Inew;
 
-  const auto status = checkCurrent(checkV, print); //!< #CHECK this pattern is repeated in all cells.
+  const auto status = checkCurrent(checkV, print); //!< #TODO this pattern is repeated in all cells.
 
   if (isStatusBad(status))
     st.I() = Iold;
@@ -237,7 +237,7 @@ inline bool Cell_Bucket::validStates(bool print)
   const bool verb = print && settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Check if all fields are present & extract their values
-  //!< are all in the allowed range? #CHECK change to some error codes.
+  //!< are all in the allowed range? #TODO change to some error codes.
 
   bool range = free::check_SOC(SOC());
 

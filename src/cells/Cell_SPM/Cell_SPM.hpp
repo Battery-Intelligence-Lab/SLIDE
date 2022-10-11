@@ -39,7 +39,7 @@ void validState(State_SPM &s, State_SPM &s_ini);
 class Cell_SPM : public Cell
 {
 public:
-  DEG_ID deg_id; //!< structure with the identification of which degradation model(s) to use #CHECK may be protected.
+  DEG_ID deg_id; //!< structure with the identification of which degradation model(s) to use #TODO may be protected.
   using sigma_type = std::array<double, settings::nch + 2>;
 
 protected: //!< protected such that child classes can access the class variables
@@ -52,7 +52,7 @@ protected: //!< protected such that child classes can access the class variables
   double Cmaxneg{ 30555 }; //!< maximum lithium concentration in the anode [mol m-3] value for C
   double C_elec{ 1000 };   //!< Li- concentration in electrolyte [mol m-3] standard concentration of 1 molar
 
-  double n{ 1 }; //!< number of electrons involved in the main reaction [-] #CHECK if really constant?
+  double n{ 1 }; //!< number of electrons involved in the main reaction [-] #TODO if really constant?
 
   //!< parameters of the main li-insertion reaction
   double kp{ 5e-11 };      //!< rate constant of main reaction at positive electrode at reference temperature
@@ -74,7 +74,7 @@ protected: //!< protected such that child classes can access the class variables
   //!< 40 is representative for a cell on a shelf without forced cooling
   double Qch{ 45 };   //!< convective heat transfer coefficient per volume [W K-1 m-3]
   double rho{ 1626 }; //!< density of the battery
-  double Cp{ 750 };   //!< thermal capacity of the battery #CHECK = units missing.
+  double Cp{ 750 };   //!< thermal capacity of the battery #TODO = units missing.
 
   //!< Geometric parameters
   param::Geometry_SPM geo{};
@@ -82,8 +82,8 @@ protected: //!< protected such that child classes can access the class variables
 
   param::StressParam sparam{ param::def::StressParam_Kokam }; //!< Stress parameters.
 
-  //!< Constants and parameters for the SEI growth model //!< #CHECK if we can make these static and speed gain.
-  double rsei{ 2037.4 * 50 }; //!< specific resistance times real surface area of the SEI film [Ohm m] ? #CHECK if unit is correct. aging fit.
+  //!< Constants and parameters for the SEI growth model //!< #TODO if we can make these static and speed gain.
+  double rsei{ 2037.4 * 50 }; //!< specific resistance times real surface area of the SEI film [Ohm m] ? #TODO if unit is correct. aging fit.
   double nsei{ 1 };           //!< number of electrons involved in the SEI reaction [-]
   double alphasei{ 1 };       //!< charge transfer coefficient of the SEI reaction [-]
   double OCVsei{ 0.4 };       //!< equilibrium potential of the SEI side reaction [V]
@@ -101,7 +101,7 @@ protected: //!< protected such that child classes can access the class variables
   double OCVnmc{ 4.1 };                                //!< equilibrium potential of the NMC dissolution side reaction [V]
   param::LAMparam lam_p{ param::def::LAMparam_Kokam }; //!< structure with the fitting parameters of the different LAM models
 
-  //!< Li-plating parameters & constants //!< #CHECK if we can make these static and speed gain.
+  //!< Li-plating parameters & constants //!< #TODO if we can make these static and speed gain.
   double npl{ 1 };        //!< number of electrons involved in the plating reaction [-]
   double alphapl{ 1 };    //!< charge transfer constant for the plating reaction [-]
   double OCVpl{ 0 };      //!< OCV of the plating reaction [V]
@@ -271,7 +271,7 @@ public:
 
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); } //!< returns the states of the cell collectively.
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
-  void getVariations(double var[], int nin, int &nout) override { nout = 0; } //#CHECK this should be filled.
+  void getVariations(double var[], int nin, int &nout) override { nout = 0; } //#TODO this should be filled.
   double getOCV(bool print = true) override;
   Status setStates(setStates_t sSpan, bool checkV, bool print) override;
   bool validStates(bool print = true) override;

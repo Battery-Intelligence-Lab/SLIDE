@@ -27,14 +27,17 @@ inline void writeData(std::ofstream &file, std::span<Histogram<>> histograms)
     file << hist << "\n\n";
 }
 
-inline void writeVarAndStates(std::ofstream &file, std::span<double> varstate, std::span<double> state)
+
+inline void writeVarAndStates(std::ofstream &file, auto &cell)
 {
   //!< write throughput data, cell-to-cell variations and the battery state:
-  for (auto var : varstate)
+  file << "Varstates:,";
+  for (const auto var : cell.viewVariations())
     file << var << ',';
   file << '\n';
 
-  for (const auto st_i : state) // Time and Throughput data is written here if available.
+  file << "States:,";                       // #TODO we need names for states.
+  for (const auto st_i : cell.viewStates()) // Time and Throughput data is written here if available.
     file << st_i << ',';
   file << "\n\n\n";
 }
@@ -57,8 +60,8 @@ inline void writeData(std::ofstream &file, std::vector<double> &data)
 template <settings::cellDataStorageLevel N>
 void writeDataImpl(std::ofstream &file, auto &cell, auto &dataStorage)
 {
-  if constexpr (N == settings::cellDataStorageLevel::storeCumulativeData)
-    writeVarAndStates(file, cell.viewStates(), cell.viewVariations());
+  if constexpr (settings::data::writeCumulativeData)
+    writeVarAndStates(file, cell);
 
   if constexpr (N >= settings::cellDataStorageLevel::storeHistogramData)
     writeData(file, dataStorage.data);

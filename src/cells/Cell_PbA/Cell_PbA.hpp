@@ -163,7 +163,7 @@ public:
   //!< dataStorage
   //!< int increaseBin(double binedge[], double bin[], double data, int previndex);
   //!< virtual void storeData();
-  //!< virtual void writeData(std::string prefix){}; //!< #CHECK implement.
+  //!< virtual void writeData(std::string prefix){}; //!< #TODO implement.
 };
 
 } // namespace slide

@@ -12,7 +12,7 @@
 
 namespace slide::param {
 //!< Define a structure with the fitting parameters of the models for loss of active material (LAM)
-struct LAMparam //!< #CHECK if begin and end is ok for alignment.
+struct LAMparam //!< #TODO if begin and end is ok for alignment.
 {
   double lam1p; //!< fitting parameter for the positive electrode for the 1st LAM model
   double lam1n; //!< fitting parameter for the negative electrode for the 1st LAM model

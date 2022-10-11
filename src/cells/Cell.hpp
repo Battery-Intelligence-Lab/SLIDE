@@ -67,7 +67,7 @@ public:
   {
     double v;
     Status Vstatus = checkV ? checkVoltage(v, print) : Status::Success;
-    //!< #CHECK Current checking part is missing!
+    //!< #TODO Current checking part is missing!
     return Vstatus;
   }
 
@@ -103,7 +103,7 @@ public:
     /*
      * Calculate the thermal model of this cell
      */
-    //!< todo not implemented #CHECK
+    //!< todo not implemented #TODO
     //!< need something similar as SPM cell (keep track of heat generation and time)
     //!< and then here you can solve the ODE
     return T();

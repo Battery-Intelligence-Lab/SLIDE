@@ -12,8 +12,15 @@
 
 #include "settings.hpp"
 
+namespace slide::settings {
+constexpr size_t CELL_NDATA_MAX = DATASTORE_CELL <= cellDataStorageLevel::storeHistogramData ? CELL_NDATA_HIST_MAX : CELL_NDATA_INST_MAX;
+//!< length of arrays in which we store cycling data at every time step
+} // namespace slide::settings
+
 namespace slide::settings::data {
 constexpr bool storeCumulativeData = (DATASTORE_CELL >= cellDataStorageLevel::storeCumulativeData);
+constexpr bool writeCumulativeData = storeCumulativeData;
+
 constexpr size_t N_CumulativeData = storeCumulativeData ? 3 : 0;
 } // namespace slide::settings::data
 

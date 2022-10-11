@@ -78,8 +78,6 @@ constexpr size_t CYCLER_NDATA_MAX{ 10000 }; //!< length of the arrays which hold
 constexpr size_t CELL_NDATA_HIST_MAX = 10'000'000; //!< If histogram then write data every 10 millionth data.
 constexpr size_t CELL_NDATA_INST_MAX = 100'000;    //!< If it is storing every data then we should have much less storage.
 
-constexpr size_t CELL_NDATA_MAX = DATASTORE_CELL <= cellDataStorageLevel::storeHistogramData ? CELL_NDATA_HIST_MAX : CELL_NDATA_INST_MAX;
-//!< length of arrays in which we store cycling data at every time step
 constexpr size_t MODULE_NDATA_MAX{ CYCLER_NDATA_MAX }; //!< if we store cell-level data, make the array as long as the one in Cycler
 
 constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all types of cells //!< used to prepare arrays which are long enough for getStates()

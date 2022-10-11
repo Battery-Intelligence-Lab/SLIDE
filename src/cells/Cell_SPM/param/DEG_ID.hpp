@@ -26,7 +26,7 @@ struct DEG_ID
     void add_model(data_t elem)
     {
       if (elem != 0)                //!< If element is 0 then there is no need to add.
-        push_back(std::move(elem)); //!< #CHECK better push_back needed.
+        push_back(std::move(elem)); //!< #TODO better push_back needed.
     }
   };
 

@@ -117,7 +117,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
         Ahtot += std::abs(Ah);
         storeThroughput(ID_CVcharge, Ah, Wh, su);
-        if (!diagnostic) //!< #CHECK what is diagnostic?
+        if (!diagnostic) //!< #TODO what is diagnostic?
           assert(succ == Status::ReachedCurrentLimit);
       }
 
@@ -141,7 +141,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
           Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
           double dtime;
           succ = cyc.CV(Vmin, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
-        } catch (int e) //!< #CHECK if we need to check any status codes here?
+        } catch (int e) //!< #TODO if we need to check any status codes here?
         {
           std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
           break;
@@ -153,7 +153,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       }
 
     }           //!< loop cycle ageing
-  } catch (...) //!< #CHECK why empty?
+  } catch (...) //!< #TODO why empty?
   {
     std::cout << "Why do we enter here?\n";
   }
@@ -173,7 +173,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
         checkMod(su); //!< check-up of the modules
     };
 
-    run(task_indv, 2, 2); //!< #CHECK if parallel in two cores is really needed.
+    run(task_indv, 2, 2); //!< #TODO if parallel in two cores is really needed.
   } catch (int e) {
     std::cout << "Error in CycleAge when getting a capacity checkup, skipping it\n";
   }
@@ -245,7 +245,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
   try {
     double dtime;
     succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), tlim, dt, ndata, Ah, Wh, dtime);
-    //!< std::cout << getStatusMessage(succ) << '\n'; //!< #CHECK if we put and test all conditions.
+    //!< std::cout << getStatusMessage(succ) << '\n'; //!< #TODO if we put and test all conditions.
   } catch (int e) {
     std::cout << "Error in useAge when initially discharging the battery, continue as normal.\n";
   }
@@ -279,7 +279,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
 
       //!< 2) 1C charge
       double dtime;
-      cyc.CC(-su->Cap(), su->Vmax(), tlim, dt, ndata, Ah, Wh, dtime); //!< #CHECK should have a condition.
+      cyc.CC(-su->Cap(), su->Vmax(), tlim, dt, ndata, Ah, Wh, dtime); //!< #TODO should have a condition.
 
       Ahtot += std::abs(Ah);
       storeThroughput(ID_cha1, Ah, Wh, su);
@@ -346,12 +346,12 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
     writeThroughput(su->getFullID(), Ahtot);
     auto task_indv = [&](int i) {
       if (i == 0)
-        checkUp(su, Ahtot, Ncycle); //!< check-up of the cells #CHECK if we can use the previous definition of this task_indv
+        checkUp(su, Ahtot, Ncycle); //!< check-up of the cells #TODO if we can use the previous definition of this task_indv
       else if (i == 1)
         checkMod(su); //!< check-up of the modules
     };
 
-    run(task_indv, 2, 2); //!< #CHECK if parallel in two cores is really needed.
+    run(task_indv, 2, 2); //!< #TODO if parallel in two cores is really needed.
   } catch (int e) {
     std::cout << "Error in CycleAge when getting a capacity checkup, skipping it.\n";
   }
@@ -403,7 +403,7 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
     std::ofstream file(PathVar::results + name);
 
     if (file.is_open()) {
-      std::vector<double> s; //!< #CHECK if vector is removable.
+      std::vector<double> s; //!< #TODO if vector is removable.
       s.clear();
       su->getStates(s);
 
@@ -435,7 +435,7 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
 
     su->setBlockDegAndTherm(false); //!< ensure degradation is always turned on
 
-    //!< #CHECK if degradation should be toggled to previous state not just make it false.
+    //!< #TODO if degradation should be toggled to previous state not just make it false.
   }
 
   //!< do a capacity checkup in a separate thread
@@ -474,8 +474,8 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
     try {
       checkUp(su2.get(), Ahtot, nrCycle);
       //!< if you want to do it in this thread with the SU itself instead of copy to a separate thread
-      //!< normally it was su #CHECK ???
-      //!< #CHECK copy the SU to a new one (with same state), so we can do the capcheck with this copy and the main SU can keep cycling
+      //!< normally it was su #TODO ???
+      //!< #TODO copy the SU to a new one (with same state), so we can do the capcheck with this copy and the main SU can keep cycling
     } catch (int e) {
       std::cout << "Error in CycleAge when getting a capacity checkup, skipping it.\n";
     }
@@ -520,7 +520,7 @@ void Procedure::rebalance(StorageUnit *su)
 
   //!< if it is an SPM cell,
   if (typeid(*su) == typeid(Cell_SPM)) {
-    Cycler cyc(su, "rebalance"); //!< #CHECK if we can do it without a cycler since it initialises a string?
+    Cycler cyc(su, "rebalance"); //!< #TODO if we can do it without a cycler since it initialises a string?
     double Iset = su->Cap() * Cset;
     double Ilim = su->Cap() * Clim;
     double dtime;
@@ -528,7 +528,7 @@ void Procedure::rebalance(StorageUnit *su)
     auto status = su->setCurrent(0, true, true); //!< set the current of the cell to 0
 
     if (isStatusBad(status))
-      throw 5555; //!< #CHECK -> we are doing this because previously setCurrent was throwing.
+      throw 5555; //!< #TODO -> we are doing this because previously setCurrent was throwing.
   }
 }
 
@@ -579,7 +579,7 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
 
   //!< Get the mutex to start writing in the results file
   std::lock_guard<std::mutex> writeGuard(MUTEX_procedure_checkUp); //!< locks the mutex if it is free
-  //!< #CHECK remove mutex somehow.
+  //!< #TODO remove mutex somehow.
   //!< write the usage stats of all cells in a separate document
   if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeHistogramData) {
     file_stats.open(name_stats); //!< open and clear whatever was there since we want to write the most recent stats only
@@ -866,7 +866,7 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
     for (int i = 0; i < settings::DATASTORE_NHIST; i++) { //!< loop for each bin in the stats of T (rows)
       file << ID_histT << ',';
       for (auto &_ : cells) { //!< loop for each cell (columns)
-        //!< cell->getHist(&histI, &histV, &histT, nout); #CHECK -> This needs to be activated sometime.
+        //!< cell->getHist(&histI, &histV, &histT, nout); #TODO -> This needs to be activated sometime.
         file << histT[i] << ',';
       }
       file << '\n';
@@ -989,7 +989,7 @@ void Procedure::checkMod_writeInitial(std::vector<Module *> mods, Battery *batt,
     std::cerr << "Error in checkUp_writeInitial, the file is no open. Skipping this part.\n";
 }
 
-struct GetHistograms //!< #CHECK how do we remove these helper functions in constexpr?
+struct GetHistograms //!< #TODO how do we remove these helper functions in constexpr?
 {
   const Histogram<> &Q{ EmptyHistogram }, &flr{ EmptyHistogram }, &E{ EmptyHistogram };
   const Histogram<> &T{ EmptyHistogram }, &Qac{ EmptyHistogram }, &Eac{ EmptyHistogram };

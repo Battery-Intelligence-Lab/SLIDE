@@ -304,6 +304,6 @@ void CoolSystem_HVAC::writeData(const std::string &prefix)
   CoolSystem::writeData(prefix);
 
   //!< store histograms and degradation state of cell utilisation
-  HVACdata.writeData(*this, prefix); //!< #CHECK -> since we are doing append we cannot write like this IMPORTANT!!!!!
+  HVACdata.writeData(*this, prefix); //!< #TODO -> since we are doing append we cannot write like this IMPORTANT!!!!!
 }
 } // namespace slide

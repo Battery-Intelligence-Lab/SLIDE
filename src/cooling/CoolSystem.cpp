@@ -65,9 +65,9 @@ CoolSystem::CoolSystem()
 
   constexpr auto n_modules = settings::MODULE_NSUs_MAX; //!< Because we do not know number of modules.
 
-  flowrate = settings::cool::flowrate_perCell * n_modules; //!< #CHECK Why multiply with Module NSUs_MAX;
+  flowrate = settings::cool::flowrate_perCell * n_modules; //!< #TODO Why multiply with Module NSUs_MAX;
   fluid_V = V_perCell * n_modules;
-  control_strategy = 1;                      //!< #CHECK -> magic number to enum.
+  control_strategy = 1;                      //!< #TODO -> magic number to enum.
   control_onoff_Ton = PhyConst::Kelvin + 35; //!< on/off control: go on at 35 degrees
   const auto t1 = settings::T_ENV + 5;
   control_onoff_Toff = std::max(C_to_Kelvin(25), t1); //!< on/off control: go off at 25 degrees, or 5 degrees above environmental temperature
@@ -156,7 +156,7 @@ double CoolSystem::getH()
    */
 
   if (flowrate == 0) //!< if the coolsystem is off (v == 0), h must be 0 as well
-    return 0;        //!< #CHECK -> double should not be compared to zero.
+    return 0;        //!< #TODO -> double should not be compared to zero.
 
   //!< speed of thw fluid
 

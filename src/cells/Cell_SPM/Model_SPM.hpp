@@ -44,7 +44,7 @@ struct Model_SPM
 
   slide::Matrix<double, 2 * nch + 3, 2 * nch + 3> Q; //!< Matrix for Chebyshev integration
 
-  Model_SPM() //!< #CHECK do not do file reading at the constructor.
+  Model_SPM() //!< #TODO do not do file reading at the constructor.
   {
     /*
      * Constructor to initialise the matrices of the spatial discretisation of the solid diffusion PDE.
@@ -76,7 +76,7 @@ struct Model_SPM
     }
   }
 
-  static Model_SPM *makeModel() //!< #CHECK make other type of models possible.
+  static Model_SPM *makeModel() //!< #TODO make other type of models possible.
   {
     static Model_SPM M;
     return &M;

@@ -503,7 +503,7 @@ void test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
   }
 //!< 	check that all cells age more or less the same
 //!< 	the capacity of the string should be the capacity of the smallest cell
-#if TIMING //!< #CHECK we are using unique pointers.
+#if TIMING //!< #TODO we are using unique pointers.
   cp2->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
   mp->getTimings(tsetI, tvalidSU, ttimestep, ttimestepi);
   duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);

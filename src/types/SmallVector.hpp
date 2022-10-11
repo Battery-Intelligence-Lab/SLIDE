@@ -12,7 +12,7 @@ class SmallVector
   std::array<T, Nmax> data{};
 
 public:
-  T N{ 0 }; //!< number of degradation models to use (length of SEI_ID) #CHECK if default should be 1 and array initialised with 0.
+  T N{ 0 }; //!< number of degradation models to use (length of SEI_ID) #TODO if default should be 1 and array initialised with 0.
 
   SmallVector() = default;
   SmallVector(T N) : N(N)

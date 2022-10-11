@@ -19,7 +19,7 @@
 #include <cmath>
 
 namespace slide {
-//!< Cell_Fit::Cell_Fit(const slide::Model_SPM &MM, int verbosei) #CHECK important for ageing to set no ageing.
+//!< Cell_Fit::Cell_Fit(const slide::Model_SPM &MM, int verbosei) #TODO important for ageing to set no ageing.
 //!< 	: Cell(settings::path::Kokam::namepos, settings::path::Kokam::nameneg, settings::path::Kokam::nameentropicC, settings::path::Kokam::nameentropicCell)
 //!< {
 //!< 	/*

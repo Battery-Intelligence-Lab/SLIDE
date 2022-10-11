@@ -66,7 +66,7 @@ void Vequalisation_Rdc(double Rdc)
 
   //!< Make the cycler
   Cycler cyc;
-  cyc.initialise(mpp4.get(), ID); //!<#CHECK we may make this shared pointer. Otherwise it will cause problems. Or unique.
+  cyc.initialise(mpp4.get(), ID); //!<#TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
   double vlim, tlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
@@ -252,7 +252,7 @@ void degradation_1cell()
   bat->setModule(std::move(modulei));
 
   //!< call the degradation function
-  degrade(bat.get()); //!<#CHECK
+  degrade(bat.get()); //!<#TODO
 }
 
 void degradation_electricalModel()

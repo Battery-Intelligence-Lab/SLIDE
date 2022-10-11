@@ -13,24 +13,24 @@
 namespace slide {
 
 // Current:
-constexpr double operator""_kA(long double d) { return 1e3 * d; }  //!< kiloAmperes
-constexpr double operator""_A(long double d) { return d; }         //!< Amperes
-constexpr double operator""_mA(long double d) { return d * 1e-3; } //!< miliAmperes
-constexpr double operator""_uA(long double d) { return d * 1e-6; } //!< microAmperes
+constexpr auto operator""_kA(long double d) { return 1e3 * d; }  //!< kiloAmperes
+constexpr auto operator""_A(long double d) { return d; }         //!< Amperes
+constexpr auto operator""_mA(long double d) { return d * 1e-3; } //!< miliAmperes
+constexpr auto operator""_uA(long double d) { return d * 1e-6; } //!< microAmperes
 
 // Voltage:
-constexpr double operator""_kV(long double d) { return 1e3 * d; }  //!< kiloVolts
-constexpr double operator""_V(long double d) { return d; }         //!< Volts
-constexpr double operator""_mV(long double d) { return d * 1e-3; } //!< miliVolts
-constexpr double operator""_uV(long double d) { return d * 1e-6; } //!< microVolts
+constexpr auto operator""_kV(long double d) { return 1e3 * d; }  //!< kiloVolts
+constexpr auto operator""_V(long double d) { return d; }         //!< Volts
+constexpr auto operator""_mV(long double d) { return d * 1e-3; } //!< miliVolts
+constexpr auto operator""_uV(long double d) { return d * 1e-6; } //!< microVolts
 
 
 // Temperature:
-constexpr inline double C_to_Kelvin(double Celsius) { return PhyConst::Kelvin + Celsius; }
-constexpr inline double K_to_Celsius(double Kelvin) { return Kelvin - PhyConst::Kelvin; }
+constexpr inline auto C_to_Kelvin(double Celsius) { return PhyConst::Kelvin + Celsius; }
+constexpr inline auto K_to_Celsius(double Kelvin) { return Kelvin - PhyConst::Kelvin; }
 
-constexpr double operator""_degC(long double d) { return C_to_Kelvin(d); } //!< degrees Celsius
-constexpr double operator""_K(long double d) { return d; }                 //!< Kelvins
+constexpr auto operator""_degC(long double d) { return C_to_Kelvin(d); } //!< degrees Celsius
+constexpr auto operator""_K(long double d) { return d; }                 //!< Kelvins
 
 
 } // namespace slide

@@ -36,7 +36,7 @@ Cell_PbA::Cell_PbA(std::string IDi, double capin, double SOCin) : Cell_PbA()
   if (!free::check_SOC(SOCin))
     throw 10;
 
-  //!< #CHECK also check capacity if negative? Use bool instead of throwing?
+  //!< #TODO also check capacity if negative? Use bool instead of throwing?
   ID = std::move(IDi);
   setCapacity(capin);
   st.SOC() = SOCin;
@@ -118,7 +118,7 @@ double Cell_PbA::V(bool print)
     if (isCharging())
       return getOCV() - g_OCV * DOD() + (rho_c / Cap()) * st.I() * (1 + M_c * SOC() / (C_c - st.SOC()));
     else
-      return getOCV() - g_OCV * DOD() + (rho_d / Cap()) * st.I() * (1 + M_d * DOD() / (C_d - DOD())); //!< #CHECK if are making any problems.
+      return getOCV() - g_OCV * DOD() + (rho_d / Cap()) * st.I() * (1 + M_d * DOD() / (C_d - DOD())); //!< #TODO if are making any problems.
   } catch (int e) {
     if (verb)
       std::cerr << "ERROR in Cell_PbA::getV when getting the OCV.\n";

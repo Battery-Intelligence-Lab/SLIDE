@@ -113,7 +113,7 @@ void Battery::setBlockDegAndTherm(bool block)
 Status Battery::setStates(setStates_t s, bool checkStates, bool print)
 {
   auto status = cells->setStates(s, checkStates, print);
-  setT(s.back()); //!< #CHECK probably here we need to check?
+  setT(s.back()); //!< #TODO probably here we need to check?
   return status;
 }
 
@@ -164,7 +164,7 @@ double Battery::thermalModel(int Nneighb, double Tneighb[], double Kneighb[], do
     //!< cout<<"Battery thermal balance: Qcells = "<<Qcells<<", converter "<<conv->getLosses(cells->V(), cells->I())*tim<<" resutling in new T "<<Tbatt<<" for battery power "<<cells->V()*cells->I()<<endl;
 
     //!< Check the new temperature is valid
-    if (Tbatt < PhyConst::Kelvin || Tbatt > PhyConst::Kelvin + 75.0 || std::isnan(Tbatt)) //!< #CHECK -> 75.0 is magical number.
+    if (Tbatt < PhyConst::Kelvin || Tbatt > PhyConst::Kelvin + 75.0 || std::isnan(Tbatt)) //!< #TODO -> 75.0 is magical number.
     {
       if constexpr (settings::printBool::printCrit)
         std::cerr << "ERROR in Battery::thermalModel for battery " << getFullID() << ", the new temperature of "

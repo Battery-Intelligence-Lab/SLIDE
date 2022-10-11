@@ -35,7 +35,7 @@ Module_s::Module_s(std::string_view IDi, double Ti, bool print, bool pari, int N
   /*
    *	make a series-connected module.
    *	NOTE: you cannot set the cells in the constructor.
-   *	The reason is that to set the parent to the child-cells, you need to call shared_from_this(). #CHECK
+   *	The reason is that to set the parent to the child-cells, you need to call shared_from_this(). #TODO
    *	And shared_from_this can only be called once 'this' has been made (i.e. terminated the constructor)
    *
    * IN
@@ -62,8 +62,8 @@ Module_s::Module_s(std::string_view IDi, double Ti, bool print, bool pari, int N
   //!< Set the module temperature
   therm.A = 0.0042 * 10 * Ncells;                                      //!< thermally active surface area. The first number is the thermal active surface area of a cell
   double Q0 = 0;                                                       //!< constant ancillary losses. There are none since a module only has cells
-  if (cooltype == 1)                                                   //!< #CHECK make this enum.
-    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0); //!< #CHECK already created a pointer in default constructor.
+  if (cooltype == 1)                                                   //!< #TODO make this enum.
+    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0); //!< #TODO already created a pointer in default constructor.
   else if (cooltype == 2)
     cool = std::make_unique<CoolSystem_open>(Ncells, coolControl);
   else
@@ -207,7 +207,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Set the current, if checkVi this also gets the cell voltages
-  bool validVcell = true; //!< #CHECK
+  bool validVcell = true; //!< #TODO
   Vmodule_valid = false;  //!< we are changing the current, so the stored voltage is no longer valid
   double Iold = I();
 
@@ -239,7 +239,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   //!< check and return the voltage of the module
   //!< Check if the voltage is valid
 
-  //!< #CHECK Here we need module specific voltage.
+  //!< #TODO Here we need module specific voltage.
 
 #if TIMING
   timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
@@ -267,7 +267,7 @@ bool Module_s::validSUs(moduleSUs_span_t c, bool print)
   const double Imod = c[0]->I();
   for (size_t i = 1; i < c.size(); i++) {
     const double err = std::abs(Imod - c[i]->I());
-    bool val = err < settings::MODULE_P_I_ABSTOL || err < Imod * settings::MODULE_P_I_RELTOL; //!< #CHECK should not be || here. Ok got it due to 0 current.
+    bool val = err < settings::MODULE_P_I_ABSTOL || err < Imod * settings::MODULE_P_I_RELTOL; //!< #TODO should not be || here. Ok got it due to 0 current.
     //!< in complex modules, an s can be made out of p modules, and p modules are allowed to have a small error in their current
     if (!val) {
       if (verb)
@@ -379,7 +379,7 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
 
 Module_s *Module_s::copy()
 {
-  //!< check the type of coolsystem we have #CHECK for a better way. Also same for both modules.
+  //!< check the type of coolsystem we have #TODO for a better way. Also same for both modules.
 
   int cooltype = 0;
 

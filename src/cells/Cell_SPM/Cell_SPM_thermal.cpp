@@ -103,7 +103,7 @@ double Cell_SPM::thermalModel_coupled(int Nneighbours, double Tneighbours[], dou
   //!< if the parent has not called the thermal model for a while, the equation becomes unstable
   //!< 		cause E = time * kA dT, so even a small dT will cause a huge E, and therefore a very large temperature swint
   //
-  if (Therm_time > 15 * 60) //!< #CHECK magic number.
+  if (Therm_time > 15 * 60) //!< #TODO magic number.
   {
     if constexpr (settings::printBool::printNonCrit)
       std::cout << "Warning in Cell_SPM::thermalModel, the time since this function was called last is very large, "
@@ -197,7 +197,7 @@ double Cell_SPM::thermalModel(int Nneighbours, double Tneighbours[], double Knei
   double Tnew;
 
   try {
-    if constexpr (settings::T_MODEL == 0) //!< #CHECK thermal model implementation should be outside.
+    if constexpr (settings::T_MODEL == 0) //!< #TODO thermal model implementation should be outside.
       Tnew = T();
     else if constexpr (settings::T_MODEL == 1)
       Tnew = thermalModel_cell();

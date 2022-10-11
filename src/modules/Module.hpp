@@ -69,7 +69,7 @@ protected:
     for (const auto &SU : SUs)
       r += SU->getNcells();
 
-    Ncells = r; //!< #CHECK this function needs to call parent to update their number of cells if they are module.
+    Ncells = r; //!< #TODO this function needs to call parent to update their number of cells if they are module.
 
     return r;
   }
@@ -119,7 +119,7 @@ public:
 
   CoolSystem *getCoolSystem() { return cool.get(); }
 
-  void setRcontact(std::span<double> Rc) //!< #CHECK if ok.
+  void setRcontact(std::span<double> Rc) //!< #TODO if ok.
   {
     /*
      * Set the contact resistance of each cell.

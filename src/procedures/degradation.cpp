@@ -102,7 +102,7 @@ void Calendar_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, 
   if (Ti < 40)
     dt = 5; //!< a lower temperature allows a larger time step without numerical problems
 
-  //!< Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
+  //!< Make a cell, the type of the cell depending on the value of 'cellType' #TODO  -> There is a cast.
   auto createCell = [&] {
     if (cellType == 0)
       return (Cell)Cell_KokamNMC(M, degid, verbose); //!< a high power NMC cell made by Kokam
@@ -123,7 +123,7 @@ void Calendar_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, 
   } catch (int err) {
     //!< std::cout << "Throw test: " << 75 << '\n';
     std::cout << "Calendar_one experienced error " << err << " during execution of " << name << ", abort this test.\n";
-    if (err == 15) //!< #CHECK this is not valid anymore.
+    if (err == 15) //!< #TODO this is not valid anymore.
     {
       std::cout << "Error 15 means that the cell had degraded too much to continue simulating.\n"
                    "This can be due to too much SEI growth, too much loss of lithium, too much loss of active material (thin electrodes, low volume fraction, or low effective surface)\n"
@@ -205,7 +205,7 @@ void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int
   if (Ti < 40)
     dt = 3; //!< a lower temperature allows a larger time step without numerical problems
 
-  //!< Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
+  //!< Make a cell, the type of the cell depending on the value of 'cellType' #TODO  -> There is a cast.
   auto createCell = [&] {
     if (cellType == 0)
       return (Cell)Cell_KokamNMC(M, degid, verbose); //!< a high power NMC cell made by Kokam
@@ -226,7 +226,7 @@ void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int
   } catch (int err) {
     //!< std::cout << "Throw test: " << 76 << '\n';
     std::cout << "Cycle_one experienced error " << err << " during execution of " << name << ", abort this test.\n";
-    if (err == 15) //!< #CHECK this is not valid anymore.
+    if (err == 15) //!< #TODO this is not valid anymore.
     {
       std::cout << "Error 15 means that the cell had degraded too much to continue simulating.\n"
                    "This can be due to too much SEI growth, too much loss of lithium, too much loss of active material (thin electrodes, low volume fraction, or low effective surface) \n"
@@ -296,7 +296,7 @@ void Profile_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, i
    * 				avoid special characters or spaces
    */
 
-  //!< Make a cell, the type of the cell depending on the value of 'cellType' #CHECK  -> There is a cast.
+  //!< Make a cell, the type of the cell depending on the value of 'cellType' #TODO  -> There is a cast.
   auto createCell = [&] {
     if (cellType == 0)
       return (Cell)Cell_KokamNMC(M, degid, verbose); //!< a high power NMC cell made by Kokam
@@ -324,7 +324,7 @@ void Profile_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, i
   } catch (int err) {
     //!< std::cout << "Throw test: " << 77 << '\n';
     std::cout << "Profile_one experienced error " << err << " during execution of " << name << ", abort this test.\n";
-    if (err == 15) //!< #CHECK this is not valid anymore.
+    if (err == 15) //!< #TODO this is not valid anymore.
     {
       std::cout << "Error 15 means that the cell had degraded too much to continue simulating.\n"
                    "This can be due to too much SEI growth, too much loss of lithium, too much loss of active material (thin electrodes, low volume fraction, or low effective surface)\n"

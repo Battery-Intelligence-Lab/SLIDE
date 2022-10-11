@@ -58,7 +58,7 @@ auto inline check_Cell_states(auto &su, bool checkV)
   if (!su.validStates(Print)) //!< check if valid state
   {
     if constexpr (Print)
-      std::cerr << "ERROR in " << su.getID() << "::setStates, illegal State.\n"; //!< #CHECK here add some type id.
+      std::cerr << "ERROR in " << su.getID() << "::setStates, illegal State.\n"; //!< #TODO here add some type id.
 
     return Status::Invalid_states;
   }
@@ -115,7 +115,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
                 << " centigrade and I = " << su.I() << '\n';
 
     return Status::Vmin_violation;
-  } else if (v > (su.Vmax() + settings::MODULE_P_V_ABSTOL) && su.isCharging()) //!< #CHECK
+  } else if (v > (su.Vmax() + settings::MODULE_P_V_ABSTOL) && su.isCharging()) //!< #TODO
   {
     if (printNonCrit)
       std::cout << "The voltage of cell " << su.getFullID() << " is " << v
@@ -150,10 +150,10 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
 template <bool Print = settings::printBool::printCrit>
 auto inline check_safety(double vi, auto &cyc)
 {
-  const auto SafetyVmin = cyc.getSafetyVmin(); //!< #CHECK this requires some calculations!
+  const auto SafetyVmin = cyc.getSafetyVmin(); //!< #TODO this requires some calculations!
   const auto SafetyVmax = cyc.getSafetyVmax();
 
-  if (vi < SafetyVmin) //!< #CHECK this requires some calculations!
+  if (vi < SafetyVmin) //!< #TODO this requires some calculations!
   {
     if constexpr (Print)
       std::cout << "Error in Cycler::??, the voltage of " << vi
@@ -161,7 +161,7 @@ auto inline check_safety(double vi, auto &cyc)
                 << SafetyVmin << " V." << '\n';
 
     return Status::VMINsafety_violation;
-  } else if (vi > SafetyVmax) //!< #CHECK this requires some calculations!
+  } else if (vi > SafetyVmax) //!< #TODO this requires some calculations!
   {
     if constexpr (Print)
       std::cout << "Error in Cycler::??, the voltage of " << vi
@@ -191,7 +191,7 @@ inline std::ofstream openFile(auto &SU, const auto &folder, const std::string &p
   const auto name = free::getName(SU, PathVar::results, prefix, suffix);
 
   //  std::string name = getName(cell, prefix); //!< name of the file
-  std::ofstream file(name, std::ios_base::app); // #CHECK app-> initially open then append.
+  std::ofstream file(name, std::ios_base::app); // #TODO app-> initially open then append.
 
   if (!file.is_open()) {
     std::cerr << "ERROR in Cell::writeData, could not open file "

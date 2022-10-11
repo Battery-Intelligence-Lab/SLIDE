@@ -35,7 +35,7 @@ void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
   //!< check the cells don't have parents yet (unless it is this module)
   for (size_t i = 0; i < c.size(); i++) {
     auto p = c[i]->getParent();
-    if (p != nullptr && p != this) //!< #CHECK probably cannot be this since it is a unique_ptr
+    if (p != nullptr && p != this) //!< #TODO probably cannot be this since it is a unique_ptr
     {
       if (verb)
         std::cerr << "ERROR in Module::setCells, SU " << i << ", already has a parent "
@@ -64,7 +64,7 @@ void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
     r += SU->getNcells();
     SU->setParent(this); //!< Set the parent of all cells/ Does not throw.
     SUs.push_back(std::move(SU));
-    Rcontact.push_back(0); //!< Make Rcontact zero? #CHECK
+    Rcontact.push_back(0); //!< Make Rcontact zero? #TODO
   }
 
   Ncells = r;
@@ -85,7 +85,7 @@ Status Module::checkVoltage(double &v, bool print) noexcept
 
   //!< check the voltage of the module
   //!< v = V(print); -> Hey we dont need to calculate this anymore.
-  //!< #CHECK here was a not useful chuck of code for repeated checking.
+  //!< #TODO here was a not useful chuck of code for repeated checking.
   //!< We may have constant limits for module voltage.
 
   //!< check the voltages of the connected cells
@@ -104,7 +104,7 @@ double Module::getVhigh()
 {
   //!< return the voltage of the cell with the highest voltage
   //!< 	note CELL not child SU
-  double Vhigh = Vmin(); //#CHECK
+  double Vhigh = Vmin(); //#TODO
   for (const auto &SU : SUs)
     Vhigh = std::max(Vhigh, SU->getVhigh()); //!< will be called recursively to the cell levels
 
@@ -114,7 +114,7 @@ double Module::getVhigh()
 double Module::getVlow()
 {
   //!< return the voltage of the cell with the lowest voltage note CELL not child SU
-  double Vlow = Vmax(); //#CHECK
+  double Vlow = Vmax(); //#TODO
   for (const auto &SU : SUs)
     Vlow = std::min(Vlow, SU->getVlow()); //!< will be called recursively to the cell levels
 
@@ -151,7 +151,7 @@ bool Module::validStates(bool print)
   const bool verb = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< check the resulting state is valid
-  bool val = validSUs(verb); //#CHECK validSUs does not take vector.
+  bool val = validSUs(verb); //#TODO validSUs does not take vector.
 
   return val;
 }
@@ -208,7 +208,7 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
   } //!< end loop to set the cell states
 
   //!< set the module temperature
-  assert(s[0] >= PhyConst::Kelvin); //!< #CHECK here we are checking but should we?
+  assert(s[0] >= PhyConst::Kelvin); //!< #TODO here we are checking but should we?
   setT(s[0]);
   s = s.last(s.size() - 1);
 
@@ -364,7 +364,7 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
       if (i == 0)
         Etot += Ksu[1] * Atherm * (SUs[i]->T() - T()) * tim;
 
-      if (i == getNSUs() - 1) //!< #CHECK problem.
+      if (i == getNSUs() - 1) //!< #TODO problem.
         Etot += Ksu[2] * Atherm * (SUs[i]->T() - T()) * tim;
     }
 

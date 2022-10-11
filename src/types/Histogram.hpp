@@ -50,7 +50,7 @@ public:
      * */
     auto i = static_cast<int>(1 + (x - x_min) / dx);
 
-    i = std::clamp(i, 0, (int)bins.size() - 1); //!< #CHECK size_t -> int causes warning.
+    i = std::clamp(i, 0, (int)bins.size() - 1); //!< #TODO size_t -> int causes warning.
     bins[i]++;
   }
 
