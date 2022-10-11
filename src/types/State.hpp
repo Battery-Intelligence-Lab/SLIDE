@@ -15,6 +15,9 @@
 
 namespace slide {
 
+static double emptyState{ 0 }; // To return reference when a state is not defined.
+
+
 template <size_t N, size_t N_cumulative = settings::data::N_CumulativeData>
 struct State : public std::array<double, N + N_cumulative>
 {
@@ -26,9 +29,9 @@ struct State : public std::array<double, N + N_cumulative>
     N_states,
   };
 
-  inline auto &time() { return (N_cumulative != 3) ? (*this)[0] : (*this)[i_time]; } //!< time [s]
-  inline auto &Ah() { return (N_cumulative != 3) ? (*this)[0] : (*this)[i_Ah]; }     //!< Current throughput [Ah]
-  inline auto &Wh() { return (N_cumulative != 3) ? (*this)[0] : (*this)[i_Wh]; }     //!< Energy throughput [Wh]
+  inline auto &time() { return (N_cumulative != 3) ? emptyState : (*this)[i_time]; } //!< time [s]
+  inline auto &Ah() { return (N_cumulative != 3) ? emptyState : (*this)[i_Ah]; }     //!< Current throughput [Ah]
+  inline auto &Wh() { return (N_cumulative != 3) ? emptyState : (*this)[i_Wh]; }     //!< Energy throughput [Wh]
 
   constexpr static auto description(size_t i)
   {
