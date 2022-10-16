@@ -45,115 +45,116 @@ void output_printer(const std::vector<T> &vec, const auto &save_path)
 
   out_file.close();
 }
+} // namespace slide
 
 
 namespace slide::util {
-  //!< template <int pLevel>
-  //!< inline void print(const std::string& message) //!< Print messages.
-  //!<  {
-  //!<  if constexpr (settings::verbose >= pLevel)
-  //!<   {
-  //!<        std::cout << message << '\n';
-  //!<     }
-  //!<  }
+//!< template <int pLevel>
+//!< inline void print(const std::string& message) //!< Print messages.
+//!<  {
+//!<  if constexpr (settings::verbose >= pLevel)
+//!<   {
+//!<        std::cout << message << '\n';
+//!<     }
+//!<  }
 
-  //!< struct Counter //!< Counts how many times it is called.
-  //!< {
+//!< struct Counter //!< Counts how many times it is called.
+//!< {
 
-  //!<     //!< To use counter create a static Counter object in the function you would like to measure
-  //!<     //!< slide::util::Counter myCounterName(printEveryXiter);  Then just call it
-  //!<     //!< myCounterName();
-  //!<     static count{0};
-  //!<     long long printEveryXiter{500000};
+//!<     //!< To use counter create a static Counter object in the function you would like to measure
+//!<     //!< slide::util::Counter myCounterName(printEveryXiter);  Then just call it
+//!<     //!< myCounterName();
+//!<     static count{0};
+//!<     long long printEveryXiter{500000};
 
-  //!<     Counter() = default;
-  //!<     Counter(unsigned long long printEveryXiter) : printEveryXiter(printEveryXiter){};
+//!<     Counter() = default;
+//!<     Counter(unsigned long long printEveryXiter) : printEveryXiter(printEveryXiter){};
 
-  //!<     void operator()()
-  //!<     {
-  //!<         count++;
+//!<     void operator()()
+//!<     {
+//!<         count++;
 
-  //!<         if (count % printEveryXiter == 0)
-  //!<             std::cout << "Counter: " << count << '\n';
-  //!<     }
-  //!< };
+//!<         if (count % printEveryXiter == 0)
+//!<             std::cout << "Counter: " << count << '\n';
+//!<     }
+//!< };
 
 } // namespace slide::util
 
 namespace slide {
-  std::vector<double> linstep(double x_min, double x_step, int Nstep); // #TODO not defined.
-  std::vector<double> logstep(double x_min, double x_step, int Nstep); // #TODO not defined.
+std::vector<double> linstep(double x_min, double x_step, int Nstep); // #TODO not defined.
+std::vector<double> logstep(double x_min, double x_step, int Nstep); // #TODO not defined.
 
-  //!< FixedData<int> range(int stop); #TODO -> FixedData is not good since it has function
-  //!< FixedData<int> range(int start, int stop, int step = 1);
+//!< FixedData<int> range(int stop); #TODO -> FixedData is not good since it has function
+//!< FixedData<int> range(int start, int stop, int step = 1);
 
-  FixedData<double> linspace_fix(double x1, double x2, int N);
+FixedData<double> linspace_fix(double x1, double x2, int N);
 
-  template <size_t N>
-  constexpr std::array<double, N> linspace(double x1, double x2)
-  {
-    std::array<double, N> out;
+template <size_t N>
+constexpr std::array<double, N> linspace(double x1, double x2)
+{
+  std::array<double, N> out;
 
-    double dx{ 1 };
-    if (N < 1)
-      return out;
-    else if (N > 1)
-      dx = (x2 - x1) / static_cast<double>(N - 1);
-
-    for (size_t n{ 0 }; n < N; n++) {
-      out[N - 1 - n] = x2 - n * dx;
-    }
-
+  double dx{ 1 };
+  if (N < 1)
     return out;
+  else if (N > 1)
+    dx = (x2 - x1) / static_cast<double>(N - 1);
+
+  for (size_t n{ 0 }; n < N; n++) {
+    out[N - 1 - n] = x2 - n * dx;
   }
+
+  return out;
+}
 
 } // namespace slide
 
 namespace slide {
 
-  inline FixedData<double> range_fix(double x_min, double x_max, double x_step)
-  {
-    int Nstep = static_cast<int>((x_max - x_min) / x_step) + 1;
-    return FixedData<double>(x_min, x_step, Nstep);
-  }
+inline FixedData<double> range_fix(double x_min, double x_max, double x_step)
+{
+  int Nstep = static_cast<int>((x_max - x_min) / x_step) + 1;
+  return FixedData<double>(x_min, x_step, Nstep);
+}
 
-  inline FixedData<double> linstep_fix(double x_min, double x_step, int Nstep)
-  {
-    return FixedData<double>(x_min, x_step, Nstep);
-  }
+inline FixedData<double> linstep_fix(double x_min, double x_step, int Nstep)
+{
+  return FixedData<double>(x_min, x_step, Nstep);
+}
 
-  inline FixedData<double> logstep_fix(double x_min, double x_step, int Nstep)
-  {
-    auto fun = [](double x_min, double x_step, int i) { return x_min * std::pow(x_step, i); };
+inline FixedData<double> logstep_fix(double x_min, double x_step, int Nstep)
+{
+  auto fun = [](double x_min, double x_step, int i) { return x_min * std::pow(x_step, i); };
 
-    return FixedData<double>(x_min, x_step, Nstep, fun);
-  }
+  return FixedData<double>(x_min, x_step, Nstep, fun);
+}
 
-  inline FixedData<double> linspace_fix(double x1, double x2, int N)
-  {
-    if (N < 1)
-      return FixedData(x2, 0.0, 0);
-    else if (N == 1)
-      return FixedData(x2, 0.0, 1);
-    else
-      return FixedData(x1, (x2 - x1) / static_cast<double>(N - 1), N);
-  }
+inline FixedData<double> linspace_fix(double x1, double x2, int N)
+{
+  if (N < 1)
+    return FixedData(x2, 0.0, 0);
+  else if (N == 1)
+    return FixedData(x2, 0.0, 1);
+  else
+    return FixedData(x1, (x2 - x1) / static_cast<double>(N - 1), N);
+}
 
-  inline std::vector<double> linspace(double x1, double x2, int N)
-  {
-    N = std::max(0, N);
-    std::vector<double> out(N);
+inline std::vector<double> linspace(double x1, double x2, int N)
+{
+  N = std::max(0, N);
+  std::vector<double> out(N);
 
-    double dx{ 1 };
-    if (N < 1)
-      return out;
-    else if (N > 1)
-      dx = (x2 - x1) / static_cast<double>(N - 1);
-
-    for (int n{ 0 }; n < N; n++) {
-      out[N - 1 - n] = x2 - n * dx;
-    }
-
+  double dx{ 1 };
+  if (N < 1)
     return out;
+  else if (N > 1)
+    dx = (x2 - x1) / static_cast<double>(N - 1);
+
+  for (int n{ 0 }; n < N; n++) {
+    out[N - 1 - n] = x2 - n * dx;
   }
+
+  return out;
+}
 } // namespace slide

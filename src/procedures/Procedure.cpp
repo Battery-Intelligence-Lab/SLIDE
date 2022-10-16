@@ -10,7 +10,7 @@
 #include "../system/Battery.hpp"
 //#include "unit_tests.hpp"
 #include "../settings/settings.hpp"
-#include "../utility/util.hpp"
+#include "../utility/utility.hpp"
 #include "Cycler.hpp"
 #include "Procedure.hpp"
 

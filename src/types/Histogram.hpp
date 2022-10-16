@@ -9,7 +9,8 @@
 
 #pragma once
 
-#include "../utility/util.hpp"
+#include "../settings/settings.hpp"
+#include "../utility/utility.hpp"
 
 #include <vector>
 #include <cstdlib>

@@ -8,9 +8,7 @@
 #include "Module_p.hpp"
 
 #include "../settings/settings.hpp"
-#include "../utility/interpolation.hpp"
-#include "../utility/util.hpp"
-#include "../utility/predicate_functions.hpp"
+#include "../utility/utility.hpp"
 
 #include <cassert>
 #include <iostream>

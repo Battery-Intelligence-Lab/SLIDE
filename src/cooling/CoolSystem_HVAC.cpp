@@ -7,7 +7,7 @@
 
 #include "CoolSystem_HVAC.hpp"
 #include "../settings/settings.hpp"
-#include "../utility/util.hpp"
+#include "../utility/utility.hpp"
 
 #include <cmath>
 #include <iostream>
