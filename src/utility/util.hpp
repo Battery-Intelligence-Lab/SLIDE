@@ -19,13 +19,11 @@
 #include "slide_aux.hpp"
 #include "util_debug.hpp"
 #include "units.hpp"
-#include "timing.hpp"
-#include "parallelisation.hpp"
+
 
 #include <string>
 #include <iostream>
 #include <array>
-#include <thread>
 #include <vector>
 #include <cmath>
 
@@ -83,18 +81,12 @@ namespace slide::util {
 } // namespace slide::util
 
 namespace slide {
-  std::vector<double> linstep(double x_min, double x_step, int Nstep);
-  std::vector<double> logstep(double x_min, double x_step, int Nstep);
-
-  FixedData<double> linstep_fix(double x_min, double x_step, int Nstep);
-  FixedData<double> logstep_fix(double x_min, double x_step, int Nstep);
-
-  FixedData<double> range_fix(double x_min, double x_max, double dx);
+  std::vector<double> linstep(double x_min, double x_step, int Nstep); // #TODO not defined.
+  std::vector<double> logstep(double x_min, double x_step, int Nstep); // #TODO not defined.
 
   //!< FixedData<int> range(int stop); #TODO -> FixedData is not good since it has function
   //!< FixedData<int> range(int start, int stop, int step = 1);
 
-  std::vector<double> linspace(double x1, double x2, int N);
   FixedData<double> linspace_fix(double x1, double x2, int N);
 
   template <size_t N>
@@ -119,25 +111,25 @@ namespace slide {
 
 namespace slide {
 
-  inline slide::FixedData<double> range_fix(double x_min, double x_max, double x_step)
+  inline FixedData<double> range_fix(double x_min, double x_max, double x_step)
   {
     int Nstep = static_cast<int>((x_max - x_min) / x_step) + 1;
-    return slide::FixedData<double>(x_min, x_step, Nstep);
+    return FixedData<double>(x_min, x_step, Nstep);
   }
 
-  inline slide::FixedData<double> linstep_fix(double x_min, double x_step, int Nstep)
+  inline FixedData<double> linstep_fix(double x_min, double x_step, int Nstep)
   {
-    return slide::FixedData<double>(x_min, x_step, Nstep);
+    return FixedData<double>(x_min, x_step, Nstep);
   }
 
-  inline slide::FixedData<double> logstep_fix(double x_min, double x_step, int Nstep)
+  inline FixedData<double> logstep_fix(double x_min, double x_step, int Nstep)
   {
     auto fun = [](double x_min, double x_step, int i) { return x_min * std::pow(x_step, i); };
 
-    return slide::FixedData<double>(x_min, x_step, Nstep, fun);
+    return FixedData<double>(x_min, x_step, Nstep, fun);
   }
 
-  inline slide::FixedData<double> linspace_fix(double x1, double x2, int N)
+  inline FixedData<double> linspace_fix(double x1, double x2, int N)
   {
     if (N < 1)
       return FixedData(x2, 0.0, 0);
