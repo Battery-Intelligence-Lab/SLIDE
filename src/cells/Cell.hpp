@@ -114,13 +114,6 @@ public:
   virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); } // #TODO *this may be Cell not actual type.
 
   virtual CellThroughputData getThroughputs() { return {}; }
-
-  //!< #if DATASTORE_CELL == 1
-  //!< 		virtual const CellCommonHist &getHists()
-  //!< 		{
-  //!< 			return hist;
-  //!< 		};
-  //!< #endif
 };
 
 } // namespace slide

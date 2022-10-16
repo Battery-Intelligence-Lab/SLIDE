@@ -25,8 +25,9 @@ protected:
   TimingData_Module_s timeData{};
 #endif
 public:
-  Module_s();
-  Module_s(std::string_view IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype);
+  Module_s() : Module("moduleS") {} //!< note this constructor should never be used. It can't determine which coolsystem to use
+  Module_s(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
+    : Module(ID_, Ti, print, pari, Ncells, coolControl, cooltype) {}
   //!< Module_s(std::string_view IDi, bool pari, int Ncells, std::unique_ptr<CoolSystem> &&cool_); #TODO
 
   //!< functions from Module_base

@@ -404,12 +404,14 @@ slide_pack integration:
 - [ ] License files of individual libraries are moved into the corresponding folders. 
 - [ ] tests folder is created and unit tests are moved into that folder. 
 - [ ] separator variables in checkUp functions seem to be unnecessary; therefore, removing. 
+- [ ] Changing constructor delegation. Module_p and Module_s constructors are combined. 
+- [ ] ID should be unique. 
 
 
 ### C++20 changes (yay!):
 - [ ] std::span for state assignments. 
 
-Some new ideas to implement: 
+### Some new ideas to implement: 
 - [ ] For XY data read to vector but then create a specific-sized data structure with all heap allocated as if make_shared.
 - [ ] begin and end functions for StorageUnit to traverse the children. 
 - [ ] Classes to hold static vector of their elements for make_X;
@@ -423,16 +425,17 @@ Some new ideas to implement:
   - [x] Model_SPM, State_SPM. 
   - [x] interpolation.cpp, read_CSVfiles.cpp, slide_aux.cpp, util.cpp, util_error.cpp -> 77 kB -> 76 kB
 - [ ] addData parameter in timeStep_CC functions is now useless since it only stores throughputs which are now included in states. So it is removed. 
-
+- [ ] Threadlocal vectors for dynamic-sized stack for some functions.
 
 ### Formatting: 
 - [x] Include a clang-format file. 
 - [ ] Configure clang-format, cmake-format etc. 
 
 ### Developer changes: 
-
 - [ ] CMake folder and some files are added. 
 
 ### JOSS: 
 - [ ] Added JOSS folder and Github workflow. 
+
+
 

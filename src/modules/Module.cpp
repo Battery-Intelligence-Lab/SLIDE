@@ -18,6 +18,45 @@
 
 //!< common implementation for all base-modules
 namespace slide {
+
+Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
+  : Module(ID_)
+{
+  /*
+   * IN
+   * Ti 			temperture of the coolant
+   * print 		print error warnings
+   * pari 		use multithreaded computation to calculate the time steps of the connected SUs or not
+   * Ncells 		number of cells which will be connected to this module.
+   * 				This is necessary to properly size the cooling system:
+   * 				modules with more cells will have more heat generation, so need better cooling.
+   * 				This is implemented by increasing the thermally active surface area of the module,
+   * 				and the flow rate (and cross section) of the coolant in the CoolSystem.
+   * coolControl 	integer deciding how the cooling system is controlled.
+   * cooltype 	determines what type of coolsystem this module has
+   * 				0: regular coolsystem
+   * 				1: this module is the top level module and has an HVAC coolsystem
+   * 					which means it has a fan to cool the child SUs and an air conditioning unit to cool the module from the environment
+   * 				2: this module is a mid-level module and has an open coolsystem (pass through between parent module and child modules)
+   */
+
+  par = pari;
+
+  //!< Set the module temperature
+  therm.A = 0.0042 * 10 * Ncells; //!< thermally active surface area. The first number is the thermal active surface area of a cell
+  double Q0 = 0;                  //!< constant ancillary losses. There are none since a module only has cells
+
+  if (cooltype == 1)
+    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0);
+  else if (cooltype == 2)
+    cool = std::make_unique<CoolSystem_open>(Ncells, coolControl);
+  else
+    cool = std::make_unique<CoolSystem>(Ncells, coolControl);
+
+  cool->setT(Ti);
+}
+
+
 void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
 {
   /*

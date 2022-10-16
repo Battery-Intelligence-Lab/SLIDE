@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <vector>
 #include <span>
+#include <string_view>
 
 namespace slide {
 class StorageUnit
@@ -32,8 +33,8 @@ protected:
 public:
   //!< basic getters and setters
   StorageUnit() = default;
-  StorageUnit(const std::string &ID_) : ID(ID_) {}
-  StorageUnit(const std::string &ID_, StorageUnit *parent_, bool blockDegAndTherm_)
+  StorageUnit(std::string_view ID_) : ID(ID_) {}
+  StorageUnit(std::string_view ID_, StorageUnit *parent_, bool blockDegAndTherm_)
     : ID(ID_), parent(parent_), blockDegAndTherm(blockDegAndTherm_) {}
 
   virtual ~StorageUnit() = default;

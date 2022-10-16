@@ -50,7 +50,7 @@ protected:
   size_t Ncells;               //!< Number of cells this module contains.
   double Vmodule{ 0 };         //!< voltage of the module
   bool Vmodule_valid{ false }; //!< boolean indicating if stored the voltage of the module is valid
-  bool par;                    //!< if true, some functions will be calculated parallel using multithreaded computing
+  bool par{ true };            //!< if true, some functions will be calculated parallel using multithreaded computing
                                //!< data storage
 #if DATASTORE_MODULE > 0
   CellCumulativeData tData;
@@ -78,8 +78,13 @@ protected:
   double thermalModel_coupled(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim);
 
 public:
+  Module() : StorageUnit("Module") {}
+  Module(std::string_view ID_) : StorageUnit(ID_) {}
+  Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype);
+
+
   //!< common implementation for all base-modules
-  inline size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
+  size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
   moduleSUs_t &getSUs() { return SUs; }
 
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid

@@ -20,8 +20,9 @@ protected:
   TimingData_Module_p timeData{};
 #endif
 public:
-  Module_p();
-  Module_p(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype);
+  Module_p() : Module("moduleP") {} //!< note this constructor should never be used. It can't determine which coolsystem to use
+  Module_p(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
+    : Module(ID_, Ti, print, pari, Ncells, coolControl, cooltype) {}
 
   //!< functions from Module_base
   double Cap() override;  //!< module capacity (sum of cells)

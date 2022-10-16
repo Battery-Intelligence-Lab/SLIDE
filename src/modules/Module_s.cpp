@@ -22,55 +22,6 @@
 #include <ctime>
 
 namespace slide {
-Module_s::Module_s()
-{
-  //!< note this constructor should never be used. It will result in errors throughout the code
-  //!< It can't determine which coolsystem to use
-  ID = "moduleS";
-}
-
-Module_s::Module_s(std::string_view IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
-  : Module_s()
-{
-  /*
-   *	make a series-connected module.
-   *	NOTE: you cannot set the cells in the constructor.
-   *	The reason is that to set the parent to the child-cells, you need to call shared_from_this(). #TODO
-   *	And shared_from_this can only be called once 'this' has been made (i.e. terminated the constructor)
-   *
-   * IN
-   * Ti 			temperture of the coolant
-   * print 		print error warnings
-   * pari 		use multithreaded computation to calculate the time steps of the connected SUs or not
-   * Ncells 		number of cells which will be connected to this module.
-   * 				This is necessary to properly size the cooling system:
-   * 				modules with more cells will have more heat generation, so need better cooling.
-   * 				This is implemented by increasing the thermally active surface area of the module,
-   * 				and the flow rate (and cross section) of the coolant in the CoolSystem.
-   * coolControl 	integer deciding how the cooling system is controlled.
-   * cooltype 	determines what type of coolsystem this module has
-   * 				0: regular coolsystem
-   * 				1: this module is the top level module and has an HVAC coolsystem
-   * 					which means it has a fan to cool the child SUs and an air conditioning unit to cool the module from the environment
-   * 				2: this module is a mid-level module and has an open coolsystem (pass through between parent module and child modules)
-   *
-   */
-
-  ID = IDi;
-  par = pari;
-
-  //!< Set the module temperature
-  therm.A = 0.0042 * 10 * Ncells;                                      //!< thermally active surface area. The first number is the thermal active surface area of a cell
-  double Q0 = 0;                                                       //!< constant ancillary losses. There are none since a module only has cells
-  if (cooltype == 1)                                                   //!< #TODO make this enum.
-    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0); //!< #TODO already created a pointer in default constructor.
-  else if (cooltype == 2)
-    cool = std::make_unique<CoolSystem_open>(Ncells, coolControl);
-  else
-    cool = std::make_unique<CoolSystem>(Ncells, coolControl);
-
-  cool->setT(Ti);
-}
 
 double Module_s::Cap()
 {
