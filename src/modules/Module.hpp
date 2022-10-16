@@ -88,7 +88,6 @@ public:
 
   double Cap() override; //!< module capacity (sum of cells)
 
-
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid
   double getVhigh() override;                                           //!< return the voltage of the cell with the highest voltage
   double getVlow() override;                                            //!< return the voltage of the cell with the lowest voltage

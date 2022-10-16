@@ -22,18 +22,6 @@
 
 namespace slide {
 
-//!< functions from Module_base
-double Module_p::Cap()
-{
-  //!< the capacity is the sum  of the capacity of each cell
-  double cap{ 0 };
-
-  for (auto &SU : SUs)
-    cap += SU->Cap();
-
-  return cap;
-}
-
 double Module_p::Vmin()
 {
   //!< the voltage limits are the most constraining limits of all cells

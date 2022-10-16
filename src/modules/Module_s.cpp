@@ -23,16 +23,6 @@
 
 namespace slide {
 
-double Module_s::Cap()
-{
-  //!< the capacity is the capacity of the smallest cell
-  double cap = std::numeric_limits<double>::max();
-  for (auto &SU : SUs)
-    cap = std::min(cap, SU->Cap());
-
-  return cap;
-}
-
 double Module_s::Vmin()
 {
   //!< the voltage limits are the sums of the voltage limits of all individual cells
