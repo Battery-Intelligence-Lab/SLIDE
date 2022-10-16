@@ -82,10 +82,12 @@ public:
   Module(std::string_view ID_) : StorageUnit(ID_) {}
   Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype);
 
-
   //!< common implementation for all base-modules
   size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
   moduleSUs_t &getSUs() { return SUs; }
+
+  double Cap() override; //!< module capacity (sum of cells)
+
 
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid
   double getVhigh() override;                                           //!< return the voltage of the cell with the highest voltage

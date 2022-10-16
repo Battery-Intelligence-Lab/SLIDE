@@ -31,7 +31,6 @@ public:
   //!< Module_s(std::string_view IDi, bool pari, int Ncells, std::unique_ptr<CoolSystem> &&cool_); #TODO
 
   //!< functions from Module_base
-  double Cap() override;  //!< module capacity (sum of cells)
   double Vmin() override; //!< module capacity (sum of cells)
   double VMIN() override;
   double Vmax() override; //!< module capacity (sum of cells)

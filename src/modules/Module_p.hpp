@@ -25,7 +25,6 @@ public:
     : Module(ID_, Ti, print, pari, Ncells, coolControl, cooltype) {}
 
   //!< functions from Module_base
-  double Cap() override;  //!< module capacity (sum of cells)
   double Vmin() override; //!< module capacity (sum of cells)
   double VMIN() override;
   double VMAX() override;

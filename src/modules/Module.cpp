@@ -57,6 +57,18 @@ Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncell
 }
 
 
+double Module::Cap()
+{
+  //!< the capacity is the sum  of the capacity of each cell
+  double cap{ 0 };
+
+  for (auto &SU : SUs)
+    cap += SU->Cap();
+
+  return cap;
+}
+
+
 void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
 {
   /*
@@ -108,6 +120,7 @@ void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
 
   Ncells = r;
 }
+
 
 Status Module::checkVoltage(double &v, bool print) noexcept
 {
