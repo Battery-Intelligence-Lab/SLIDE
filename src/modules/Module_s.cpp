@@ -20,17 +20,20 @@
 #include <thread>
 #include <memory>
 #include <ctime>
+#include <numeric>
 
 namespace slide {
 
 double Module_s::Vmin()
 {
-  //!< the voltage limits are the sums of the voltage limits of all individual cells
-  //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  double vm{ 0 };
-  for (auto &SU : SUs)
-    vm += SU->Vmin();
-  return vm;
+  return free::transform_sum(SUs, free::getVmin<SU_t>);
+
+  // //!< the voltage limits are the sums of the voltage limits of all individual cells
+  // //!< note that this does not guarantee the Vlimits of each individual cell is respected
+  // double vm{ 0 };
+  // for (auto &SU : SUs)
+  //   vm += SU->Vmin(); // #TODO transform reduce.
+  // return vm;
 }
 
 double Module_s::VMIN()
@@ -189,7 +192,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   return Status::Success;
 }
 
-bool Module_s::validSUs(moduleSUs_span_t c, bool print)
+bool Module_s::validSUs(SUs_span_t c, bool print)
 {
   /*
    * Checks the cells are a valid combination for a series-connected module

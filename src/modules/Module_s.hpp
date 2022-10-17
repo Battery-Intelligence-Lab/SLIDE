@@ -41,7 +41,7 @@ public:
   double V(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
 
   //!< bool validSUs(bool print = true);
-  bool validSUs(moduleSUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
+  bool validSUs(SUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
   void timeStep_CC(double dt, int steps = 1) override;

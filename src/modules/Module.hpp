@@ -36,10 +36,12 @@ class Module : public StorageUnit //, public ModuleDataStorage<DATASTORE_MODULE>
 {
 protected:
   //!< connected child SUs
-  using moduleSUs_t = std::vector<std::unique_ptr<StorageUnit>>;
-  using moduleSUs_span_t = std::span<std::unique_ptr<StorageUnit>>;
+  using SU_t = std::unique_ptr<StorageUnit>;
+  using SUs_t = std::vector<SU_t>;
+  using SUs_span_t = std::span<SU_t>;
+  using CoolSystem_t = std::unique_ptr<CoolSystem>;
 
-  moduleSUs_t SUs;
+  SUs_t SUs;
   std::vector<double> Rcontact; //!< array with the contact resistance for cell i
 
   //!< thermal model
@@ -81,10 +83,11 @@ public:
   Module() : StorageUnit("Module") {}
   Module(std::string_view ID_) : StorageUnit(ID_) {}
   Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype);
+  Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, CoolSystem_t &&coolControlPtr, int cooltype);
 
   //!< common implementation for all base-modules
   size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
-  moduleSUs_t &getSUs() { return SUs; }
+  SUs_t &getSUs() { return SUs; }
 
   double Cap() override; //!< module capacity (sum of cells)
 
@@ -103,9 +106,6 @@ public:
   //!< if checkV=true, then also the cell and module voltages are checked
   //!< the other functions just call setStates to check validity
 
-  //!< void backupStates();  //!< Back-up states.
-  //!< void restoreStates(); //!< restore backed-up states.
-
   //!< thermal model
   double T() override { return cool->T(); } //!< get the temperature of this module
 
@@ -114,10 +114,10 @@ public:
   double thermalModel(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim) override;
 
   //!< different implementation for series vs parallel modules
-  virtual bool validSUs(moduleSUs_span_t c, bool print = true) = 0;         //!< check if the cells in this array are valid for this module
+  virtual bool validSUs(SUs_span_t c, bool print = true) = 0;               //!< check if the cells in this array are valid for this module
   virtual bool validSUs(bool print = true) { return validSUs(SUs, print); } //!< check if the cells in valid for this module
 
-  virtual void setSUs(moduleSUs_span_t c, bool checkCells = true, bool print = true);
+  virtual void setSUs(SUs_span_t c, bool checkCells = true, bool print = true);
   //!< Sets the cells of this module. Checks module-constraints
   //!< does not check if the states of cells are valid, nor the voltages of the cells and module
   //!< it only checks whether the cells are ok for this module (same current if series, same voltage if parallel)

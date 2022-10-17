@@ -14,6 +14,7 @@
 
 #include <fstream>
 #include <string>
+#include <numeric>
 
 namespace slide::free {
 template <typename T>
@@ -32,11 +33,14 @@ auto getV(T const &SU)
   return SU.V();
 }
 
-template <typename T>
-auto getVmin(T const &SU)
+
+auto transform_sum(const auto &SUs, auto &function)
 {
-  //!< return SU.V();
+  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::plus<>(), function);
 }
+
+template <typename T>
+auto getVmin(const T &SU) { return SU->Vmin(); }
 
 template <bool Print = settings::printBool::printCrit>
 auto inline check_SOC(double SOCnew, double SOC_min = 0, double SOC_max = 1)

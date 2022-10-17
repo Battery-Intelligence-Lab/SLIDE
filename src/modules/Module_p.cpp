@@ -720,7 +720,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   return Status::Success; //!< #TODO problem
 }
 
-bool Module_p::validSUs(moduleSUs_span_t c, bool print)
+bool Module_p::validSUs(SUs_span_t c, bool print)
 {
   /*
    * Checks the cells are a valid combination for a parallel-connected module

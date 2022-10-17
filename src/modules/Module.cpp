@@ -20,7 +20,7 @@
 namespace slide {
 
 Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
-  : Module(ID_)
+  : StorageUnit(ID_), par{ pari }
 {
   /*
    * IN
@@ -40,8 +40,6 @@ Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncell
    * 				2: this module is a mid-level module and has an open coolsystem (pass through between parent module and child modules)
    */
 
-  par = pari;
-
   //!< Set the module temperature
   therm.A = 0.0042 * 10 * Ncells; //!< thermally active surface area. The first number is the thermal active surface area of a cell
   double Q0 = 0;                  //!< constant ancillary losses. There are none since a module only has cells
@@ -53,6 +51,13 @@ Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncell
   else
     cool = std::make_unique<CoolSystem>(Ncells, coolControl);
 
+  cool->setT(Ti);
+}
+
+Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, CoolSystem_t &&coolControlPtr, int cooltype)
+  : StorageUnit(ID_), cool(std::move(coolControlPtr)), par{ pari }
+{
+  therm.A = 0.0042 * 10 * Ncells; //!< thermally active surface area. The first number is the thermal active surface area of a cell
   cool->setT(Ti);
 }
 
@@ -69,7 +74,7 @@ double Module::Cap()
 }
 
 
-void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
+void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
 {
   /*
    *	Note: this function can change the number of cells connected to a module

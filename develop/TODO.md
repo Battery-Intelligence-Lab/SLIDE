@@ -406,6 +406,8 @@ slide_pack integration:
 - [ ] separator variables in checkUp functions seem to be unnecessary; therefore, removing. 
 - [ ] Changing constructor delegation. Module_p and Module_s constructors are combined. 
 - [ ] ID should be unique. 
+- [ ] Module functions are being combined. 
+- [ ] std::algorithms and free functions for modules.
 
 
 ### C++20 changes (yay!):
