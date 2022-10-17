@@ -33,14 +33,23 @@ auto getV(T const &SU)
   return SU.V();
 }
 
+template <typename T>
+auto getVmin(const T &SU) { return SU->Vmin(); }
+
+template <typename T>
+auto getVMIN(const T &SU) { return SU->VMIN(); }
+
+template <typename T>
+auto getVmax(const T &SU) { return SU->Vmax(); }
+
+template <typename T>
+auto getVMAX(const T &SU) { return SU->VMAX(); }
 
 auto transform_sum(const auto &SUs, auto &function)
 {
   return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::plus<>(), function);
 }
 
-template <typename T>
-auto getVmin(const T &SU) { return SU->Vmin(); }
 
 template <bool Print = settings::printBool::printCrit>
 auto inline check_SOC(double SOCnew, double SOC_min = 0, double SOC_max = 1)

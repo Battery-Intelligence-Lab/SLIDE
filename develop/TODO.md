@@ -408,6 +408,7 @@ slide_pack integration:
 - [ ] ID should be unique. 
 - [ ] Module functions are being combined. 
 - [ ] std::algorithms and free functions for modules.
+  - [ ] transform_sum is added. 
 
 
 ### C++20 changes (yay!):

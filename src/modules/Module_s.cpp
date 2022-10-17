@@ -24,47 +24,12 @@
 
 namespace slide {
 
-double Module_s::Vmin()
-{
-  return free::transform_sum(SUs, free::getVmin<SU_t>);
+// Since cells are in series following functions are just sum.
 
-  // //!< the voltage limits are the sums of the voltage limits of all individual cells
-  // //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  // double vm{ 0 };
-  // for (auto &SU : SUs)
-  //   vm += SU->Vmin(); // #TODO transform reduce.
-  // return vm;
-}
-
-double Module_s::VMIN()
-{
-  //!< the voltage limits are the sums of the voltage limits of all individual cells
-  //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  double vm{ 0 };
-  for (auto &SU : SUs)
-    vm += SU->VMIN();
-  return vm;
-}
-
-double Module_s::Vmax()
-{
-  //!< the voltage limits are the sums of the voltage limits of all individual cells
-  //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  double vm = 0;
-  for (auto &SU : SUs)
-    vm += SU->Vmax();
-  return vm;
-}
-
-double Module_s::VMAX()
-{
-  //!< the voltage limits are the sums of the voltage limits of all individual cells
-  //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  double vm = 0;
-  for (auto &SU : SUs)
-    vm += SU->VMAX();
-  return vm;
-}
+double Module_s::Vmin() { return free::transform_sum(SUs, free::getVmin<SU_t>); }
+double Module_s::VMIN() { return free::transform_sum(SUs, free::getVMIN<SU_t>); }
+double Module_s::Vmax() { return free::transform_sum(SUs, free::getVmax<SU_t>); }
+double Module_s::VMAX() { return free::transform_sum(SUs, free::getVMAX<SU_t>); }
 
 double Module_s::I()
 {
