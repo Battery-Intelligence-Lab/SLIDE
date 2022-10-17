@@ -34,20 +34,29 @@ auto getV(T const &SU)
 }
 
 template <typename T>
-auto getVmin(const T &SU) { return SU->Vmin(); }
+auto get_Vmin(const T &SU) { return SU->Vmin(); }
 
 template <typename T>
-auto getVMIN(const T &SU) { return SU->VMIN(); }
+auto get_VMIN(const T &SU) { return SU->VMIN(); }
 
 template <typename T>
-auto getVmax(const T &SU) { return SU->Vmax(); }
+auto get_Vmax(const T &SU) { return SU->Vmax(); }
 
 template <typename T>
-auto getVMAX(const T &SU) { return SU->VMAX(); }
+auto get_VMAX(const T &SU) { return SU->VMAX(); }
+
+template <typename T>
+auto get_Cap(const T &SU) { return SU->Cap(); }
+
 
 auto transform_sum(const auto &SUs, auto &function)
 {
   return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::plus<>(), function);
+}
+
+auto transform_max(const auto &SUs, auto &function)
+{
+  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::max<>(), function);
 }
 
 

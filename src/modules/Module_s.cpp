@@ -26,10 +26,10 @@ namespace slide {
 
 // Since cells are in series following functions are just sum.
 
-double Module_s::Vmin() { return free::transform_sum(SUs, free::getVmin<SU_t>); }
-double Module_s::VMIN() { return free::transform_sum(SUs, free::getVMIN<SU_t>); }
-double Module_s::Vmax() { return free::transform_sum(SUs, free::getVmax<SU_t>); }
-double Module_s::VMAX() { return free::transform_sum(SUs, free::getVMAX<SU_t>); }
+double Module_s::Vmin() { return free::transform_sum(SUs, free::get_Vmin<SU_t>); }
+double Module_s::VMIN() { return free::transform_sum(SUs, free::get_VMIN<SU_t>); }
+double Module_s::Vmax() { return free::transform_sum(SUs, free::get_Vmax<SU_t>); }
+double Module_s::VMAX() { return free::transform_sum(SUs, free::get_VMAX<SU_t>); }
 
 double Module_s::I()
 {
