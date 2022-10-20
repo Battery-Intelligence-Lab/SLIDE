@@ -8,9 +8,7 @@
 #include "Module_p.hpp"
 
 #include "../settings/settings.hpp"
-#include "../utility/interpolation.hpp"
-#include "../utility/util.hpp"
-#include "../utility/predicate_functions.hpp"
+#include "../utility/utility.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -23,59 +21,6 @@
 #include <ctime>
 
 namespace slide {
-Module_p::Module_p() { ID = "moduleP"; } //!< note this constructor should never be used. It can't determine which coolsystem to use
-
-Module_p::Module_p(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
-  : Module_p()
-{
-  /*
-   *	make a parallel-connected module out of the given cells
-   *
-   * IN
-   * Ti 			temperture of the coolant
-   * print 		print error warnings
-   * pari 		use multithreaded computation to calculate the time steps of the connected SUs or not
-   * Ncells 		number of cells which will be connected to this module.
-   * 				This is necessary to properly size the cooling system:
-   * 				modules with more cells will have more heat generation, so need better cooling.
-   * 				This is implemented by increasing the thermally active surface area of the module,
-   * 				and the flow rate (and cross section) of the coolant in the CoolSystem.
-   * coolControl 	integer deciding how the cooling system is controlled.
-   * cooltype 	determines what type of coolsystem this module has
-   * 				0: regular coolsystem
-   * 				1: this module is the top level module and has an HVAC coolsystem
-   * 					which means it has a fan to cool the child SUs and an air conditioning unit to cool the module from the environment
-   * 				2: this module is a mid-level module and has an open coolsystem (pass through between parent module and child modules)
-   */
-
-  ID = IDi;
-  par = pari;
-
-  //!< Set the module temperature
-  therm.A = 0.0042 * 10 * Ncells; //!< thermally active surface area. The first number is the thermal active surface area of a cell
-  double Q0 = 0;                  //!< constant ancillary losses. There are none since a module only has cells
-
-  if (cooltype == 1)
-    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0);
-  else if (cooltype == 2)
-    cool = std::make_unique<CoolSystem_open>(Ncells, coolControl);
-  else
-    cool = std::make_unique<CoolSystem>(Ncells, coolControl);
-
-  cool->setT(Ti);
-}
-
-//!< functions from Module_base
-double Module_p::Cap()
-{
-  //!< the capacity is the sum  of the capacity of each cell
-  double cap{ 0 };
-
-  for (auto &SU : SUs)
-    cap += SU->Cap();
-
-  return cap;
-}
 
 double Module_p::Vmin()
 {
@@ -154,7 +99,7 @@ double Module_p::getRtot()
   if (SUs.empty())
     return 0;
 
-  //!< check if there are contact resistances only until SUs size. //!< #CHECK why are we checking this?
+  //!< check if there are contact resistances only until SUs size. //!< #TODO why are we checking this?
   const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
 
   if (noRc) //!< no contact resistance
@@ -172,7 +117,7 @@ double Module_p::getRtot()
 
   //!< then iteratively come closer, every time Rcontact[i] + (Rcell[i] \\ Rtot)
   //!< 				= Rc[i] + Rcell[i]*Rtot / (Rcel[i]*Rtot)
-  for (int i = getNSUs() - 2; i >= 0; i--) //!< #CHECK bug if there are less than 2 SUs.
+  for (int i = getNSUs() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs.
     rtot = Rcontact[i] + (SUs[i]->getRtot() * rtot) / (SUs[i]->getRtot() + rtot);
 
   return rtot;
@@ -232,7 +177,7 @@ double Module_p::V(bool print)
     if (v == 0)
       return 0;
 
-    Vmodule += getVi(i, print); //!< #CHECK there is definitely something fishy. getVi already does some calculations.
+    Vmodule += getVi(i, print); //!< #TODO there is definitely something fishy. getVi already does some calculations.
   }
 
   Vmodule /= SUs.size();
@@ -293,15 +238,15 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   Vmodule_valid = false;                                               //!< we are changing the current to individual cells, so the stored voltage is no longer valid
 
   //!< get cell voltages
-  std::array<double, settings::MODULE_NSUs_MAX> Vo, Iold; //!< #CHECK if we should make them vector.
+  std::array<double, settings::MODULE_NSUs_MAX> Vo, Iold; //!< #TODO if we should make them vector.
 
-  //!< voltage and initial current of each cell //!< #CHECK it is a constant value SU.
+  //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
   for (size_t i = 0; i < getNSUs(); i++) {
     Vo[i] = getVi(i, print);
     Iold[i] = SUs[i]->I();
   }
 
-  //!< check if there are contact resistances #CHECK if we can do better.
+  //!< check if there are contact resistances #TODO if we can do better.
   const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
 
   //!< variables
@@ -326,7 +271,7 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
     Cmean = 0.1;    //!< then use dI of 0.1C to equalise the currents
 
   //!< iterate until the voltages are satisfactory close
-  while (!reached) //!< #CHECK if this algorithm is efficient.
+  while (!reached) //!< #TODO if this algorithm is efficient.
   {
 
     //!< find the cells with the smallest and largest V
@@ -351,7 +296,7 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
      * 		else 		f = 0.05
      */
     if (ktot == 0) {
-      const int Nseries = static_cast<int>((Vmax() - Vmin()) / 1.5); //!< #CHECK this probably takes some time.
+      const int Nseries = static_cast<int>((Vmax() - Vmin()) / 1.5); //!< #TODO this probably takes some time.
       if (dV > 1.0 * Nseries)
         f = 0.3; //!< for 1V, change 30% of the cell current
       else if (dV > 0.1 * Nseries)
@@ -381,7 +326,7 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
       //!< update voltages
       if (noRc) { //!< no contact resistance, so only for cells which change current, does the V change
         try {
-          Vo[imax] = getVi(imax, print); //!< #CHECK if getVi is throwing.
+          Vo[imax] = getVi(imax, print); //!< #TODO if getVi is throwing.
           Vo[imin] = getVi(imin, print);
         } catch (int e) {
           std::cout << "Error " << e << " in redistributeCurrent iteration " << ktot << " for module "
@@ -534,7 +479,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
                          //!< note, this is always relative to the error, i.e f* (Inew-I())/N
                          //!< so it will automatically become smaller, it is more the gain of a P controller
 
-  //!< check if there are contact resistances #CHECK why
+  //!< check if there are contact resistances #TODO why
   const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
@@ -549,7 +494,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
     Vmodule_valid = false;       //!< we are changing the current, so the stored voltage is no longer valid
 
     //!< STEP 1: CHANGE ICELL BY dIi/2 AND SEE HOW CELL VOLTAGE CHANGES to estimate resistance
-    std::array<double, settings::MODULE_NSUs_MAX> Vo, Ri, Iold; //#CHECK these probably need to be vectors since NSUs will increase.
+    std::array<double, settings::MODULE_NSUs_MAX> Vo, Ri, Iold; //#TODO these probably need to be vectors since NSUs will increase.
     double Rtot = 0;                                            //!< total resistance of the parallel module, 1/Rtot = sum ( 1/R(i) )
     for (size_t i = 0; i < getNSUs(); i++) {
       Vo[i] = getVi(i, print); //!< terminal voltage reached from cell i
@@ -654,7 +599,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
 
       //!< redistribute the current, if that is successful, we have valid cell voltages
       try {
-        auto status = redistributeCurrent(checkV, print); //!< #CHECK this is utterly wrong.
+        auto status = redistributeCurrent(checkV, print); //!< #TODO this is utterly wrong.
         if (status != Status::Success)
           throw 100000;
       } catch (int) {
@@ -699,7 +644,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   double v;
 
   //!< get the old currents so we can revert if needed
-  std::vector<double> Iolds; //!< #CHECK we need to remove vector somehow?
+  std::vector<double> Iolds; //!< #TODO we need to remove vector somehow?
   Iolds.clear();
 
   for (auto &SU : SUs)
@@ -772,10 +717,10 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 #if TIMING
   timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
 #endif
-  return Status::Success; //!< #CHECK problem
+  return Status::Success; //!< #TODO problem
 }
 
-bool Module_p::validSUs(moduleSUs_span_t c, bool print)
+bool Module_p::validSUs(SUs_span_t c, bool print)
 {
   /*
    * Checks the cells are a valid combination for a parallel-connected module
@@ -788,7 +733,7 @@ bool Module_p::validSUs(moduleSUs_span_t c, bool print)
 #endif
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  //!< Check the voltage of each cell is valid and within the error tolerance #CHECK it is better to supply both module and Rcontact.
+  //!< Check the voltage of each cell is valid and within the error tolerance #TODO it is better to supply both module and Rcontact.
   auto Vi = [N = getNSUs(), c, print, this](size_t i) {
     double v = c[i]->V(print);
 
@@ -825,7 +770,7 @@ bool Module_p::validSUs(moduleSUs_span_t c, bool print)
   //!< Check that this limit is below the absolute or relative threshold
   const double dV = V_max - V_min;
   bool result{ true };
-  if (dV > settings::MODULE_P_V_ABSTOL && dV > settings::MODULE_P_V_RELTOL * V_max) //!< #CHECK if this should be || not &&
+  if (dV > settings::MODULE_P_V_ABSTOL && dV > settings::MODULE_P_V_RELTOL * V_max) //!< #TODO if this should be || not &&
   {
     if (verb) {
       std::cout << "error in Module_p::validSUs for SU = " << getFullID() << ", the maximum voltage is in cell"
@@ -843,7 +788,7 @@ bool Module_p::validSUs(moduleSUs_span_t c, bool print)
   return result;
 }
 
-void Module_p::timeStep_CC(double dt, bool addData, int nstep)
+void Module_p::timeStep_CC(double dt, int nstep)
 {
   /*
    * Take a time step at a constant current.
@@ -869,7 +814,7 @@ void Module_p::timeStep_CC(double dt, bool addData, int nstep)
   }
 
   //!< we simply take one CC time step on every cell
-  auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, addData, nstep); };
+  auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, nstep); };
 
   try {
     run(task_indv, getNSUs(), (par ? -1 : 1));
@@ -943,7 +888,7 @@ void Module_p::timeStep_CC(double dt, bool addData, int nstep)
       auto status = redistributeCurrent(false, true); //!< don't check the currents
 
       if (status != Status::Success)
-        throw 100000; //!< #CHECK
+        throw 100000; //!< #TODO
     } catch (int e) {
       std::cout << "error in Module_p::timeStep_CC when redistributing the current. Throwing the error on " << e << '\n';
       std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
@@ -974,7 +919,7 @@ void Module_p::setTimings(TimingData_Module_p td)
 
 Module_p *Module_p::copy()
 {
-  //!< check the type of coolsystem we have #CHECK for a better way.
+  //!< check the type of coolsystem we have #TODO for a better way.
   int cooltype = 0;
   if (typeid(*getCoolSystem()) == typeid(CoolSystem_HVAC))
     cooltype = 1;

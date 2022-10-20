@@ -37,7 +37,7 @@ public:
     m = m_;
     n = n_;
 
-    //!< #CHECK add only one to be changed.
+    //!< #TODO add only one to be changed.
   }
 
   inline auto rows() const { return m; }
@@ -69,7 +69,7 @@ public:
 };
 
 template <typename Tdata>
-std::ostream &operator<<(std::ostream &os, const DynamicMatrix<Tdata> &M) //!< #CHECK in future this should be const.
+std::ostream &operator<<(std::ostream &os, const DynamicMatrix<Tdata> &M) //!< #TODO in future this should be const.
 {
   M.print(os);
   return os;

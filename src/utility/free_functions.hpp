@@ -12,6 +12,10 @@
 #include "../settings/settings.hpp"
 #include "../types/Status.hpp"
 
+#include <fstream>
+#include <string>
+#include <numeric>
+
 namespace slide::free {
 template <typename T>
 size_t getNcells(T const &SU)
@@ -30,10 +34,31 @@ auto getV(T const &SU)
 }
 
 template <typename T>
-auto getVmin(T const &SU)
+auto get_Vmin(const T &SU) { return SU->Vmin(); }
+
+template <typename T>
+auto get_VMIN(const T &SU) { return SU->VMIN(); }
+
+template <typename T>
+auto get_Vmax(const T &SU) { return SU->Vmax(); }
+
+template <typename T>
+auto get_VMAX(const T &SU) { return SU->VMAX(); }
+
+template <typename T>
+auto get_Cap(const T &SU) { return SU->Cap(); }
+
+
+auto transform_sum(const auto &SUs, auto &function)
 {
-  //!< return SU.V();
+  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::plus<>(), function);
 }
+
+auto transform_max(const auto &SUs, auto &function)
+{
+  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::max<>(), function);
+}
+
 
 template <bool Print = settings::printBool::printCrit>
 auto inline check_SOC(double SOCnew, double SOC_min = 0, double SOC_max = 1)
@@ -55,7 +80,7 @@ auto inline check_Cell_states(auto &su, bool checkV)
   if (!su.validStates(Print)) //!< check if valid state
   {
     if constexpr (Print)
-      std::cerr << "ERROR in " << su.getID() << "::setStates, illegal State.\n"; //!< #CHECK here add some type id.
+      std::cerr << "ERROR in " << su.getID() << "::setStates, illegal State.\n"; //!< #TODO here add some type id.
 
     return Status::Invalid_states;
   }
@@ -112,7 +137,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
                 << " centigrade and I = " << su.I() << '\n';
 
     return Status::Vmin_violation;
-  } else if (v > (su.Vmax() + settings::MODULE_P_V_ABSTOL) && su.isCharging()) //!< #CHECK
+  } else if (v > (su.Vmax() + settings::MODULE_P_V_ABSTOL) && su.isCharging()) //!< #TODO
   {
     if (printNonCrit)
       std::cout << "The voltage of cell " << su.getFullID() << " is " << v
@@ -147,10 +172,10 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
 template <bool Print = settings::printBool::printCrit>
 auto inline check_safety(double vi, auto &cyc)
 {
-  const auto SafetyVmin = cyc.getSafetyVmin(); //!< #CHECK this requires some calculations!
+  const auto SafetyVmin = cyc.getSafetyVmin(); //!< #TODO this requires some calculations!
   const auto SafetyVmax = cyc.getSafetyVmax();
 
-  if (vi < SafetyVmin) //!< #CHECK this requires some calculations!
+  if (vi < SafetyVmin) //!< #TODO this requires some calculations!
   {
     if constexpr (Print)
       std::cout << "Error in Cycler::??, the voltage of " << vi
@@ -158,7 +183,7 @@ auto inline check_safety(double vi, auto &cyc)
                 << SafetyVmin << " V." << '\n';
 
     return Status::VMINsafety_violation;
-  } else if (vi > SafetyVmax) //!< #CHECK this requires some calculations!
+  } else if (vi > SafetyVmax) //!< #TODO this requires some calculations!
   {
     if constexpr (Print)
       std::cout << "Error in Cycler::??, the voltage of " << vi
@@ -175,6 +200,22 @@ auto inline check_current(bool checkV, auto &su) //!< Check voltage.
 {
 
   //!< TBC
+}
+
+inline std::ofstream openFile(auto &SU, const auto &folder, const std::string &prefix, const std::string &suffix)
+{
+  const auto name = PathVar::results + (prefix + "_" + SU.getFullID() + "_" + suffix);
+
+  //  std::string name = getName(cell, prefix); //!< name of the file
+  std::ofstream file(name, std::ios_base::app); // #TODO app-> initially open then append.
+
+  if (!file.is_open()) {
+    std::cerr << "ERROR in Cell::writeData, could not open file "
+              << name << '\n';
+    throw 11;
+  }
+
+  return file;
 }
 
 } // namespace slide::free

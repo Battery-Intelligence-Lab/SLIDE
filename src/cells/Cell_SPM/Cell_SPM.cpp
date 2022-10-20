@@ -8,6 +8,8 @@
  * See the licence file LICENCE.txt for more information.
  */
 
+#include "Cell_SPM.hpp"
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -16,10 +18,6 @@
 #include <array>
 #include <algorithm>
 #include <utility>
-
-#include "Cell_SPM.hpp"
-#include "../../utility/utility.hpp"
-#include "../../settings/settings.hpp"
 
 namespace slide {
 
@@ -116,7 +114,7 @@ Status Cell_SPM::setCurrent(double Inew, bool checkV, bool print)
 
     st.I() = old_I;
     st.V() = old_V;
-    Vcell_valid = Vcell_valid_old; //!< #CHECK in future make it into states.
+    Vcell_valid = Vcell_valid_old; //!< #TODO in future make it into states.
   }
 
   return status;
@@ -177,7 +175,7 @@ void Cell_SPM::getC(double cp[], double cn[]) noexcept
   //!< Calculate concentration at the surface and inner nodes using the matrices from the spatial discretisation of the solid diffusion PDE
   //!< 	cp = M->Cp[:][:] * zp[:] + M->Dp*jp/Dpt
   //!< 	cn = M->Cn[:][:] * zn[:] + M->Dn*jn/Dnt
-  for (size_t i = 0; i < nch + 1; i++) //!< Problem here!!!!!!! #CHECK
+  for (size_t i = 0; i < nch + 1; i++) //!< Problem here!!!!!!! #TODO
   {                                    //!< loop to calculate at each surface + inner node
     double cpt{ 0 }, cnt{ 0 };
     for (unsigned j = 0; j < nch; j++) {
@@ -292,8 +290,8 @@ double Cell_SPM::V(bool print)
     //!< the cell OCV at the reference temperature is OCV_p - OCV_n
     //!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
     //!< then the overpotentials and the resistive voltage drop are added
-    const auto entropic_effect = (st.T() - T_ref) * dOCV;                          //!< (st.T() - T_ref) * dOCV; #CHECK entropic effect is zero.
-    st.V() = (OCV_p - OCV_n + entropic_effect) + (etapi - etani) - getRdc() * I(); //#CHECK make Vcell_valid true.
+    const auto entropic_effect = (st.T() - T_ref) * dOCV;                          //!< (st.T() - T_ref) * dOCV; #TODO entropic effect is zero.
+    st.V() = (OCV_p - OCV_n + entropic_effect) + (etapi - etani) - getRdc() * I(); //#TODO make Vcell_valid true.
     Vcell_valid = true;                                                            //!< we now have the most up to date value stored
 
     //!< //!< make the output variables
@@ -321,7 +319,7 @@ double Cell_SPM::V(bool print)
 Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 {
   //!< ID string
-  ID = "cell_SPM";
+  ID = "Cell_SPM";
 
   OCV_curves = OCVcurves::makeOCVcurves(cellType::KokamNMC);
 
@@ -357,6 +355,8 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
   //!< Default values for not defined other param:
 
   csparam.CS4Amax = 5 * st.an() * st.thickn() * geo.elec_surf; //!< assume the maximum crack surface is 5 times the initial anode surface
+
+  cellData.initialise(*this);
 }
 
 //!< int Cell_SPM::getVoltage_ne(bool print, double *v, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp)
@@ -499,7 +499,7 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
 
   if (isStatusBad(status)) {
     st = st_old;        //!< Restore states here.
-    Vcell_valid = true; //!< #CHECK if this is ok.
+    Vcell_valid = true; //!< #TODO if this is ok.
   }
 
   return status;
@@ -541,7 +541,7 @@ bool Cell_SPM::validStates(bool print)
 
   if (std::abs(st.ap() - app) / st.ap() > tol) {
     if (verb)
-      std::cerr << "SOME ERROR #CHECK!\n";
+      std::cerr << "SOME ERROR #TODO!\n";
     range = false;
   }
 
@@ -549,7 +549,7 @@ bool Cell_SPM::validStates(bool print)
 
   if (std::abs(st.an() - ann) / st.an() > tol) {
     if (verb)
-      std::cerr << "SOME ERROR #CHECK!\n";
+      std::cerr << "SOME ERROR #TODO!\n";
     range = false;
   }
 
@@ -631,7 +631,7 @@ void Cell_SPM::setT(double Ti)
    * Ti		uniform cell temperature, 273 <= T <= 333 [K]
    */
 
-  st.T() = Ti; //!< #CHECK if we need to check if we are in limits.  if T is in limits.
+  st.T() = Ti; //!< #TODO if we need to check if we are in limits.  if T is in limits.
 
   //!< the stress values stored in the class variables for stress are no longer valid because the state has changed
   sparam.s_dai_update = false;
@@ -700,7 +700,7 @@ void Cell_SPM::setC(double cp0, double cn0)
   st.zn(ind) = znu;
 
   //!< Set the cell current to 0 to reflect the boundary condition for a fully uniform concentration
-  st.I() = 0; //!< #CHECK we do not do this.
+  st.I() = 0; //!< #TODO we do not do this.
 
   //!< the stress values stored in the class variables for stress are no longer valid because the state has changed
   sparam.s_dai_update = false;
@@ -727,8 +727,8 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
   st.rDCn() *= resf;  //!< anode
 
   //!< set the capacity
-  cap *= capf;           //!< nominal capacity
-  geo.elec_surf *= capf; //!< surface area of the electrodes (current to current density)
+  setCapacity(Cap() * capf); //!< nominal capacity
+  geo.elec_surf *= capf;     //!< surface area of the electrodes (current to current density)
 
   //!< set the degradation factor
   sei_p *= var_degSEI;

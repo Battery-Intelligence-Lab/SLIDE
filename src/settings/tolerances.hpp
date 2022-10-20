@@ -21,7 +21,7 @@ namespace tol {
 
 } // namespace slide
 
-namespace slide::settings //!< #CHECK if it is in slide::settings it gives 600+ errors. Why?
+namespace slide::settings //!< #TODO if it is in slide::settings it gives 600+ errors. Why?
 {
 constexpr double MODULE_P_V_ABSTOL = 0.01;   //!< tolerance on the difference between parallel-connected cells
                                              //!< i.e. the difference in voltage between two parallel connected cell has to be below this value

@@ -87,7 +87,7 @@ public:
   //!< functionality
   bool validStates(bool print = true) override { return cells->validStates(print); }
   //!< checks if a state array is valid
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override; //!< take a number of time steps
+  void timeStep_CC(double dt, int steps = 1) override; //!< take a number of time steps
 
   //!< Data collection of cycling data (I, V, T, etc. for every cell)
   void storeData() override;

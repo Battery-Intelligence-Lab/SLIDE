@@ -7,95 +7,69 @@
 
 #pragma once
 
-#include <utility>
-#include <iostream>
-
 #include "../Histogram.hpp"
 #include "cell_data.hpp"
+#include "../../settings/enum_definitions.hpp"
+
+#include <utility>
+#include <iostream>
+#include <array>
+#include <vector>
 
 namespace slide {
-template <int N>
+
+template <settings::cellDataStorageLevel N>
 struct CellDataStorage
 {
-  template <typename T>
-  inline void initialise(T *) {} //!< Do nothing.
+  template <typename Cell_t>
+  inline void initialise(Cell_t &) {} //!< Do nothing.
 
-  template <typename... T>
-  inline void storeCumulativeData(T...) {} //!< Do nothing.
-
-  template <typename... T>
-  inline void storeInstantenousData(T...)
-  {
-    if constexpr (settings::printBool::printCrit)
-      std::cout << "ERROR in Cell::storeData, the settings in constant.h are forbidding from storing data.\n";
-
-  } //!< Do nothing.
-  inline CellCumulativeData getThroughputData() { return {}; }
-  inline void setThroughputData(CellCumulativeData) {}
+  template <typename Cell_t>
+  inline void storeData(Cell_t &) {} //!< Do nothing.
 };
 
 template <>
-struct CellDataStorage<1> //!< Store as histogram.
+struct CellDataStorage<settings::cellDataStorageLevel::storeHistogramData> //!< Store as histogram.
 {
-  CellCumulativeData tData; //!< Throughput Data
-  CellCommonHist hist;
+  std::array<Histogram<>, 3> data;
 
-  template <typename T>
-  inline void initialise(T *ths) //!< Initialise the histograms.
+  template <typename Cell_t>
+  inline void initialise(Cell_t &cell) //!< Initialise the histograms.
   {
-    hist.I = Histogram<>(-ths->Cap(), ths->Cap()); //!< 1C charge/discharge
-    hist.V = Histogram<>(ths->Vmin(), ths->Vmax());
-    hist.T = Histogram<>(ths->Tmin(), ths->Tmax());
+    data[0] = Histogram<>(-cell.Cap(), cell.Cap()); //!< 1C charge/discharge
+    data[1] = Histogram<>(cell.Vmin(), cell.Vmax());
+    data[2] = Histogram<>(cell.Tmin(), cell.Tmax());
   }
 
-  inline void storeCumulativeData(auto dt, auto dAh, auto dWh)
+  template <typename Cell_t>
+  inline void storeData(Cell_t &cell)
   {
-    tData.Time += dt;
-    tData.Ah += dAh;
-    tData.Wh += dWh;
-  }
-
-  inline void storeInstantenousData(auto I, auto V, auto SOC, auto T)
-  {
-    hist.I.add(I);
-    hist.V.add(V);
-    hist.T.add(T);
-  }
-
-  inline CellCumulativeData getThroughputData() { return tData; }
-  inline void setThroughputData(CellCumulativeData tData_)
-  {
-    tData = std::move(tData_);
+    data[0].add(cell.I());
+    data[1].add(cell.V());
+    data[2].add(cell.T());
   }
 };
 
 template <>
-struct CellDataStorage<2>
+struct CellDataStorage<settings::cellDataStorageLevel::storeTimeData>
 {
-  CellCumulativeData tData;      //!< Throughput Data
-  std::vector<CommonData> cData; //!< Common data
+  std::vector<double> data; //!< Common data
 
-  template <typename T>
-  inline void initialise(T *) {} //!< Do nothing.
+  template <typename Cell_t>
+  inline void initialise(Cell_t &) {} //!< Do nothing.
 
-  inline void storeCumulativeData(auto dt, auto dAh, auto dWh)
+  template <typename Cell_t>
+  inline void storeData(Cell_t &cell)
   {
-    tData.Time += dt;
-    tData.Ah += dAh;
-    tData.Wh += dWh;
-  }
+    const auto throughputs = cell.getThroughputs();
 
-  inline void storeInstantenousData(auto I, auto V, auto SOC, auto T)
-  {
-    cData.push_back(CommonData(
-      I, V, SOC, T, tData.Ah, tData.Wh, tData.Time));
-  }
-
-  inline CellCumulativeData getThroughputData() { return tData; }
-
-  inline void setThroughputData(CellCumulativeData tData_)
-  {
-    tData = std::move(tData_);
+    data.push_back(cell.I());
+    data.push_back(cell.V());
+    data.push_back(cell.SOC());
+    data.push_back(cell.T());
+    data.push_back(throughputs.time); // time
+    data.push_back(throughputs.Ah);   // Ah
+    data.push_back(throughputs.Wh);   // Wh
   }
 };
 } // namespace slide

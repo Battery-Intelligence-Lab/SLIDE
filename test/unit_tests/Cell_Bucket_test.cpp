@@ -230,7 +230,7 @@ void data_test()
 
   //!< store a data point every time step
   for (int i = 0; i < nstep; i++) {
-    c1.timeStep_CC(dt, true);
+    c1.timeStep_CC(dt);
     c1.storeData();
   }
 

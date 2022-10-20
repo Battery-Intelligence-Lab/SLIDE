@@ -986,7 +986,7 @@ void test_Hierarchical_Cross()
 //!< 	//!< change the copied version, and ensure the old one is still the same
 //!< 	c22->setCurrent(1 * ncel, false, false); //!< discharge
 //!< 	for (int t = 0; t < 10; t++)
-//!< 		c22->timeStep_CC(2, false);
+//!< 		c22->timeStep_CC(2);
 //!< 	mp->getSUs(corig, ncel, nout);
 //!< 	c22->getSUs(cnew, ncel, nout);
 //!< 	for (int i = 0; i < mp->getNSUs(); i++)

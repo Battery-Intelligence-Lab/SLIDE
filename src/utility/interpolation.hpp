@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "../settings/settings.hpp"
+
 #include <vector>
 #include <array>
 #include <iostream>
@@ -18,8 +20,6 @@
 #include <utility>
 #include <cmath>
 #include <cstdlib>
-
-#include "../settings/settings.hpp"
 
 namespace slide {
 template <typename Tx, typename Ty>

@@ -7,13 +7,6 @@
 
 #pragma once
 
-#include <vector>
-#include <cstdlib>
-#include <memory>
-#include <iostream>
-#include <span>
-
-//#include "Cell.hpp"
 #include "../settings/settings.hpp"
 #include "../StorageUnit.hpp"
 #include "../cooling/CoolSystem_HVAC.hpp"
@@ -21,6 +14,13 @@
 #include "../types/data_storage/cell_data.hpp"
 #include "../types/data_storage/module_data.hpp"
 #include "../utility/free_functions.hpp"
+
+#include <vector>
+#include <cstdlib>
+#include <memory>
+#include <iostream>
+#include <span>
+
 
 namespace slide {
 struct ModuleThermalParam
@@ -36,10 +36,12 @@ class Module : public StorageUnit //, public ModuleDataStorage<DATASTORE_MODULE>
 {
 protected:
   //!< connected child SUs
-  using moduleSUs_t = std::vector<std::unique_ptr<StorageUnit>>;
-  using moduleSUs_span_t = std::span<std::unique_ptr<StorageUnit>>;
+  using SU_t = std::unique_ptr<StorageUnit>;
+  using SUs_t = std::vector<SU_t>;
+  using SUs_span_t = std::span<SU_t>;
+  using CoolSystem_t = std::unique_ptr<CoolSystem>;
 
-  moduleSUs_t SUs;
+  SUs_t SUs;
   std::vector<double> Rcontact; //!< array with the contact resistance for cell i
 
   //!< thermal model
@@ -50,7 +52,7 @@ protected:
   size_t Ncells;               //!< Number of cells this module contains.
   double Vmodule{ 0 };         //!< voltage of the module
   bool Vmodule_valid{ false }; //!< boolean indicating if stored the voltage of the module is valid
-  bool par;                    //!< if true, some functions will be calculated parallel using multithreaded computing
+  bool par{ true };            //!< if true, some functions will be calculated parallel using multithreaded computing
                                //!< data storage
 #if DATASTORE_MODULE > 0
   CellCumulativeData tData;
@@ -69,7 +71,7 @@ protected:
     for (const auto &SU : SUs)
       r += SU->getNcells();
 
-    Ncells = r; //!< #CHECK this function needs to call parent to update their number of cells if they are module.
+    Ncells = r; //!< #TODO this function needs to call parent to update their number of cells if they are module.
 
     return r;
   }
@@ -78,9 +80,16 @@ protected:
   double thermalModel_coupled(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim);
 
 public:
+  Module() : StorageUnit("Module") {}
+  Module(std::string_view ID_) : StorageUnit(ID_) {}
+  Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype);
+  Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, CoolSystem_t &&coolControlPtr, int cooltype);
+
   //!< common implementation for all base-modules
-  inline size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
-  moduleSUs_t &getSUs() { return SUs; }
+  size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
+  SUs_t &getSUs() { return SUs; }
+
+  double Cap() override; //!< module capacity (sum of cells)
 
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid
   double getVhigh() override;                                           //!< return the voltage of the cell with the highest voltage
@@ -97,9 +106,6 @@ public:
   //!< if checkV=true, then also the cell and module voltages are checked
   //!< the other functions just call setStates to check validity
 
-  //!< void backupStates();  //!< Back-up states.
-  //!< void restoreStates(); //!< restore backed-up states.
-
   //!< thermal model
   double T() override { return cool->T(); } //!< get the temperature of this module
 
@@ -108,10 +114,10 @@ public:
   double thermalModel(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim) override;
 
   //!< different implementation for series vs parallel modules
-  virtual bool validSUs(moduleSUs_span_t c, bool print = true) = 0;         //!< check if the cells in this array are valid for this module
+  virtual bool validSUs(SUs_span_t c, bool print = true) = 0;               //!< check if the cells in this array are valid for this module
   virtual bool validSUs(bool print = true) { return validSUs(SUs, print); } //!< check if the cells in valid for this module
 
-  virtual void setSUs(moduleSUs_span_t c, bool checkCells = true, bool print = true);
+  virtual void setSUs(SUs_span_t c, bool checkCells = true, bool print = true);
   //!< Sets the cells of this module. Checks module-constraints
   //!< does not check if the states of cells are valid, nor the voltages of the cells and module
   //!< it only checks whether the cells are ok for this module (same current if series, same voltage if parallel)
@@ -119,7 +125,7 @@ public:
 
   CoolSystem *getCoolSystem() { return cool.get(); }
 
-  void setRcontact(std::span<double> Rc) //!< #CHECK if ok.
+  void setRcontact(std::span<double> Rc) //!< #TODO if ok.
   {
     /*
      * Set the contact resistance of each cell.

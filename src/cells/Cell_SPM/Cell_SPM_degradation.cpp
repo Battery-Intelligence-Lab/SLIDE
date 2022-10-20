@@ -8,6 +8,8 @@
  * See the licence file LICENCE.txt for more information.
  */
 
+#include "Cell_SPM.hpp"
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -16,10 +18,6 @@
 #include <array>
 #include <algorithm>
 #include <utility>
-
-#include "Cell_SPM.hpp"
-#include "../../utility/utility.hpp"
-#include "../../settings/settings.hpp"
 
 namespace slide {
 void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
@@ -66,7 +64,7 @@ void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
       //!< on charge, I < 0 and etan < 0.
       //!< so higher charging current -> more negative term in exponential -> larger isei
     } break;
-    case 2: //!< Kinetic model according to Ning & Popov, Journal of the Electrochemical Society 151 (10), 2004 #CHECK -> In slidepack case1 paper and case2 paper are swapped.
+    case 2: //!< Kinetic model according to Ning & Popov, Journal of the Electrochemical Society 151 (10), 2004 #TODO -> In slidepack case1 paper and case2 paper are swapped.
     {
       const auto kseit = sei_p.sei2k * exp(sei_p.sei2k_T * ArrheniusCoeff); //!< Arrhenius relation for the rate parameter at the cell temperature
       const auto Dseit = sei_p.sei2D * exp(sei_p.sei2D_T * ArrheniusCoeff); //!< Arrhenius relation for the diffusion constant at the cell temperature
@@ -248,7 +246,7 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
 
       //!< get surface concentration
       double cps, cns;
-      getCSurf(cps, cns, true); //!< get the surface lithium concentration //!< #CHECK only cns is used.
+      getCSurf(cps, cns, true); //!< get the surface lithium concentration //!< #TODO only cns is used.
 
       double kcr; //!< rate constant for the side reaction
       //!< Calculate the rate constant, equation (11) with an Arrhenius relation for the temperature (which wasn't considered by Ekstrom)
@@ -629,7 +627,7 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
   }
 
   //!< Calculate the integral from the centre to the positive surface, which is a constant present in all equations
-  const double ap = Fp[2 * nch + 2] - Fp[nch + 1]; //!< int( cp*r^2, r=0..Rp ) #CHECK only difference of Fp and Fn is used.
+  const double ap = Fp[2 * nch + 2] - Fp[nch + 1]; //!< int( cp*r^2, r=0..Rp ) #TODO only difference of Fp and Fn is used.
   const double an = Fn[2 * nch + 2] - Fn[nch + 1]; //!< int( cn*r^2, r=0..Rn )
 
   //!< Calculate the equations for all nodes

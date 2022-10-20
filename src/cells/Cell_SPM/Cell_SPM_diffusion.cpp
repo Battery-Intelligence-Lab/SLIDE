@@ -8,6 +8,8 @@
  * See the licence file LICENCE.txt for more information.
  */
 
+#include "Cell_SPM.hpp"
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -16,10 +18,6 @@
 #include <array>
 #include <algorithm>
 #include <utility>
-
-#include "Cell_SPM.hpp"
-#include "../../utility/utility.hpp"
-#include "../../settings/settings.hpp"
 
 namespace slide {
 std::pair<double, double> Cell_SPM::calcSurfaceConcentration(double jp, double jn, double Dpt, double Dnt) //!< Should not throw normally, except divide by zero?

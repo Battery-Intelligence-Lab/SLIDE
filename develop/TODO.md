@@ -8,13 +8,19 @@
 
 ### Current priority: 
 
+- [ ] Literal operators for units are being added. 
 - [ ] Add CTest support for tests
 - [ ] Add static analysers: include-what-you-use, valgrind, etc. 
 - [ ] Doxygen integration - adapting commenting style. 
 - [ ] CPack and installation improvements. 
 - [ ] Figure out why OBJECT libraries cause linker error. We converted everything to STATIC
 - [ ] Check #CHECK tags in the code.  
-
+- [ ] Add variable data storage (Vk is working on)
+  - [ ] Create enum for storable data. 
+  - [ ] Why are we using different vector<struct> anyway? We can use just a big vector + deserializer? 
+  - [ ] Add a generic state term to cover time, Ah, Wh. 
+  - [ ] In future it is possible to use enums as a counter for vector based states. 
+- [ ] Probably there is a bug in slide-pack where time, Ah, Wh values are not resetted after a throw. Try two cell in series config with one has smaller capacity so it reaches its capacity earlier. Then charge with 1C + large time step. Probably first cell will store Ah and second won't. and there will be difference in their Ah. Or even it does not, it will be different than real Ah. Just charge and discharge. 
 
 ### From SLIDE v2: 
 
@@ -358,7 +364,7 @@ slide_pack integration:
 - [x] removing getVi for series module. and getSUVoltages for all. 
 - [ ] Consider making test functions friend and getVi protected. 
 - [ ] "HVAC coolsystem for active cooling with the environment" obligation should be  removed. 
-- [ ] XYdata_ss  for span. 
+- [x] XYdata_ss  for span. 
 - [ ] Minor updates: 
   - [x] i in Cycler::rest is removed. 
 - [ ] VMAX and VMIN in modules calculated VMAX and VMIN by summing then checks if each cells has a violation. That would give the same result. 
@@ -397,12 +403,18 @@ slide_pack integration:
 - [ ] "develop" folder is added for developer-related matters. 
 - [ ] License files of individual libraries are moved into the corresponding folders. 
 - [ ] tests folder is created and unit tests are moved into that folder. 
+- [ ] separator variables in checkUp functions seem to be unnecessary; therefore, removing. 
+- [ ] Changing constructor delegation. Module_p and Module_s constructors are combined. 
+- [ ] ID should be unique. 
+- [ ] Module functions are being combined. 
+- [ ] std::algorithms and free functions for modules.
+  - [ ] transform_sum is added. 
 
 
 ### C++20 changes (yay!):
 - [ ] std::span for state assignments. 
 
-Some new ideas to implement: 
+### Some new ideas to implement: 
 - [ ] For XY data read to vector but then create a specific-sized data structure with all heap allocated as if make_shared.
 - [ ] begin and end functions for StorageUnit to traverse the children. 
 - [ ] Classes to hold static vector of their elements for make_X;
@@ -415,17 +427,18 @@ Some new ideas to implement:
   - [x] Cell, Cell_Bucket, Cell_ECM: Instead of increase in *.exe, there is a decrease. 80 kB -> 77 kB
   - [x] Model_SPM, State_SPM. 
   - [x] interpolation.cpp, read_CSVfiles.cpp, slide_aux.cpp, util.cpp, util_error.cpp -> 77 kB -> 76 kB
-
-
+- [ ] addData parameter in timeStep_CC functions is now useless since it only stores throughputs which are now included in states. So it is removed. 
+- [ ] Threadlocal vectors for dynamic-sized stack for some functions.
 
 ### Formatting: 
 - [x] Include a clang-format file. 
 - [ ] Configure clang-format, cmake-format etc. 
 
 ### Developer changes: 
-
 - [ ] CMake folder and some files are added. 
 
 ### JOSS: 
 - [ ] Added JOSS folder and Github workflow. 
+
+
 

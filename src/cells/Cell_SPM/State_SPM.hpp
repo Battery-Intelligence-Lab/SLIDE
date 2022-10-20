@@ -10,13 +10,14 @@
 #pragma once
 
 #include "../../settings/settings.hpp"
+#include "../../types/State.hpp"
 
 #include <cstdlib>
 #include <array>
 #include <span>
 
 namespace slide {
-class State_SPM : public std::array<double, 29> //!< #CHECK how can we make this so it takes 29=N_states from enum?
+class State_SPM : public State<29> //!< #TODO how can we make this so it takes 29=N_states from enum?
 {
 public:
   constexpr static auto nch = settings::nch;
@@ -142,6 +143,6 @@ inline void State_SPM::overwriteCharacterisationStates(double Dpi, double Dni, d
   this->Dn() = Dni;
   this->rDCp() = ri; //!< Considering both anode and cathode r is same.
   this->rDCn() = ri;
-  //!< #CHECK -> r was //!< the specific resistance (resistance times real surface area of the combined electrodes) [Ohm m2]
+  //!< #TODO -> r was //!< the specific resistance (resistance times real surface area of the combined electrodes) [Ohm m2]
 }
 } // namespace slide

@@ -13,10 +13,10 @@
 
 #pragma once
 
+#include "../utility/utility.hpp"
+
 #include <string>
 #include <array>
-
-#include "../utility/utility.hpp"
 
 namespace slide {
 bool validOCV(bool checkRange, slide::XYdata_vv &data);

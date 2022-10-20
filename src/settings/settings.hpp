@@ -12,12 +12,12 @@
 
 #pragma once
 
-#include <string>
-
 #include "enum_definitions.hpp"
 #include "constants.hpp"
 #include "slide_paths.hpp"
 #include "tolerances.hpp"
+
+#include <string>
 
 namespace slide::settings::cool //!< Cooling System Settings.
 {
@@ -51,9 +51,9 @@ constexpr bool overwrite_data = true; //!< if this is false then folder overwrit
 //!< Data storage  //!< from slidepack
 constexpr int DATASTORE_NHIST = 100; //!< length of the arrays with the histograms (if 1)
 
-constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeCumulativeData; //!< if 0, no cell-level data is stored
-                                                                           //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
-                                                                           //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
+constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeHistogramData; //!< if 0, no cell-level data is stored
+                                                                          //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
+                                                                          //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
 //!< constexpr int DATASTORE_MODULE = 0; //!< if 0, no module-level data is stored
 //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
@@ -76,10 +76,8 @@ constexpr size_t CYCLER_NDATA_MAX{ 10000 }; //!< length of the arrays which hold
                                             //!< 1 CC cycle ~ 2 hours. So if you store data every 20s, 1 cycle gives 360 data points -> 10k is about 30 cycles
 
 constexpr size_t CELL_NDATA_HIST_MAX = 10'000'000; //!< If histogram then write data every 10 millionth data.
-constexpr size_t CELL_NDATA_INST_MAX = 10'000;     //!< If it is storing every data then we should have much less storage.
+constexpr size_t CELL_NDATA_INST_MAX = 100'000;    //!< If it is storing every data then we should have much less storage.
 
-constexpr size_t CELL_NDATA_MAX = DATASTORE_CELL <= cellDataStorageLevel::storeHistogramData ? CELL_NDATA_HIST_MAX : CELL_NDATA_INST_MAX;
-//!< length of arrays in which we store cycling data at every time step
 constexpr size_t MODULE_NDATA_MAX{ CYCLER_NDATA_MAX }; //!< if we store cell-level data, make the array as long as the one in Cycler
 
 constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all types of cells //!< used to prepare arrays which are long enough for getStates()
@@ -132,12 +130,5 @@ constexpr auto CVcurrentFindingMethod = CVcurrentAlgorithm::falsePosition;
 //!< printLevel_bool::
 } // namespace slide::settings
 
-namespace slide::settings::printBool {
-constexpr auto printCrit = settings::verbose >= printLevel::printCrit;                               //!< threshold of verbose of when to print error messages for critical errors
-constexpr auto printNonCrit = settings::verbose >= printLevel::printNonCrit;                         //!< threshold of verbose of when to print error messages for noncritical errors
-constexpr auto printCyclerFunctions = settings::verbose >= printLevel::printCyclerFunctions;         //!< threshold of verbose of when to print the start and end of functions of the BasicCycler
-constexpr auto printCyclerHighLevel = settings::verbose >= printLevel::printCyclerHighLevel;         //!< threshold of verbose of when to print the high-level flow of the program in the BasicCycler
-constexpr auto printCyclerDetail = settings::verbose >= printLevel::printCyclerDetail;               //!< threshold of verbose of when to print the low-level detailed flow of the program in the BasicCycler
-constexpr auto printfindCVcurrentDetail = settings::verbose >= printLevel::printfindCVcurrentDetail; //!< threshold of verbose of when to print the details of how the current for the CV phase is found
-constexpr auto printCellFunctions = settings::verbose >= printLevel::printCellFunctions;             //!< threshold of verbose of when to print messages at the start and end of functions of the Cell
-};                                                                                                   // namespace slide::settings::printBool
+
+#include "derived_settings.hpp"

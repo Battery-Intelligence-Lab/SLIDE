@@ -18,7 +18,53 @@
 
 //!< common implementation for all base-modules
 namespace slide {
-void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
+
+Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
+  : StorageUnit(ID_), par{ pari }
+{
+  /*
+   * IN
+   * Ti 			temperture of the coolant
+   * print 		print error warnings
+   * pari 		use multithreaded computation to calculate the time steps of the connected SUs or not
+   * Ncells 		number of cells which will be connected to this module.
+   * 				This is necessary to properly size the cooling system:
+   * 				modules with more cells will have more heat generation, so need better cooling.
+   * 				This is implemented by increasing the thermally active surface area of the module,
+   * 				and the flow rate (and cross section) of the coolant in the CoolSystem.
+   * coolControl 	integer deciding how the cooling system is controlled.
+   * cooltype 	determines what type of coolsystem this module has
+   * 				0: regular coolsystem
+   * 				1: this module is the top level module and has an HVAC coolsystem
+   * 					which means it has a fan to cool the child SUs and an air conditioning unit to cool the module from the environment
+   * 				2: this module is a mid-level module and has an open coolsystem (pass through between parent module and child modules)
+   */
+
+  //!< Set the module temperature
+  therm.A = 0.0042 * 10 * Ncells; //!< thermally active surface area. The first number is the thermal active surface area of a cell
+  double Q0 = 0;                  //!< constant ancillary losses. There are none since a module only has cells
+
+  if (cooltype == 1)
+    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0);
+  else if (cooltype == 2)
+    cool = std::make_unique<CoolSystem_open>(Ncells, coolControl);
+  else
+    cool = std::make_unique<CoolSystem>(Ncells, coolControl);
+
+  cool->setT(Ti);
+}
+
+Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, CoolSystem_t &&coolControlPtr, int cooltype)
+  : StorageUnit(ID_), cool(std::move(coolControlPtr)), par{ pari }
+{
+  therm.A = 0.0042 * 10 * Ncells; //!< thermally active surface area. The first number is the thermal active surface area of a cell
+  cool->setT(Ti);
+}
+
+//!< the capacity is the sum  of the capacity of each cell
+double Module::Cap() { return free::transform_sum(SUs, free::get_Cap<SU_t>); }
+
+void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
 {
   /*
    *	Note: this function can change the number of cells connected to a module
@@ -35,7 +81,7 @@ void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
   //!< check the cells don't have parents yet (unless it is this module)
   for (size_t i = 0; i < c.size(); i++) {
     auto p = c[i]->getParent();
-    if (p != nullptr && p != this) //!< #CHECK probably cannot be this since it is a unique_ptr
+    if (p != nullptr && p != this) //!< #TODO probably cannot be this since it is a unique_ptr
     {
       if (verb)
         std::cerr << "ERROR in Module::setCells, SU " << i << ", already has a parent "
@@ -64,11 +110,12 @@ void Module::setSUs(moduleSUs_span_t c, bool checkCells, bool print)
     r += SU->getNcells();
     SU->setParent(this); //!< Set the parent of all cells/ Does not throw.
     SUs.push_back(std::move(SU));
-    Rcontact.push_back(0); //!< Make Rcontact zero? #CHECK
+    Rcontact.push_back(0); //!< Make Rcontact zero? #TODO
   }
 
   Ncells = r;
 }
+
 
 Status Module::checkVoltage(double &v, bool print) noexcept
 {
@@ -85,7 +132,7 @@ Status Module::checkVoltage(double &v, bool print) noexcept
 
   //!< check the voltage of the module
   //!< v = V(print); -> Hey we dont need to calculate this anymore.
-  //!< #CHECK here was a not useful chuck of code for repeated checking.
+  //!< #TODO here was a not useful chuck of code for repeated checking.
   //!< We may have constant limits for module voltage.
 
   //!< check the voltages of the connected cells
@@ -104,7 +151,7 @@ double Module::getVhigh()
 {
   //!< return the voltage of the cell with the highest voltage
   //!< 	note CELL not child SU
-  double Vhigh = Vmin(); //#CHECK
+  double Vhigh = Vmin(); //#TODO
   for (const auto &SU : SUs)
     Vhigh = std::max(Vhigh, SU->getVhigh()); //!< will be called recursively to the cell levels
 
@@ -114,7 +161,7 @@ double Module::getVhigh()
 double Module::getVlow()
 {
   //!< return the voltage of the cell with the lowest voltage note CELL not child SU
-  double Vlow = Vmax(); //#CHECK
+  double Vlow = Vmax(); //#TODO
   for (const auto &SU : SUs)
     Vlow = std::min(Vlow, SU->getVlow()); //!< will be called recursively to the cell levels
 
@@ -151,7 +198,7 @@ bool Module::validStates(bool print)
   const bool verb = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< check the resulting state is valid
-  bool val = validSUs(verb); //#CHECK validSUs does not take vector.
+  bool val = validSUs(verb); //#TODO validSUs does not take vector.
 
   return val;
 }
@@ -208,7 +255,7 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
   } //!< end loop to set the cell states
 
   //!< set the module temperature
-  assert(s[0] >= PhyConst::Kelvin); //!< #CHECK here we are checking but should we?
+  assert(s[0] >= PhyConst::Kelvin); //!< #TODO here we are checking but should we?
   setT(s[0]);
   s = s.last(s.size() - 1);
 
@@ -364,7 +411,7 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
       if (i == 0)
         Etot += Ksu[1] * Atherm * (SUs[i]->T() - T()) * tim;
 
-      if (i == getNSUs() - 1) //!< #CHECK problem.
+      if (i == getNSUs() - 1) //!< #TODO problem.
         Etot += Ksu[2] * Atherm * (SUs[i]->T() - T()) * tim;
     }
 

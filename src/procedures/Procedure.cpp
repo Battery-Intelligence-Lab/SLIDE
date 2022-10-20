@@ -10,7 +10,7 @@
 #include "../system/Battery.hpp"
 //#include "unit_tests.hpp"
 #include "../settings/settings.hpp"
-#include "../utility/util.hpp"
+#include "../utility/utility.hpp"
 #include "Cycler.hpp"
 #include "Procedure.hpp"
 
@@ -117,7 +117,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
         Ahtot += std::abs(Ah);
         storeThroughput(ID_CVcharge, Ah, Wh, su);
-        if (!diagnostic) //!< #CHECK what is diagnostic?
+        if (!diagnostic) //!< #TODO what is diagnostic?
           assert(succ == Status::ReachedCurrentLimit);
       }
 
@@ -141,7 +141,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
           Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
           double dtime;
           succ = cyc.CV(Vmin, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
-        } catch (int e) //!< #CHECK if we need to check any status codes here?
+        } catch (int e) //!< #TODO if we need to check any status codes here?
         {
           std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
           break;
@@ -153,7 +153,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       }
 
     }           //!< loop cycle ageing
-  } catch (...) //!< #CHECK why empty?
+  } catch (...) //!< #TODO why empty?
   {
     std::cout << "Why do we enter here?\n";
   }
@@ -173,13 +173,13 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
         checkMod(su); //!< check-up of the modules
     };
 
-    run(task_indv, 2, 2); //!< #CHECK if parallel in two cores is really needed.
+    run(task_indv, 2, 2); //!< #TODO if parallel in two cores is really needed.
   } catch (int e) {
     std::cout << "Error in CycleAge when getting a capacity checkup, skipping it\n";
   }
 
   //!< push a write such that if cells still have cycling data, this is written
-  if constexpr (settings::DATASTORE_CELL == 2)
+  if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeTimeData)
     su->writeData(pref); //!< only do if cycling data. Usage statistics are written by the checkup
 }
 
@@ -245,7 +245,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
   try {
     double dtime;
     succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), tlim, dt, ndata, Ah, Wh, dtime);
-    //!< std::cout << getStatusMessage(succ) << '\n'; //!< #CHECK if we put and test all conditions.
+    //!< std::cout << getStatusMessage(succ) << '\n'; //!< #TODO if we put and test all conditions.
   } catch (int e) {
     std::cout << "Error in useAge when initially discharging the battery, continue as normal.\n";
   }
@@ -279,7 +279,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
 
       //!< 2) 1C charge
       double dtime;
-      cyc.CC(-su->Cap(), su->Vmax(), tlim, dt, ndata, Ah, Wh, dtime); //!< #CHECK should have a condition.
+      cyc.CC(-su->Cap(), su->Vmax(), tlim, dt, ndata, Ah, Wh, dtime); //!< #TODO should have a condition.
 
       Ahtot += std::abs(Ah);
       storeThroughput(ID_cha1, Ah, Wh, su);
@@ -346,12 +346,12 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
     writeThroughput(su->getFullID(), Ahtot);
     auto task_indv = [&](int i) {
       if (i == 0)
-        checkUp(su, Ahtot, Ncycle); //!< check-up of the cells #CHECK if we can use the previous definition of this task_indv
+        checkUp(su, Ahtot, Ncycle); //!< check-up of the cells #TODO if we can use the previous definition of this task_indv
       else if (i == 1)
         checkMod(su); //!< check-up of the modules
     };
 
-    run(task_indv, 2, 2); //!< #CHECK if parallel in two cores is really needed.
+    run(task_indv, 2, 2); //!< #TODO if parallel in two cores is really needed.
   } catch (int e) {
     std::cout << "Error in CycleAge when getting a capacity checkup, skipping it.\n";
   }
@@ -403,7 +403,7 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
     std::ofstream file(PathVar::results + name);
 
     if (file.is_open()) {
-      std::vector<double> s; //!< #CHECK if vector is removable.
+      std::vector<double> s; //!< #TODO if vector is removable.
       s.clear();
       su->getStates(s);
 
@@ -435,13 +435,13 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
 
     su->setBlockDegAndTherm(false); //!< ensure degradation is always turned on
 
-    //!< #CHECK if degradation should be toggled to previous state not just make it false.
+    //!< #TODO if degradation should be toggled to previous state not just make it false.
   }
 
   //!< do a capacity checkup in a separate thread
   if (checkup) {
     //!< push a write such that if cells still have cycling data, this is written
-    if constexpr (settings::DATASTORE_CELL == 2)
+    if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeTimeData)
       if (Ahtot > 0) {
         std::cout << "flush cycling data stored in the cells.\n";
         try {
@@ -474,8 +474,8 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
     try {
       checkUp(su2.get(), Ahtot, nrCycle);
       //!< if you want to do it in this thread with the SU itself instead of copy to a separate thread
-      //!< normally it was su #CHECK ???
-      //!< #CHECK copy the SU to a new one (with same state), so we can do the capcheck with this copy and the main SU can keep cycling
+      //!< normally it was su #TODO ???
+      //!< #TODO copy the SU to a new one (with same state), so we can do the capcheck with this copy and the main SU can keep cycling
     } catch (int e) {
       std::cout << "Error in CycleAge when getting a capacity checkup, skipping it.\n";
     }
@@ -520,7 +520,7 @@ void Procedure::rebalance(StorageUnit *su)
 
   //!< if it is an SPM cell,
   if (typeid(*su) == typeid(Cell_SPM)) {
-    Cycler cyc(su, "rebalance"); //!< #CHECK if we can do it without a cycler since it initialises a string?
+    Cycler cyc(su, "rebalance"); //!< #TODO if we can do it without a cycler since it initialises a string?
     double Iset = su->Cap() * Cset;
     double Ilim = su->Cap() * Clim;
     double dtime;
@@ -528,7 +528,7 @@ void Procedure::rebalance(StorageUnit *su)
     auto status = su->setCurrent(0, true, true); //!< set the current of the cell to 0
 
     if (isStatusBad(status))
-      throw 5555; //!< #CHECK -> we are doing this because previously setCurrent was throwing.
+      throw 5555; //!< #TODO -> we are doing this because previously setCurrent was throwing.
   }
 }
 
@@ -579,12 +579,12 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
 
   //!< Get the mutex to start writing in the results file
   std::lock_guard<std::mutex> writeGuard(MUTEX_procedure_checkUp); //!< locks the mutex if it is free
-  //!< #CHECK remove mutex somehow.
+  //!< #TODO remove mutex somehow.
   //!< write the usage stats of all cells in a separate document
-  if constexpr (settings::DATASTORE_CELL == 1) {
+  if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeHistogramData) {
     file_stats.open(name_stats); //!< open and clear whatever was there since we want to write the most recent stats only
     try {
-      checkUp_writeStats(cells, file_stats, separator);
+      checkUp_writeStats(cells, file_stats);
     } catch (...) {
     }
 
@@ -611,8 +611,9 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
 
   //!< do the main checkup, which writes the throughput, capacity and state of every cell
   try {
-    checkUp_writeMain(cells, file, separator);
+    checkUp_writeMain(cells, file);
   } catch (...) {
+    std::cout << "checkUp_writeMain has throwed! We continue but worth to check probably.\n";
   }
 
   //!< close the file
@@ -725,20 +726,14 @@ void Procedure::checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &
     std::cerr << "Error in checkUp_writeInitial, the file is no open. Skipping this part.\n";
 }
 
-void Procedure::checkUp_writeMain(std::vector<Cell *> &cells, std::ofstream &file, int separator)
+void Procedure::checkUp_writeMain(std::vector<Cell *> &cells, std::ofstream &file)
 {
   /*
    * Write the throughput, capacity and cell state of every cell
    *
    * this function appends at the end of a file, so can be called multiple times
    */
-
-  const int ID_throughput = 3; //!< identification numbers for in first column (indicating what is on the row)
-  const int ID_capacity = 4;
-  const int ID_separator = 9;
-  const int ID_state = 10;
-
-  double dt = 2;
+  const double dt = 2;
 
   //!< if you want to calculate the total heat generation from all cells:
   /*double Qgen = 0;
@@ -750,90 +745,71 @@ for(auto& cell : cells){
 }
 std::cout<<"Total heat generation of all cells is "<< Qgen<<endl;*/
 
-  if (file.is_open()) {
-
-    //!< Write the throughput of each cell
-    double timetot, ahtot, whtot;
-    file << ID_throughput << ',';
-    for (auto &cell : cells) {
-      cell->getThroughput(timetot, ahtot, whtot);
-      file << timetot << ',';
-    }
-    file << '\n';
-    file << ID_throughput << ',';
-    for (auto &cell : cells) {
-      cell->getThroughput(timetot, ahtot, whtot);
-      file << ahtot << ',';
-    }
-    file << '\n';
-    file << ID_throughput << ',';
-    for (auto &cell : cells) {
-      cell->getThroughput(timetot, ahtot, whtot);
-      file << whtot << ',';
-    }
-    file << '\n';
-
-    //!< write the capacity of each cell
-    double cap;
-    file << ID_capacity << ',';
-    for (auto &cell : cells) {
-      try {
-
-        //!< get every cell to the middle voltage (checkup_prep did total SU, so in series string a small cell might not be at the middle)
-        auto status = cell->setCurrent(0, false, true); //!< ensure we start a check-up with a 0 current
-
-        if (isStatusBad(status))
-          throw 5555; //!< #CHECK -> we are doing this because previously setCurrent was throwing.
-
-        const double vwindow = cell->Vmax() - cell->Vmin();
-        const double V = cell->Vmax() - 0.25 * vwindow; //!< go to a voltage at about 75% SOC
-        Cycler cyc(cell, "checkUp");
-        cell->setBlockDegAndTherm(true);
-        double dtime1;
-        cyc.CCCV(cell->Cap() / 5.0, V, cell->Cap() / 5.0, dt, ndata, ahtot, whtot, dtime1);
-        status = cell->setCurrent(0, false, true); //!< ensure we start a check-up with a 0 current
-
-        if (isStatusBad(status))
-          throw 5555; //!< #CHECK -> we are doing this because previously setCurrent was throwing.
-
-        double dAh, dtime;
-        cap = cyc.testCapacity(dAh, dtime);
-        cell->setBlockDegAndTherm(false);
-      } catch (int e) {
-        std::cout << "Error when measuring the capacity of Cell " << cell->getFullID()
-                  << ", error " << e << ". Recording as 0.\n";
-        cap = 0;
-      }
-      file << cap << ',';
-    }
-    file << '\n';
-
-    //!< write the state of a cell, if an SPM cell, skip the concentration states since they don't give info
-    const size_t start = (typeid(*cells[0]) == typeid(Cell_SPM)) ? 2 * settings::nch : 0;
-    const auto nstate = cells[0]->viewStates().size();
-    for (size_t i{ start }; i < nstate; i++) //!< loop for each state variable (rows)
-    {
-      file << ID_state + i << ',';
-
-      for (auto &cell : cells) //!< loop for each cell (columns)
-        file << cell->viewStates()[i] << ',';
-
-      file << '\n';
-    }
-
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (auto &_ : cells)
-      file << separator << ',';
-    file << '\n';
-
-  } //!< if file is open
-  else
+  if (!file.is_open()) {
     std::cerr << "Error in checkUp_writeMain, the file is not open,"
                  " could not write to it. Skipping this checkup.\n";
+    return;
+  }
+
+  // Capacity checking protocol?
+  auto checkCap = [this, dt](auto &cell) {
+    double cap{ 0 };
+    double dAh, whtot, dtime; // Dummy variables.
+    //!< get every cell to the middle voltage (checkup_prep did total SU, so in series string a small cell might not be at the middle)
+    auto status = cell->setCurrent(0, false, true); //!< ensure we start a check-up with a 0 current
+
+    if (isStatusBad(status)) {
+      std::cout << "Error when measuring the capacity of Cell " << cell->getFullID()
+                << ", error " << getStatusMessage(status) << ". Recording as 0.\n";
+      return cap;
+    }
+
+    const double Vwindow = cell->Vmax() - cell->Vmin();
+    const double V = cell->Vmax() - 0.25 * Vwindow; //!< go to a voltage at about 75% SOC
+    Cycler cyc(cell, "checkUp");
+    cell->setBlockDegAndTherm(true);
+    cyc.CCCV(cell->Cap() / 5.0, V, cell->Cap() / 5.0, dt, ndata, dAh, whtot, dtime);
+    status = cell->setCurrent(0, false, true); //!< ensure we start a check-up with a 0 current
+
+    if (isStatusBad(status)) {
+      std::cout << "Error when measuring the capacity of Cell " << cell->getFullID()
+                << ", error " << getStatusMessage(status) << ". Recording as 0.\n";
+      return cap;
+    }
+
+    cap = cyc.testCapacity(dAh, dtime);
+    cell->setBlockDegAndTherm(false);
+
+    return cap;
+  };
+
+  const size_t start = (typeid(*cells[0]) == typeid(Cell_SPM)) ? 2 * settings::nch : 0;
+  const auto nstate = cells[0]->viewStates().size();
+  //!< Write the throughput of each cell
+  file << "time [s]" << ',' << "Current throughput [Ah]" << ',' << "Energy throughput [Wh]"
+       << "Capacity [Ah]" << ',' << "States" << '\n';
+  for (auto &cell : cells) {
+    const auto th = cell->getThroughputs();
+    const auto cap = checkCap(cell);
+
+    file << th.time << ',' << th.Ah << ',' << th.Wh << ','
+         << cap << ',';
+
+
+    const auto st_view = cell->viewStates(); //!< write the state of a cell, if an SPM cell, skip the concentration states since they don't give info
+    for (size_t i{ start }; i < nstate; i++) //!< loop for each state variable (rows)
+    {
+      if (i != start)
+        file << ',';
+      file << st_view[i];
+    }
+
+    file << '\n'
+         << '\n';
+  }
 }
 
-void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &file, int separator)
+void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &file)
 {
   /*
    * Write the usage statistics of every cell
@@ -850,6 +826,7 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
   const int ID_histV = 6;
   const int ID_histT = 7;
   const int ID_separator = 9;
+  const int seperator = 123;
 
   if (file.is_open()) {
     //!< write statistics of the current
@@ -865,8 +842,8 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
 
     //!< write a row with markers to indicate we have finished this section
     file << ID_separator << ',';
-    for (auto &_ : cells)
-      file << separator << ',';
+    // for (auto &_ : cells)
+    //   file << separator << ',';
     file << '\n';
 
     //!< statistics of the voltage
@@ -881,15 +858,15 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
 
     //!< write a row with markers to indicate we have finished this section
     file << ID_separator << ',';
-    for (auto &_ : cells)
-      file << separator << ',';
+    // for (auto &_ : cells)
+    //   file << separator << ',';
     file << '\n';
 
     //!< statistics of the temperature
     for (int i = 0; i < settings::DATASTORE_NHIST; i++) { //!< loop for each bin in the stats of T (rows)
       file << ID_histT << ',';
       for (auto &_ : cells) { //!< loop for each cell (columns)
-        //!< cell->getHist(&histI, &histV, &histT, nout); #CHECK -> This needs to be activated sometime.
+        //!< cell->getHist(&histI, &histV, &histT, nout); #TODO -> This needs to be activated sometime.
         file << histT[i] << ',';
       }
       file << '\n';
@@ -897,8 +874,8 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
 
     //!< write a row with markers to indicate we have finished this section
     file << ID_separator << ',';
-    for (auto &_ : cells)
-      file << separator << ',';
+    // for (auto &_ : cells)
+    //   file << separator << ',';
     file << '\n';
 
   } //!< if file is open
@@ -1012,7 +989,7 @@ void Procedure::checkMod_writeInitial(std::vector<Module *> mods, Battery *batt,
     std::cerr << "Error in checkUp_writeInitial, the file is no open. Skipping this part.\n";
 }
 
-struct GetHistograms //!< #CHECK how do we remove these helper functions in constexpr?
+struct GetHistograms //!< #TODO how do we remove these helper functions in constexpr?
 {
   const Histogram<> &Q{ EmptyHistogram }, &flr{ EmptyHistogram }, &E{ EmptyHistogram };
   const Histogram<> &T{ EmptyHistogram }, &Qac{ EmptyHistogram }, &Eac{ EmptyHistogram };

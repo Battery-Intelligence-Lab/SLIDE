@@ -9,6 +9,7 @@
 
 #include "../../types/Histogram.hpp"
 #include "../../settings/settings.hpp"
+
 #include <type_traits>
 #include <vector>
 
@@ -65,7 +66,7 @@ struct CoolSystem_HVACHist
   Histogram<> Qac, Eac;
 };
 
-struct CoolSystem_HVACInst //!< #CHECK -> in future try to combine.
+struct CoolSystem_HVACInst //!< #TODO -> in future try to combine.
 {
   double Qac; //!< cooling power of the AC unit
   double Eac; //!< operating energy of the AC unit

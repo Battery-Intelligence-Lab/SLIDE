@@ -7,13 +7,13 @@
 
 #pragma once
 
+#include "cell_limits.hpp"
 #include "../settings/settings.hpp"
 #include "../StorageUnit.hpp"
 #include "../types/Histogram.hpp"
 #include "../types/data_storage/CellData.hpp"
 #include "../types/Status.hpp"
 #include "../utility/utility.hpp"
-#include "cell_limits.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -28,21 +28,20 @@ namespace slide {
 class Cell : public StorageUnit
 {
 protected:
-  double cap{ 16 }; //!< capacity [Ah]
-  //	virtual double &getI() = 0; //!< Direct assignment of current
-  //	virtual double &getV() = 0; //!< Direct assignment of voltage.
+  double capNom{ 16 }; //!< capacity [Ah]
+
   CellData<settings::DATASTORE_CELL> cellData;
 
 public:
   constexpr static CellLimits limits{ defaultCellLimits };
 
-  Cell() : StorageUnit("cell") { cellData.initialise(this); }
+  Cell() : StorageUnit("cell") {}
 
   Cell(const std::string &ID_) : StorageUnit(ID_) {}
   virtual ~Cell() = default;
 
-  double Cap() final { return cap; }
-  virtual void setCapacity(double capacity) { cap = capacity; }
+  double Cap() final { return capNom; }
+  void setCapacity(double capacity) { capNom = capacity; }
 
   constexpr double Vmin() override { return limits.Vmin; }
   constexpr double VMIN() override { return limits.VMIN; }
@@ -68,7 +67,7 @@ public:
   {
     double v;
     Status Vstatus = checkV ? checkVoltage(v, print) : Status::Success;
-    //!< #CHECK Current checking part is missing!
+    //!< #TODO Current checking part is missing!
     return Vstatus;
   }
 
@@ -88,7 +87,7 @@ public:
     return free::check_voltage(v, *this);
   }
 
-  size_t getNcells() override { return 1; } //!< this is a single cell
+  size_t getNcells() override final { return 1; } //!< this is a single cell
 
   virtual void getVariations(double var[], int nin, int &nout) { nout = 0; }
 
@@ -104,42 +103,17 @@ public:
     /*
      * Calculate the thermal model of this cell
      */
-    //!< todo not implemented #CHECK
+    //!< todo not implemented #TODO
     //!< need something similar as SPM cell (keep track of heat generation and time)
     //!< and then here you can solve the ODE
     return T();
   }
 
-  //!< void setT(double Tnew) = 0;
-
-  //!< virtual bool validStates(bool print = true) = 0;
-  //!<  virtual bool validStates(double s[], int n, double &soc, double &t, double &i, bool print = true) = 0;
-  //!< virtual void timeStep_CC(double dt, bool addData = false, int steps = 1) = 0;
-
   //!< dataStorage
-  void storeData() override //!< Add another data point in the array.
-  {
-    cellData.storeInstantenousData(I(), V(), SOC(), T());
-  }
+  virtual void storeData() override { cellData.storeData(*this); }                                  //!< Add another data point in the array.
+  virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); } // #TODO *this may be Cell not actual type.
 
-  void writeData(const std::string &prefix) override { cellData.writeData(this, prefix); }
-
-  void getThroughput(double &timet, double &Aht, double &Wht)
-  {
-    auto x = cellData.getThroughputData();
-    timet = x.Time;
-    Aht = x.Ah;
-    Wht = x.Wh;
-  }
-
-  void setThroughput(CellCumulativeData data) { cellData.setThroughputData(data); }
-
-  //!< #if DATASTORE_CELL == 1
-  //!< 		virtual const CellCommonHist &getHists()
-  //!< 		{
-  //!< 			return hist;
-  //!< 		};
-  //!< #endif
+  virtual CellThroughputData getThroughputs() { return {}; }
 };
 
 } // namespace slide

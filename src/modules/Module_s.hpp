@@ -9,13 +9,13 @@
 
 #pragma once
 
-#include <string_view>
-#include <memory>
-
 #include "Module.hpp"
 #include "../settings/settings.hpp"
 #include "../cells/Cell.hpp"
 #include "../types/data_storage/cell_data.hpp"
+
+#include <string_view>
+#include <memory>
 
 namespace slide {
 class Module_s : public Module //<DATASTORE_MODULE>
@@ -25,12 +25,12 @@ protected:
   TimingData_Module_s timeData{};
 #endif
 public:
-  Module_s();
-  Module_s(std::string_view IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype);
+  Module_s() : Module("moduleS") {} //!< note this constructor should never be used. It can't determine which coolsystem to use
+  Module_s(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
+    : Module(ID_, Ti, print, pari, Ncells, coolControl, cooltype) {}
   //!< Module_s(std::string_view IDi, bool pari, int Ncells, std::unique_ptr<CoolSystem> &&cool_); #TODO
 
   //!< functions from Module_base
-  double Cap() override;  //!< module capacity (sum of cells)
   double Vmin() override; //!< module capacity (sum of cells)
   double VMIN() override;
   double Vmax() override; //!< module capacity (sum of cells)
@@ -41,10 +41,10 @@ public:
   double V(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
 
   //!< bool validSUs(bool print = true);
-  bool validSUs(moduleSUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
+  bool validSUs(SUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
 
   Module_s *copy() override;
   TimingData_Module_s getTimings();

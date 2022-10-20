@@ -13,15 +13,15 @@
 
 #pragma once
 
+#include "Cell.hpp"
+#include "settings/settings.hpp"
+
 #include <cmath>
 #include <iostream>
 #include <fstream>
 #include <cassert>
 #include <memory>
 //#include <thread>
-
-#include "Cell.hpp"
-#include "settings/settings.hpp"
 
 //!< Definitions of custom datatypes:
 struct CycleAgeingConfig

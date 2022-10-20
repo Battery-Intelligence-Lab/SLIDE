@@ -12,10 +12,10 @@
 
 #pragma once
 
+#include "State_PbA.hpp"
 #include "../Cell.hpp"
 #include "../../settings/settings.hpp"
 #include "../../utility/utility.hpp"
-#include "State_PbA.hpp"
 
 #include <string>
 #include <vector>
@@ -123,7 +123,7 @@ public:
   inline void setT(double Tnew) override { st.T() = Tnew; }
 
   bool validStates(bool print = true) override;
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
 
   Cell_PbA *copy() override { return new Cell_PbA(*this); }
 
@@ -163,7 +163,7 @@ public:
   //!< dataStorage
   //!< int increaseBin(double binedge[], double bin[], double data, int previndex);
   //!< virtual void storeData();
-  //!< virtual void writeData(std::string prefix){}; //!< #CHECK implement.
+  //!< virtual void writeData(std::string prefix){}; //!< #TODO implement.
 };
 
 } // namespace slide

@@ -20,16 +20,16 @@
  * See the licence file LICENCE.txt for more information.
  */
 
-#include <array>
-#include <thread>
-#include <algorithm>
-
 #include "../cells/cells.hpp"
 #include "determine_OCV.hpp"
 #include "CyclerOld.hpp"
 #include "Cycler.hpp"
 #include "determine_characterisation.hpp"
 #include "../utility/utility.hpp"
+
+#include <array>
+#include <thread>
+#include <algorithm>
 
 namespace slide {
 bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM &M,
@@ -147,7 +147,7 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
         break;           //!< leave the loops
       } catch (int e) {
         //!< std::cout << "Throw test: " << 78 << '\n';
-        //!< An error occurred while simulating the (dis)charge #CHECK -> we throw here very much.
+        //!< An error occurred while simulating the (dis)charge #TODO -> we throw here very much.
         //		Istep = Istep / 10.0; //!< reduce the ramping parameters by a factor of 10
         //!< now we are still in the loop which decreases the ramping time steps ('final' is still false), so you will try again
         //!< and the original battery state will be restored at the start of the loop, so the illegal battery state will be 'forgotten'
@@ -229,7 +229,7 @@ void CCCV(double Crate, double Ccut, double Tref, double Dp, double Dn, double k
   c1.setInitialConcentration(ocvfit.cmaxp, ocvfit.cmaxn, ocvfit.lifracpini, ocvfit.lifracnini);
   c1.setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.ep, ocvfit.en, ocvfit.thickp, ocvfit.thickn);
   c1.setCharacterisationParam(Dp, Dn, kp, kn, R);
-  //!< c1.setVlimits(ocvfit.Vmax, ocvfit.Vmin); #CHECK
+  //!< c1.setVlimits(ocvfit.Vmax, ocvfit.Vmin); #TODO
   c1.setT(Tref);    //!< set the temperature of the cell to the given value
   c1.setTenv(Tref); //!< set the environmental temperature to the given value
 
@@ -371,7 +371,7 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::FixedData<doubl
   //!< Variables
   //!< auto M = Model_SPM::makeModel(); //!< structure with the matrices for the spatial discretisation for the solid diffusion PDE
   //!< constexpr double dt = 2;	  //!< time step to be used for the simulation
-  slide::XYdata_vv Vsim, Tsim; //!< arrays to store the simulation results #CHECK -> static thread_local
+  slide::XYdata_vv Vsim, Tsim; //!< arrays to store the simulation results #TODO -> static thread_local
   double errmin = 10000000000; //!< lowest error encountered so far
 
   //!< ************************************************ Create an initial cell. ************************************************
@@ -382,7 +382,7 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::FixedData<doubl
   cell_init.setOCVcurve(ocvfit.namepos, ocvfit.nameneg);
   cell_init.setInitialConcentration(ocvfit.cmaxp, ocvfit.cmaxn, ocvfit.lifracpini, ocvfit.lifracnini);
   cell_init.setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.ep, ocvfit.en, ocvfit.thickp, ocvfit.thickn);
-  //!< cell_init.setVlimits(ocvfit.Vmax, ocvfit.Vmin); #CHECK set Vlimits?
+  //!< cell_init.setVlimits(ocvfit.Vmax, ocvfit.Vmin); #TODO set Vlimits?
   cell_init.setT(Tref);    //!< set the temperature of the cell to the given value
   cell_init.setTenv(Tref); //!< set the environmental temperature to the given value
 
@@ -657,12 +657,12 @@ void estimateCharacterisation()
   output.close();
 
   //!< Simulate the voltage curves at the best fit
-  auto M_ptr = Model_SPM::makeModel(); //!< structure with the matrices for the spatial discretisation for the solid diffusion PDE #CHECK possible duplication somewhere of below code.
+  auto M_ptr = Model_SPM::makeModel(); //!< structure with the matrices for the spatial discretisation for the solid diffusion PDE #TODO possible duplication somewhere of below code.
 
   constexpr double dt = 2;                      //!< time step to be used for the simulation
   constexpr int nin = 1 / 0.5 * 3600 / dt * 10; //!< length of the arrays to store the simulation results. (for a 0.5 C rate CC phase, *10 for the CV phase and safety margin)
 
-  slide::XYdata_vv Vsim, Tsim; //!< arrays to store the simulation results #CHECK
+  slide::XYdata_vv Vsim, Tsim; //!< arrays to store the simulation results #TODO
   Vsim.reserve(nin), Tsim.reserve(nin);
 
   for (int i = 0; i < nCCCV; i++) { //!< loop through all CCCV experiments

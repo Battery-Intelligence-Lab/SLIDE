@@ -11,8 +11,6 @@
  */
 
 #include "Cell_SPM.hpp"
-#include "../../utility/utility.hpp"
-//#include "../../param/param_default.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -21,7 +19,7 @@
 #include <cmath>
 
 namespace slide {
-//!< Cell_Fit::Cell_Fit(const slide::Model_SPM &MM, int verbosei) #CHECK important for ageing to set no ageing.
+//!< Cell_Fit::Cell_Fit(const slide::Model_SPM &MM, int verbosei) #TODO important for ageing to set no ageing.
 //!< 	: Cell(settings::path::Kokam::namepos, settings::path::Kokam::nameneg, settings::path::Kokam::nameentropicC, settings::path::Kokam::nameentropicCell)
 //!< {
 //!< 	/*
@@ -274,7 +272,7 @@ void Cell_SPM::setGeometricParameters(double capnom, double surf, double ep, dou
    * thickn 		thickness of the anode [m]
    */
 
-  cap = capnom;
+  setCapacity(capnom);
   geo.elec_surf = surf;
 
   //!< If you change the volume fraction, you also have to change the effective surface area

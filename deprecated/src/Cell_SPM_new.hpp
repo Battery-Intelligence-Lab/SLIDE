@@ -11,6 +11,7 @@
 #include "Cell.hpp"
 #include "SPMModel.h"
 #include "global.h"
+
 #include <ctime>
 
 using namespace std;
@@ -370,7 +371,7 @@ public:
 
   double setStates(double s[], int nin, bool checkV = true, bool print = true);
   bool validStates(double s[], int nin, bool print = true);
-  void timeStep_CC(double dt, bool addData = false, int steps = 1);
+  void timeStep_CC(double dt, int steps = 1);
 
   //!< data storage
   virtual void storeData();

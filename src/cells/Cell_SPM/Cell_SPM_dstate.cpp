@@ -8,6 +8,8 @@
  * See the licence file LICENCE.txt for more information.
  */
 
+#include "Cell_SPM.hpp"
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -16,10 +18,6 @@
 #include <array>
 #include <algorithm>
 #include <utility>
-
-#include "Cell_SPM.hpp"
-#include "../../settings/settings.hpp"
-#include "../../utility/utility.hpp"
 
 namespace slide {
 void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
@@ -105,7 +103,7 @@ void Cell_SPM::dState_thermal(bool print, double &dQgen)
   //!< Calculate the overpotentials if needed
   auto [etap, etan] = calcOverPotential(cps, cns, i_app);
 
-  constexpr int electr = 0;    //!< #CHECK why don't we use in the new one?
+  constexpr int electr = 0;    //!< #TODO why don't we use in the new one?
   if constexpr (electr == 2) { //!< only consider negative electrode, ignore the positive electrode
     jp = 0;
     Dpt = 0;
@@ -249,7 +247,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
 
   //!< Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + ipl/nF)
   for (size_t j = 0; j < nch; j++)
-    dzn_pl[j] = (M->Bn[j] * ipl / (npl * F)); //!< #CHECK (npl * F) division is unnecessary it is already multiple in the function.
+    dzn_pl[j] = (M->Bn[j] * ipl / (npl * F)); //!< #TODO (npl * F) division is unnecessary it is already multiple in the function.
 
   //!< output
   for (size_t j = 0; j < nch; j++)                           //!< dzp += 0 //!< dzp should be added from diffusion function
@@ -279,7 +277,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
     std::cout << "Cell_SPM::dState terminating with degradation.\n";
 }
 
-void Cell_SPM::timeStep_CC(double dt, bool addData, int nstep)
+void Cell_SPM::timeStep_CC(double dt, int nstep)
 {
   /*
    * take a number of time steps with a constant current
@@ -305,7 +303,7 @@ void Cell_SPM::timeStep_CC(double dt, bool addData, int nstep)
   sparam.s_dt = nstep * dt;
 
   //!< *********************************************  Resolve the diffusion model for every dt time step ****************************************************************************************
-
+  const auto dth = dt / 3600.0;
   for (int t = 0; t < nstep; t++) {
     slide::State_SPM d_st{};
     //!< Calculate the time derivatives
@@ -321,13 +319,13 @@ void Cell_SPM::timeStep_CC(double dt, bool addData, int nstep)
     sparam.s_dai_update = false;
     sparam.s_lares_update = false;
 
+
+    const auto dAh = st.I() * dth;
     //!< increase the cumulative variables of this cell
-    if (addData) {
-#if DATASTORE_CELL > 0
-      timetot += dt;
-      ahtot += std::abs(I()) * dt / 3600.0;
-      whtot += std::abs(I()) * V() * dt / 3600.0;
-#endif
+    if constexpr (settings::data::storeCumulativeData) {
+      st.time() += dt;
+      st.Ah() += std::abs(dAh);
+      st.Wh() += std::abs(dAh * V());
     }
   }
 
@@ -361,7 +359,7 @@ void Cell_SPM::timeStep_CC(double dt, bool addData, int nstep)
       double Atherm[1] = { getThermalSurface() }; //!< calculate the surface of this cell
 
       const auto new_T = thermalModel(1, Tneigh, Kneigh, Atherm, Therm_time);
-      setT(new_T); //!< #CHECK in slide-pack it does not check the temperature.
+      setT(new_T); //!< #TODO in slide-pack it does not check the temperature.
     }
 
     //!< ******************************************************* Calculate the degradation model once for the nstep * dt time period **************************************************************

@@ -37,7 +37,7 @@ protected:
   friend struct CoolSystem_HVACData;
 
 public:
-  CoolSystem_HVACData HVACdata; //!< #CHECK -> needs to be protected.
+  CoolSystem_HVACData HVACdata; //!< #TODO -> needs to be protected.
 
   CoolSystem_HVAC();
   CoolSystem_HVAC(size_t Ncells, int control, double Q0);

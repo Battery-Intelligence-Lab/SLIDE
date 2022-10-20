@@ -19,6 +19,10 @@
  * of Oxford, VITO nv, and the 'Slide' Developers.
  * See the licence file LICENCE.txt for more information.
  */
+#include "determine_OCV.hpp"
+#include "../utility/utility.hpp"
+#include "../settings/settings.hpp"
+
 #include <thread>
 #include <iostream>
 #include <fstream>
@@ -28,10 +32,6 @@
 #include <cassert>
 #include <ctime>
 #include <utility>
-
-#include "determine_OCV.hpp"
-#include "../utility/utility.hpp"
-#include "../settings/settings.hpp"
 
 namespace slide {
 bool validOCV(bool checkRange, slide::XYdata_vv &data)

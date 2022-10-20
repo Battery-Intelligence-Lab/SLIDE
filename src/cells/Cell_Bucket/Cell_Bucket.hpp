@@ -58,13 +58,16 @@ public:
   inline void setT(double Tnew) override { st.T() = Tnew; }
 
   bool validStates(bool print = true) override;
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
+
+  CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+
 
   Cell_Bucket *copy() override { return new Cell_Bucket(*this); }
 
   //!< dataStorage
   //!< virtual void storeData();
-  //!< virtual void writeData(std::string prefix){}; //!< #CHECK implement.
+  //!< virtual void writeData(std::string prefix){}; //!< #TODO implement.
 };
 
 inline Cell_Bucket::Cell_Bucket()
@@ -75,16 +78,18 @@ inline Cell_Bucket::Cell_Bucket()
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
 
   OCV.check_is_fixed();
+
+  cellData.initialise(*this);
 }
 
 inline Cell_Bucket::Cell_Bucket(std::string IDi, double capin, double SOCin) : Cell_Bucket()
 {
   if (!free::check_SOC(SOCin))
-    throw 10; //!< #CHECK we need error codes.
+    throw 10; //!< #TODO we need error codes.
 
-  //!< #CHECK also check capacity if negative? Use bool instead of throwing?
+  //!< #TODO also check capacity if negative? Use bool instead of throwing?
   ID = std::move(IDi);
-  cap = capin;
+  setCapacity(capin);
   st.SOC() = SOCin;
 }
 
@@ -135,7 +140,7 @@ inline Status Cell_Bucket::setCurrent(double Inew, bool checkV, bool print)
   const double Iold = I();
   st.I() = Inew;
 
-  const auto status = checkCurrent(checkV, print); //!< #CHECK this pattern is repeated in all cells.
+  const auto status = checkCurrent(checkV, print); //!< #TODO this pattern is repeated in all cells.
 
   if (isStatusBad(status))
     st.I() = Iold;
@@ -232,7 +237,7 @@ inline bool Cell_Bucket::validStates(bool print)
   const bool verb = print && settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Check if all fields are present & extract their values
-  //!< are all in the allowed range? #CHECK change to some error codes.
+  //!< are all in the allowed range? #TODO change to some error codes.
 
   bool range = free::check_SOC(SOC());
 
@@ -246,7 +251,7 @@ inline bool Cell_Bucket::validStates(bool print)
   return range;
 }
 
-inline void Cell_Bucket::timeStep_CC(double dt, bool addData, int nstep)
+inline void Cell_Bucket::timeStep_CC(double dt, int nstep)
 {
   /*
    *	take a time step of dt seconds while keeping the current constant
@@ -258,14 +263,22 @@ inline void Cell_Bucket::timeStep_CC(double dt, bool addData, int nstep)
     throw 10;
   }
 
+  const auto dth = dt / 3600.0;
+
   //!< take the specified number of time steps
   for (int t = 0; t < nstep; t++) {
     //!< Using forward Euler time integration.
     //!< Currently, only the SOC of the cell will change
-    st.SOC() -= st.I() * dt / (3600.0 * Cap());
 
-    if (addData)
-      storeData();
+    const auto dAh = st.I() * dth;
+
+    st.SOC() -= dAh / Cap();
+
+    if constexpr (settings::data::storeCumulativeData) {
+      st.time() += dt;
+      st.Ah() += std::abs(dAh);
+      st.Wh() += std::abs(dAh * V());
+    }
   }
 }
 } // namespace slide

@@ -10,6 +10,9 @@
 
 #pragma once
 
+#include "../../types/matrix.hpp"
+#include "../util_debug.hpp"
+
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -19,9 +22,6 @@
 #include <map>
 #include <span>
 #include <cstring> //!< -> for memcpy
-
-#include "../../types/matrix.hpp"
-#include "../util_debug.hpp"
 
 namespace slide {
 template <typename Tpath>
@@ -243,7 +243,7 @@ void loadCSV_2col(const Tpath &name, std::span<double> &x, std::span<double> &y,
 
   if (fm == XYdataMap.end()) {
     XYplain xyp{};
-    loadCSV_2col(name, xyp.x_vec, xyp.y_vec); //!< #CHECK -> for some reason it does not take XYdataMap[name] directly.
+    loadCSV_2col(name, xyp.x_vec, xyp.y_vec); //!< #TODO -> for some reason it does not take XYdataMap[name] directly.
 
     XYdataMap[name_str] = std::move(xyp);
   }

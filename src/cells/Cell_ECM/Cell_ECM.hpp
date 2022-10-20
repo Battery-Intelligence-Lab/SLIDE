@@ -60,7 +60,10 @@ public:
   inline void setT(double Tnew) override { st.T() = Tnew; }
 
   virtual bool validStates(bool print = true) override;
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
+
+  CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+
 
   Cell_ECM *copy() override { return new Cell_ECM(*this); }
 };
@@ -69,12 +72,14 @@ public:
 
 inline Cell_ECM::Cell_ECM()
 {
-  cap = 16;
+  ID = "Cell_ECM";
+  capNom = 16;
   //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 11);
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
 
   OCV.check_is_fixed();
+  cellData.initialise(*this);
 }
 
 inline Cell_ECM::Cell_ECM(double capin, double SOCin) : Cell_ECM()
@@ -85,7 +90,7 @@ inline Cell_ECM::Cell_ECM(double capin, double SOCin) : Cell_ECM()
     throw 10;
 
   st.SOC() = SOCin;
-  cap = capin;
+  setCapacity(capin);
 }
 
 inline double Cell_ECM::getOCV(bool print)
@@ -252,7 +257,7 @@ inline bool Cell_ECM::validStates(bool print)
   return range;
 }
 
-inline void Cell_ECM::timeStep_CC(double dt, bool addData, int nstep)
+inline void Cell_ECM::timeStep_CC(double dt, int nstep)
 {
   /*
    *	take a time step of dt seconds while keeping the current constant
@@ -265,15 +270,21 @@ inline void Cell_ECM::timeStep_CC(double dt, bool addData, int nstep)
     throw 10;
   }
 
+  const auto dth = dt / 3600.0;
   //!< take the specified number of time steps
   for (int t = 0; t < nstep; t++) {
     //!< Using forward Euler time integration.
-    st.SOC() -= dt * st.I() / (3600 * Cap());
+    const auto dAh = st.I() * dth;
+    st.SOC() -= dAh / Cap();
     st.Ir() -= dt * (st.Ir() + st.I()) / (Rp * Cp);
     //	dIr/dt =-1/RC Ir - 1/RC I
 
-    if (addData) //!< increase the cumulative variables of this cell
-      storeData();
+    //!< increase the cumulative variables of this cell
+    if constexpr (settings::data::storeCumulativeData) {
+      st.time() += dt;
+      st.Ah() += std::abs(dAh);
+      st.Wh() += std::abs(dAh * V());
+    }
   }
 }
 } // namespace slide

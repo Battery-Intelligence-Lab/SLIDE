@@ -8,7 +8,7 @@
  */
 
 #include "Module_s.hpp"
-#include "../utility/util.hpp"
+#include "../utility/utility.hpp"
 
 //#include "settings/settings.hpp"
 
@@ -20,107 +20,16 @@
 #include <thread>
 #include <memory>
 #include <ctime>
+#include <numeric>
 
 namespace slide {
-Module_s::Module_s()
-{
-  //!< note this constructor should never be used. It will result in errors throughout the code
-  //!< It can't determine which coolsystem to use
-  ID = "moduleS";
-}
 
-Module_s::Module_s(std::string_view IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
-  : Module_s()
-{
-  /*
-   *	make a series-connected module.
-   *	NOTE: you cannot set the cells in the constructor.
-   *	The reason is that to set the parent to the child-cells, you need to call shared_from_this(). #CHECK
-   *	And shared_from_this can only be called once 'this' has been made (i.e. terminated the constructor)
-   *
-   * IN
-   * Ti 			temperture of the coolant
-   * print 		print error warnings
-   * pari 		use multithreaded computation to calculate the time steps of the connected SUs or not
-   * Ncells 		number of cells which will be connected to this module.
-   * 				This is necessary to properly size the cooling system:
-   * 				modules with more cells will have more heat generation, so need better cooling.
-   * 				This is implemented by increasing the thermally active surface area of the module,
-   * 				and the flow rate (and cross section) of the coolant in the CoolSystem.
-   * coolControl 	integer deciding how the cooling system is controlled.
-   * cooltype 	determines what type of coolsystem this module has
-   * 				0: regular coolsystem
-   * 				1: this module is the top level module and has an HVAC coolsystem
-   * 					which means it has a fan to cool the child SUs and an air conditioning unit to cool the module from the environment
-   * 				2: this module is a mid-level module and has an open coolsystem (pass through between parent module and child modules)
-   *
-   */
+// Since cells are in series following functions are just sum.
 
-  ID = IDi;
-  par = pari;
-
-  //!< Set the module temperature
-  therm.A = 0.0042 * 10 * Ncells;                                      //!< thermally active surface area. The first number is the thermal active surface area of a cell
-  double Q0 = 0;                                                       //!< constant ancillary losses. There are none since a module only has cells
-  if (cooltype == 1)                                                   //!< #CHECK make this enum.
-    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0); //!< #CHECK already created a pointer in default constructor.
-  else if (cooltype == 2)
-    cool = std::make_unique<CoolSystem_open>(Ncells, coolControl);
-  else
-    cool = std::make_unique<CoolSystem>(Ncells, coolControl);
-
-  cool->setT(Ti);
-}
-
-double Module_s::Cap()
-{
-  //!< the capacity is the capacity of the smallest cell
-  double cap = std::numeric_limits<double>::max();
-  for (auto &SU : SUs)
-    cap = std::min(cap, SU->Cap());
-
-  return cap;
-}
-
-double Module_s::Vmin()
-{
-  //!< the voltage limits are the sums of the voltage limits of all individual cells
-  //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  double vm{ 0 };
-  for (auto &SU : SUs)
-    vm += SU->Vmin();
-  return vm;
-}
-
-double Module_s::VMIN()
-{
-  //!< the voltage limits are the sums of the voltage limits of all individual cells
-  //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  double vm{ 0 };
-  for (auto &SU : SUs)
-    vm += SU->VMIN();
-  return vm;
-}
-
-double Module_s::Vmax()
-{
-  //!< the voltage limits are the sums of the voltage limits of all individual cells
-  //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  double vm = 0;
-  for (auto &SU : SUs)
-    vm += SU->Vmax();
-  return vm;
-}
-
-double Module_s::VMAX()
-{
-  //!< the voltage limits are the sums of the voltage limits of all individual cells
-  //!< note that this does not guarantee the Vlimits of each individual cell is respected
-  double vm = 0;
-  for (auto &SU : SUs)
-    vm += SU->VMAX();
-  return vm;
-}
+double Module_s::Vmin() { return free::transform_sum(SUs, free::get_Vmin<SU_t>); }
+double Module_s::VMIN() { return free::transform_sum(SUs, free::get_VMIN<SU_t>); }
+double Module_s::Vmax() { return free::transform_sum(SUs, free::get_Vmax<SU_t>); }
+double Module_s::VMAX() { return free::transform_sum(SUs, free::get_VMAX<SU_t>); }
 
 double Module_s::I()
 {
@@ -207,7 +116,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Set the current, if checkVi this also gets the cell voltages
-  bool validVcell = true; //!< #CHECK
+  bool validVcell = true; //!< #TODO
   Vmodule_valid = false;  //!< we are changing the current, so the stored voltage is no longer valid
   double Iold = I();
 
@@ -239,7 +148,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   //!< check and return the voltage of the module
   //!< Check if the voltage is valid
 
-  //!< #CHECK Here we need module specific voltage.
+  //!< #TODO Here we need module specific voltage.
 
 #if TIMING
   timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
@@ -248,7 +157,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   return Status::Success;
 }
 
-bool Module_s::validSUs(moduleSUs_span_t c, bool print)
+bool Module_s::validSUs(SUs_span_t c, bool print)
 {
   /*
    * Checks the cells are a valid combination for a series-connected module
@@ -267,7 +176,7 @@ bool Module_s::validSUs(moduleSUs_span_t c, bool print)
   const double Imod = c[0]->I();
   for (size_t i = 1; i < c.size(); i++) {
     const double err = std::abs(Imod - c[i]->I());
-    bool val = err < settings::MODULE_P_I_ABSTOL || err < Imod * settings::MODULE_P_I_RELTOL; //!< #CHECK should not be || here. Ok got it due to 0 current.
+    bool val = err < settings::MODULE_P_I_ABSTOL || err < Imod * settings::MODULE_P_I_RELTOL; //!< #TODO should not be || here. Ok got it due to 0 current.
     //!< in complex modules, an s can be made out of p modules, and p modules are allowed to have a small error in their current
     if (!val) {
       if (verb)
@@ -285,7 +194,7 @@ bool Module_s::validSUs(moduleSUs_span_t c, bool print)
   return result; //!< else the cells are valid
 }
 
-void Module_s::timeStep_CC(double dt, bool addData, int nstep)
+void Module_s::timeStep_CC(double dt, int nstep)
 {
   /*
    * a time step at constant current is simply a time step of every individual cell
@@ -310,7 +219,7 @@ void Module_s::timeStep_CC(double dt, bool addData, int nstep)
   }
 
   //!< we simply take one CC time step on every cell
-  auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, addData, nstep); };
+  auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, nstep); };
 
   try {
     run(task_indv, getNSUs(), (par ? -1 : 1));
@@ -379,7 +288,7 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
 
 Module_s *Module_s::copy()
 {
-  //!< check the type of coolsystem we have #CHECK for a better way. Also same for both modules.
+  //!< check the type of coolsystem we have #TODO for a better way. Also same for both modules.
 
   int cooltype = 0;
 

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "timing.hpp"
+#include "parallelisation.hpp"
 #include "util.hpp"
 #include "interpolation.hpp"
 #include "free_functions.hpp"

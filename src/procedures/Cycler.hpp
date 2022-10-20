@@ -35,7 +35,7 @@ public:
   void initialise(std::unique_ptr<StorageUnit> &sui, const std::string &IDi) { initialise(sui.get(), IDi); }
 
   void setDiagnostic(bool newDia);
-  double getSafetyVmin() { return su->VMIN() * 0.99; } //!< #CHECK probably causing many calculations.
+  double getSafetyVmin() { return su->VMIN() * 0.99; } //!< #TODO probably causing many calculations.
   double getSafetyVmax() { return su->VMAX() * 1.01; }
 
   Status rest(double tlim, double dt, int ndt_data, double &Ah, double &Wh);

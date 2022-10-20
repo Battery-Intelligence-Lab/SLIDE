@@ -10,6 +10,10 @@
  */
 
 //!< Include header files
+#include "slide.hpp"
+#include "../benchmark/running_Cell_Bucket.hpp"
+
+
 #include <ctime>
 #include <thread>
 #include <array>
@@ -17,9 +21,6 @@
 #include <random>
 #include <cmath>
 #include <iomanip>
-
-#include "slide.hpp"
-#include "../benchmark/running_Cell_Bucket.hpp"
 
 int main()
 {
@@ -31,7 +32,6 @@ int main()
 
   //!< print that you start simulations
   //!< slide::unit_tests::test_all();
-
   std::cout << "Start simulations" << std::endl;
 
   //!< Make a clock to measure how long the simulation takes
@@ -134,8 +134,28 @@ int main()
   //
   //!< Benchmarks:
 
-  //!< slide::benchmarks::run_Cell_Bucket();
+  // slide::benchmarks::run_Cell_Bucket();
+  // slide::benchmarks::run_Cell_ECM();
   slide::benchmarks::run_Cell_SPM();
+
+
+  std::unique_ptr<slide::StorageUnit> cs[2];
+  cs[0] = std::make_unique<slide::Cell_Bucket>();
+  cs[1] = std::make_unique<slide::Cell_Bucket>();
+
+  std::string n = "na";
+  double T = 300;
+  bool checkCells = false;
+
+  std::unique_ptr<slide::Module_s> mp(new slide::Module_s(n, T, true, false, 2, 1, 1));
+
+  mp->setSUs(cs, checkCells, true);
+
+  auto tst = mp->Vmin();
+  std::cout << tst << '\n';
+  std::cout << mp->Vmax() << '\n';
+  std::cout << mp->VMIN() << '\n';
+  std::cout << mp->VMAX() << '\n';
 
   //!< Slide-pack tests:
 
@@ -148,7 +168,7 @@ int main()
   //!<	cb_ptr->setCurrent(cb_ptr->Cap() / 2.0);
   //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  //!<	cb_ptr->timeStep_CC(2, true, 900);
+  //!<	cb_ptr->timeStep_CC(2, 900);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
   //!<	auto u = cb_ptr->viewStates();
@@ -200,7 +220,7 @@ int main()
   //!<	cb_ptr->setCurrent(5);
   //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  //!<	cb_ptr->timeStep_CC(0.1, true, 3600);
+  //!<	cb_ptr->timeStep_CC(0.1, 3600);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
   //!<	auto u = cb_ptr->viewStates();
@@ -222,7 +242,7 @@ int main()
   //!<	cb_ptr->setCurrent(cb_ptr->Cap() / 2.0);
   //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  //!<	cb_ptr->timeStep_CC(2, true, 900);
+  //!<	cb_ptr->timeStep_CC(2, 900);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
   //!<	auto u = cb_ptr->viewStates();
@@ -367,7 +387,7 @@ int main()
   //!<	cb_ptr->setCurrent(5);
   //!<	std::cout << "Current: " << cb_ptr->I() << '\n';
 
-  //!<	cb_ptr->timeStep_CC(1, true, 360);
+  //!<	cb_ptr->timeStep_CC(1, 360);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
 
   //!<	//!<auto u = cb_ptr->viewStates();
@@ -415,7 +435,7 @@ int main()
   //!<	cyc.CC(5, 4, 360, 1, 10, Ah, Wh);
   //!<	//!<cb_ptr->setCurrent(5);
   //!<	//!<std::cout << "Current: " << cb_ptr->I() << '\n';
-  //!<	//!<cb_ptr->timeStep_CC(0.1, true, 3600);
+  //!<	//!<cb_ptr->timeStep_CC(0.1 3600);
   //!<	std::cout << "Voltage: " << cb_ptr->V() << '\n';
   //!<	//!<auto u = cb_ptr->viewStates();
   //!<	//!<//!<for (auto x : u)

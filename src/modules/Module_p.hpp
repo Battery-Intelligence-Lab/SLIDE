@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include <string>
-
 #include "Module.hpp"
 #include "../types/data_storage/cell_data.hpp"
+
+#include <string>
 
 namespace slide {
 class Module_p : public Module
@@ -20,11 +20,11 @@ protected:
   TimingData_Module_p timeData{};
 #endif
 public:
-  Module_p();
-  Module_p(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype);
+  Module_p() : Module("moduleP") {} //!< note this constructor should never be used. It can't determine which coolsystem to use
+  Module_p(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
+    : Module(ID_, Ti, print, pari, Ncells, coolControl, cooltype) {}
 
   //!< functions from Module_base
-  double Cap() override;  //!< module capacity (sum of cells)
   double Vmin() override; //!< module capacity (sum of cells)
   double VMIN() override;
   double VMAX() override;
@@ -39,9 +39,9 @@ public:
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
   Status redistributeCurrent(bool checkV = true, bool print = true);              //!< redistribute the total module current to the different cells
 
-  bool validSUs(moduleSUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
+  bool validSUs(SUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
 
-  void timeStep_CC(double dt, bool addData = false, int steps = 1) override;
+  void timeStep_CC(double dt, int steps = 1) override;
 
   Module_p *copy() override;
   TimingData_Module_p getTimings();

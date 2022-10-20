@@ -1,7 +1,7 @@
 ## Coding Conventions:
 
 - Do not use "using" in global namespace.
-- First include standard headers then our headers.
+- First include our headers then standard headers. See: https://stackoverflow.com/questions/2762568/c-c-include-header-file-order
 
 
 ### Commenting: 

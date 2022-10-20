@@ -22,7 +22,7 @@ namespace slide {
 Cell_PbA::Cell_PbA()
 {
   ID = "Cell_PbA";
-  cap = 54; //!< [Ah] Nominal capacity (data sheet)
+  capNom = 54; //!< [Ah] Nominal capacity (data sheet)
 
   //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 11);
@@ -36,9 +36,9 @@ Cell_PbA::Cell_PbA(std::string IDi, double capin, double SOCin) : Cell_PbA()
   if (!free::check_SOC(SOCin))
     throw 10;
 
-  //!< #CHECK also check capacity if negative? Use bool instead of throwing?
+  //!< #TODO also check capacity if negative? Use bool instead of throwing?
   ID = std::move(IDi);
-  cap = capin;
+  setCapacity(capin);
   st.SOC() = SOCin;
 }
 
@@ -116,9 +116,9 @@ double Cell_PbA::V(bool print)
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   try {
     if (isCharging())
-      return getOCV() - g_OCV * DOD() + (rho_c / cap) * st.I() * (1 + M_c * SOC() / (C_c - st.SOC()));
+      return getOCV() - g_OCV * DOD() + (rho_c / Cap()) * st.I() * (1 + M_c * SOC() / (C_c - st.SOC()));
     else
-      return getOCV() - g_OCV * DOD() + (rho_d / cap) * st.I() * (1 + M_d * DOD() / (C_d - DOD())); //!< #CHECK if are making any problems.
+      return getOCV() - g_OCV * DOD() + (rho_d / Cap()) * st.I() * (1 + M_d * DOD() / (C_d - DOD())); //!< #TODO if are making any problems.
   } catch (int e) {
     if (verb)
       std::cerr << "ERROR in Cell_PbA::getV when getting the OCV.\n";
@@ -208,7 +208,7 @@ double Cell_PbA::C_deg()
   return C_EOL * std::exp(-c_Z * (1 - st.Zw() / (1.6 * Z_IEC)));
 }
 
-void Cell_PbA::timeStep_CC(double dt, bool addData, int nstep)
+void Cell_PbA::timeStep_CC(double dt, int nstep)
 {
   /*
    *	take a time step of dt seconds while keeping the current constant
@@ -252,14 +252,17 @@ void Cell_PbA::timeStep_CC(double dt, bool addData, int nstep)
     st.f_stratification() += (f_plus() - f_minus()) * dt;
     st.f_stratification() = std::max(st.f_stratification(), 0.0); //!< Cannot be less than 0.
 
-    if (addData)
-      storeData();
+    if constexpr (settings::data::storeCumulativeData) {
+      st.time() += dt;
+      st.Ah() += std::abs(dAh);
+      st.Wh() += std::abs(dAh * V());
+    }
   }
 }
 
 double Cell_PbA::I_gas()
 {
-  return (cap / 100) * Igas_0 * std::exp(c_u * (V() - Ugas_0) + c_T * (T() - Tgas_0));
+  return (Cap() / 100) * Igas_0 * std::exp(c_u * (V() - Ugas_0) + c_T * (T() - Tgas_0));
 }
 
 double Cell_PbA::k_s()
@@ -293,7 +296,7 @@ double Cell_PbA::f_acid()
 
 double Cell_PbA::f_minus_gassing()
 {
-  return c_minus * std::sqrt(100 / cap) *
+  return c_minus * std::sqrt(100 / Cap()) *
 }
 
 double Cell_PbA::f_minus_diffusion()
@@ -303,15 +306,15 @@ double Cell_PbA::f_minus_diffusion()
 
 double Cell_PbA::rho_empty()
 {
-                const auto temp = (rhp.d + rhp.e*rho_nom)*m - rho.f*cap);
+                const auto temp = (rhp.d + rhp.e*rho_nom)*m - rho.f*Cap());
                 return rhp.a + std::sqrt(rhp.b + rho.c * rho_nom * (()));
 }
 double Cell_PbA::Ucorr()
 {
   if (isCharging())
-    return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_c / cap) * st.I() * (1 + M_c * st.SOC() / (C_c - st.SOC()));
+    return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_c / Cap()) * st.I() * (1 + M_c * st.SOC() / (C_c - st.SOC()));
   else
-    return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_d / cap) * st.I() * (1 + M_d * DOD() / (C_d - DOD()));
+    return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_d / Cap()) * st.I() * (1 + M_d * DOD() / (C_d - DOD()));
 }
 
 //!< void Cell_PbA::backupStates()

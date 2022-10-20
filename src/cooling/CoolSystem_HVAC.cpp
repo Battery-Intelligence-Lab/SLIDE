@@ -5,14 +5,14 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
+#include "CoolSystem_HVAC.hpp"
+#include "../settings/settings.hpp"
+#include "../utility/utility.hpp"
+
 #include <cmath>
 #include <iostream>
 #include <fstream>
 #include <string>
-
-#include "CoolSystem_HVAC.hpp"
-#include "../settings/settings.hpp"
-#include "../utility/util.hpp"
 
 namespace slide {
 CoolSystem_HVAC::CoolSystem_HVAC()
@@ -304,6 +304,6 @@ void CoolSystem_HVAC::writeData(const std::string &prefix)
   CoolSystem::writeData(prefix);
 
   //!< store histograms and degradation state of cell utilisation
-  HVACdata.writeData(*this, prefix); //!< #CHECK -> since we are doing append we cannot write like this IMPORTANT!!!!!
+  HVACdata.writeData(*this, prefix); //!< #TODO -> since we are doing append we cannot write like this IMPORTANT!!!!!
 }
 } // namespace slide
