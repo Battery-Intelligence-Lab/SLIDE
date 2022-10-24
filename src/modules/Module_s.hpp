@@ -13,6 +13,7 @@
 #include "../settings/settings.hpp"
 #include "../cells/Cell.hpp"
 #include "../types/data_storage/cell_data.hpp"
+#include "../utility/utility.hpp"
 
 #include <string_view>
 #include <memory>
@@ -31,11 +32,14 @@ public:
   //!< Module_s(std::string_view IDi, bool pari, int Ncells, std::unique_ptr<CoolSystem> &&cool_); #TODO
 
   //!< functions from Module_base
-  double Vmin() override; //!< module capacity (sum of cells)
-  double VMIN() override;
-  double Vmax() override; //!< module capacity (sum of cells)
-  double VMAX() override;
-  double I() override;                       //!< module capacity (sum of cells)
+  // Since cells are in series following functions are just sum.
+  double Vmin() override { return transform_sum(SUs, free::get_Vmin<SU_t>); } //!< SUM all SUs' Vmin
+  double VMIN() override { return transform_sum(SUs, free::get_VMIN<SU_t>); } //!< SUM all SUs' VMIN
+  double Vmax() override { return transform_sum(SUs, free::get_Vmax<SU_t>); } //!< SUM all SUs' Vmax
+  double VMAX() override { return transform_sum(SUs, free::get_VMAX<SU_t>); } //!< SUM all SUs' VMAX
+
+  double I() override { return (SUs.empty() ? 0 : SUs[0]->I()); } //!< the current is the same in all cells, so we can use first value. Return zero if SUs empty.
+
   double getOCV(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
   double getRtot() override;
   double V(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument

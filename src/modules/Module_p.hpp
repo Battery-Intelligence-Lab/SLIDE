@@ -9,6 +9,7 @@
 
 #include "Module.hpp"
 #include "../types/data_storage/cell_data.hpp"
+#include "../utility/utility.hpp"
 
 #include <string>
 
@@ -25,12 +26,18 @@ public:
     : Module(ID_, Ti, print, pari, Ncells, coolControl, cooltype) {}
 
   //!< functions from Module_base
-  double Vmin() override; //!< module capacity (sum of cells)
-  double VMIN() override;
-  double VMAX() override;
-  double Vmax() override;                    //!< module capacity (sum of cells)
-  double I() override;                       //!< module capacity (sum of cells)
-  double getOCV(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
+  //!< the voltage limits are the most constraining limits of all cells
+  //!< ie the highest Vmin of SUs is the Vmin of the module
+  double Vmin() override { return transform_max(SUs, free::get_Vmin<SU_t>); }
+  double VMIN() override { return transform_max(SUs, free::get_VMIN<SU_t>); }
+
+  double Vmax() override { return transform_min(SUs, free::get_Vmax<SU_t>); }
+  double VMAX() override { return transform_min(SUs, free::get_VMAX<SU_t>); }
+
+  double I() override { return transform_sum(SUs, free::get_I<SU_t>); } //!< the current is the sum  of the current of each cell. Returns 0 if empty.
+
+  // #TODO -> getOCV print parameter is inactive here...
+  double getOCV(bool print = true) override { return transform_mean(SUs, free::get_OCV<SU_t>); }
   double getRtot() override;
   double V(bool print = true) override;      //!< module voltage (sum of cells), print is an optional argument
   double getVi(size_t i, bool print = true); //!< get the voltage of SU[i] while accounting for the contact resistance

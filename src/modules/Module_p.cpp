@@ -22,70 +22,8 @@
 
 namespace slide {
 
-double Module_p::Vmin()
-{
-  //!< the voltage limits are the most constraining limits of all cells
-  //!< ie the highest Vmin
-  double vm{ 0 };
 
-  for (auto &SU : SUs)
-    vm = std::max(vm, SU->Vmin());
-
-  return vm;
-}
-
-double Module_p::VMIN()
-{
-  //!< the voltage limits are the most constraining limits of all cells
-  //!< ie the highest Vmin
-  double vm{ 0 };
-  for (auto &SU : SUs)
-    vm = std::max(vm, SU->VMIN());
-
-  return vm;
-}
-
-double Module_p::Vmax()
-{
-  //!< the voltage limits are the most constraining limits of all cells
-  //!< ie the lowest Vmax
-  double vm = std::numeric_limits<double>::max();
-  for (auto &SU : SUs)
-    vm = std::min(vm, SU->Vmax());
-  return vm;
-}
-
-double Module_p::VMAX()
-{
-  //!< the voltage limits are the most constraining limits of all cells
-  //!< ie the lowest Vmax
-  double vm = std::numeric_limits<double>::max();
-  for (auto &SU : SUs)
-    vm = std::min(vm, SU->VMAX());
-  return vm;
-}
-
-double Module_p::I()
-{
-  //!< the current is the sum  of the current of each cell. Returns 0 if empty.
-  double i{ 0 };
-  for (auto &SU : SUs)
-    i += SU->I();
-
-  return i;
-}
-
-double Module_p::getOCV(bool print)
-{
-  //!< the voltage is the same across all cells, so just return the V of the first cell
-  double v{ 0 };
-  for (auto &SU : SUs)
-    v += SU->getOCV(print);
-
-  return (v / SUs.size());
-}
-
-double Module_p::getRtot()
+double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
 {
   /*
    * Return the total resistance

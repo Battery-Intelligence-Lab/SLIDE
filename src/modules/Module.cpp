@@ -15,6 +15,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <string_view>
 
 //!< common implementation for all base-modules
 namespace slide {

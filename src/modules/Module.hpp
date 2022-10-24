@@ -36,7 +36,7 @@ class Module : public StorageUnit //, public ModuleDataStorage<DATASTORE_MODULE>
 {
 protected:
   //!< connected child SUs
-  using SU_t = std::unique_ptr<StorageUnit>;
+  using SU_t = std::unique_ptr<StorageUnit>; // #TODO in future it should store directly storage unit itself.
   using SUs_t = std::vector<SU_t>;
   using SUs_span_t = std::span<SU_t>;
   using CoolSystem_t = std::unique_ptr<CoolSystem>;

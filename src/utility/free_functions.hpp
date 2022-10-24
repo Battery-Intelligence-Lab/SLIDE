@@ -48,16 +48,11 @@ auto get_VMAX(const T &SU) { return SU->VMAX(); }
 template <typename T>
 auto get_Cap(const T &SU) { return SU->Cap(); }
 
+template <typename T>
+auto get_OCV(const T &SU) { return SU->getOCV(); }
 
-auto transform_sum(const auto &SUs, auto &function)
-{
-  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::plus<>(), function);
-}
-
-auto transform_max(const auto &SUs, auto &function)
-{
-  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::max<>(), function);
-}
+template <typename T>
+auto get_I(const T &SU) { return SU->I(); }
 
 
 template <bool Print = settings::printBool::printCrit>
