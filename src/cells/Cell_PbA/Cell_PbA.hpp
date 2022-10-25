@@ -53,7 +53,7 @@ protected:
   //!< Typical value for the normalized gassing current for a new battery with antimony grid alloys. For VRLA battery typically 10 mA/100 Ah. For aged batteries the
   //!< normalized gassing can increase by a factor 5 or more.
 
-  double c_u = 11;                   //!< [1/V] Voltage coefficient of gassing current
+  double c_u = 0.183;                //!< [1/V] Voltage coefficient of gassing current
   double c_T = 0.06;                 //!< [1/K] Temperature coefficient of gassing current
   double Ugas_0 = 2.23;              //!< [V] Nominal voltage for gassing
   double Tgas_0{ 298 };              //!< [K] Nominal temperature for gassing
