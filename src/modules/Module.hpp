@@ -89,7 +89,8 @@ public:
   size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
   SUs_t &getSUs() { return SUs; }
 
-  double Cap() override; //!< module capacity (sum of cells)
+  //!< the capacity is the sum  of the capacity of each cell
+  double Cap() override { return transform_sum(SUs, free::get_Cap<SU_t>); } //!< module capacity (sum of cells)
 
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid
   double getVhigh() override;                                           //!< return the voltage of the cell with the highest voltage

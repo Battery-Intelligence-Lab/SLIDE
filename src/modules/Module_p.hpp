@@ -34,7 +34,8 @@ public:
   double Vmax() override { return transform_min(SUs, free::get_Vmax<SU_t>); }
   double VMAX() override { return transform_min(SUs, free::get_VMAX<SU_t>); }
 
-  double I() override { return transform_sum(SUs, free::get_I<SU_t>); } //!< the current is the sum  of the current of each cell. Returns 0 if empty.
+  double I() override { return transform_sum(SUs, free::get_I<SU_t>); }     //!< the current is the sum  of the current of each cell. Returns 0 if empty.
+  double Cap() override { return transform_sum(SUs, free::get_Cap<SU_t>); } //!< module capacity (sum of cells)
 
   // #TODO -> getOCV print parameter is inactive here...
   double getOCV(bool print = true) override { return transform_mean(SUs, free::get_OCV<SU_t>); }
