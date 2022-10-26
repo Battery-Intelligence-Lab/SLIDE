@@ -21,12 +21,29 @@ auto transform_sum(const auto &SUs, auto &function)
 
 auto transform_max(const auto &SUs, auto &function)
 {
-  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::max<>(), function);
+
+  if (SUs.empty())
+    return 0.0;
+
+  auto max = function(SUs[0]);
+
+  for (auto iter = std::cbegin(SUs) + 1; iter != std::cend(SUs); ++iter)
+    max = std::max(max, function(*iter));
+
+  return max;
 }
 
 auto transform_min(const auto &SUs, auto &function)
 {
-  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::min<>(), function);
+  if (SUs.empty())
+    return 0.0;
+
+  auto min = function(SUs[0]);
+
+  for (auto iter = std::cbegin(SUs) + 1; iter != std::cend(SUs); ++iter)
+    min = std::min(min, function(*iter));
+
+  return min;
 }
 
 auto transform_mean(const auto &SUs, auto &function)

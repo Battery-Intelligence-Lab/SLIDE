@@ -63,7 +63,7 @@ Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncell
 }
 
 //!< the capacity is the sum  of the capacity of each cell
-double Module::Cap() { return free::transform_sum(SUs, free::get_Cap<SU_t>); }
+double Module::Cap() { return transform_sum(SUs, free::get_Cap<SU_t>); }
 
 void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
 {
