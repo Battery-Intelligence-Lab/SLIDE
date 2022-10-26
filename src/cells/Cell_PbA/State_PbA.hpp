@@ -7,22 +7,44 @@
 
 #pragma once
 
-#include <array>
+#include "../../types/State.hpp"
 
 namespace slide {
-struct State_PbA : public std::array<double, 4>
+
+struct State_PbA : public State<5>
 {
-  inline auto &I() { return this->at(0); }       //!< < Current, [I]
-  inline auto &SOC() { return this->at(1); }     //!< < state of charge [0-1]
-  inline auto &T() { return this->at(2); }       //!< < temperature, [K]
-  inline auto &Delta_W() { return this->at(3); } //!< < An effective layer thickness, Delta W
-  inline auto &rho_c() { return this->at(4); }
-  inline auto &rho_d() { return this->at(5); }
-  inline auto &Znom() { return this->at(6); }
-  inline auto &Zw() { return this->at(7); }
-  inline auto &Delta_tSOC() { return this->at(8); } //!< < time since the last full charge
-  inline auto &SOC_min() { return this->at(9); }    //!< < the lowest SOC since the last full charge
-  inline auto &n_bad() { return this->at(10); }     //!< < Number of bad charges
-  inline auto &f_stratification() { return this->at(11); }
+  enum Index : size_t //!< Index variables for:
+  {
+    i_I,
+    i_SOC,
+    i_T, //!< cell temperature [K]
+    i_Delta_W,
+    i_c_H2SO4,
+    i_rho_c,
+    i_rho_d,
+    i_Znom,
+    i_Zw,
+    i_Delta_tSOC,
+    i_SOC_min,
+    i_n_bad,
+    i_f_stratification,
+    N_states, // Do not use N_states for total states, use .size()
+  };
+
+  auto &I() { return (*this)[i_I]; }             //!< Current, [I]
+  auto &SOC() { return (*this)[i_SOC]; }         //!< state of charge [0-1]
+  auto &T() { return (*this)[i_T]; }             //!< temperature, [K]
+  auto &Delta_W() { return (*this)[i_Delta_W]; } //!< < An effective layer thickness, Delta W
+  auto &c_H2SO4() { return (*this)[i_c_H2SO4]; }
+  auto &rho_c() { return (*this)[i_T]; }
+  auto &rho_d() { return (*this)[i_T]; }
+  auto &Znom() { return (*this)[i_T]; }
+  auto &Zw() { return (*this)[i_T]; }
+  auto &Delta_tSOC() { return (*this)[i_T]; } //!< < time since the last full charge
+  auto &SOC_min() { return (*this)[i_T]; }    //!< < the lowest SOC since the last full charge
+  auto &n_bad() { return (*this)[i_T]; }      //!< < Number of bad charges
+  auto &f_stratification() { return (*this)[i_T]; }
 };
+
+
 } // namespace slide
