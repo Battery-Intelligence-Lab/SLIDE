@@ -575,7 +575,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
    */
 
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
@@ -653,7 +653,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   } //!< catch statement of uniform allocation
 
 #if TIMING
-  timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.setCurrent += clk.duration(); //!< time in seconds
 #endif
   return Status::Success; //!< #TODO problem
 }
@@ -667,7 +667,7 @@ bool Module_p::validSUs(SUs_span_t c, bool print)
    * If the number of cells is the same as in this module, use the contact resistances
    */
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
@@ -721,7 +721,7 @@ bool Module_p::validSUs(SUs_span_t c, bool print)
   } //!< else the voltage is valid
 
 #if TIMING
-  timeData.validSUs += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.validSUs += clk.duration(); //!< time in seconds
 #endif
   return result;
 }
@@ -740,7 +740,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
    */
 
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
 
   if (dt < 0) {
@@ -835,7 +835,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
   }
 
 #if TIMING
-  timeData.timeStep += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.timeStep += clk.duration(); //!< time in seconds
 #endif
 }
 
@@ -876,7 +876,7 @@ Module_p *Module_p::copy()
   }
 
 #if TIMING
-  copied_ptr->setTimings(T_redistributeCurrent, T_setI, T_validSUs, T_timeStep, T_timeStepi);
+  copied_ptr->setTimings(timeData);
 #endif
 
   return copied_ptr;

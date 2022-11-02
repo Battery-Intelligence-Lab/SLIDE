@@ -88,7 +88,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
 
 //!< the current is the same in all cells
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
@@ -128,7 +128,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   //!< #TODO Here we need module specific voltage.
 
 #if TIMING
-  timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.setCurrent += clk.duration(); //!< time in seconds
 #endif
 
   return Status::Success;
@@ -148,7 +148,7 @@ bool Module_s::validSUs(SUs_span_t c, bool print)
   // #TODO -> Unnecessary function. Check validity when settings SUs or states.
   // Algorithms should not leave anything in an invalid state.
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   bool result{ true };
@@ -169,7 +169,7 @@ bool Module_s::validSUs(SUs_span_t c, bool print)
   }
 
 #if TIMING
-  timeData.validSUs += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.validSUs += clk.duration(); //!< time in seconds
 #endif
   return result; //!< else the cells are valid
 }
@@ -188,7 +188,7 @@ void Module_s::timeStep_CC(double dt, int nstep)
    */
 
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
 
   if (dt < 0) {
@@ -262,7 +262,7 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
 #if TIMING
-  timeData.timeStep += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.timeStep += clk.duration(); //!< time in seconds
 #endif
 }
 
@@ -288,7 +288,7 @@ Module_s *Module_s::copy()
   }
 
 #if TIMING
-  copied_ptr->setTimings(T_redistributeCurrent, T_setI, T_validSUs, T_timeStep, T_timeStepi);
+  copied_ptr->setTimings(timeData);
 #endif
 
   return copied_ptr;
