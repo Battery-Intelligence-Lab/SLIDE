@@ -55,6 +55,9 @@ constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeHistogramData; //!< i
                                                                           //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
                                                                           //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
+
+constexpr auto DATASTORE_MODULE = moduleDataStorageLevel::noStorage; //!< See moduleDataStorageLevel for different options.
+
 //!< constexpr int DATASTORE_MODULE = 0; //!< if 0, no module-level data is stored
 //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 //!< constexpr int DATASTORE_BATT = 0; //!< if 0, no module-level data is stored
@@ -86,10 +89,8 @@ constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all typ
 //#define DATASTORE_CELL 0   //!< if 0, no cell-level data is stored
 //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
 //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
-#define DATASTORE_MODULE 0 //!< if 0, no module-level data is stored
-                           //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
-#define DATASTORE_BATT 0   //!< if 0, no module-level data is stored
-                           //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
+#define DATASTORE_BATT 0 //!< if 0, no module-level data is stored
+                         //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
 //!< timing of various functions
 #define TIMING false

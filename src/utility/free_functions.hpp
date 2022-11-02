@@ -18,7 +18,7 @@
 
 namespace slide::free {
 template <typename T>
-size_t getNcells(T const &SU)
+size_t get_Ncells(T const &SU)
 {
   /*  return the number of cells connected to this module
    * 	e.g. if this module has 3 child-modules, each with 2 cells.
@@ -28,10 +28,7 @@ size_t getNcells(T const &SU)
 }
 
 template <typename T>
-auto getV(T const &SU)
-{
-  return SU.V();
-}
+auto get_V(T const &SU) { return SU.V(); }
 
 template <typename T>
 auto get_Vmin(const T &SU) { return SU->Vmin(); }

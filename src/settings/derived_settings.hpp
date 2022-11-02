@@ -21,7 +21,10 @@ namespace slide::settings::data {
 constexpr bool storeCumulativeData = (DATASTORE_CELL >= cellDataStorageLevel::storeCumulativeData);
 constexpr bool writeCumulativeData = storeCumulativeData;
 
-constexpr size_t N_CumulativeData = storeCumulativeData ? 3 : 0;
+constexpr size_t N_CumulativeCell = storeCumulativeData ? 3 : 0;
+constexpr size_t N_CumulativeModule = (DATASTORE_MODULE >= moduleDataStorageLevel::storeCumulativeData) ? 3 : 0;
+
+
 } // namespace slide::settings::data
 
 

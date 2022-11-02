@@ -14,6 +14,7 @@
 #include "../types/data_storage/cell_data.hpp"
 #include "../types/data_storage/module_data.hpp"
 #include "../utility/free_functions.hpp"
+#include "../types/State.hpp"
 
 #include <vector>
 #include <cstdlib>
@@ -54,26 +55,19 @@ protected:
   bool Vmodule_valid{ false }; //!< boolean indicating if stored the voltage of the module is valid
   bool par{ true };            //!< if true, some functions will be calculated parallel using multithreaded computing
                                //!< data storage
-#if DATASTORE_MODULE > 0
-  CellCumulativeData tData;
-#endif
 
-#if DATASTORE_MODULE > 1
-  std::vector<CommonData> cData; //!< Common data
-#endif
-  size_t calculateNcells()
+  State<0, settings::data::N_CumulativeModule> st_module;
+  std::vector<double> data; //!< Time data
+
+
+  size_t calculateNcells() override
   {
     /*  return the number of cells connected to this module
      * 	e.g. if this module has 3 child-modules, each with 2 cells.
      * 	then getNSUs = 3 but getNcells = 6
      */
-    size_t r{ 0 };
-    for (const auto &SU : SUs)
-      r += SU->getNcells();
-
-    Ncells = r; //!< #TODO this function needs to call parent to update their number of cells if they are module.
-
-    return r;
+    //!< #TODO this function needs to call parent to update their number of cells if they are module.
+    return Ncells = transform_sum(SUs, free::get_Ncells<SU_t>);
   }
 
   double thermalModel_cell();
@@ -88,7 +82,7 @@ public:
   //!< common implementation for all base-modules
   size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
   SUs_t &getSUs() { return SUs; }
-  
+
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid
   double getVhigh() override;                                           //!< return the voltage of the cell with the highest voltage
   double getVlow() override;                                            //!< return the voltage of the cell with the lowest voltage
@@ -157,10 +151,6 @@ public:
     for (const auto &SU : SUs)
       SU->writeData(prefix);
 
-#if (DATASTORE_MODULE == 0)
-    if constexpr (settings::printBool::printNonCrit)
-      std::cout << "ERROR in Module::writeData, the settings in constants.hpp are forbidding from storing data.\n";
-#endif
 
 #if (DATASTORE_MODULE > 1)                                             //!< Write data for this module
     std::string name = prefix + "_" + getFullID() + "_ModuleData.csv"; //!< name of the file, start with the full hierarchy-ID to identify this cell
