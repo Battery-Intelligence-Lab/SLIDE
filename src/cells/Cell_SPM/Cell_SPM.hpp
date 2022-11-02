@@ -293,5 +293,14 @@ public:
   //!< void setRamping(double Istep, double tstep);																	  //!< sets the ramping parameters
 
   void setCharacterisationParam(double Dp, double Dn, double kp, double kn, double Rdc); //!< sets the parameters related to the characterisation of the cell
+
+  TimingData_Cell_SPM getTimings()
+  {
+#if TIMING
+    return timeData;
+#else
+    return {};
+#endif
+  }
 };
 } // namespace slide

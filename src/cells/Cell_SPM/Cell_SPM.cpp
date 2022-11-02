@@ -498,6 +498,10 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
   /*
    * Returns Status see Status.hpp for the meaning.
    */
+
+#if TIMING
+  Clock clk;
+#endif
   auto st_old = st; //!< Back-up values.
 
   std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
@@ -509,7 +513,9 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
     st = st_old;        //!< Restore states here.
     Vcell_valid = true; //!< #TODO if this is ok.
   }
-
+#if TIMING
+  timeData.setStates += clk.duration(); //!< time in seconds
+#endif
   return status;
 }
 
@@ -519,6 +525,9 @@ bool Cell_SPM::validStates(bool print)
    * note: does NOT check the voltage, only whether all fields are in the allowed range
    */
 
+#if TIMING
+  Clock clk;
+#endif
   const bool verb = print && settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Check if all fields are present & extract their values
@@ -560,7 +569,9 @@ bool Cell_SPM::validStates(bool print)
       std::cerr << "SOME ERROR #TODO!\n";
     range = false;
   }
-
+#if TIMING
+  timeData.validStates += clk.duration(); //!< time in seconds
+#endif
   //!< there is no range on the current
   return range;
 }
