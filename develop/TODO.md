@@ -409,6 +409,8 @@ slide_pack integration:
 - [ ] Module functions are being combined. 
 - [ ] std::algorithms and free functions for modules.
   - [ ] transform_sum is added. 
+- [ ] storeData(getNcells()) pattern is not good. 
+- [x] Chrono for timing is adapted. 
 
 
 ### C++20 changes (yay!):

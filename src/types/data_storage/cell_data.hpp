@@ -50,6 +50,11 @@ struct BatteryData
   double convloss; //!< losses in the power electronic converter [W]
 };
 
+struct TimingData_Cell_SPM
+{
+  double dstate{}, V{}, getOCV{}, validStates{}, setStates{};
+};
+
 struct TimingData_Module_s
 {
   double setCurrent{}, timeStep{}, timeStepi{}, validSUs{};

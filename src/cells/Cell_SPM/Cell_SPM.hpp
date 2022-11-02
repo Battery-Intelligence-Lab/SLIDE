@@ -31,7 +31,6 @@
 #include <memory>
 
 namespace slide {
-//!< Free functions:
 
 //!< State related functions
 void validState(State_SPM &s, State_SPM &s_ini);
@@ -43,8 +42,12 @@ public:
   using sigma_type = std::array<double, settings::nch + 2>;
 
 protected: //!< protected such that child classes can access the class variables
-  //!< battery states
+#if TIMING
+  TimingData_Cell_SPM timeData{};
+#endif
 
+
+  //!< battery states
   State_SPM st{}, s_ini{}; //!< the battery current/initial state, grouping all parameter which change over the battery's lifetime (see State_SPM.hpp)
 
   //!< Battery model constants

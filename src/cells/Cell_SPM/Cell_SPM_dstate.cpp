@@ -41,6 +41,7 @@ void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
 #if TIMING
   Clock clk;
 #endif
+
   const auto nch = st.nch;
 
   auto [Dpt, Dnt] = calcDiffConstant();
@@ -57,7 +58,7 @@ void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
   d_st.SOC() += -I() / (Cap() * 3600); //!< dSOC state of charge
 
 #if TIMING
-  T_dstate += clk.duration(); //!< time in seconds
+  timeData.dstate += clk.duration(); //!< time in seconds
 #endif
 }
 
@@ -133,7 +134,7 @@ void Cell_SPM::dState_thermal(bool print, double &dQgen)
   //!< dT = 1/(rho*Cp)*(Qrev+Qrea+Qohm+Qc);					//!< dT		cell temperature
 
 #if TIMING
-  T_dstate += clk.duration(); //!< time in seconds
+  timeData.dstate += clk.duration(); //!< time in seconds
 #endif
 }
 
@@ -270,7 +271,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   d_state.delta_pl() = ipl / (npl * F * rhopl);                                   //!< ddelta_pl thickness of the plated lithium
 
 #if TIMING
-  T_dstate += clk.duration(); //!< time in seconds
+  timeData.dstate += clk.duration(); //!< time in seconds
 #endif
 
   if constexpr (settings::printBool::printCellFunctions)

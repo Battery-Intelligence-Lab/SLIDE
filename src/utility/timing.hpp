@@ -13,18 +13,24 @@
 #include <ctime>
 #include <iostream>
 #include <cmath>
+#include <chrono>
+
 
 namespace slide {
 struct Clock
 {
-  std::clock_t tstart{ std::clock() };
+  std::chrono::time_point<std::chrono::steady_clock> tstart{ std::chrono::steady_clock::now() };
   Clock() = default;
-  auto now() const { return std::clock(); }
+  auto now() const { return std::chrono::steady_clock::now(); }
   auto start() const { return tstart; }
-  double duration() const { return (now() - start()) / static_cast<double>(CLOCKS_PER_SEC); }
+  double duration() const
+  {
+    std::chrono::duration<double> elapsed_seconds = now() - start();
+    return elapsed_seconds.count();
+  }
 };
 
-inline std::ostream &operator<<(std::ostream &ofs, const Clock clk)
+inline std::ostream &operator<<(std::ostream &ofs, const Clock &clk)
 {
   const auto duration = clk.duration();
   ofs << std::floor(duration / 60) << ":"

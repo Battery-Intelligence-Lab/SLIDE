@@ -212,6 +212,11 @@ double Cell_SPM::getOCV(bool print)
    * 1 	if SOC is outside the allowed range
    * 			passed on from linear interpolation
    */
+
+#if TIMING
+  Clock clk;
+#endif
+
   const bool verb = settings::printBool::printCrit && print; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Get the surface concentrations
@@ -225,6 +230,9 @@ double Cell_SPM::getOCV(bool print)
   const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound); //!< anode potential [V]
   const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, print, bound); //!< cathode potential [V]
 
+#if TIMING
+  timeData.getOCV += clk.duration();
+#endif
   return (OCV_p - OCV_n + (st.T() - T_ref) * dOCV);
 }
 
@@ -310,7 +318,7 @@ double Cell_SPM::V(bool print)
   }
 
 #if TIMING
-  T_getV += clk.duration(); //!< time in seconds
+  timeData.V += clk.duration(); //!< time in seconds
 #endif
 
   return st.V();
