@@ -11,8 +11,8 @@
 
 //!< Include header files
 #include "slide.hpp"
-#include "../benchmark/running_Cell_Bucket.hpp"
-
+#include "../benchmark/benchmarks.hpp"
+#include "../examples/examples.hpp"
 
 #include <ctime>
 #include <thread>
@@ -136,10 +136,13 @@ int main()
 
   // slide::benchmarks::run_Cell_Bucket();
   // slide::benchmarks::run_Cell_ECM();
-  slide::benchmarks::run_Cell_SPM();
+  // slide::benchmarks::run_Cell_SPM();
+
+  slide::
 
 
-  std::unique_ptr<slide::StorageUnit> cs[2];
+    std::unique_ptr<slide::StorageUnit>
+      cs[2];
   cs[0] = std::make_unique<slide::Cell_Bucket>();
   cs[1] = std::make_unique<slide::Cell_Bucket>();
 

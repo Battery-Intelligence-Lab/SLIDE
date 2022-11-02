@@ -8,5 +8,8 @@
  *
  */
 
+
+#pragma once
+
 #include "Module_s.hpp"
 #include "Module_p.hpp"
