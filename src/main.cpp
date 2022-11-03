@@ -138,11 +138,10 @@ int main()
   // slide::benchmarks::run_Cell_ECM();
   // slide::benchmarks::run_Cell_SPM();
 
-  slide::
+  slide::examples::drive_cycle_artemis();
 
 
-    std::unique_ptr<slide::StorageUnit>
-      cs[2];
+  std::unique_ptr<slide::StorageUnit> cs[2];
   cs[0] = std::make_unique<slide::Cell_Bucket>();
   cs[1] = std::make_unique<slide::Cell_Bucket>();
 
