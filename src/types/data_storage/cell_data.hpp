@@ -53,6 +53,15 @@ struct BatteryData
 struct TimingData_Cell_SPM
 {
   double dstate{}, V{}, getOCV{}, validStates{}, setStates{};
+
+  void print()
+  {
+    std::cout << "Time dstate: " << dstate << '\n'
+              << "Time getOCV " << getOCV << '\n'
+              << "Time setStates: " << setStates << '\n'
+              << "Time V: " << V << '\n'
+              << "Time validStates: " << validStates << '\n';
+  }
 };
 
 struct TimingData_Module_s

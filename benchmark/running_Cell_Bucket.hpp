@@ -66,7 +66,7 @@ inline void run_Cell_SPM()
   std::string ID = "temp";
   Clock clk;
 
-  constexpr size_t N = 5;
+  constexpr size_t N = 15;
 
   auto c = Cell_SPM();
   auto cyc = Cycler(&c, ID);
@@ -83,6 +83,10 @@ inline void run_Cell_SPM()
   std::cout << "V: " << c.V() << '\n';
   std::cout << "Wh: " << Wh << '\n';
   std::cout << "Finished run_Cell_SPM in " << clk << ".\n";
+
+
+  std::cout << "Printing timings:\n";
+  c.getTimings().print();
 };
 
 } // namespace slide::benchmarks

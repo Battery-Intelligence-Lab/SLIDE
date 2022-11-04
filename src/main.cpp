@@ -136,7 +136,10 @@ int main()
 
   // slide::benchmarks::run_Cell_Bucket();
   // slide::benchmarks::run_Cell_ECM();
-  // slide::benchmarks::run_Cell_SPM();
+  slide::benchmarks::run_Cell_SPM();
+
+  // Timings:
+
 
   slide::examples::drive_cycle_artemis();
 

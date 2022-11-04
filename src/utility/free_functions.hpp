@@ -105,7 +105,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
 
   try {
     v = su.V(Print);
-  } catch (int err) {
+  } catch (int) {
     std::cout << "We could not calculate voltage!!!\n";
     return Status::V_not_calculated;
   }
