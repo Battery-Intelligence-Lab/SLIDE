@@ -253,9 +253,7 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
     }
 
     //!< control the cooling system
-    double Tlocal = 0;
-    for (size_t i = 0; i < getNSUs(); i++)
-      Tlocal = std::max(Tlocal, SUs[i]->T());
+    const double Tlocal = transform_max(SUs, free::get_T<SU_t>); // #TODO Battery also has this.
     cool->control(Tlocal, getThotSpot());
   }
 

@@ -70,7 +70,7 @@ CoolSystem::CoolSystem()
   control_strategy = 1;                      //!< #TODO -> magic number to enum.
   control_onoff_Ton = PhyConst::Kelvin + 35; //!< on/off control: go on at 35 degrees
   const auto t1 = settings::T_ENV + 5;
-  control_onoff_Toff = std::max(C_to_Kelvin(25), t1); //!< on/off control: go off at 25 degrees, or 5 degrees above environmental temperature
+  control_onoff_Toff = std::max(C_to_Kelvin(25.0), t1); //!< on/off control: go off at 25 degrees, or 5 degrees above environmental temperature
   control_onoff_flr = flowrate;
   control_prop_T = PhyConst::Kelvin + 25;
   control_prop_gain = 1.0 / (control_onoff_Ton - control_prop_T); //!< 1 at the T where the on/off control would go on

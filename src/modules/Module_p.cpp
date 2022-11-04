@@ -55,7 +55,7 @@ double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
 
   //!< then iteratively come closer, every time Rcontact[i] + (Rcell[i] \\ Rtot)
   //!< 				= Rc[i] + Rcell[i]*Rtot / (Rcel[i]*Rtot)
-  for (int i = getNSUs() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs.
+  for (int i = SUs.size() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs.
     rtot = Rcontact[i] + (SUs[i]->getRtot() * rtot) / (SUs[i]->getRtot() + rtot);
 
   return rtot;
@@ -78,7 +78,7 @@ double Module_p::getVi(size_t i, bool print)
    * 			   = v[i] - sum{ R[j]*sum(I[k], k=j..N-1), j=0..i }
    */
 
-  if (i >= getNSUs()) {
+  if (i >= SUs.size()) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module::getVi, you ask the voltage of cell " << i
                 << " but the size of the cell array is " << getNSUs() << '\n';
@@ -115,7 +115,7 @@ double Module_p::V(bool print)
     if (v == 0)
       return 0;
 
-    Vmodule += getVi(i, print); //!< #TODO there is definitely something fishy. getVi already does some calculations.
+    Vmodule += v; //!< #TODO there is definitely something fishy. getVi already does some calculations.
   }
 
   Vmodule /= SUs.size();
@@ -871,7 +871,7 @@ Module_p *Module_p::copy()
 
   copied_ptr->SUs.clear();
   for (size_t i{ 0 }; i < getNSUs(); i++) {
-    copied_ptr->SUs.emplace_back(SUs[i]->copy());
+    copied_ptr->SUs.emplace_back(SUs[i]->copy()); // #TODO remove when we have Module<...>
     copied_ptr->SUs.back()->setParent(copied_ptr);
   }
 

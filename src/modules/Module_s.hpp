@@ -19,7 +19,7 @@
 #include <memory>
 
 namespace slide {
-class Module_s : public Module //<DATASTORE_MODULE>
+class Module_s : public Module
 {
 protected:
 #if TIMING //!< std::clock_t tstart;

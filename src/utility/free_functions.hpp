@@ -15,8 +15,26 @@
 #include <fstream>
 #include <string>
 #include <numeric>
+#include <vector>
+#include <fstream>
 
 namespace slide::free {
+
+inline void write_data(std::ofstream &file, std::vector<double> &data, size_t N = 1)
+{
+  for (size_t i{}; i < data.size(); i++) {
+    if (i % N == 0) {
+      if (i != 0)
+        file << '\n';
+    } else
+      file << ',';
+
+    file << data[i];
+  }
+
+  data.clear(); //!< reset the index to 0 since we can overwrite the stored data
+}
+
 template <typename T>
 size_t get_Ncells(T const &SU)
 {
@@ -29,6 +47,10 @@ size_t get_Ncells(T const &SU)
 
 template <typename T>
 auto get_V(T const &SU) { return SU.V(); }
+
+template <typename T>
+auto get_T(T const &SU) { return SU->T(); }
+
 
 template <typename T>
 auto get_Vmin(const T &SU) { return SU->Vmin(); }
