@@ -1,8 +1,8 @@
 /*
  * CellDataWriter.hpp
  *
- *  Created on: 10 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ * Created on: 10 Apr 2022
+ * Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
 #pragma once
