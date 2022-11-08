@@ -411,6 +411,7 @@ slide_pack integration:
   - [ ] transform_sum is added. 
 - [ ] storeData(getNcells()) pattern is not good. 
 - [x] Chrono for timing is adapted. 
+- [x] Cell_KokamNMC.cpp is deleted and it became an header. 
 
 
 ### C++20 changes (yay!):

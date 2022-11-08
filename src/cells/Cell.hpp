@@ -33,7 +33,7 @@ protected:
   CellData<settings::DATASTORE_CELL> cellData;
 
 public:
-  constexpr static CellLimits limits{ defaultCellLimits };
+  constexpr static CellLimits limits{ defaultCellLimits }; // #TODO make it changable.
 
   Cell() : StorageUnit("cell") {}
 
