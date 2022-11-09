@@ -9,7 +9,6 @@ target_sources(Cell_SPM
   Cell_SPM_thermal.cpp
   Cell_SPM_fitting.cpp
   Cell_SPM_diffusion.cpp
-  Cell_KokamNMC.cpp
   PUBLIC
   Cell_SPM.hpp
 )

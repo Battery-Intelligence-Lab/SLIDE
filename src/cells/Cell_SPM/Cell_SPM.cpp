@@ -333,23 +333,26 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   //!< Set initial state:
   st.T() = settings::T_ENV;
-  st.delta() = 1e-9;
-  st.LLI() = 0; //!< lost lithium. Start with 0 so we can keep track of how much li we lose while cycling the cell
+  st.delta() = 1e-9; //!< SEI thickness. Start with a fresh cell, which has undergone some formation cycles so it has an initial SEI layer.
+                     //!< never start with a value of 0, because some equations have a term 1/delta, which would give nan or inf
+                     //!< so this will give errors in the code
 
-  st.thickp() = 70e-6;                                    //!< thickness of the positive electrode
-  st.thickn() = 73.5e-6;                                  //!< thickness of the negative electrode
-  st.ep() = 0.5;                                          //!< volume fraction of active material in the cathode
-  st.en() = 0.5;                                          //!< volume fraction of active material in the anode
-  st.ap() = 3 * st.ep() / geo.Rp;                         //!< effective surface area of the cathode, the 'real' surface area is the product of the effective surface area (a) with the electrode volume (elec_surf * thick)
-  st.an() = 3 * st.en() / geo.Rn;                         //!< effective surface area of the anode
+  st.LLI() = 0;                   //!< lost lithium. Start with 0 so we can keep track of how much li we lose while cycling the cell
+  st.Dp() = 8e-14;                //!< diffusion constant of the cathode at reference temperature
+  st.Dn() = 7e-14;                //!< diffusion constant of the anode at reference temperature
+  st.thickp() = 70e-6;            //!< thickness of the positive electrode
+  st.thickn() = 73.5e-6;          //!< thickness of the negative electrode
+  st.ep() = 0.5;                  //!< volume fraction of active material in the cathode
+  st.en() = 0.5;                  //!< volume fraction of active material in the anode
+  st.ap() = 3 * st.ep() / geo.Rp; //!< effective surface area of the cathode, the 'real' surface area is the product of the effective surface area (a) with the electrode volume (elec_surf * thick)
+  st.an() = 3 * st.en() / geo.Rn; //!< effective surface area of the anode
+
   st.CS() = 0.01 * st.an() * geo.elec_surf * st.thickn(); //!< initial crack surface. Start with 1% of the real surface area
-  st.Dp() = 8e-14;                                        //!< diffusion constant of the cathode at reference temperature
-  st.Dn() = 7e-14;                                        //!< diffusion constant of the anode at reference temperature
 
   //!< R = Rdc * (thickp * ap * elec_surf + thickn * an * elec_surf) / 2; //!< specific resistance of the combined electrodes, see State::iniStates
   st.rDCp() = 2.8e-3;
   st.rDCn() = 2.8e-3;
-  st.rDCcc() = 232.5e-6; //!< note: this is divided by geometric surface (elec_surf) instead of effective surf (a*thick*elec_surf)
+  st.rDCcc() = 0.2325e-3; //!< note: this is divided by geometric surface (elec_surf) instead of effective surf (a*thick*elec_surf)
 
   st.delta_pl() = 0; //!< thickness of the plated lithium layer. You can start with 0 here
 
@@ -362,7 +365,7 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   //!< Default values for not defined other param:
 
-  csparam.CS4Amax = 5 * st.an() * st.thickn() * geo.elec_surf; //!< assume the maximum crack surface is 5 times the initial anode surface
+  csparam.CS4Amax = 5 * getAnodeSurface(); //!< assume the maximum crack surface is 5 times the initial anode surface
 
   cellData.initialise(*this);
 }
@@ -732,13 +735,6 @@ void Cell_SPM::setC(double cp0, double cn0)
 Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double resf, double degfsei, double degflam) : Cell_SPM()
 {
   ID = IDi;
-
-  //!< store such that the cell can later report its precise variation
-  var_cap = capf;
-  var_R = resf;
-  var_degSEI = degfsei;
-  var_degLAM = degflam;
-
   //!< Set the resistance
 
   st.rDCcc() *= resf; //!< current collector

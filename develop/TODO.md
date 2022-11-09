@@ -414,6 +414,7 @@ slide_pack integration:
 - [x] Cell_KokamNMC.cpp is deleted and it became an header. 
 
 
+
 ### C++20 changes (yay!):
 - [ ] std::span for state assignments. 
 

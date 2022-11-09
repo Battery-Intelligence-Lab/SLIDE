@@ -146,7 +146,7 @@ protected: //!< protected such that child classes can access the class variables
   double thermalModel_cell();
   double thermalModel_coupled(int Nneighb, double Tneighb[], double Kneighb[], double Aneighb[], double tim);
 
-  //!< cell to cell variations
+  //!< cell to cell variations // #TODO why do we store variations?
   double var_cap{ 1 };    //!< relative factor increasing the capacity of the cell
   double var_R{ 1 };      //!< relative factor increasing the DC resistance
   double var_degSEI{ 1 }; //!< relative factor to speed up or slow down the rate of SEI growth

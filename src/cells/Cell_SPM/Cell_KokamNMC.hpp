@@ -65,7 +65,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   n = 1;
 
   //!< Cell parameters
-  setCapacity(2.7); //!< Ah
+  setCapacity(16); //!< Ah
   //!< Vmax = 4.2;	  //!< value for an NMC/C cell
   //!< Vmin = 2.7;	  //!< value for an NMC/C cell
   //!< dIcell = 1.0; //!< ramp at 1A
@@ -104,28 +104,31 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   checkModelparam(); //!< check if the inputs to the MATLAB code are the same as the ones here in the C++ code
 
   //!< Initialise state variables
-  State_SPM::z_type up, un;
-  double fp, fn, T, delta;   //!< LLI, thickp, thickn, ep, en, ap, an, CS, Dp, Dn, R, delta_pl;
-  double Rdc = 0.0102;       //!< DC resistance of the total cell in Ohm
-  fp = 0.689332;             //!< lithium fraction in the cathode at 50% soc [-]
-  fn = 0.479283;             //!< lithium fraction in the anode at 50% soc [-]
-  T = PhyConst::Kelvin + 25; //!< cell temperature
-  delta = 1e-9;              //!< SEI thickness. Start with a fresh cell, which has undergone some formation cycles so it has an initial SEI layer.
-                             //!< never start with a value of 0, because some equations have a term 1/delta, which would give nan or inf
-                             //!< so this will give errors in the code
+  double fp, fn, T, delta; //!< LLI, thickp, thickn, ep, en, ap, an, CS, Dp, Dn, R, delta_pl;
+  double Rdc = 0.0102;     //!< DC resistance of the total cell in Ohm
+
+  double fp{ 0.689332 }, fn{ 0.479283 }; //!< lithium fraction in the cathode/anode at 50% soc [-]
+
+
+  st.T() = C_to_Kelvin(25.0); //!< cell temperature
+
 
   //!< Set initial state:
-  st.LLI() = 0; //!< lost lithium. Start with 0 so we can keep track of how much li we lose while cycling the cell
+  st.delta() = 1e-9; //!< SEI thickness. Start with a fresh cell, which has undergone some formation cycles so it has an initial SEI layer.
+                     //!< never start with a value of 0, because some equations have a term 1/delta, which would give nan or inf
+                     //!< so this will give errors in the code
 
-  st.thickp() = 70e-6;                                    //!< thickness of the positive electrode
-  st.thickn() = 73.5e-6;                                  //!< thickness of the negative electrode
-  st.ep() = 0.5;                                          //!< volume fraction of active material in the cathode
-  st.en() = 0.5;                                          //!< volume fraction of active material in the anode
-  st.ap() = 3 * st.ep() / geo.Rp;                         //!< effective surface area of the cathode, the 'real' surface area is the product of the effective surface area (a) with the electrode volume (elec_surf * thick)
-  st.an() = 3 * st.en() / geo.Rn;                         //!< effective surface area of the anode
+  st.LLI() = 0;                   //!< lost lithium. Start with 0 so we can keep track of how much li we lose while cycling the cell
+  st.Dp() = 8e-14;                //!< diffusion constant of the cathode at reference temperature
+  st.Dn() = 7e-14;                //!< diffusion constant of the anode at reference temperature
+  st.thickp() = 70e-6;            //!< thickness of the positive electrode
+  st.thickn() = 73.5e-6;          //!< thickness of the negative electrode
+  st.ep() = 0.5;                  //!< volume fraction of active material in the cathode
+  st.en() = 0.5;                  //!< volume fraction of active material in the anode
+  st.ap() = 3 * st.ep() / geo.Rp; //!< effective surface area of the cathode, the 'real' surface area is the product of the effective surface area (a) with the electrode volume (elec_surf * thick)
+  st.an() = 3 * st.en() / geo.Rn; //!< effective surface area of the anode
+
   st.CS() = 0.01 * st.an() * geo.elec_surf * st.thickn(); //!< initial crack surface. Start with 1% of the real surface area
-  st.Dp() = 8e-14;                                        //!< diffusion constant of the cathode at reference temperature
-  st.Dn() = 7e-14;                                        //!< diffusion constant of the anode at reference temperature
 
   //!< R = Rdc * (thickp * ap * elec_surf + thickn * an * elec_surf) / 2; //!< specific resistance of the combined electrodes, see State::iniStates
   st.rDCp() = 2.8e-3;
@@ -155,7 +158,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   rsei = 2037.4;
   Vmain = 13.0;
   Vsei = 64.39;
-  c_elec0 = 4.541 / 1000;
+  c_elec0 = 4.541e-3;
   //!< fitting parameters of the models
   sei_p = param::def::SEIparam_Kokam;
 

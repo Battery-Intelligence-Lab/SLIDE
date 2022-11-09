@@ -89,8 +89,6 @@ public:
 
   size_t getNcells() override final { return 1; } //!< this is a single cell
 
-  virtual void getVariations(double var[], int nin, int &nout) { nout = 0; }
-
   virtual Status setSOC(double SOCnew, bool checkV = true, bool print = true) = 0;
   virtual double SOC() = 0;
 
