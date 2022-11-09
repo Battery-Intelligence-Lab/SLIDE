@@ -7,13 +7,11 @@
 
 #pragma once
 
-#include "../settings/settings.hpp"
 #include "../StorageUnit.hpp"
-#include "../cooling/CoolSystem_HVAC.hpp"
-#include "../cooling/CoolSystem_open.hpp"
-#include "../types/data_storage/cell_data.hpp"
-#include "../types/data_storage/module_data.hpp"
-#include "../utility/free_functions.hpp"
+#include "../cooling/cooling.hpp"
+#include "../types/State.hpp"
+#include "../settings/settings.hpp"
+#include "../utility/utility.hpp"
 
 #include <vector>
 #include <cstdlib>
@@ -31,16 +29,17 @@ struct ModuleThermalParam
   double time{ 0 };                                    //!< time since the last update of the thermal model [s]
 };
 
-//!< template <int DATASTORE_MODULE = DATASTORE_MODULE>
-class Module : public StorageUnit //, public ModuleDataStorage<DATASTORE_MODULE>
+class Module : public StorageUnit
 {
-protected:
+
+public:
   //!< connected child SUs
-  using SU_t = std::unique_ptr<StorageUnit>;
+  using SU_t = std::unique_ptr<StorageUnit>; // #TODO in future it should store directly storage unit itself.
   using SUs_t = std::vector<SU_t>;
   using SUs_span_t = std::span<SU_t>;
   using CoolSystem_t = std::unique_ptr<CoolSystem>;
 
+protected:
   SUs_t SUs;
   std::vector<double> Rcontact; //!< array with the contact resistance for cell i
 
@@ -54,26 +53,19 @@ protected:
   bool Vmodule_valid{ false }; //!< boolean indicating if stored the voltage of the module is valid
   bool par{ true };            //!< if true, some functions will be calculated parallel using multithreaded computing
                                //!< data storage
-#if DATASTORE_MODULE > 0
-  CellCumulativeData tData;
-#endif
 
-#if DATASTORE_MODULE > 1
-  std::vector<CommonData> cData; //!< Common data
-#endif
-  size_t calculateNcells()
+  State<0, settings::data::N_CumulativeModule> st_module;
+  std::vector<double> data; //!< Time data
+
+
+  size_t calculateNcells() override
   {
     /*  return the number of cells connected to this module
      * 	e.g. if this module has 3 child-modules, each with 2 cells.
      * 	then getNSUs = 3 but getNcells = 6
      */
-    size_t r{ 0 };
-    for (const auto &SU : SUs)
-      r += SU->getNcells();
-
-    Ncells = r; //!< #TODO this function needs to call parent to update their number of cells if they are module.
-
-    return r;
+    //!< #TODO this function needs to call parent to update their number of cells if they are module.
+    return Ncells = transform_sum(SUs, free::get_Ncells<SU_t>);
   }
 
   double thermalModel_cell();
@@ -88,8 +80,6 @@ public:
   //!< common implementation for all base-modules
   size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
   SUs_t &getSUs() { return SUs; }
-
-  double Cap() override; //!< module capacity (sum of cells)
 
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid
   double getVhigh() override;                                           //!< return the voltage of the cell with the highest voltage
@@ -147,43 +137,33 @@ public:
     //!< Store data for the coolsystem
     cool->storeData(getNcells());
 
-#if (DATASTORE_MODULE > 1) //!< Store data of this module
-    moduleData.push_back(ModuleData(ahtot, whtot, timetot, I(), V(), T()));
-#endif
+    if constexpr (settings::DATASTORE_MODULE >= settings::moduleDataStorageLevel::storeTimeData) //!< Store data of this module
+      data.insert(data.end(), { st_module.Ah(), st_module.Wh(), st_module.time(), I(), V(), T() });
   }
 
   void writeData(const std::string &prefix) override
   {
     //!< Tell all connected cells to write their data
-
     for (const auto &SU : SUs)
       SU->writeData(prefix);
 
-#if (DATASTORE_MODULE == 0)
-    if constexpr (settings::printBool::printNonCrit)
-      std::cout << "ERROR in Module::writeData, the settings in constants.hpp are forbidding from storing data.\n";
-#endif
 
-#if (DATASTORE_MODULE > 1)                                             //!< Write data for this module
-    std::string name = prefix + "_" + getFullID() + "_ModuleData.csv"; //!< name of the file, start with the full hierarchy-ID to identify this cell
+    if constexpr (settings::DATASTORE_MODULE >= settings::moduleDataStorageLevel::storeTimeData) //!< Write data for this module
+    {
+      std::string name = prefix + "_" + getFullID() + "_ModuleData.csv"; //!< name of the file, start with the full hierarchy-ID to identify this cell
 
-    //!< append the new data to the existing file
-    std::ofstream file(name, std::ios_base::app);
+      //!< append the new data to the existing file
+      std::ofstream file(name, std::ios_base::app); // #TODO if first time open + header, if not append.
 
-    if (!file.is_open()) {
-      std::cerr << "ERROR in Module::writeData, could not open file " << name << '\n';
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
-      throw 11;
+      if (!file.is_open()) {
+        std::cerr << "ERROR in Module::writeData, could not open file " << name << '\n';
+        throw 11;
+      }
+
+      free::write_data(file, data, 6);
+
+      file.close();
     }
-
-    for (const auto &data : this->moduleData)
-      file << data.Itot << ',' << data.Vtot << ',' << data.Ttot << ','
-           << data.Ahtot << ',' << data.Whtot << ',' << data.Timetot << '\n';
-
-    file.close();
-
-    this->moduleData.clear();
-#endif
 
 //!< Write data for the cooling system
 #if 0 //!< (DATASTORE_COOL > 0)
@@ -209,8 +189,6 @@ public:
     cool->setT(Tnew);
   }
 
-  auto getSUTemperature(size_t i) { return SUs[i]->T(); } //!< return an array with the temperatures of the children of this module. //!< Note that these can be both modules and cells
-
   size_t getNcells() override
   {
     /*  return the number of cells connected to this module
@@ -223,7 +201,8 @@ public:
   double getThotSpot() override //!< get the maximum temperature of the cells or the module
   {
     //!< Return the temperature of the hottest element of the module.
-    //!< Note that this will be the T of a cell, since child-modules will pass on this function to their cells
+    //!< Note that this will be the T of a cell, since child-modules will pass on
+    //!< this function to their cells
     double Thot = cool->T();
     for (const auto &SU : SUs)
       Thot = std::max(Thot, SU->getThotSpot());

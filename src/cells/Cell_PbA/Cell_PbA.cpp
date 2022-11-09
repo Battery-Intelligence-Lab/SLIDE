@@ -22,13 +22,9 @@ namespace slide {
 Cell_PbA::Cell_PbA()
 {
   ID = "Cell_PbA";
-  capNom = 54; //!< [Ah] Nominal capacity (data sheet)
+  capNom = 20; //!< [Ah] Nominal capacity (data sheet)
 
-  //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
-  OCV.x = slide::linspace_fix(0.0, 1.0, 11);
-  OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
-
-  OCV.check_is_fixed();
+  k_OCVp.setCurve(PathVar::data + std::string("Cell_PbA/Lander_corrosion_speed.csv")); // #TODO loads data in constructor.
 }
 
 Cell_PbA::Cell_PbA(std::string IDi, double capin, double SOCin) : Cell_PbA()
@@ -56,6 +52,11 @@ double Cell_PbA::getOCV(bool print)
    * 1 	if SOC is outside the allowed range
    * 			passed on from linear interpolation
    */
+  return OCV.interp(st.SOC(), (settings::printBool::printCrit && print));
+}
+
+double Cell_PbA::OCVp(bool print)
+{
   return OCV.interp(st.SOC(), (settings::printBool::printCrit && print));
 }
 
@@ -272,7 +273,9 @@ double Cell_PbA::k_s()
 }
 
 double Cell_PbA::k()
-{
+{ // Depends on OCVp
+
+  return k_OCVp.interp(OCVp());
 }
 
 double Cell_PbA::f_SOC()

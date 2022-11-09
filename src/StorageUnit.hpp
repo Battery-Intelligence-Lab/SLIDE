@@ -29,6 +29,7 @@ protected:
   using setStates_t = std::span<const double> &; //!< To pass states to read, non-expandable container.
   using getStates_t = std::vector<double> &;     //!< To pass states to save, expandable container.
   using viewStates_t = std::span<double>;
+  virtual size_t calculateNcells() { return 0; }
 
 public:
   //!< basic getters and setters

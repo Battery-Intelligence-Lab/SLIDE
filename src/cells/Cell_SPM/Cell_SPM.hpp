@@ -31,7 +31,6 @@
 #include <memory>
 
 namespace slide {
-//!< Free functions:
 
 //!< State related functions
 void validState(State_SPM &s, State_SPM &s_ini);
@@ -43,8 +42,12 @@ public:
   using sigma_type = std::array<double, settings::nch + 2>;
 
 protected: //!< protected such that child classes can access the class variables
-  //!< battery states
+#if TIMING
+  TimingData_Cell_SPM timeData{};
+#endif
 
+
+  //!< battery states
   State_SPM st{}, s_ini{}; //!< the battery current/initial state, grouping all parameter which change over the battery's lifetime (see State_SPM.hpp)
 
   //!< Battery model constants
@@ -143,7 +146,7 @@ protected: //!< protected such that child classes can access the class variables
   double thermalModel_cell();
   double thermalModel_coupled(int Nneighb, double Tneighb[], double Kneighb[], double Aneighb[], double tim);
 
-  //!< cell to cell variations
+  //!< cell to cell variations // #TODO why do we store variations?
   double var_cap{ 1 };    //!< relative factor increasing the capacity of the cell
   double var_R{ 1 };      //!< relative factor increasing the DC resistance
   double var_degSEI{ 1 }; //!< relative factor to speed up or slow down the rate of SEI growth
@@ -272,7 +275,6 @@ public:
 
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); } //!< returns the states of the cell collectively.
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
-  void getVariations(double var[], int nin, int &nout) override { nout = 0; } //#TODO this should be filled.
   double getOCV(bool print = true) override;
   Status setStates(setStates_t sSpan, bool checkV, bool print) override;
   bool validStates(bool print = true) override;
@@ -290,5 +292,14 @@ public:
   //!< void setRamping(double Istep, double tstep);																	  //!< sets the ramping parameters
 
   void setCharacterisationParam(double Dp, double Dn, double kp, double kn, double Rdc); //!< sets the parameters related to the characterisation of the cell
+
+  TimingData_Cell_SPM getTimings()
+  {
+#if TIMING
+    return timeData;
+#else
+    return {};
+#endif
+  }
 };
 } // namespace slide

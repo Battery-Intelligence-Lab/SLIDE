@@ -38,7 +38,7 @@ class Cell_PbA : public Cell
 {
 protected:
   State_PbA st{ 0, 0.5, settings::T_ENV }; //!< I, T, SOC
-  XYdata_ff OCV;                           //!< SOC vs voltage curve.
+  XYdata_vv k_OCVp;                        //!< OCVp vs corrosion speed mapping.
   double Rdc{ 2e-3 };                      //!< DC resistance [Ohm]
 
   //!< PbA parameters from [1]
@@ -49,27 +49,27 @@ protected:
   double SOC_infl = 10.0 / 13.0; //!< [-] SOC influence
 
   double Ucorr_0 = 1.75; //!< [V] Corrosion voltage of fully-charged battery without current flow, which is a function of the acid concentration
-  double Igas_0 = 0.02;  //!< [A] Normalized gassing current at Ugas,0 and Tgas,0
+  double Igas_0 = 0.017; //!< [A] Normalized gassing current at Ugas,0 and Tgas,0
   //!< Typical value for the normalized gassing current for a new battery with antimony grid alloys. For VRLA battery typically 10 mA/100 Ah. For aged batteries the
   //!< normalized gassing can increase by a factor 5 or more.
 
-  double c_u = 11;                   //!< [1/V] Voltage coefficient of gassing current
-  double c_T = 0.06;                 //!< [1/K] Temperature coefficient of gassing current
-  double Ugas_0 = 2.23;              //!< [V] Nominal voltage for gassing
-  double Tgas_0{ 298 };              //!< [K] Nominal temperature for gassing
-  double Tcorr_0{ 298 };             //!< [K] Nominal temperature for  corrosion
-  double ks_T{ std::log(2.0) / 15 }; //!< [1 / K] Temperature coefficient of corrosion speed
-  double cSOC_0{ 6.614e-5 };         //!< [1/h]
-  double cSOC_min{ 3.307e-3 };       //!< [1/h]
-  double SOC_limit{ 0.90 };          //!< [-] Minimum state-of-charge for bad charges
-  double SOC_ref{ 0.95 };            //!< [-] Reference state-of-charge for bad charges
-  double c_plus{ 1.0 / 30.0 };       //!< [-] Factor for increase of acid stratification
-  double c_minus{ 0.1 };             //!< [-] Factor for decrease of acid stratification with gassing
-  double Uref{ 2.5 };                //!< [V] Reference voltage for decreasing acid stratification
-  double Uacid_dec{ 2.3 };           //!< [V] Voltage at which gassing starts to remove acid stratification
-  double D_H2SO4{ 20e-9 };           //!< [m^2/s] Diffusion constant for sulfuric acid
-  double c_Z{ 5 };                   //!< [-] Exponent for calculation of capacity loss due to degradation
-  double z_0{ 2.961e11 };            //!< [cm−3] Coefficient of number of sulfate crystals
+  double c_u = 0.183;                  //!< [1/V] Voltage coefficient of gassing current
+  double c_T = 0.06;                   //!< [1/K] Temperature coefficient of gassing current
+  double Ugas_0 = 13.38;               //!< [V] Nominal voltage for gassing
+  double Tgas_0{ 298 };                //!< [K] Nominal temperature for gassing
+  double Tcorr_0{ 298 };               //!< [K] Nominal temperature for  corrosion
+  double ks_T{ std::log(2.0) / 15.0 }; //!< [1 / K] Temperature coefficient of corrosion speed
+  double cSOC_0{ 6.614e-5 };           //!< [1/h]
+  double cSOC_min{ 3.307e-3 };         //!< [1/h]
+  double SOC_limit{ 0.90 };            //!< [-] Minimum state-of-charge for bad charges
+  double SOC_ref{ 0.95 };              //!< [-] Reference state-of-charge for bad charges
+  double c_plus{ 1.0 / 30.0 };         //!< [-] Factor for increase of acid stratification
+  double c_minus{ 0.1 };               //!< [-] Factor for decrease of acid stratification with gassing
+  double Uref{ 2.5 };                  //!< [V] Reference voltage for decreasing acid stratification
+  double Uacid_dec{ 2.3 };             //!< [V] Voltage at which gassing starts to remove acid stratification
+  double D_H2SO4{ 20e-9 };             //!< [m^2/s] Diffusion constant for sulfuric acid
+  double c_Z{ 5 };                     //!< [-] Exponent for calculation of capacity loss due to degradation
+  double z_0{ 2.961e11 };              //!< [cm−3] Coefficient of number of sulfate crystals
   rho_param rhp{};
 
   //!< Battery dependent parameters:
@@ -91,6 +91,13 @@ protected:
   double rho_nom{};      //!< nominal acid concentration in the battery
   double DeltaW_limit{}; //!< corrosion layer thickness when the battery has reached the end of its float lifetime (given in the battery datasheet).
   double C_corr_limit{}; //!< the limit of the loss of capacity by corrosion
+
+  // From Becky:
+
+  double V_w{ 17.5 }; //!< [cm^3/mol] molar volume of H2O
+  double V_e{ 45 };   //!< [cm^3/mol] molar volume of H2SO4
+
+  double M_w{ 18 }; //!< [g/mol] molar mass of H2O
 
 public:
   Cell_PbA();
@@ -134,6 +141,8 @@ public:
   double C_corr();
   double k_s();
   double k();
+
+  double OCVp();
 
   double f_SOC();
   double f_acid();

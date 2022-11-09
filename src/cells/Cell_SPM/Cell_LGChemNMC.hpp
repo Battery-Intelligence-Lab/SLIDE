@@ -19,7 +19,15 @@
 #include <iostream>
 
 namespace slide {
-Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
+class Cell_LGChemNMC : public Cell_SPM
+{
+public:
+  Cell_LGChemNMC(Model_SPM *, int verbosei); //!< constructor
+  Cell_LGChemNMC(Model_SPM *M, DEG_ID &, int verbosei);
+};
+
+
+inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
   : Cell_SPM(OCVcurves::makeOCVcurves(cellType::LGChemNMC)) //!< ("LGChem_OCV_NMC.csv", "LGChem_OCV_C.csv", "LGChem_entropic_C.csv", "LGChem_entropic_cell.csv")
 {
   /* OCVcurves::makeOCVcurves(cellType::KokamNMC)
@@ -56,12 +64,12 @@ Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
   n = 1;
 
   //!< Cell parameters
-  nomCapacity = 3.5;
-  Vmax = 4.2;   //!< value for an NMC/C cell
-  Vmin = 2.7;   //!< value for an NMC/C cell
-  dIcell = 1.0; //!< ramp at 1A
-  dt_I = 1e-2;  //!< ramp at 10ms so changing the current goes fast
-                //!< now changing the current takes 0.01 second per A
+  setCapacity(3.5);
+  // Vmax = 4.2;   //!< value for an NMC/C cell
+  // Vmin = 2.7;   //!< value for an NMC/C cell
+  // dIcell = 1.0; //!< ramp at 1A
+  // dt_I = 1e-2;  //!< ramp at 10ms so changing the current goes fast
+  //               //!< now changing the current takes 0.01 second per A
 
   //!< thermal parameters
   T_ref = PhyConst::Kelvin + 25;
@@ -88,7 +96,7 @@ Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
   //!< The diffusion coefficients at reference temperature are part of 'State'.
   //!< The values are set in the block of code below ('Initialise state variables')
   Dp_T = 29000;
-  Dn_T = 35000;
+  Dn_T = 35000; // #TODO Ask Jorn why SLIDE didn't have 5.0
 
   //!< spatial discretisation of the solid diffusion PDE
   M = MM;
@@ -96,11 +104,11 @@ Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
 
   //!< Initialise state variables
   State_SPM::z_type up, un;
-  double fp, fn, T, delta, LLI, thickp, thickn, ep, en, ap, an, CS, Dp, Dn, R, delta_pl;
+  double fp, fn, T, delta;                                                                          //!< LLI, thickp, thickn, ep, en, ap, an, CS, Dp, Dn, R, delta_pl;
   double Rdc = 0.0102;                                                                              //!< DC resistance of the total cell in Ohm
   fp = 0.651673;                                                                                    //!< lithium fraction in the cathode at 50% soc [-]
   fn = 0.297109;                                                                                    //!< lithium fraction in the anode at 50% soc [-]
-  T = PhyConst::Kelvin + 25.0;                                                                      //!< cell temperature
+  T = C_to_Kelvin(25.0);                                                                            //!< cell temperature
   delta = 1e-9;                                                                                     //!< SEI thickness. Start with a fresh cell, which has undergone some formation cycles so it has an initial SEI layer.
                                                                                                     //!< never start with a value of 0, because some equations have a term 1/delta, which would give nan or inf
                                                                                                     //!< so this will give errors in the code
@@ -189,7 +197,7 @@ Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
     sparam.s_lares = sparam.s_lares || cs_id == 1;
 }
 
-Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *M, DEG_ID &deg_id, int verbosei) : Cell_LGChemNMC(M, verbosei)
+inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *M, DEG_ID &deg_id, int verbosei) : Cell_LGChemNMC(M, verbosei)
 {
   /*
    * constructor to initialise the degradation parameters

@@ -11,7 +11,6 @@
 #include "../utility/utility.hpp"
 
 //#include "settings/settings.hpp"
-
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -24,41 +23,18 @@
 
 namespace slide {
 
-// Since cells are in series following functions are just sum.
-
-double Module_s::Vmin() { return free::transform_sum(SUs, free::get_Vmin<SU_t>); }
-double Module_s::VMIN() { return free::transform_sum(SUs, free::get_VMIN<SU_t>); }
-double Module_s::Vmax() { return free::transform_sum(SUs, free::get_Vmax<SU_t>); }
-double Module_s::VMAX() { return free::transform_sum(SUs, free::get_VMAX<SU_t>); }
-
-double Module_s::I()
-{
-  //!< the current is the same in all cells, so we can use first value. Return zero if SUs empty.
-  for (auto &SU : SUs)
-    return SU->I(); //!< return after the first instance.
-
-  return 0; //!< return 0 if empty.
-}
-
 double Module_s::getOCV(bool print)
-{
-  //!< sum of the open circuit voltage of all cells
-  bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-
-  double vm = 0;
-  for (size_t i = 0; i < getNSUs(); i++) {
-    try {
-      vm += SUs[i]->getOCV();
-    } catch (int e) {
-      if (verb)
-        std::cout << "Error in Module_s::getOCV when getting the OCV of cell "
-                  << i << ", throwing it on.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
-      throw e;
-    }
+{ //!< sum of the open circuit voltage of all cells
+  try {
+    return transform_sum(SUs, free::get_OCV<SU_t>);
+  } catch (int e) {
+    if (print && (settings::printBool::printCrit)) //!< print if the (global) verbose-setting is above the threshold
+      std::cout << "Error in Module_s::getOCV when getting the OCV of a SU in module "
+                << ID << ", throwing it on.\n";
+    throw e;
   }
-  return vm;
 }
+
 double Module_s::getRtot()
 {
   /*
@@ -66,6 +42,7 @@ double Module_s::getRtot()
    * 		V(I) = OCV - I*Rtot
    * 		with V and OCV the total values for this module
    */
+
   double rtot = 0;
   for (size_t i = 0; i < SUs.size(); i++)
     rtot += SUs[i]->getRtot() + Rcontact[i];
@@ -88,7 +65,7 @@ double Module_s::V(bool print)
     const auto v_i = SUs[i]->V(print);
 
     if (v_i <= 0) //!< SU has an invalid voltage.
-      return 0;
+      return 0;   // #TODO check if this is same for getOCV?
 
     Vmodule += v_i - Rcontact[i] * SUs[i]->I();
   }
@@ -111,7 +88,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
 
 //!< the current is the same in all cells
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
@@ -151,7 +128,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   //!< #TODO Here we need module specific voltage.
 
 #if TIMING
-  timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.setCurrent += clk.duration(); //!< time in seconds
 #endif
 
   return Status::Success;
@@ -167,8 +144,11 @@ bool Module_s::validSUs(SUs_span_t c, bool print)
    * For that, you shoud use setStates
    *
    */
+
+  // #TODO -> Unnecessary function. Check validity when settings SUs or states.
+  // Algorithms should not leave anything in an invalid state.
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   bool result{ true };
@@ -189,7 +169,7 @@ bool Module_s::validSUs(SUs_span_t c, bool print)
   }
 
 #if TIMING
-  timeData.validSUs += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.validSUs += clk.duration(); //!< time in seconds
 #endif
   return result; //!< else the cells are valid
 }
@@ -208,7 +188,7 @@ void Module_s::timeStep_CC(double dt, int nstep)
    */
 
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
 
   if (dt < 0) {
@@ -222,7 +202,7 @@ void Module_s::timeStep_CC(double dt, int nstep)
   auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, nstep); };
 
   try {
-    run(task_indv, getNSUs(), (par ? -1 : 1));
+    run(task_indv, getNSUs(), (par ? -1 : 1)); // #TODO SU based for_each.
   } catch (int e) {
     std::cout << "Error in Module_s::timeStep_CC with module ID " << getFullID()
               << ". error " << e << ", throwing it on.\n";
@@ -273,16 +253,14 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
     }
 
     //!< control the cooling system
-    double Tlocal = 0;
-    for (size_t i = 0; i < getNSUs(); i++)
-      Tlocal = std::max(Tlocal, SUs[i]->T());
+    const double Tlocal = transform_max(SUs, free::get_T<SU_t>); // #TODO Battery also has this.
     cool->control(Tlocal, getThotSpot());
   }
 
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
 #if TIMING
-  timeData.timeStep += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.timeStep += clk.duration(); //!< time in seconds
 #endif
 }
 
@@ -308,7 +286,7 @@ Module_s *Module_s::copy()
   }
 
 #if TIMING
-  copied_ptr->setTimings(T_redistributeCurrent, T_setI, T_validSUs, T_timeStep, T_timeStepi);
+  copied_ptr->setTimings(timeData);
 #endif
 
   return copied_ptr;

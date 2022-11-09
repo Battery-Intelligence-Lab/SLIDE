@@ -19,6 +19,7 @@
 #include "util.hpp"
 #include "interpolation.hpp"
 #include "free_functions.hpp"
+#include "slide_algorithms.hpp"
 #include "predicate_functions.hpp"
 #include "slide_aux.hpp"
 

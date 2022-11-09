@@ -14,17 +14,17 @@
 
 namespace slide::param::def {
 constexpr LAMparam LAMparam_Kokam{
-  3.4985e-9, //!< lam1p
-  5.88e-13,  //!< lam1n
-  -1.675e-5, //!< lam2ap
-  0.0,       //!< lam2bp
-  -1.675e-5, //!< lam2an
-  0.0,       //!< am2bn
-  54611.0,   //!< lam2t
-  12.5e-6,   //!< lam3k
-  27305.0,   //!< lam3k_T
-  8.3333e-9, //!< lam4p
-  8.3333e-9  //!< lam4n
+  3.4985e-9 / 10.0, //!< lam1p
+  5.88e-13 * 2e4,   //!< lam1n
+  -1.675e-5,        //!< lam2ap
+  0.0,              //!< lam2bp
+  -1.675e-5,        //!< lam2an
+  0.0,              //!< am2bn
+  54611.0,          //!< lam2t
+  12.5e-6,          //!< lam3k
+  27305.0,          //!< lam3k_T
+  8.3333e-9,        //!< lam4p
+  8.3333e-9         //!< lam4n
 };
 
 constexpr LAMparam LAMparam_LGCChemNMC{

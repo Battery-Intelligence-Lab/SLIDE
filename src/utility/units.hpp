@@ -26,8 +26,8 @@ constexpr auto operator""_uV(long double d) { return d * 1e-6; } //!< microVolts
 
 
 // Temperature:
-constexpr inline auto C_to_Kelvin(double Celsius) { return PhyConst::Kelvin + Celsius; }
-constexpr inline auto K_to_Celsius(double Kelvin) { return Kelvin - PhyConst::Kelvin; }
+constexpr inline auto C_to_Kelvin(auto Celsius) { return PhyConst::Kelvin + Celsius; } // #TODO check if it better to have auto or double
+constexpr inline auto K_to_Celsius(auto Kelvin) { return Kelvin - PhyConst::Kelvin; }
 
 constexpr auto operator""_degC(long double d) { return C_to_Kelvin(d); } //!< degrees Celsius
 constexpr auto operator""_K(long double d) { return d; }                 //!< Kelvins

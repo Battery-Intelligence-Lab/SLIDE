@@ -18,7 +18,7 @@ namespace slide {
 static double emptyState{ 0 }; // To return reference when a state is not defined.
 
 
-template <size_t N, size_t N_cumulative = settings::data::N_CumulativeData>
+template <size_t N, size_t N_cumulative = settings::data::N_CumulativeCell>
 struct State : public std::array<double, N + N_cumulative>
 {
   enum Index : size_t //!< Index variables for:

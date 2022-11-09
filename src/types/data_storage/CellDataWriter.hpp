@@ -1,8 +1,8 @@
 /*
  * CellDataWriter.hpp
  *
- *  Created on: 10 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ * Created on: 10 Apr 2022
+ * Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
 #pragma once
@@ -42,21 +42,6 @@ inline void writeVarAndStates(std::ofstream &file, auto &cell)
   file << "\n\n\n";
 }
 
-inline void writeData(std::ofstream &file, std::vector<double> &data)
-{
-  for (size_t i{}; i < data.size(); i++) {
-    if (i % 7 == 0) {
-      if (i != 0)
-        file << '\n';
-    } else
-      file << ',';
-
-    file << data[i];
-  }
-
-  data.clear(); //!< reset the index to 0 since we can overwrite the stored data
-}
-
 template <settings::cellDataStorageLevel N>
 void writeDataImpl(std::ofstream &file, auto &cell, auto &dataStorage)
 {
@@ -64,7 +49,7 @@ void writeDataImpl(std::ofstream &file, auto &cell, auto &dataStorage)
     writeVarAndStates(file, cell);
 
   if constexpr (N >= settings::cellDataStorageLevel::storeHistogramData)
-    writeData(file, dataStorage.data);
+    free::write_data(file, dataStorage.data, 7);
   //!< else write nothing.
 }
 

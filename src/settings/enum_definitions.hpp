@@ -26,6 +26,12 @@ enum class cellDataStorageLevel {
   storeTimeData
 };
 
+enum class moduleDataStorageLevel {
+  noStorage = 0,
+  storeCumulativeData,
+  storeTimeData
+};
+
 enum CVcurrentAlgorithm //!< Current finding method;
 {
   linearSearch = 0,

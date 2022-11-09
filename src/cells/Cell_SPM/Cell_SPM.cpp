@@ -212,6 +212,11 @@ double Cell_SPM::getOCV(bool print)
    * 1 	if SOC is outside the allowed range
    * 			passed on from linear interpolation
    */
+
+#if TIMING
+  Clock clk;
+#endif
+
   const bool verb = settings::printBool::printCrit && print; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Get the surface concentrations
@@ -225,6 +230,9 @@ double Cell_SPM::getOCV(bool print)
   const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound); //!< anode potential [V]
   const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, print, bound); //!< cathode potential [V]
 
+#if TIMING
+  timeData.getOCV += clk.duration();
+#endif
   return (OCV_p - OCV_n + (st.T() - T_ref) * dOCV);
 }
 
@@ -284,24 +292,20 @@ double Cell_SPM::V(bool print)
 
     const double i_app = I() / geo.elec_surf; //!< current density on the electrodes [I m-2]
 
-    const auto [etapi, etani] = calcOverPotential(cps, cns, i_app);
+    const auto [etapi, etani] = calcOverPotential(cps, cns, i_app); // #TODO if current is zero dont calculate.
 
     //!< Calculate the cell voltage
     //!< the cell OCV at the reference temperature is OCV_p - OCV_n
     //!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
     //!< then the overpotentials and the resistive voltage drop are added
-    const auto entropic_effect = (st.T() - T_ref) * dOCV;                          //!< (st.T() - T_ref) * dOCV; #TODO entropic effect is zero.
-    st.V() = (OCV_p - OCV_n + entropic_effect) + (etapi - etani) - getRdc() * I(); //#TODO make Vcell_valid true.
-    Vcell_valid = true;                                                            //!< we now have the most up to date value stored
+    const auto entropic_effect = (st.T() - T_ref) * dOCV; //!<
+    const auto overpotential = etapi - etani;
+    const auto OCV = (OCV_p - OCV_n + entropic_effect);
+
+    st.V() = OCV + overpotential - getRdc() * I(); //
+    Vcell_valid = true;                            //!< we now have the most up to date value stored
 
     //!< //!< make the output variables
-    //!< *OCVp = OCV_p;
-    //!< *OCVn = OCV_n;
-    //!< *etap = etapi;
-    //!< *etan = etani;
-    //!< *Rdrop = -getR() * Icell;
-    //!< *Temp = st.T();
-
     //!< if constexpr (settings::printBool::printCellFunctions)
     //!< 	std::cout << "Cell_SPM::getVoltage terminating with V = " << *v << " and valid is " << (Vmin <= *v && *v <= Vmax) << '\n';
 
@@ -310,7 +314,7 @@ double Cell_SPM::V(bool print)
   }
 
 #if TIMING
-  T_getV += clk.duration(); //!< time in seconds
+  timeData.V += clk.duration(); //!< time in seconds
 #endif
 
   return st.V();
@@ -323,25 +327,30 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   OCV_curves = OCVcurves::makeOCVcurves(cellType::KokamNMC);
 
+  setCapacity(16); //!< Parameters are given for 16 Ah high-power, prismatic KokamNMC cell. (SLPB78205130H)
+
   //!< Set initial state:
   st.T() = settings::T_ENV;
-  st.delta() = 1e-9;
-  st.LLI() = 0; //!< lost lithium. Start with 0 so we can keep track of how much li we lose while cycling the cell
+  st.delta() = 1e-9; //!< SEI thickness. Start with a fresh cell, which has undergone some formation cycles so it has an initial SEI layer.
+                     //!< never start with a value of 0, because some equations have a term 1/delta, which would give nan or inf
+                     //!< so this will give errors in the code
 
-  st.thickp() = 70e-6;                                    //!< thickness of the positive electrode
-  st.thickn() = 73.5e-6;                                  //!< thickness of the negative electrode
-  st.ep() = 0.5;                                          //!< volume fraction of active material in the cathode
-  st.en() = 0.5;                                          //!< volume fraction of active material in the anode
-  st.ap() = 3 * st.ep() / geo.Rp;                         //!< effective surface area of the cathode, the 'real' surface area is the product of the effective surface area (a) with the electrode volume (elec_surf * thick)
-  st.an() = 3 * st.en() / geo.Rn;                         //!< effective surface area of the anode
+  st.LLI() = 0;                   //!< lost lithium. Start with 0 so we can keep track of how much li we lose while cycling the cell
+  st.Dp() = 8e-14;                //!< diffusion constant of the cathode at reference temperature
+  st.Dn() = 7e-14;                //!< diffusion constant of the anode at reference temperature
+  st.thickp() = 70e-6;            //!< thickness of the positive electrode
+  st.thickn() = 73.5e-6;          //!< thickness of the negative electrode
+  st.ep() = 0.5;                  //!< volume fraction of active material in the cathode
+  st.en() = 0.5;                  //!< volume fraction of active material in the anode
+  st.ap() = 3 * st.ep() / geo.Rp; //!< effective surface area of the cathode, the 'real' surface area is the product of the effective surface area (a) with the electrode volume (elec_surf * thick)
+  st.an() = 3 * st.en() / geo.Rn; //!< effective surface area of the anode
+
   st.CS() = 0.01 * st.an() * geo.elec_surf * st.thickn(); //!< initial crack surface. Start with 1% of the real surface area
-  st.Dp() = 8e-14;                                        //!< diffusion constant of the cathode at reference temperature
-  st.Dn() = 7e-14;                                        //!< diffusion constant of the anode at reference temperature
 
   //!< R = Rdc * (thickp * ap * elec_surf + thickn * an * elec_surf) / 2; //!< specific resistance of the combined electrodes, see State::iniStates
   st.rDCp() = 2.8e-3;
   st.rDCn() = 2.8e-3;
-  st.rDCcc() = 232.5e-6; //!< note: this is divided by geometric surface (elec_surf) instead of effective surf (a*thick*elec_surf)
+  st.rDCcc() = 0.2325e-3; //!< note: this is divided by geometric surface (elec_surf) instead of effective surf (a*thick*elec_surf)
 
   st.delta_pl() = 0; //!< thickness of the plated lithium layer. You can start with 0 here
 
@@ -354,7 +363,7 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   //!< Default values for not defined other param:
 
-  csparam.CS4Amax = 5 * st.an() * st.thickn() * geo.elec_surf; //!< assume the maximum crack surface is 5 times the initial anode surface
+  csparam.CS4Amax = 5 * getAnodeSurface(); //!< assume the maximum crack surface is 5 times the initial anode surface
 
   cellData.initialise(*this);
 }
@@ -490,6 +499,10 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
   /*
    * Returns Status see Status.hpp for the meaning.
    */
+
+#if TIMING
+  Clock clk;
+#endif
   auto st_old = st; //!< Back-up values.
 
   std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
@@ -501,7 +514,9 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
     st = st_old;        //!< Restore states here.
     Vcell_valid = true; //!< #TODO if this is ok.
   }
-
+#if TIMING
+  timeData.setStates += clk.duration(); //!< time in seconds
+#endif
   return status;
 }
 
@@ -511,6 +526,9 @@ bool Cell_SPM::validStates(bool print)
    * note: does NOT check the voltage, only whether all fields are in the allowed range
    */
 
+#if TIMING
+  Clock clk;
+#endif
   const bool verb = print && settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Check if all fields are present & extract their values
@@ -552,7 +570,9 @@ bool Cell_SPM::validStates(bool print)
       std::cerr << "SOME ERROR #TODO!\n";
     range = false;
   }
-
+#if TIMING
+  timeData.validStates += clk.duration(); //!< time in seconds
+#endif
   //!< there is no range on the current
   return range;
 }
@@ -713,13 +733,6 @@ void Cell_SPM::setC(double cp0, double cn0)
 Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double resf, double degfsei, double degflam) : Cell_SPM()
 {
   ID = IDi;
-
-  //!< store such that the cell can later report its precise variation
-  var_cap = capf;
-  var_R = resf;
-  var_degSEI = degfsei;
-  var_degLAM = degflam;
-
   //!< Set the resistance
 
   st.rDCcc() *= resf; //!< current collector

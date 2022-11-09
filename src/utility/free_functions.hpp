@@ -15,10 +15,28 @@
 #include <fstream>
 #include <string>
 #include <numeric>
+#include <vector>
+#include <fstream>
 
 namespace slide::free {
+
+inline void write_data(std::ofstream &file, std::vector<double> &data, size_t N = 1)
+{
+  for (size_t i{}; i < data.size(); i++) {
+    if (i % N == 0) {
+      if (i != 0)
+        file << '\n';
+    } else
+      file << ',';
+
+    file << data[i];
+  }
+
+  data.clear(); //!< reset the index to 0 since we can overwrite the stored data
+}
+
 template <typename T>
-size_t getNcells(T const &SU)
+size_t get_Ncells(T const &SU)
 {
   /*  return the number of cells connected to this module
    * 	e.g. if this module has 3 child-modules, each with 2 cells.
@@ -28,10 +46,11 @@ size_t getNcells(T const &SU)
 }
 
 template <typename T>
-auto getV(T const &SU)
-{
-  return SU.V();
-}
+auto get_V(T const &SU) { return SU.V(); }
+
+template <typename T>
+auto get_T(T const &SU) { return SU->T(); }
+
 
 template <typename T>
 auto get_Vmin(const T &SU) { return SU->Vmin(); }
@@ -48,16 +67,11 @@ auto get_VMAX(const T &SU) { return SU->VMAX(); }
 template <typename T>
 auto get_Cap(const T &SU) { return SU->Cap(); }
 
+template <typename T>
+auto get_OCV(const T &SU) { return SU->getOCV(); }
 
-auto transform_sum(const auto &SUs, auto &function)
-{
-  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::plus<>(), function);
-}
-
-auto transform_max(const auto &SUs, auto &function)
-{
-  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::max<>(), function);
-}
+template <typename T>
+auto get_I(const T &SU) { return SU->I(); }
 
 
 template <bool Print = settings::printBool::printCrit>
@@ -113,7 +127,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
 
   try {
     v = su.V(Print);
-  } catch (int err) {
+  } catch (int) {
     std::cout << "We could not calculate voltage!!!\n";
     return Status::V_not_calculated;
   }

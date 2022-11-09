@@ -22,70 +22,8 @@
 
 namespace slide {
 
-double Module_p::Vmin()
-{
-  //!< the voltage limits are the most constraining limits of all cells
-  //!< ie the highest Vmin
-  double vm{ 0 };
 
-  for (auto &SU : SUs)
-    vm = std::max(vm, SU->Vmin());
-
-  return vm;
-}
-
-double Module_p::VMIN()
-{
-  //!< the voltage limits are the most constraining limits of all cells
-  //!< ie the highest Vmin
-  double vm{ 0 };
-  for (auto &SU : SUs)
-    vm = std::max(vm, SU->VMIN());
-
-  return vm;
-}
-
-double Module_p::Vmax()
-{
-  //!< the voltage limits are the most constraining limits of all cells
-  //!< ie the lowest Vmax
-  double vm = std::numeric_limits<double>::max();
-  for (auto &SU : SUs)
-    vm = std::min(vm, SU->Vmax());
-  return vm;
-}
-
-double Module_p::VMAX()
-{
-  //!< the voltage limits are the most constraining limits of all cells
-  //!< ie the lowest Vmax
-  double vm = std::numeric_limits<double>::max();
-  for (auto &SU : SUs)
-    vm = std::min(vm, SU->VMAX());
-  return vm;
-}
-
-double Module_p::I()
-{
-  //!< the current is the sum  of the current of each cell. Returns 0 if empty.
-  double i{ 0 };
-  for (auto &SU : SUs)
-    i += SU->I();
-
-  return i;
-}
-
-double Module_p::getOCV(bool print)
-{
-  //!< the voltage is the same across all cells, so just return the V of the first cell
-  double v{ 0 };
-  for (auto &SU : SUs)
-    v += SU->getOCV(print);
-
-  return (v / SUs.size());
-}
-
-double Module_p::getRtot()
+double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
 {
   /*
    * Return the total resistance
@@ -117,7 +55,7 @@ double Module_p::getRtot()
 
   //!< then iteratively come closer, every time Rcontact[i] + (Rcell[i] \\ Rtot)
   //!< 				= Rc[i] + Rcell[i]*Rtot / (Rcel[i]*Rtot)
-  for (int i = getNSUs() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs.
+  for (int i = SUs.size() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs.
     rtot = Rcontact[i] + (SUs[i]->getRtot() * rtot) / (SUs[i]->getRtot() + rtot);
 
   return rtot;
@@ -140,7 +78,7 @@ double Module_p::getVi(size_t i, bool print)
    * 			   = v[i] - sum{ R[j]*sum(I[k], k=j..N-1), j=0..i }
    */
 
-  if (i >= getNSUs()) {
+  if (i >= SUs.size()) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module::getVi, you ask the voltage of cell " << i
                 << " but the size of the cell array is " << getNSUs() << '\n';
@@ -177,7 +115,7 @@ double Module_p::V(bool print)
     if (v == 0)
       return 0;
 
-    Vmodule += getVi(i, print); //!< #TODO there is definitely something fishy. getVi already does some calculations.
+    Vmodule += v; //!< #TODO there is definitely something fishy. getVi already does some calculations.
   }
 
   Vmodule /= SUs.size();
@@ -637,7 +575,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
    */
 
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
@@ -715,7 +653,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   } //!< catch statement of uniform allocation
 
 #if TIMING
-  timeData.setCurrent += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.setCurrent += clk.duration(); //!< time in seconds
 #endif
   return Status::Success; //!< #TODO problem
 }
@@ -729,7 +667,7 @@ bool Module_p::validSUs(SUs_span_t c, bool print)
    * If the number of cells is the same as in this module, use the contact resistances
    */
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
@@ -783,7 +721,7 @@ bool Module_p::validSUs(SUs_span_t c, bool print)
   } //!< else the voltage is valid
 
 #if TIMING
-  timeData.validSUs += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.validSUs += clk.duration(); //!< time in seconds
 #endif
   return result;
 }
@@ -802,7 +740,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
    */
 
 #if TIMING
-  std::clock_t tstart = std::clock();
+  Clock clk;
 #endif
 
   if (dt < 0) {
@@ -897,7 +835,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
   }
 
 #if TIMING
-  timeData.timeStep += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
+  timeData.timeStep += clk.duration(); //!< time in seconds
 #endif
 }
 
@@ -933,12 +871,12 @@ Module_p *Module_p::copy()
 
   copied_ptr->SUs.clear();
   for (size_t i{ 0 }; i < getNSUs(); i++) {
-    copied_ptr->SUs.emplace_back(SUs[i]->copy());
+    copied_ptr->SUs.emplace_back(SUs[i]->copy()); // #TODO remove when we have Module<...>
     copied_ptr->SUs.back()->setParent(copied_ptr);
   }
 
 #if TIMING
-  copied_ptr->setTimings(T_redistributeCurrent, T_setI, T_validSUs, T_timeStep, T_timeStepi);
+  copied_ptr->setTimings(timeData);
 #endif
 
   return copied_ptr;

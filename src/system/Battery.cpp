@@ -16,15 +16,8 @@
 
 namespace slide {
 
-Battery::Battery() : StorageUnit("Battery")
-{
-  conv = std::make_unique<Converter>();
-}
-
-Battery::Battery(std::string IDi) : Battery()
-{
-  ID = std::move(IDi);
-}
+Battery::Battery() : StorageUnit("Battery") { conv = std::make_unique<Converter>(); }
+Battery::Battery(std::string IDi) : Battery() { ID = std::move(IDi); }
 
 void Battery::setSeriesandParallel(int ser, int par)
 {
@@ -236,10 +229,7 @@ void Battery::timeStep_CC(double dt, int steps)
   }
 
   //!< control the cooling system
-  double Tlocal = 0;
-  for (size_t i = 0; i < cells->getNSUs(); i++)
-    Tlocal = std::max(Tlocal, cells->getSUTemperature(i));
-
+  double Tlocal = transform_max(cells->getSUs(), free::get_T<Module::SU_t>);
   cool->control(Tlocal, getThotSpot());
 
 //!< data storage

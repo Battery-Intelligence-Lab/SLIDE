@@ -11,8 +11,8 @@
 
 //!< Include header files
 #include "slide.hpp"
-#include "../benchmark/running_Cell_Bucket.hpp"
-
+#include "../benchmark/benchmarks.hpp"
+#include "../examples/examples.hpp"
 
 #include <ctime>
 #include <thread>
@@ -137,6 +137,11 @@ int main()
   // slide::benchmarks::run_Cell_Bucket();
   // slide::benchmarks::run_Cell_ECM();
   slide::benchmarks::run_Cell_SPM();
+
+  // Timings:
+
+
+  slide::examples::drive_cycle_artemis();
 
 
   std::unique_ptr<slide::StorageUnit> cs[2];

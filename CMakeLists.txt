@@ -1,17 +1,17 @@
 cmake_minimum_required(VERSION 3.17)
 
-include(cmake/StandardProjectSettings.cmake)
-include(cmake/PreventInSourceBuilds.cmake)
-
 # include(cmake/ProjectSettings.cmake)
 project(SLIDE VERSION "3.0.0"
   DESCRIPTION "A simulator for lithium-ion battery degradation"
   HOMEPAGE_URL https://davidhowey.github.io/SLIDE/
   LANGUAGES CXX)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+include(cmake/StandardProjectSettings.cmake)
+include(cmake/PreventInSourceBuilds.cmake)
 
 add_subdirectory(src bin)
+
 
 # Link this 'library' to use the warnings specified in CompilerWarnings.cmake
 add_library(project_warnings INTERFACE)

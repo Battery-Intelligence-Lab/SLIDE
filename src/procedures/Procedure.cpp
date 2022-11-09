@@ -705,17 +705,7 @@ void Procedure::checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &
     file << '\n';
 
     //!< rows 2-5 is are the variation-parameter (capacity, resistance, SEI degradation rate, LAM degradation rate spread)
-    double var[5];
-    int nvar, no;
-    cells[0]->getVariations(var, 5, nvar);
-    for (int i = 0; i < nvar; i++) {
-      file << IDnumber << ',';
-      for (auto &cell : cells) {
-        cell->getVariations(var, 5, no);
-        file << var[i] << ',';
-      }
-      file << '\n';
-    }
+    // #TODO Print variations here!
 
     //!< write a row with markers to indicate we have finished this section
     file << ID_separator << ',';

@@ -409,6 +409,11 @@ slide_pack integration:
 - [ ] Module functions are being combined. 
 - [ ] std::algorithms and free functions for modules.
   - [ ] transform_sum is added. 
+- [ ] storeData(getNcells()) pattern is not good. 
+- [x] Chrono for timing is adapted. 
+- [x] Cell_KokamNMC.cpp is deleted and it became an header. 
+- [x] getVariations() is deleted since it is not necessary to hold these variables inside cells. 
+- [x] For some reason slide-pack had different LAM parameters (new fitting?). I will test the difference. 
 
 
 ### C++20 changes (yay!):
