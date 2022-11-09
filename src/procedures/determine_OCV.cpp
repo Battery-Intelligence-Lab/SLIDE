@@ -708,27 +708,23 @@ void estimateOCVparameters()
   const double AMn_guess = cap * 3600.0 / (n * F * cmaxn);
 
   //!< //!< Define the search space for the amount of active material on each electrode
-  constexpr double step = 0.1; //!< take steps of 10% of the guessed active material
-  constexpr double AMmax = 5;  //!< the maximum amount of active material is 5 times the guessed amount
-  constexpr double AMmin = 0;  //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
+  constexpr double step = 0.02; //!< take steps of 5% of the guessed active material
+  constexpr double AMmax = 5;   //!< the maximum amount of active material is 5 times the guessed amount
+  constexpr double AMmin = 0;   //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
 
-  //!< //!< Define the search space for the initial lithium fractions at each electrode
-  constexpr double df = 0.1;   //!< take steps of 10% of the lithium fraction
-  constexpr double fmin = 0.0; //!< the minimum lithium fraction is 0
-  constexpr double fmax = 1.0; //!< the maximum lithium fraction is 1
+  //!< Define the search space for the initial lithium fractions at each electrode
+  auto sp_space = slide::linspace_fix(0.0, 1.0, 51); //!< From 0 to 1 lithium fraction 5% increase of the lithium fraction
+  auto sn_space = slide::linspace_fix(0.0, 1.0, 51);
 
   //!< Define the search space for the amount of active material on each electrode
   auto AMp_space = slide::range_fix(AMmin * AMp_guess, AMmax * AMp_guess + 3.2 * step * AMp_guess, step * AMp_guess); //!< From 0 to 5x of guessed active material with 10% steps.
   auto AMn_space = slide::range_fix(AMmin * AMn_guess, AMmax * AMn_guess, step * AMn_guess);
 
-  //!< Define the search space for the initial lithium fractions at each electrode
-  auto sp_space = slide::range_fix(fmin, fmax, df); //!< From 0 to 1 lithium fraction
-  auto sn_space = slide::range_fix(fmin, fmax, df);
 
   //!< ***************************************************** 3 Fit the parameters ***********************************************************************
 
   //!< Call the hierarchical search algorithm, which does the fitting
-  constexpr int hmax = 2;                                                                                                               //!< number of levels in the hierarchy to consider.
+  constexpr int hmax = 3;                                                                                                               //!< number of levels in the hierarchy to consider.
   const auto [par, err] = hierarchicalOCVfit(hmax, AMp_space, AMn_space, sp_space, sn_space, namepos, nameneg, namecell, cmaxp, cmaxn); //!< parameters of the best fit and lowest error.
 
   //!< ***************************************************** 4 write outputs ***********************************************************************
@@ -813,9 +809,9 @@ void estimateOCVparameters()
   output << "relative step size in the search for active material" << ',' << step << '\n';
   output << "relative minimum amount of active material" << ',' << AMmin << '\n';
   output << "relative maximum amount of active material" << ',' << AMmax << '\n';
-  output << "step size in the search for the starting li-fraction" << ',' << df << '\n';
-  output << "minimum li-fraction" << ',' << fmin << '\n';
-  output << "maximum li-fraction" << ',' << fmax << '\n';
+  output << "step size in the search for the starting li-fraction" << ',' << sp_space.dstep() << '\n';
+  output << "minimum li-fraction" << ',' << 0.0 << '\n';
+  output << "maximum li-fraction" << ',' << 1.0 << '\n';
   output << "number of levels in the search hierarchy" << ',' << hmax << '\n';
   output.close();
 }

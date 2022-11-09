@@ -165,27 +165,24 @@ inline void drive_cycle_artemis()
 
   std::string profile_path{ "profiles/drive_cycles/ArtemisM_scaled.csv" };
 
-  // Specify the OCV parameters (calculated by determineOCV::estimateOCVparameters)
-  OCVparam ocvfit;
-  ocvfit.cap = 3.4;             // the capacity of the cell [Ah]
-  ocvfit.elec_surf = 0.03835;   // (ocvfit.cap / 2.72) * 0.0982; // electrode surface
-  ocvfit.ep = 0.8;              // volume fraction of active material in the cathode
-  ocvfit.en = 0.875;            // volume fraction of active material in the anode
-  ocvfit.thickp = 2 * 71.5e-6;  // thickness of the cathode
-  ocvfit.thickn = 2 * 83.35e-6; // thickness of the anode
-  ocvfit.lifracpini = 0.304326; // lithium fraction in the cathode at 50% soC 0.304326
-  ocvfit.lifracnini = 0.759308; // lithium fraction in the anode at 50% SoC
-  ocvfit.cmaxp = 48000;         // maximum lithium concentration in the cathode [mol m-3]
-  ocvfit.cmaxn = 32658;         // maximum lithium concentration in the anode [mol m-3]
-  ocvfit.Vmax = 4.2;            // maximum voltage of the cell [V]
-  ocvfit.Vmin = 2.6;            // minimum voltage of the cell [V]
+  // Make one cell with standard parameters// Degradation settings
+  slide::DEG_ID deg;
+  // Kinetic SEI + porosity + Dai/Laresgoiti LAM
 
+  deg.SEI_id.add_model(4); // add model 4.
+  deg.SEI_porosity = 1;
+
+  deg.CS_id.add_model(0); // add model 0.
+  deg.CS_diffusion = 0;
+
+  deg.LAM_id.add_model(1);
+  deg.pl_id = 0;
+
+  auto c = std::make_unique<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
+  c->setBlockDegAndTherm(true);
 
   DynamicMatrix<double> profile;
   loadCSV_Ncol(PathVar::data + profile_path, profile);
-
-  auto example_cell = get_exampleCell();
-  auto c = std::unique_ptr<Cell_SPM>(example_cell->copy());
 
   // Set the characterisation parameters of the cell to the ones given as input to this function
 
@@ -197,22 +194,16 @@ inline void drive_cycle_artemis()
   init_cell_manual(c, 0.0, 4.173, dAh, dtime, dWh);
 
 
-  c->setBlockDegAndTherm(true);
-
   std::vector<double> voltage;
+  std::vector<State_SPM> states;
   double cap = c->Cap();
   for (auto c_rate : profile.data) {
     c->setCurrent(c_rate * cap, true);
     voltage.push_back(c->V());
+    states.push_back(c->getStateObj());
     c->timeStep_CC(1, 1);
   }
 
-
-  // double Ah, Wh, dtime;
-  // for (size_t i{ 0 }; i < 5; i++) {
-  //   cyc.CCCV(1, 4, 0.1, 1, 10, Ah, Wh, dtime);
-  //   cyc.CCCV(1, 3, 0.1, 1, 10, Ah, Wh, dtime);
-  // }
   std::string Vname = "drive_voltage.csv";
   std::ofstream out(PathVar::results + Vname, std::ios_base::out);
 
@@ -222,9 +213,23 @@ inline void drive_cycle_artemis()
   out.close();
 
 
+  std::string Sname = "drive_states.csv";
+  std::ofstream Sout(PathVar::results + Sname, std::ios_base::out);
+
+  for (auto st : states) {
+    for (auto s : st)
+      Sout << s << ',';
+
+    Sout << '\n';
+  }
+
+  Sout.close();
+
+
   // c->writeData("drive_cycle");
   std::cout << "V: " << c->V() << '\n';
   std::cout << "Wh: " << dWh << '\n';
+  std::cout << "SOC: " << 100 * c->SOC() << '\n';
   std::cout << "Finished drive_cycle example in " << clk << ".\n";
 };
 

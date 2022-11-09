@@ -513,7 +513,7 @@ double Cell_SPM::LiPlating(double OCVnt, double etan)
   using std::exp;
 
   //!< Arrhenius relation for temperature-dependent plating parameters
-  const double kplt = plparam.pl1k * std::exp(plparam.pl1k_T * calcArrheniusCoeff()); //!< Rate constant
+  const double kplt = pl_p.pl1k * std::exp(pl_p.pl1k_T * calcArrheniusCoeff()); //!< Rate constant
 
   switch (deg_id.pl_id) {
   case 0:

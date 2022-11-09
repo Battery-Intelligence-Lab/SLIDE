@@ -105,11 +105,11 @@ protected: //!< protected such that child classes can access the class variables
   param::LAMparam lam_p{ param::def::LAMparam_Kokam }; //!< structure with the fitting parameters of the different LAM models
 
   //!< Li-plating parameters & constants //!< #TODO if we can make these static and speed gain.
-  double npl{ 1 };        //!< number of electrons involved in the plating reaction [-]
-  double alphapl{ 1 };    //!< charge transfer constant for the plating reaction [-]
-  double OCVpl{ 0 };      //!< OCV of the plating reaction [V]
-  double rhopl{ 10e6 };   //!< density of the plated lithium layer
-  param::PLparam plparam; //!< structure with the fitting parameters of the different plating models
+  double npl{ 1 };      //!< number of electrons involved in the plating reaction [-]
+  double alphapl{ 1 };  //!< charge transfer constant for the plating reaction [-]
+  double OCVpl{ 0 };    //!< OCV of the plating reaction [V]
+  double rhopl{ 10e6 }; //!< density of the plated lithium layer
+  param::PLparam pl_p;  //!< structure with the fitting parameters of the different plating models
 
   //!< Matrices for spatial discretisation of the solid diffusion model
   Model_SPM *M{ Model_SPM::makeModel() };

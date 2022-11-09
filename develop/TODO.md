@@ -414,7 +414,7 @@ slide_pack integration:
 - [x] Cell_KokamNMC.cpp is deleted and it became an header. 
 - [x] getVariations() is deleted since it is not necessary to hold these variables inside cells. 
 - [x] For some reason slide-pack had different LAM parameters (new fitting?). I will test the difference. 
-
+- [ ] Cell_SPM should not hold all ageing model parameters. 
 
 ### C++20 changes (yay!):
 - [ ] std::span for state assignments. 

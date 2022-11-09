@@ -172,8 +172,8 @@ inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
   OCVpl = 0;
   rhopl = 10000e3;
   //!< fitting parameters of the models
-  plparam.pl1k = 2.25e-8;
-  plparam.pl1k_T = -1.0070e5;
+  pl_p.pl1k = 2.25e-8;
+  pl_p.pl1k_T = -1.0070e5;
 
   //!< degradation identifiers: no degradation
   deg.SEI_id.add_model(0); //!< no SEI growth, there is 1 SEI model (namely '0')

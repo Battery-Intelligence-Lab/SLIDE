@@ -747,7 +747,7 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
   sei_p *= var_degSEI;
   csparam *= var_degSEI;
   lam_p *= var_degLAM;
-  plparam *= var_degSEI;
+  pl_p *= var_degSEI;
 
 
   //!< set the degradation ID and related settings

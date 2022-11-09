@@ -190,8 +190,8 @@ namespace slide {
 //!< 	OCVpl = 0;
 //!< 	rhopl = 10000e3;
 //!< 	//!< fitting parameters
-//!< 	plparam.pl1k = 0;
-//!< 	plparam.pl1k_T = 0;
+//!< 	pl_p.pl1k = 0;
+//!< 	pl_p.pl1k_T = 0;
 
 //!< 	//!< degradation identifiers: no degradation
 //!< deg.SEI_id.add_model(0); //!< no SEI growth, there is 1 SEI model (namely '0')
