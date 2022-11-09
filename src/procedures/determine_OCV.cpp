@@ -713,8 +713,8 @@ void estimateOCVparameters()
   constexpr double AMmin = 0;   //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
 
   //!< Define the search space for the initial lithium fractions at each electrode
-  auto sp_space = slide::linspace_fix(0.0, 1.0, 51); //!< From 0 to 1 lithium fraction 5% increase of the lithium fraction
-  auto sn_space = slide::linspace_fix(0.0, 1.0, 51);
+  auto sp_space = slide::linspace_fix(0.0, 0.5, 51); //!< From 0 to 1 lithium fraction 5% increase of the lithium fraction
+  auto sn_space = slide::linspace_fix(0.5, 1.0, 51);
 
   //!< Define the search space for the amount of active material on each electrode
   auto AMp_space = slide::range_fix(AMmin * AMp_guess, AMmax * AMp_guess + 3.2 * step * AMp_guess, step * AMp_guess); //!< From 0 to 5x of guessed active material with 10% steps.
