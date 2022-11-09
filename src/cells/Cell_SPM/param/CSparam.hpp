@@ -19,7 +19,7 @@ struct CSparam
   value_type CS3alpha{ 2.31e-16 };  //!< fitting parameter of the 3rd surface crack growth model
   value_type CS4alpha{ 4.3306e-8 }; //!< fitting parameter of the 4th surface crack growth model
 
-  value_type CS4Amax; //!< maximum crack growth surface for the 4th surface crack growth model
+  value_type CS4Amax; //!< maximum crack growth surface for the 4th surface crack growth model 5 * getAn() * getThickn() * elec_surf
 
   value_type CS5k{ 1e-18 };     //!< rate parameter of the 5th surface crack growth model at reference temperature
   value_type CS5k_T{ -127040 }; //!< activation energy of CS5k

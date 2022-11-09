@@ -292,24 +292,20 @@ double Cell_SPM::V(bool print)
 
     const double i_app = I() / geo.elec_surf; //!< current density on the electrodes [I m-2]
 
-    const auto [etapi, etani] = calcOverPotential(cps, cns, i_app);
+    const auto [etapi, etani] = calcOverPotential(cps, cns, i_app); // #TODO if current is zero dont calculate.
 
     //!< Calculate the cell voltage
     //!< the cell OCV at the reference temperature is OCV_p - OCV_n
     //!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
     //!< then the overpotentials and the resistive voltage drop are added
-    const auto entropic_effect = (st.T() - T_ref) * dOCV;                          //!< (st.T() - T_ref) * dOCV; #TODO entropic effect is zero.
-    st.V() = (OCV_p - OCV_n + entropic_effect) + (etapi - etani) - getRdc() * I(); //#TODO make Vcell_valid true.
-    Vcell_valid = true;                                                            //!< we now have the most up to date value stored
+    const auto entropic_effect = (st.T() - T_ref) * dOCV; //!<
+    const auto overpotential = etapi - etani;
+    const auto OCV = (OCV_p - OCV_n + entropic_effect);
+
+    st.V() = OCV + overpotential - getRdc() * I(); //
+    Vcell_valid = true;                            //!< we now have the most up to date value stored
 
     //!< //!< make the output variables
-    //!< *OCVp = OCV_p;
-    //!< *OCVn = OCV_n;
-    //!< *etap = etapi;
-    //!< *etan = etani;
-    //!< *Rdrop = -getR() * Icell;
-    //!< *Temp = st.T();
-
     //!< if constexpr (settings::printBool::printCellFunctions)
     //!< 	std::cout << "Cell_SPM::getVoltage terminating with V = " << *v << " and valid is " << (Vmin <= *v && *v <= Vmax) << '\n';
 
@@ -330,6 +326,8 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
   ID = "Cell_SPM";
 
   OCV_curves = OCVcurves::makeOCVcurves(cellType::KokamNMC);
+
+  setCapacity(16); //!< Parameters are given for 16 Ah high-power, prismatic KokamNMC cell. (SLPB78205130H)
 
   //!< Set initial state:
   st.T() = settings::T_ENV;

@@ -275,7 +275,6 @@ public:
 
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); } //!< returns the states of the cell collectively.
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
-  void getVariations(double var[], int nin, int &nout) override { nout = 0; } //#TODO this should be filled.
   double getOCV(bool print = true) override;
   Status setStates(setStates_t sSpan, bool checkV, bool print) override;
   bool validStates(bool print = true) override;
