@@ -190,8 +190,11 @@ inline void drive_cycle_artemis()
   // auto cyc = Cycler(c.get(), ID);
   double dAh{ 0 }, dtime{ 0 }, dWh{ 0 };
 
-  std::cout << "SOC: " << 100 * c->SOC() << '\n';
+  std::cout << "V: " << c->V() << " [V] SOC: " << 100 * c->SOC() << " [%] \n";
   init_cell_manual(c, 0.0, 4.08, dAh, dtime, dWh); // 4.08 -> 90% SOC and  3.42 V  -> 10% SOC
+  std::cout << "V: " << c->V() << " [V] SOC: " << 100 * c->SOC() << " [%] \n";
+  init_cell_manual(c, 0.0, 4.2, dAh, dtime, dWh); // 4.08 -> 90% SOC and  3.42 V  -> 10% SOC
+  std::cout << "V: " << c->V() << " [V] SOC: " << 100 * c->SOC() << " [%] \n";
 
   std::cout << "SOC: " << 100 * c->SOC() << '\n';
   std::vector<double> voltage;
