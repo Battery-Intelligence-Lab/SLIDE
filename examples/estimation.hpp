@@ -1,10 +1,10 @@
 /*
- * drive_cycles.hpp
+ * estimation.hpp
  *
- *  Example estimation functions;
+ * Example estimation functions;
  *
- *  Created on: 09 Nov 2022
- *   Author(s): Volkan Kumtepeli
+ * Created on: 09 Nov 2022
+ * Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once
