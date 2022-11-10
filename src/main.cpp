@@ -141,26 +141,26 @@ int main()
   // Timings:
 
   slide::examples::estimatingOCVparameters();
-  slide::examples::drive_cycle_artemis();
+  // slide::examples::drive_cycle_artemis();
 
 
-  std::unique_ptr<slide::StorageUnit> cs[2];
-  cs[0] = std::make_unique<slide::Cell_Bucket>();
-  cs[1] = std::make_unique<slide::Cell_Bucket>();
+  // std::unique_ptr<slide::StorageUnit> cs[2];
+  // cs[0] = std::make_unique<slide::Cell_Bucket>();
+  // cs[1] = std::make_unique<slide::Cell_Bucket>();
 
-  std::string n = "na";
-  double T = 300;
-  bool checkCells = false;
+  // std::string n = "na";
+  // double T = 300;
+  // bool checkCells = false;
 
-  std::unique_ptr<slide::Module_s> mp(new slide::Module_s(n, T, true, false, 2, 1, 1));
+  // std::unique_ptr<slide::Module_s> mp(new slide::Module_s(n, T, true, false, 2, 1, 1));
 
-  mp->setSUs(cs, checkCells, true);
+  // mp->setSUs(cs, checkCells, true);
 
-  auto tst = mp->Vmin();
-  std::cout << tst << '\n';
-  std::cout << mp->Vmax() << '\n';
-  std::cout << mp->VMIN() << '\n';
-  std::cout << mp->VMAX() << '\n';
+  // auto tst = mp->Vmin();
+  // std::cout << tst << '\n';
+  // std::cout << mp->Vmax() << '\n';
+  // std::cout << mp->VMIN() << '\n';
+  // std::cout << mp->VMAX() << '\n';
 
   //!< Slide-pack tests:
 

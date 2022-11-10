@@ -629,7 +629,7 @@ auto hierarchicalOCVfit(int hmax, slide::FixedData<double> AMp_space, slide::Fix
   return std::pair(par, err); //!< Return parameters and error.
 }
 
-void estimateOCVparameters()
+void estimateOCVparameters() // #TODO this function is slow and hand-tuned. Change with determining sn and AMp from boundary.
 {
   /*
    * Function which will find the parameters which best fit the OCV curve of the user.
@@ -709,16 +709,16 @@ void estimateOCVparameters()
 
   //!< //!< Define the search space for the amount of active material on each electrode
   constexpr double step = 0.02; //!< take steps of 5% of the guessed active material
-  constexpr double AMmax = 5;   //!< the maximum amount of active material is 5 times the guessed amount
-  constexpr double AMmin = 0;   //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
+  constexpr double AMmax = 2.5; //!< the maximum amount of active material is 5 times the guessed amount
+  constexpr double AMmin = 1;   //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
 
   //!< Define the search space for the initial lithium fractions at each electrode
-  auto sp_space = slide::linspace_fix(0.0, 0.5, 51); //!< From 0 to 1 lithium fraction 5% increase of the lithium fraction
-  auto sn_space = slide::linspace_fix(0.5, 1.0, 51);
+  auto sp_space = slide::linspace_fix(0.38, 0.4, 51); //!< From 0 to 1 lithium fraction 5% increase of the lithium fraction
+  auto sn_space = slide::linspace_fix(0.55, 0.58, 51);
 
   //!< Define the search space for the amount of active material on each electrode
-  auto AMp_space = slide::range_fix(AMmin * AMp_guess, AMmax * AMp_guess + 3.2 * step * AMp_guess, step * AMp_guess); //!< From 0 to 5x of guessed active material with 10% steps.
-  auto AMn_space = slide::range_fix(AMmin * AMn_guess, AMmax * AMn_guess, step * AMn_guess);
+  auto AMp_space = slide::linspace_fix(AMmin * AMp_guess, AMmax * AMp_guess, 100); //!< From 0 to 5x of guessed active material with 10% steps.
+  auto AMn_space = slide::linspace_fix(AMmin * AMn_guess, AMmax * AMn_guess, 100);
 
 
   //!< ***************************************************** 3 Fit the parameters ***********************************************************************
@@ -790,7 +790,7 @@ void estimateOCVparameters()
   output << "anode lithium fraction at 0% SOC" << ',' << fn[2] << '\n';
   output << "capacity of the cell in Ah" << ',' << cap << '\n';
   output << "maximum voltage of the cell" << ',' << OCVcell.y[0] << '\n';
-  output << "minimum voltage of the cell" << ',' << OCVcell.y[ncell - 1] << '\n';
+  output << "minimum voltage of the cell" << ',' << OCVcell.y.back() << '\n';
   output << "The error on the OCV curve with this fit is" << ',' << err << '\n';
 
   //!< then note down the settings used to get this fit

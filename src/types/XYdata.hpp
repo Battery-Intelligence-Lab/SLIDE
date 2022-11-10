@@ -61,7 +61,7 @@ public:
 
   void resize(size_t n) { x.resize(n), y.resize(n); }
 
-  double interp(double x_i, bool print = false, bool bound = true)
+  double interp(double x_i, bool print = false, bool bound = true) // #TODO cannot put const here.
   {
     return linInt(print, bound, x, y, x.size(), x_i, is_fixed);
   }

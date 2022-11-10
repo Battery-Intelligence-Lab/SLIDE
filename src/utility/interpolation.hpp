@@ -23,7 +23,7 @@
 
 namespace slide {
 template <typename Tx, typename Ty>
-auto linInt_noexcept(bool bound, Tx &xdat, const Ty &ydat, int nin, double x, bool is_fixed = false)
+auto linInt_noexcept(bool bound, Tx &xdat, Ty &ydat, int nin, double x, bool is_fixed = false)
 {
   /*
    * function for linear interpolation with the data points provided as two arrays
@@ -88,7 +88,7 @@ auto linInt_noexcept(bool bound, Tx &xdat, const Ty &ydat, int nin, double x, bo
 }
 
 template <typename Tx, typename Ty>
-double linInt(bool verbose, bool bound, Tx &xdat, const Ty &ydat, int nin, double x, bool is_fixed = false)
+double linInt(bool verbose, bool bound, Tx &xdat, Ty &ydat, int nin, double x, bool is_fixed = false)
 {
   /*
    * function for linear interpolation with the data points provided as two arrays

@@ -415,6 +415,7 @@ slide_pack integration:
 - [x] getVariations() is deleted since it is not necessary to hold these variables inside cells. 
 - [x] For some reason slide-pack had different LAM parameters (new fitting?). I will test the difference. 
 - [ ] Cell_SPM should not hold all ageing model parameters. 
+- [ ] Determine sn and AMp from boundary conditions. They are very sensitive. 
 
 ### C++20 changes (yay!):
 - [ ] std::span for state assignments. 
