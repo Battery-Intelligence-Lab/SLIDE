@@ -136,12 +136,12 @@ int main()
 
   // slide::benchmarks::run_Cell_Bucket();
   // slide::benchmarks::run_Cell_ECM();
-  slide::benchmarks::run_Cell_SPM();
+  // slide::benchmarks::run_Cell_SPM();
 
   // Timings:
 
   // slide::examples::estimatingOCVparameters();
-  // slide::examples::drive_cycle_artemis();
+  slide::examples::drive_cycle_artemis();
 
 
   // std::unique_ptr<slide::StorageUnit> cs[2];

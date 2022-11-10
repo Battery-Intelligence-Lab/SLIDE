@@ -327,7 +327,7 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   OCV_curves = OCVcurves::makeOCVcurves(cellType::KokamNMC);
 
-  setCapacity(16); //!< Parameters are given for 16 Ah high-power, prismatic KokamNMC cell. (SLPB78205130H)
+  setCapacity(17); //!< Parameters are given for 16 Ah high-power, prismatic KokamNMC cell. (SLPB78205130H)
 
   //!< Set initial state:
   st.T() = settings::T_ENV;
@@ -354,8 +354,8 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   st.delta_pl() = 0; //!< thickness of the plated lithium layer. You can start with 0 here
 
-  constexpr double fp = 0.689332; //!< lithium fraction in the cathode at 50% soc (3.68136 V) [-]
-  constexpr double fn = 0.479283; //!< lithium fraction in the anode at 50% soc (3.68136 V) [-]
+  constexpr double fp = 0.689332; //!< 0.689332 lithium fraction in the cathode at 50% soc (3.68136 V) [-]
+  constexpr double fn = 0.479283; //!< 0.479283 lithium fraction in the anode at 50% soc (3.68136 V) [-]
   setC(fp, fn);
   st.SOC() = 0.5; //!< Since fp and fn are set at 50%.
 
