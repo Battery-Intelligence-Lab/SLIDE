@@ -140,8 +140,8 @@ int main()
 
   // Timings:
 
-  slide::examples::estimatingOCVparameters();
-  // slide::examples::drive_cycle_artemis();
+  // slide::examples::estimatingOCVparameters();
+  slide::examples::drive_cycle_artemis();
 
 
   // std::unique_ptr<slide::StorageUnit> cs[2];

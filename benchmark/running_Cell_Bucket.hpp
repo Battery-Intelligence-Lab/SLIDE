@@ -69,24 +69,25 @@ inline void run_Cell_SPM()
   constexpr size_t N = 15;
 
   auto c = Cell_SPM();
-  auto cyc = Cycler(&c, ID);
-
-  double Ah, Wh, dtime;
-  for (size_t i{ 0 }; i < N; i++) {
-
-
-    cyc.CCCV(1, 4, 0.1, 1, 10, Ah, Wh, dtime);
-    cyc.CCCV(1, 3, 0.1, 1, 10, Ah, Wh, dtime);
-  }
-
-  c.writeData("test");
   std::cout << "V: " << c.V() << '\n';
-  std::cout << "Wh: " << Wh << '\n';
-  std::cout << "Finished run_Cell_SPM in " << clk << ".\n";
+  // auto cyc = Cycler(&c, ID);
+
+  // double Ah, Wh, dtime;
+  // for (size_t i{ 0 }; i < N; i++) {
 
 
-  std::cout << "Printing timings:\n";
-  c.getTimings().print();
+  //   cyc.CCCV(1, 4, 0.1, 1, 10, Ah, Wh, dtime);
+  //   cyc.CCCV(1, 3, 0.1, 1, 10, Ah, Wh, dtime);
+  // }
+
+  // c.writeData("test");
+  // std::cout << "V: " << c.V() << '\n';
+  // std::cout << "Wh: " << Wh << '\n';
+  // std::cout << "Finished run_Cell_SPM in " << clk << ".\n";
+
+
+  // std::cout << "Printing timings:\n";
+  // c.getTimings().print();
 };
 
 } // namespace slide::benchmarks
