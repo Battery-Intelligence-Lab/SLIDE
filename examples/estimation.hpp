@@ -18,6 +18,6 @@ namespace slide::examples {
 
 inline void estimatingOCVparameters()
 {
-  slide::estimateOCVparameters();
+  slide::estimateOCVparameters(); // Solution Kokam 2.71 [sp, sn, AMp, AMn] = [0.3853; 0.5645; 3.5997e-06; 6.1982e-06];
 }
 } // namespace slide::examples
