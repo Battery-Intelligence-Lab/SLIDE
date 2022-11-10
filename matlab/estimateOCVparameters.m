@@ -8,6 +8,7 @@ OCVp = load('../data/OCVfit_cathode.csv'); % stochiometry vs cathode potential
 OCVn = load('../data/OCVfit_anode.csv'); % stochiometry vs anode potential
 
 OCV  = load('../data/OCVfit_cell.csv'); % Ah vs full cell OCV
+OCV(:,1) = (16/OCV(end,1))*OCV(:,1);
 
 Ah_cell = OCV(:,1);
 n = 1;
@@ -34,26 +35,22 @@ f2 = @(x) norm(f(x))^2;
 f3 = @(x) norm(residualFun(x, OCVp, OCVn, OCV))^2;
 
 x3 = [0.3853; 0.5645; 3.5997e-06; 6.1982e-06]; % BEST solution
-x4 = [0.504064; 0.596899; 3.9812e-06; 5.56278e-06];     
-xC = [0.385932, 0.569224, 3.60137e-06,  6.14359e-06];
 
-f3(xC)
+x_best_16Ah = [0.3853, 0.5647, 2.1171e-05, 3.6459e-05]; % Best solution if Cell was 16 Ah. AMp and AMn just scaled by 16/2.71 = 5.88
+
 f3(x3)
-f3(x5_best)
-
 %f2(x4);
 
 %%
 
-[x,resnorm,residual,exitflag,output] = lsqnonlin(f,x03([1,3]),lb([1,3]),ub([1,3]),optimoptions('lsqnonlin',Display='iter-detailed'));
+%[x,resnorm,residual,exitflag,output] = lsqnonlin(f,x03([1,3]),lb([1,3]),ub([1,3]),optimoptions('lsqnonlin',Display='iter-detailed'));
 
 
-x_fmincon = fmincon(f2,x3([1,3]),[],[],[],[],lb([1,3]),ub([1,3]),[],optimoptions('fmincon',Display='iter'));
+x_fmincon = fmincon(f2,[0.3853, 2.1171e-05],[],[],[],[],lb([1,3]),ub([1,3]),[],optimoptions('fmincon',Display='iter'));
 
 
 f2(x_fmincon);
-x_particle = particleswarm(f2, 2, lb([1,3]), ub([1,3]), optimoptions('particleswarm','Display','iter','SwarmSize',5000))
-
+x_particle = particleswarm(f2, 2, lb([1,3]), ub([1,3]), optimoptions('particleswarm','Display','iter','SwarmSize',5000));
 
 
 function residuals = residualFun(x, OCVp, OCVn, OCV)
