@@ -58,9 +58,6 @@ public:
 
   virtual double getThotSpot() override { return T(); }
 
-  virtual std::span<double> viewVariations() { return {}; } //!< Return the parameters of this cell's variation
-  //!< void getStates(getStates_t s) = 0;
-
   //!< double getRtot() = 0;
 
   virtual Status checkCurrent(bool checkV, bool print) noexcept
