@@ -416,6 +416,7 @@ slide_pack integration:
 - [x] For some reason slide-pack had different LAM parameters (new fitting?). I will test the difference. 
 - [ ] Cell_SPM should not hold all ageing model parameters. 
 - [ ] Determine sn and AMp from boundary conditions. They are very sensitive. 
+- [ ] CHANGELOG.md is added but needs to be populated from completed features here. 
 
 ### C++20 changes (yay!):
 - [ ] std::span for state assignments. 
