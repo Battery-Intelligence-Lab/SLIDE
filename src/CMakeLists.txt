@@ -13,12 +13,6 @@ add_subdirectory(procedures)
 add_subdirectory(factories)
 add_subdirectory(settings)
 
-# add_subdirectory(unit_tests)
-# target_sources(src
-#   PRIVATE
-#   slide.hpp
-# )
-
 target_link_libraries(src
   PRIVATE
   cells
@@ -29,6 +23,5 @@ target_link_libraries(src
   procedures
   factories
   settings
-  # unit_tests
   # pthread -> For WSL.
 )

@@ -131,7 +131,6 @@ int main()
   auto numThreads = std::thread::hardware_concurrency(); //!< asd
   std::cout << "Available number of threads : " << numThreads << '\n';
 
-  //
   //!< Benchmarks:
 
   // slide::benchmarks::run_Cell_Bucket();
@@ -141,7 +140,7 @@ int main()
   // Timings:
 
   // slide::examples::estimatingOCVparameters();
-  slide::examples::drive_cycle_artemis();
+  // slide::examples::drive_cycle_artemis();
 
 
   // std::unique_ptr<slide::StorageUnit> cs[2];

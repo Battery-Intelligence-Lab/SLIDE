@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.17)
-add_library(unit_tests STATIC)
+add_library(unit STATIC)
 
-target_sources(unit_tests
+target_sources(unit
   PRIVATE
     Cell_Bucket_test.cpp
   PUBLIC
     unit_tests.hpp
   )
 
-target_include_directories(unit_tests PUBLIC .)
+target_include_directories(unit PUBLIC .)
 
 
 
