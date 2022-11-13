@@ -31,7 +31,7 @@ int main()
    */
 
   //!< print that you start simulations
-  //!< slide::unit_tests::test_all();
+  //!< slide::tests::unit::test_all();
   std::cout << "Start simulations" << std::endl;
 
   //!< Make a clock to measure how long the simulation takes

@@ -327,7 +327,7 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   OCV_curves = OCVcurves::makeOCVcurves(cellType::KokamNMC);
 
-  setCapacity(17); //!< Parameters are given for 16 Ah high-power, prismatic KokamNMC cell. (SLPB78205130H)
+  setCapacity(16); //!< Parameters are given for 16 Ah high-power, prismatic KokamNMC cell. (SLPB78205130H)
 
   //!< Set initial state:
   st.T() = settings::T_ENV;
@@ -726,6 +726,9 @@ void Cell_SPM::setC(double cp0, double cn0)
   sparam.s_dai_update = false;
   sparam.s_lares_update = false;
 
+  Vcell_valid = false;
+
+
   if constexpr (settings::printBool::printCellFunctions)
     std::cout << "Cell_SPM::setC terminating.\n";
 }
@@ -737,7 +740,8 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
 
   st.rDCcc() *= resf; //!< current collector
   st.rDCp() *= resf;  //!< cathode
-  st.rDCn() *= resf;  //!< anode
+  st.rDCn() *= resf;  //!< anode   #TODO if you memoize Rdc then getRdc here.
+
 
   //!< set the capacity
   setCapacity(Cap() * capf); //!< nominal capacity

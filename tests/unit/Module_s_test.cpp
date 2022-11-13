@@ -5,12 +5,8 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
-#include "../procedures/procedures.hpp"
-#include "../cells/cells.hpp"
-#include "../modules/modules.hpp"
-#include "../system/Battery.hpp"
-
-#include "unit_tests.hpp"
+#include "../tests_util.hpp"
+#include "../../src/slide.hpp"
 
 #include <cmath>
 #include <cassert>
@@ -19,10 +15,10 @@
 #include <memory>
 #include <typeinfo>
 
-namespace slide::unit_tests {
+namespace slide::tests::unit {
 
 //!< ********************************************************** test functions from Module_base *******************************************************************
-void test_BasicGetters()
+bool test_BasicGetters()
 {
   //!< int Module_base::getNcells()
   //!< int Module_base::getNstates()
@@ -45,7 +41,7 @@ void test_BasicGetters()
   assert(mp->getNstates() == ncel * cp1->getNstates() + 1);
   assert(mp->T() == T);
 }
-void test_getCellV()
+bool test_getCellV()
 {
   //!< Module_base::getCellVotages
 
@@ -67,9 +63,9 @@ void test_getCellV()
   assert(mp->Vi(0) == v[0]);
   assert(mp->Vi(1) == v[1]);
 }
-void test_getStates()
+bool test_getStates()
 {
-  //!< void Module_base::getStates(double s[], int nin, int& nout)
+  //!< bool Module_base::getStates(double s[], int nin, int& nout)
   constexpr int ncel = 2;
   constexpr int nin = settings::STORAGEUNIT_NSTATES_MAX;
   constexpr int nin1 = settings::CELL_NSTATE_MAX;
@@ -96,7 +92,7 @@ void test_getStates()
     assert(s2[i] == s[nout1 + i]);
   }
 }
-void test_getCells()
+bool test_getCells()
 {
 
   constexpr int ncel = 2;
@@ -183,9 +179,9 @@ void test_getCells()
   assert(cs2[0]->V() > v1);
   assert(cs2[1]->V() > v2);
 }
-void test_setT()
+bool test_setT()
 {
-  //!< void Module_base::setT(double Tnew)
+  //!< bool Module_base::setT(double Tnew)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -201,7 +197,7 @@ void test_setT()
   mp->setT(Tnew);
   assert(mp->T() == Tnew);
 }
-void test_setStates(bool testError)
+bool test_setStates(bool testError)
 {
   //!< double Module_base::setStates(double s[], int nin, bool checkStates, bool print)
 
@@ -266,9 +262,9 @@ void test_setStates(bool testError)
     };
   }
 }
-void test_setCells(bool testErrors)
+bool test_setCells()
 {
-  //!< void Module_base::setCells(Cell_Bucket c[], int nin, bool checkCells, bool print)
+  //!< bool Module_base::setCells(Cell_Bucket c[], int nin, bool checkCells, bool print)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -309,7 +305,7 @@ void test_setCells(bool testErrors)
   assert(cell1->SOC() == 0.5);                       //!< cells[2] is cell3 with standard soc
   assert(mp->getNSUs() == ncel);
 
-  if (testErrors) {
+  if () {
     //!< try setting cells with different currents
     double Inew = 1;
     cp2->setCurrent(Inew);
@@ -331,7 +327,7 @@ void test_setCells(bool testErrors)
 }
 
 //!< ********************************************************* test functions from Module_base_s *******************************************************************
-void test_Constructor()
+bool test_Constructor()
 {
   //!< Module_base_s::Module_base_s()
   //!< Module_base_s::Module_base_s(int ncellsi, Cell_Bucket ci[], double Ti, bool checkCells, bool print)
@@ -362,7 +358,7 @@ void test_Constructor()
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "na_cell");
 }
-void test_BasicGetters_s()
+bool test_BasicGetters_s()
 {
   //!< double Module_base_s::Cap()
   //!< double Module_base_s::Vmin(){
@@ -386,7 +382,7 @@ void test_BasicGetters_s()
   assert(mp->I() == 0);
   assert(mp->V() == 2 * cp1->V());
 }
-void test_setI(bool testErrors)
+bool test_setI()
 {
   //!< double Module_base_s::setCurrent(double Inew, bool checkV, bool print)
 
@@ -416,7 +412,7 @@ void test_setI(bool testErrors)
   assert(mp->V() > 2 * v1); //!< voltage must increase
 
   //!< test things which should break
-  if (testErrors) {
+  if () {
     Inew = 10000;                    //!< very large current, should give too low voltage
     V = mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
     try {
@@ -434,7 +430,7 @@ void test_setI(bool testErrors)
     };
   }
 }
-void test_validStates(bool testErrors)
+bool test_validStates()
 {
   //!< bool Module_base_s::validStates(double s[], int nin, bool print)
 
@@ -459,7 +455,7 @@ void test_validStates(bool testErrors)
   s[nout - 1] = 273 + 5;
   assert(mp->validStates(s, nout));
 
-  if (testErrors) {
+  if () {
     //!< wrong length
     int nc = settings::CELL_NSTATE_MAX;
     double sc[nc];
@@ -478,7 +474,7 @@ void test_validStates(bool testErrors)
     assert(!mp->validStates(s, nout, false));
   }
 }
-void test_validCells(bool testErrors)
+bool test_validCells()
 {
   //!< bool Module_base_s::validCells(Cell_Bucket c[], int nin, bool print)
   constexpr int ncel = 2;
@@ -506,7 +502,7 @@ void test_validCells(bool testErrors)
   std::unique_ptr<StorageUnit> cs3[3] = { cp1, cp2, cp3 };
   assert(mp->validSUs(cs3, 3));
 
-  if (testErrors) {
+  if () {
     //!< different currents
     cp3->setCurrent(1);
     assert(cs3[2]->I() == 1); //!< array of pointers, so it should have been changed automatically in the array
@@ -515,9 +511,9 @@ void test_validCells(bool testErrors)
     //!< validSU does not check whether cells are outside their voltage range
   }
 }
-void test_timeStep_CC()
+bool test_timeStep_CC()
 {
-  //!< void Module_base_s::timeStep_CC(double dt)
+  //!< bool Module_base_s::timeStep_CC(double dt)
 
   constexpr int ncel = 2;
   std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
@@ -576,7 +572,7 @@ void test_timeStep_CC()
   }
 }
 
-void test_Modules_s_ECM(bool testErrors)
+bool test_Modules_s_ECM()
 {
   //!< test series modules make out of ECM cells
   //!< this just repeats the other tests but with a different Cell_Bucket type
@@ -707,7 +703,7 @@ void test_Modules_s_ECM(bool testErrors)
   }
 }
 
-void test_Modules_s_SPM(bool testErrors)
+bool test_Modules_s_SPM()
 {
   //!< test series modules make out of ECM cells
   //!< this just repeats the other tests but with a different Cell_Bucket type
@@ -837,7 +833,7 @@ void test_Modules_s_SPM(bool testErrors)
   }
 }
 
-void test_Hierarchichal()
+bool test_Hierarchichal()
 {
   //!< test series modules made out of other series modules
 
@@ -898,7 +894,7 @@ void test_Hierarchichal()
   assert(mp->V() > Vini);
 }
 
-void test_Hierarchical_Cross()
+bool test_Hierarchical_Cross()
 {
   //!< test series-modules made out of parallel-modules
 
@@ -954,49 +950,50 @@ void test_Hierarchical_Cross()
   assert(mp->V() > Vini);
 }
 
-//!< void test_copy_s()
-//!< {
-//!< 	/*
-//!< 	 * test the copy-function
-//!< 	 */
+bool test_copy_s()
+{
+  //!< 	/*
+  //!< 	 * test the copy-function
+  //!< 	 */
 
-//!< 	//!< make module
-//!< 	constexpr int ncel = 2;
-//!< 	std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-//!< 	std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-//!< 	std::unique_ptr<StorageUnit> cs[ncel] = {cp1, cp2};
-//!< 	std::string n = "na";
-//!< 	double v1 = cp1->V();
-//!< 	double T = settings::T_ENV;
-//!< 	bool checkCells = false;
-//!< 	std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-//!< 	mp->setSUs(cs, ncel, checkCells, true);
+  //!< 	//!< make module
+  //!< 	constexpr int ncel = 2;
+  //!< 	std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
+  //!< 	std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
+  //!< 	std::unique_ptr<StorageUnit> cs[ncel] = {cp1, cp2};
+  //!< 	std::string n = "na";
+  //!< 	double v1 = cp1->V();
+  //!< 	double T = settings::T_ENV;
+  //!< 	bool checkCells = false;
+  //!< 	std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
+  //!< 	mp->setSUs(cs, ncel, checkCells, true);
 
-//!< 	//!< copy this one and check they are identical
-//!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
-//!< 	Module_s *c22 = dynamic_cast<Module_s *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
-//!< 	assert(mp->V() == c22->V());
-//!< 	std::unique_ptr<StorageUnit> corig[ncel], cnew[ncel];
-//!< 	int nout;
-//!< 	mp->getSUs(corig, ncel, nout);
-//!< 	c22->getSUs(cnew, ncel, nout);
-//!< 	for (int i = 0; i < mp->getNSUs(); i++)
-//!< 		assert(corig[i]->V() == cnew[i]->V());
+  //!< 	//!< copy this one and check they are identical
+  //!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
+  //!< 	Module_s *c22 = dynamic_cast<Module_s *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+  //!< 	assert(mp->V() == c22->V());
+  //!< 	std::unique_ptr<StorageUnit> corig[ncel], cnew[ncel];
+  //!< 	int nout;
+  //!< 	mp->getSUs(corig, ncel, nout);
+  //!< 	c22->getSUs(cnew, ncel, nout);
+  //!< 	for (int i = 0; i < mp->getNSUs(); i++)
+  //!< 		assert(corig[i]->V() == cnew[i]->V());
 
-//!< 	//!< change the copied version, and ensure the old one is still the same
-//!< 	c22->setCurrent(1 * ncel, false, false); //!< discharge
-//!< 	for (int t = 0; t < 10; t++)
-//!< 		c22->timeStep_CC(2);
-//!< 	mp->getSUs(corig, ncel, nout);
-//!< 	c22->getSUs(cnew, ncel, nout);
-//!< 	for (int i = 0; i < mp->getNSUs(); i++)
-//!< 	{
-//!< 		assert(corig[i]->V() == v1);
-//!< 		assert(cnew[i]->V() < v1);
-//!< 	}
-//!< }
+  //!< 	//!< change the copied version, and ensure the old one is still the same
+  //!< 	c22->setCurrent(1 * ncel, false, false); //!< discharge
+  //!< 	for (int t = 0; t < 10; t++)
+  //!< 		c22->timeStep_CC(2);
+  //!< 	mp->getSUs(corig, ncel, nout);
+  //!< 	c22->getSUs(cnew, ncel, nout);
+  //!< 	for (int i = 0; i < mp->getNSUs(); i++)
+  //!< 	{
+  //!< 		assert(corig[i]->V() == v1);
+  //!< 		assert(cnew[i]->V() < v1);
+  //!< 	}
+  return true;
+}
 
-void test_CoolSystem_s()
+bool test_CoolSystem_s()
 {
   /*
    * test the cool system design
@@ -1235,35 +1232,37 @@ void test_CoolSystem_s()
 }
 
 //!< ***************************************************************** test all functions *************************************************************************
-void test_Module_s_testAll(bool testErrors)
+int test_all_Module_s()
 {
   //!< if we test the errors, suppress error messages
   //!< "Pure" unit tests (series modules with Cells)
-  test_Constructor();
-  test_BasicGetters();
-  test_BasicGetters_s();
-  test_setI(testErrors);
+  if (!TEST(test_Constructor, "Cell_test")) return 1;
+  if (!TEST(test_BasicGetters, "Cell_test")) return 2;
+  if (!TEST(test_BasicGetters_s, "Cell_test")) return 3;
+  if (!TEST(test_setI, "Cell_test")) return 4;
 
-  test_getCellV();
-  test_getStates();
-  test_getCells();
-  test_setT();
+  if (!TEST(test_getCellV, "Cell_test")) return 5;
+  if (!TEST(test_getStates, "Cell_test")) return 6;
+  if (!TEST(test_getCells, "Cell_test")) return 7;
+  if (!TEST(test_setT, "Cell_test")) return 8;
 
-  test_setStates(testErrors);
-  test_validCells(testErrors); //!< includes setState
-  test_validStates(testErrors);
-  test_setCells(testErrors); //!< (includes validCells)
+  if (!TEST(test_setStates, "Cell_test")) return 9;
+  if (!TEST(test_validCells, "Cell_test")) return 10; //!< includes setState
+  if (!TEST(test_validStates, "Cell_test")) return 11;
+  if (!TEST(test_setCells, "Cell_test")) return 12; //!< (includes validCells)
 
-  test_timeStep_CC();
-  test_copy_s();
+  if (!TEST(test_timeStep_CC, "Cell_test")) return 13;
+  if (!TEST(test_copy_s, "Cell_test")) return 14;
 
   //!< Combinations
-  test_Modules_s_ECM(testErrors);
-  test_Modules_s_SPM(testErrors);
-  test_Hierarchichal();      //!< series of series
-  test_Hierarchical_Cross(); //!< series of parallel
+  if (!TEST(test_Modules_s_ECM, "Cell_test")) return 15;
+  if (!TEST(test_Modules_s_SPM, "Cell_test")) return 16;
+  if (!TEST(test_Hierarchichal, "Cell_test")) return 17;      //!< series of series
+  if (!TEST(test_Hierarchical_Cross, "Cell_test")) return 18; //!< series of parallel
 
   //!< coolsystem (includes hierarchical modules and uses SPM cells)
-  test_CoolSystem_s();
+  if (!TEST(test_CoolSystem_s, "Cell_test")) return 19;
 }
-} // namespace slide::unit_tests
+} // namespace slide::tests::unit
+
+int main() { return slide::tests::unit::test_all_Module_s(); }

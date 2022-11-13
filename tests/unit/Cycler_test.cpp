@@ -5,15 +5,8 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
-#include "Cycler.hpp"
-
-#include "Cell.hpp"
-#include "Cell_ECM.hpp"
-#include "Cell_SPM.hpp"
-#include "unit_tests.hpp"
-#include "constants.hpp"
-#include "Module_s.hpp"
-#include "Module_p.hpp"
+#include "../tests_util.hpp"
+#include "../../src/slide.hpp"
 
 #include <cmath>
 #include <random>
@@ -21,8 +14,8 @@
 #include <iostream>
 #include <fstream>
 
-namespace slide::unit_tests {
-void test_Cycler_SU(std::unique_ptr<StorageUnit> su, bool testCV)
+namespace slide::tests::unit {
+bool test_Cycler_SU(std::unique_ptr<StorageUnit> su, bool testCV)
 {
   /*
    * define all the tests with one storage unit
@@ -188,7 +181,7 @@ void test_Cycler_SU(std::unique_ptr<StorageUnit> su, bool testCV)
   }
 }
 
-void test_CyclerCell()
+bool test_CyclerCell()
 {
   /*
    * Test a cycler with cells, and modules made out of cells
@@ -256,7 +249,7 @@ void test_CyclerCell()
   msp->setSUs(MU, nm, checkCells, true); //!< three module_p in series
   test_Cycler_SU(msp, checkCV);
 }
-void test_CyclerECM()
+bool test_CyclerECM()
 {
   /*
    * Test a cycler with ECM cells, and modules made out of ECM cells
@@ -328,7 +321,7 @@ void test_CyclerECM()
   test_Cycler_SU(msp, checkCV);
 }
 
-void test_CyclerSPM()
+bool test_CyclerSPM()
 {
   /*
    * Test a cycler with SPM cells, s and p modules out of SPM cells and complex modules
@@ -406,7 +399,7 @@ void test_CyclerSPM()
   //!< so the capacity check with and without diagnostic will give a different result
 }
 
-void test_CyclerVariations(double Rc)
+bool test_CyclerVariations(double Rc)
 {
   /*
    * Test modules with cell to cell variations and contact resistance (using SPM cells)
@@ -461,7 +454,7 @@ void test_CyclerVariations(double Rc)
   test_Cycler_SU(mpp, false); //!< don't do CV phases
 }
 
-void test_Cycler_writeData(int control)
+bool test_Cycler_writeData(int control)
 {
   /*
    * Write the cell data during a CCCV cycle.
@@ -557,7 +550,7 @@ void test_Cycler_writeData(int control)
   ms->writeData("test_writeData_sModule");
 }
 
-void test_Cycler_CoolSystem()
+bool test_Cycler_CoolSystem()
 {
   /*
    * test the cool system design with proper cycle ageing
@@ -751,14 +744,22 @@ void test_Cycler_CoolSystem()
   }
 }
 
-void test_Cycler(bool testErrors, int coolcontrol)
+int test_all_Cycler()
 {
-  test_CyclerCell();
-  test_CyclerECM();
-  test_CyclerSPM();
-  test_CyclerVariations(0.0);
-  test_CyclerVariations(0.001 / 5.0); //!< larger currents -> smaller resistance or we're fucked by the resistive voltage drop
-  test_Cycler_writeData(coolcontrol);
-  test_Cycler_CoolSystem();
+  auto test_CyclerVariations_0 = []() { return test_CyclerVariations(0.0); };
+  auto test_CyclerVariations_high = []() { return test_CyclerVariations(0.001 / 5.0); };
+  auto test_Cycler_writeData_1 = []() { return test_Cycler_writeData(1); };
+
+  if (!TEST(test_CyclerCell, "test_CyclerCell")) return 1;
+  if (!TEST(test_CyclerECM, "test_CyclerECM")) return 2;
+  if (!TEST(test_CyclerSPM, "test_CyclerSPM")) return 3;
+  if (!TEST(test_CyclerVariations_0, "test_CyclerVariations_0")) return 4;
+  if (!TEST(test_CyclerVariations_high, "test_CyclerVariations_high")) return 5;
+  if (!TEST(test_Cycler_writeData_1, "test_Cycler_writeData_1")) return 6;
+  if (!TEST(test_Cycler_CoolSystem, "test_Cycler_CoolSystem")) return 7;
+
+  return 0;
 }
-} // namespace slide::unit_tests
+} // namespace slide::tests::unit
+
+int main() { return slide::tests::unit::test_all_Cycler(); }

@@ -5,22 +5,18 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
-#include "unit_tests.hpp"
-#include "../cells/Cell_ECM/Cell_ECM.hpp"
-#include "settings.hpp"
+#include "../tests_util.hpp"
+#include "../../src/slide.hpp"
 
 #include <cassert>
 #include <iostream>
 #include <fstream>
 #include <span>
 
-namespace slide::unit_tests {
+namespace slide::tests::unit {
 
-void test_constructor_ECM()
+bool test_constructor_ECM()
 {
-  //!< Cell_ECM();
-  //!< Cell_ECM(double capin, double SOCin);
-
   Cell_ECM c1;
   assert(c1.Cap() == 16);
   assert(c1.Vmin() == 2.7);
@@ -40,15 +36,14 @@ void test_constructor_ECM()
   assert(c2.getIr() == 0);
   assert(c2.SOC() == 1);
   assert(c2.T() == settings::T_ENV);
+
+  return true;
 }
 
-void test_getStates_ECM(bool testErrors)
+bool test_getStates_ECM()
 {
-  //!< void getStates(double s[], int nin, int&nout);
   Cell_ECM c1;
-  int nin = settings::CELL_NSTATE_MAX;
   std::vector<double> s;
-  int n;
 
   c1.getStates(s);
   assert(s[0] == 0.5);             //!< soc
@@ -56,19 +51,13 @@ void test_getStates_ECM(bool testErrors)
   assert(s[2] == settings::T_ENV); //!< T
   assert(s[3] == 0);               //!< current
 
-  std::span<double> spn{ s };
+  std::span<const double> spn{ s };
+  c1.setStates(spn); //!< #TODO this must throw an error
 
-  if (testErrors) {
-    try {
-      //!< cout<<"There must be an error message after this line"<<endl<<flush; 	//!< changed global verbose variable
-      //!< c1.getStates(s); //!< this must throw an error
-      assert(false);
-    } catch (...) {
-    }
-  }
+  return true;
 }
 
-void test_getV_ECM(bool testErrors)
+bool test_getV_ECM()
 {
   //!< double V(bool print = true); //!< crit is an optional argument
   Cell_ECM c1;
@@ -97,30 +86,12 @@ void test_getV_ECM(bool testErrors)
   Cell_ECM c2(1, 1); //!< make a cell with soC equal to 1
   c2.setCurrent(-1, false, false);
   c2.timeStep_CC(3600); //!< charge further for one hour, now the SOC should be close to 2
-  try {
-    //!< cout<<"There should be no error message after this line"<<endl<<flush;	//!< changed global verbose variable
-    c2.V(false);
-    assert(false);
-  } catch (...) {
-  }
+  c2.V(false);
 
-  if (testErrors) {
-    try {
-      //!< cout<<"There should be an error message after this line"<<endl<<flush;	//!< changed global verbose variable
-      c2.V(true);
-      assert(false);
-    } catch (...) {
-    }
-    try {
-      //!< cout<<"There should be another error message after this line"<<endl<<flush;	//!< changed global verbose variable
-      c2.V();
-      assert(false);
-    } catch (...) {
-    }
-  }
+  return true;
 }
 
-void test_setStates_ECM(bool testErrors)
+bool test_setStates_ECM()
 {
   //!< double setStates(double s[], int nin, bool checkV = true, bool print = true);
   Cell_ECM c1;
@@ -134,7 +105,7 @@ void test_setStates_ECM(bool testErrors)
   i = 2;
   t = 273;
   std::vector<double> s{ soc, ir, t, i };
-  std::span<double> spn{ s };
+  std::span<const double> spn{ s };
   c1.setStates(spn, true, true);
 
   s.clear();
@@ -145,41 +116,31 @@ void test_setStates_ECM(bool testErrors)
   assert(s[3] == i);   //!< current
 
   //!< set invalid states
-  if (testErrors) {
-    soc = 2;
-    t = 0;
-    s[0] = soc;
-    s[2] = t;
-    try {
-      //!< cout<<"There must be three error messages, one about invalid SOC and one invalid T, and one illegal state"<<endl<<flush;	//!< changed global verbose variable
-      c1.setStates(spn);
-      assert(false);
-    } catch (...) {
-    };
+  soc = 2;
+  t = 0;
+  s[0] = soc;
+  s[2] = t;
+  c1.setStates(spn);
 
-    //!< set states which violate voltage
-    soc = 1;
-    ir = -5;
-    t = 273 + 25;
-    i = -1;
-    s[0] = soc;
-    s[1] = ir;
-    s[2] = t;
-    s[3] = i;
-    try {
-      //!< cout<<"There must be one error message about an error when getting the voltage"<<endl<<flush;	//!< changed global verbose variable
-      c1.setStates(s, n);
-      assert(false);
-    } catch (...) {
-    };
-  }
+  //!< set states which violate voltage
+  soc = 1;
+  ir = -5;
+  t = 273 + 25;
+  i = -1;
+  s[0] = soc;
+  s[1] = ir;
+  s[2] = t;
+  s[3] = i;
+
+  c1.setStates(spn);
+
+  return true;
 }
 
-void test_validStates_ECM()
+bool test_validStates_ECM()
 {
   //!< bool validStates(double s[], int nin);
   Cell_ECM c1;
-  int nin = settings::CELL_NSTATE_MAX;
 
   //!< set valid new states
   double soc, ir, i, t;
@@ -187,21 +148,27 @@ void test_validStates_ECM()
   ir = 1;
   i = 2;
   t = 273;
-  double s[nin] = { soc, ir, t, i };
-
-  assert(c1.validStates(s, nin));
+  double s[] = { soc, ir, t, i };
+  std::span<const double> spn{ s };
+  c1.setStates(spn);
+  assert(c1.validStates());
 
   //!< set invalid states
   s[0] = 2; //!< soc
-  assert(!c1.validStates(s, nin));
+  c1.setStates(spn);
+  assert(!c1.validStates());
+
+  c1.setStates(spn);
   s[0] = 0.5; //!< soc
   s[2] = 0;   //!< T
-  assert(!c1.validStates(s, nin));
+  assert(!c1.validStates());
+
+  return true;
 }
 
-void test_timeStep_CC_ECM()
+bool test_timeStep_CC_ECM()
 {
-  //!< void timeStep_CC(double dt);
+  //!< bool timeStep_CC(double dt);
   Cell_ECM c1;
   double I = -1;
   double dt = 5;
@@ -218,26 +185,32 @@ void test_timeStep_CC_ECM()
   c1.timeStep_CC(dt);
   err = c1.SOC() - 0.50;
   assert(err < tol && err > -tol);
+
+  return true;
 }
 
-void testCell_ECM(bool testErrors)
+int test_all_Cell_ECM()
 {
   /*
    * calls all test-functions
    *
    * IN
-   * testErrors 	if true, we will also verify that things which have to go wrong, actually do go wrong
+   *  	if true, we will also verify that things which have to go wrong, actually do go wrong
    * 					this will result in error messages being printed to the terminal
    * 					all the errors are caught, so the code should not crash
    * 				if false, we only test things which should go well
    */
 
   //!< if we test the errors, suppress error messages
-  test_constructor_ECM();
-  test_getStates_ECM(testErrors);
-  test_getV_ECM(testErrors);
-  test_setStates_ECM(testErrors);
-  test_validStates_ECM();
-  test_timeStep_CC_ECM();
+  if (!TEST(test_constructor_ECM, "test_constructor_ECM")) return 1;
+  if (!TEST(test_getStates_ECM, "test_getStates_ECM")) return 2;
+  if (!TEST(test_getV_ECM, "test_getV_ECM")) return 3;
+  if (!TEST(test_setStates_ECM, "test_setStates_ECM")) return 4;
+  if (!TEST(test_validStates_ECM, "test_validStates_ECM")) return 5;
+  if (!TEST(test_timeStep_CC_ECM, "test_timeStep_CC_ECM")) return 6;
+
+  return 0;
 }
-} // namespace slide::unit_tests
+} // namespace slide::tests::unit
+
+int main() { return slide::tests::unit::test_all_Cell_ECM(); }

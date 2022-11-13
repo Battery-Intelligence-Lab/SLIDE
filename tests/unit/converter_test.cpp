@@ -5,17 +5,17 @@
  *   Author(s): Jorn Reniers
  */
 
-#include "converter.hpp"
-#include "unit_tests.hpp"
+#include "../tests_util.hpp"
+#include "../../src/slide.hpp"
 
 #include <cmath>
 #include <cassert>
 #include <iostream>
 #include <fstream>
 
-namespace slide::unit_tests {
+namespace slide::tests::unit {
 
-void testLosses()
+bool testLosses()
 {
   slide::Converter c;
 
@@ -77,9 +77,12 @@ void testLosses()
   */
 }
 
-void test_Converter()
+int test_all_Converter()
 {
+  if (!TEST(testLosses(), "testLosses")) return 1;
 
-  testLosses();
+  return 0;
 }
-} // namespace slide::unit_tests
+} // namespace slide::tests::unit
+
+int main() { return slide::tests::unit::test_all_Converter(); }

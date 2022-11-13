@@ -5,12 +5,8 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
-#include "../procedures/procedures.hpp"
-#include "../cells/cells.hpp"
-#include "../modules/modules.hpp"
-#include "../system/Battery.hpp"
-
-#include "unit_tests.hpp"
+#include "../tests_util.hpp"
+#include "../../src/slide.hpp"
 
 #include <cmath>
 #include <random>
@@ -18,8 +14,8 @@
 #include <iostream>
 #include <fstream>
 
-namespace slide::unit_tests {
-void test_Procedure_cycleAge(double Rc, bool spread, int cool)
+namespace slide::tests::unit {
+bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
 {
   /*
    * Test the ageing procedure with a few different SUs
@@ -155,7 +151,7 @@ void test_Procedure_cycleAge(double Rc, bool spread, int cool)
 #endif
 }
 
-void test_Prcedure_CoolSystem()
+bool test_Prcedure_CoolSystem()
 {
   /*
    * test the cool system design with proper cycle ageing
@@ -334,7 +330,7 @@ void test_Prcedure_CoolSystem()
   }
 }
 
-void test_Procedure_cycleAge_stress()
+bool test_Procedure_cycleAge_stress()
 {
   /*
    * Stress test for CycleAge with parallel modules with large variations
@@ -419,7 +415,7 @@ void test_Procedure_cycleAge_stress()
   p2.cycleAge(mpp4.get(), false); //!< this should write a file called s_module_capacities.csv
 }
 
-void test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID deg, int cool)
+bool test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID deg, int cool)
 {
   /*
    * Test the cycle-ageing procedure with different degradation models to see which produces different knee points.
@@ -548,7 +544,7 @@ void test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
   };
 }
 
-void test_allDegradationModels(int cool)
+bool test_allDegradationModels(int cool)
 {
   /*
    * Test the cycle-ageing procedure with different degradation models to see which produces different knee points.
@@ -649,9 +645,9 @@ void test_allDegradationModels(int cool)
   }*/
 }
 
-void test_Procedure(int cool)
+int test_all_Procedure()
 {
-
+  int cool = 1;
   //!< Test normal procedures, with and without contact resistance and CV phases
   test_Procedure_cycleAge(0, true, cool);
   //!< test with two different values for contact resistance
@@ -670,18 +666,13 @@ void test_Procedure(int cool)
 
   //!< test a specific model
   DEG_ID deg;
-  deg.SEI_id.N = 1;
-  deg.SEI_id[0] = 0;
-  deg.SEI_porosity = 0;
-  deg.CS_id.N = 1;
-  deg.CS_id[0] = 0;
-  deg.CS_diffusion = 0;
-  deg.LAM_id.N = 1;
-  deg.LAM_id[0] = 0;
-  deg.pl_id = 0;
-  deg.SEI_id[0] = 1; //!< kinetic SEI and porosity, with Dai/Laresgoiti LAM
+  deg.SEI_id.add_model(1); //!< kinetic SEI and porosity, with Dai/Laresgoiti LAM
   deg.SEI_porosity = 1;
-  deg.LAM_id[0] = 1;
+  deg.LAM_id.add_model(1);
   //	test_degradationModel(true, true, true, deg, cool);
+
+  return 0;
 }
-} // namespace slide::unit_tests
+} // namespace slide::tests::unit
+
+int main() { return slide::tests::unit::test_all_Procedure(); }

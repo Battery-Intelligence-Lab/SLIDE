@@ -751,13 +751,13 @@ void Cell_SPM::getLaresgoitiStress(bool print, double *sigma_n)
   }
 
   //!< Interpolate linearly to get the stress, Make the output variable
-  *sigma_n = slide::linInt(print, true, xx, yy, 11, zn_surf, is_xx_fixed);
+  *sigma_n = linInt(print, true, xx, yy, 11, zn_surf, is_xx_fixed);
 
   if constexpr (settings::printBool::printCellFunctions)
     std::cout << "Cell_SPM::getLaresgoitiStress terminating.\n";
 }
 
-void Cell_SPM::updateLaresgoitiStress(bool print)
+void Cell_SPM::updateLaresgoitiStress(bool print) // #TODO get and update seems unnecesary.
 {
   /*
    * Function which will update the values stored in the stress variables relating with Laresgoiti's stress model

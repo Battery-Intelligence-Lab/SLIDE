@@ -5,7 +5,7 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
-#include "unit_tests.hpp"
+#include "../tests_util.hpp"
 #include "../../src/slide.hpp"
 
 #include <cmath>
@@ -16,8 +16,8 @@
 #include <vector>
 #include <span>
 
-namespace slide::unit_tests {
-bool Cell_test()
+namespace slide::tests::unit {
+bool Cell_Bucket_test()
 {
   //!< test the constructors
   Cell_Bucket c1;
@@ -239,32 +239,22 @@ bool Copy_test()
   return true;
 }
 
-bool test_Cell_Bucket()
+
+int test_all_Cell_Bucket()
 {
-  /*
-   * calls all test-functions
-   *
-   * IN
-   *  	if true, we will also verify that things which have to go wrong, actually do go wrong
-   * 					this will result in error messages being printed to the terminal
-   * 					all the errors are caught, so the code should not crash
-   * 				if false, we only test things which should go well
-   */
+  if (!TEST(Cell_Bucket_test, "Cell_test")) return 1;
+  if (!TEST(getStates_test, "getStates_test")) return 2;
+  if (!TEST(getV_test, "getV_test")) return 3;
+  if (!TEST(getParent_test, "getParent_test")) return 4;
+  if (!TEST(setCurrent_test, "setCurrent_test")) return 5;
+  if (!TEST(setStates_test, "setStates_test")) return 6;
+  if (!TEST(timeStep_CC_test, "timeStep_CC_test")) return 7;
+  if (!TEST(data_test, "data_test")) return 8;
+  if (!TEST(Copy_test, "Copy_test")) return 9;
 
-  //!< if we test the errors, suppress error messages
-  bool result{ true };
-  result &= TEST(Cell_test, "Cell_test");
-  result &= TEST(getStates_test, "getStates_test");
-  result &= TEST(getV_test, "getV_test");
-  result &= TEST(getParent_test, "getParent_test");
-  result &= TEST(setCurrent_test, "setCurrent_test");
-  result &= TEST(setStates_test, "setStates_test");
-  result &= TEST(timeStep_CC_test, "timeStep_CC_test");
-  result &= TEST(data_test, "data_test");
-  result &= TEST(Copy_test, "Copy_test");
-
-  std::cout << "test_Cell_Bucket is completed successfully!\n\n";
-
-  return result;
+  return 0;
 }
-} // namespace slide::unit_tests
+
+} // namespace slide::tests::unit
+
+int main() { return slide::tests::unit::test_all_Cell_Bucket(); }

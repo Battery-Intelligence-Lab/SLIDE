@@ -5,16 +5,8 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
-#include "Module_p.hpp"
-#include "Cycler.hpp"
-
-#include "Cell.hpp"
-#include "Cell_ECM.hpp"
-#include "Cell_SPM.hpp"
-#include "unit_tests.hpp"
-#include "constants.hpp"
-#include "Module_s.hpp"
-#include "Interpolation.h"
+#include "../tests_util.hpp"
+#include "../../src/slide.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -22,9 +14,9 @@
 #include <iostream>
 #include <fstream>
 
-namespace slide::unit_tests {
+namespace slide::tests::unit {
 
-void test_Constructor_p()
+bool test_Constructor_p()
 {
   //!< Module_base_s::Module_base_s()
   //!< Module_base_s::Module_base_s(int ncellsi, Cell ci[], double Ti, bool checkCells, bool print)
@@ -48,7 +40,7 @@ void test_Constructor_p()
   assert(mp2->getNSUs() == ncel);
   assert(mp2->T() == T);
 }
-void test_BasicGetters_p()
+bool test_BasicGetters_p()
 {
   //!< double Module_base_s::Cap()
   //!< double Module_base_s::Vmin(){
@@ -76,7 +68,7 @@ void test_BasicGetters_p()
   assert(mp->I() == 0);
   assert(mp->V() == cp1->V());
 }
-void test_setI_p(bool testErrors)
+bool test_setI_p()
 {
   //!< double Module_base_s::setCurrent(double Inew, bool checkV, bool print)
   double tol = 0.005;
@@ -120,7 +112,7 @@ void test_setI_p(bool testErrors)
   assert(cp2->I() < 0);
 
   //!< test things which should break
-  if (testErrors) {
+  if () {
     Inew = 10000; //!< very large current, should give too low voltage
     try {
       V = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
@@ -137,7 +129,7 @@ void test_setI_p(bool testErrors)
   }
 }
 
-void test_validStates_p(bool testErrors)
+bool test_validStates_p()
 {
   //!< bool Module_base_s::validStates(double s[], int nin, bool print)
 
@@ -164,7 +156,7 @@ void test_validStates_p(bool testErrors)
   s[nout - 1] = 273 + 5;
   assert(mp->validStates(s, nout));
 
-  if (testErrors) {
+  if () {
 
     //!< wrong length
     int nc = settings::CELL_NSTATE_MAX;
@@ -183,7 +175,7 @@ void test_validStates_p(bool testErrors)
     assert(!mp->validStates(s, nout, false));
   }
 }
-void test_validCells_p(bool testErrors)
+bool test_validCells_p()
 {
   //!< bool Module_base_s::validCells(Cell c[], int nin, bool print)
 
@@ -214,15 +206,15 @@ void test_validCells_p(bool testErrors)
   std::unique_ptr<StorageUnit> cs3[3] = { cp1, cp2, cp3 };
   assert(mp->validSUs(cs3, 3));
 
-  if (testErrors) {
+  if () {
     //!< different SOC values -> different voltages
     cp3->setSOC(0.4);
     assert(!mp->validSUs(cs3, 3, false));
   }
 }
-void test_timeStep_CC_p()
+bool test_timeStep_CC_p()
 {
-  //!< void Module_base_s::timeStep_CC(double dt)
+  //!< bool Module_base_s::timeStep_CC(double dt)
 
   double T = settings::T_ENV;
   bool checkCells = false;
@@ -294,7 +286,7 @@ void test_timeStep_CC_p()
   }
 }
 
-void test_Modules_p_ECM(bool testErrors)
+bool test_Modules_p_ECM()
 {
   //!< test parallel modules with ECM cells
   double tol = settings::MODULE_P_I_ABSTOL;
@@ -404,7 +396,7 @@ void test_Modules_p_ECM(bool testErrors)
   }
 }
 
-void test_Modules_p_SPM(bool testErrors)
+bool test_Modules_p_SPM()
 {
   //!< test parallel modules with ECM cells
   double tol = settings::MODULE_P_I_ABSTOL;
@@ -509,7 +501,7 @@ void test_Modules_p_SPM(bool testErrors)
   }
 }
 
-void test_contactR()
+bool test_contactR()
 {
   /*
    * Make a module with 3 cells and a contact resistance
@@ -611,7 +603,7 @@ void test_contactR()
   assert(std::abs(V3 - mp->Vi(2)) < tol); //!< these numbers should be exactly the same
 }
 
-void test_Hierarchichal_p()
+bool test_Hierarchichal_p()
 {
   //!< test parallel modules made out of other parallel modules
 
@@ -677,7 +669,7 @@ void test_Hierarchichal_p()
   assert(std::abs(mp2->V() - mp3->V()) < tol); //!< submodules must have same voltage
 }
 
-void test_Hierarchical_cross_p()
+bool test_Hierarchical_cross_p()
 {
   //!< test parallel module made out of series modules
   //!< note: series modules must have same number of cells to get the same voltage
@@ -748,49 +740,51 @@ void test_Hierarchical_cross_p()
                                                //!< note: there is no check on sub-modules with different SOC but I assume that works since it works with sub-cells of different SOC
 }
 
-//!< void test_copy_p()
-//!< {
-//!< 	/*
-//!< 	 * test the copy-function
-//!< 	 */
+bool test_copy_p()
+{
+  //!< 	/*
+  //!< 	 * test the copy-function
+  //!< 	 */
 
-//!< 	//!< make module
-//!< 	constexpr int ncel = 2;
-//!< 	std::unique_ptr<Cell> cp1(new Cell);
-//!< 	std::unique_ptr<Cell> cp2(new Cell);
-//!< 	std::unique_ptr<StorageUnit> cs[ncel] = {cp1, cp2};
-//!< 	std::string n = "na";
-//!< 	double v1 = cp1->V();
-//!< 	double T = settings::T_ENV;
-//!< 	bool checkCells = false;
-//!< 	std::unique_ptr<Module_p> mp(new Module_p(n, T, true, false, ncel, 1, 1));
-//!< 	mp->setSUs(cs, ncel, checkCells, true);
+  //!< 	//!< make module
+  //!< 	constexpr int ncel = 2;
+  //!< 	std::unique_ptr<Cell> cp1(new Cell);
+  //!< 	std::unique_ptr<Cell> cp2(new Cell);
+  //!< 	std::unique_ptr<StorageUnit> cs[ncel] = {cp1, cp2};
+  //!< 	std::string n = "na";
+  //!< 	double v1 = cp1->V();
+  //!< 	double T = settings::T_ENV;
+  //!< 	bool checkCells = false;
+  //!< 	std::unique_ptr<Module_p> mp(new Module_p(n, T, true, false, ncel, 1, 1));
+  //!< 	mp->setSUs(cs, ncel, checkCells, true);
 
-//!< 	//!< copy this one and check they are identical
-//!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
-//!< 	Module_p *c22 = dynamic_cast<Module_p *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell
-//!< 	assert(mp->V() == c22->V());
-//!< 	std::unique_ptr<StorageUnit> corig[ncel], cnew[ncel];
-//!< 	int nout;
-//!< 	mp->getSUs(corig, ncel, nout);
-//!< 	c22->getSUs(cnew, ncel, nout);
-//!< 	for (int i = 0; i < mp->getNSUs(); i++)
-//!< 		assert(corig[i]->V() == cnew[i]->V());
+  //!< 	//!< copy this one and check they are identical
+  //!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
+  //!< 	Module_p *c22 = dynamic_cast<Module_p *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell
+  //!< 	assert(mp->V() == c22->V());
+  //!< 	std::unique_ptr<StorageUnit> corig[ncel], cnew[ncel];
+  //!< 	int nout;
+  //!< 	mp->getSUs(corig, ncel, nout);
+  //!< 	c22->getSUs(cnew, ncel, nout);
+  //!< 	for (int i = 0; i < mp->getNSUs(); i++)
+  //!< 		assert(corig[i]->V() == cnew[i]->V());
 
-//!< 	//!< change the copied version, and ensure the old one is still the same
-//!< 	c22->setCurrent(1 * ncel, false, false); //!< discharge
-//!< 	for (int t = 0; t < 10; t++)
-//!< 		c22->timeStep_CC(2);
-//!< 	mp->getSUs(corig, ncel, nout);
-//!< 	c22->getSUs(cnew, ncel, nout);
-//!< 	for (int i = 0; i < mp->getNSUs(); i++)
-//!< 	{
-//!< 		assert(corig[i]->V() == v1);
-//!< 		assert(cnew[i]->V() < v1);
-//!< 	}
-//!< }
+  //!< 	//!< change the copied version, and ensure the old one is still the same
+  //!< 	c22->setCurrent(1 * ncel, false, false); //!< discharge
+  //!< 	for (int t = 0; t < 10; t++)
+  //!< 		c22->timeStep_CC(2);
+  //!< 	mp->getSUs(corig, ncel, nout);
+  //!< 	c22->getSUs(cnew, ncel, nout);
+  //!< 	for (int i = 0; i < mp->getNSUs(); i++)
+  //!< 	{
+  //!< 		assert(corig[i]->V() == v1);
+  //!< 		assert(cnew[i]->V() < v1);
+  //!< 	}
 
-void test_equaliseV_timing(std::unique_ptr<Module_p> mp, std::unique_ptr<StorageUnit> c[], int nin)
+  return true;
+}
+
+bool test_equaliseV_timing(std::unique_ptr<Module_p> mp, std::unique_ptr<StorageUnit> c[], int nin)
 {
   //!< test timing
   //!< IN
@@ -879,7 +873,7 @@ void test_equaliseV_timing(std::unique_ptr<Module_p> mp, std::unique_ptr<Storage
   std::cout << "Finished CC cycle\n";
 }
 
-void test_equaliseV()
+bool test_equaliseV()
 {
   //!< test timing with
   //!< 		5 identical cells
@@ -963,7 +957,7 @@ void test_equaliseV()
   test_equaliseV_timing(mpp4, cs4, ncel1);
 }
 
-void test_Module_p_testAll(bool testErrors)
+int test_all_Module_p()
 {
   /*
    * Test the functions from the parallel module
@@ -973,25 +967,26 @@ void test_Module_p_testAll(bool testErrors)
   //!< if we test the errors, suppress error messages
 
   //!< "pure" unit tests
-  test_Constructor_p();
-  test_BasicGetters_p();
-
-  test_setI_p(testErrors);
-  test_validCells_p(testErrors);
-  test_validStates_p(testErrors);
-
-  test_timeStep_CC_p();
-  test_contactR();
+  if (!TEST(test_Constructor_p, "test_Constructor_p")) return 1;
+  if (!TEST(test_BasicGetters_p, "test_BasicGetters_p")) return 2;
+  if (!TEST(test_setI_p, "test_setI_p")) return 3;
+  if (!TEST(test_validCells_p, "test_validCells_p")) return 4;
+  if (!TEST(test_validStates_p, "test_validStates_p")) return 5;
+  if (!TEST(test_timeStep_CC_p, "test_timeStep_CC_p")) return 6;
+  if (!TEST(test_contactR, "test_contactR")) return 7;
 
   //!< Combinations
-  test_Modules_p_ECM(testErrors); //!< parallel from ECM cells
-  test_Modules_p_SPM(testErrors); //!< parallel from ECM cells
-  test_Hierarchichal_p();         //!< parallel from parallel
-  test_Hierarchical_cross_p();    //!< parallel from series
-
-  test_copy_p();
+  if (!TEST(test_Modules_p_ECM, "test_Modules_p_ECM")) return 8;                //!< parallel from ECM cells
+  if (!TEST(test_Modules_p_SPM, "test_Modules_p_SPM")) return 9;                //!< parallel from ECM cells
+  if (!TEST(test_Hierarchichal_p, "test_Hierarchichal_p")) return 10;           //!< parallel from parallel
+  if (!TEST(test_Hierarchical_cross_p, "test_Hierarchical_cross_p")) return 11; //!< parallel from series
+  if (!TEST(test_copy_p, "test_copy_p")) return 12;
 
   //!< functions to equalise the voltage
-  //!< test_equaliseV(); 			//!< this prints how many iterations are needed in various situations but does not check wheather things work correctly
+  //!< test_equaliseV, "")) return 1; 			//!< this prints how many iterations are needed in various situations but does not check wheather things work correctly
+
+  return 0;
 }
-} // namespace slide::unit_tests
+} // namespace slide::tests::unit
+
+int main() { return slide::tests::unit::test_all_Module_p(); }
