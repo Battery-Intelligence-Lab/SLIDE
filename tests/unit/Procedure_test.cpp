@@ -53,13 +53,13 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
   //!< test with SPM cell
   DEG_ID deg;
   deg.SEI_id.N = 1;
-  deg.SEI_id[0] = 4;
+  deg.SEI_id.add_model(4);
   deg.SEI_porosity = 1;
   deg.CS_id.N = 1;
-  deg.CS_id[0] = 0;
+  deg.CS_id.add_model(0);
   deg.CS_diffusion = 0;
   deg.LAM_id.N = 1;
-  deg.LAM_id[0] = 1;
+  deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
   auto cp1 = std::make_unique<Cell_SPM>("proctest_cell", deg, 1, 1, 1, 1);
@@ -341,26 +341,26 @@ bool test_Procedure_cycleAge_stress()
 
   DEG_ID deg;
   deg.SEI_id.N = 1;
-  deg.SEI_id[0] = 0;
+  deg.SEI_id.add_model(0);
   deg.SEI_porosity = 0;
   deg.CS_id.N = 1;
-  deg.CS_id[0] = 0;
+  deg.CS_id.add_model(0);
   deg.CS_diffusion = 0;
   deg.LAM_id.N = 1;
-  deg.LAM_id[0] = 0;
+  deg.LAM_id.add_model(0);
   deg.pl_id = 0;
   deg.SEI_id.N = 1;
-  deg.SEI_id[0] = 0;
+  deg.SEI_id.add_model(0);
   deg.SEI_porosity = 0;
   deg.CS_id.N = 1;
-  deg.CS_id[0] = 0;
+  deg.CS_id.add_model(0);
   deg.CS_diffusion = 0;
   deg.LAM_id.N = 1;
-  deg.LAM_id[0] = 0;
+  deg.LAM_id.add_model(0);
   deg.pl_id = 0;
-  deg.SEI_id[0] = 4;
+  deg.SEI_id.add_model(4);
   deg.SEI_porosity = 1;
-  deg.LAM_id[0] = 1;
+  deg.LAM_id.add_model(1);
   double T2 = settings::T_ENV;
   bool checkCells2 = false;
   double Vbal = 3.5;
@@ -554,13 +554,13 @@ bool test_allDegradationModels(int cool)
   bool caps, Rs, degs;
   DEG_ID deg;
   deg.SEI_id.N = 1;
-  deg.SEI_id[0] = 0;
+  deg.SEI_id.add_model(0);
   deg.SEI_porosity = 0;
   deg.CS_id.N = 1;
-  deg.CS_id[0] = 0;
+  deg.CS_id.add_model(0);
   deg.CS_diffusion = 0;
   deg.LAM_id.N = 1;
-  deg.LAM_id[0] = 0;
+  deg.LAM_id.add_model(0);
   deg.pl_id = 0;
 
   /*	for(int i=0;i<2;i++){
@@ -571,73 +571,73 @@ bool test_allDegradationModels(int cool)
   degs = true;
 
   //!< kinetic SEI
-  deg.SEI_id[0] = 1;
+  deg.SEI_id.add_model(1);
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< kinetic SEI from paper
-  deg.SEI_id[0] = 4;
+  deg.SEI_id.add_model(4);
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< kinetic SEI + porosity
-  deg.SEI_id[0] = 1;
+  deg.SEI_id.add_model(1);
   deg.SEI_porosity = 1;
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< kinetic SEI from paper + porosity
-  deg.SEI_id[0] = 4;
+  deg.SEI_id.add_model(4);
   deg.SEI_porosity = 1;
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< reset SEI
-  deg.SEI_id[0] = 0;
+  deg.SEI_id.add_model(0);
   deg.SEI_porosity = 0;
 
   //!< DAI + Laresgoiti LAM
-  deg.LAM_id[0] = 1;
+  deg.LAM_id.add_model(1);
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< Delacourt LAM [linear with Ah]
-  deg.LAM_id[0] = 2;
+  deg.LAM_id.add_model(2);
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< Kindermann LAM
-  deg.LAM_id[0] = 3;
+  deg.LAM_id.add_model(3);
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< Kindermann LAM + SEI
-  deg.SEI_id[0] = 1;
-  deg.LAM_id[0] = 3;
+  deg.SEI_id.add_model(1);
+  deg.LAM_id.add_model(3);
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< Kindermann LAM + SEI + porosity
-  deg.SEI_id[0] = 1;
-  deg.LAM_id[0] = 3;
+  deg.SEI_id.add_model(1);
+  deg.LAM_id.add_model(3);
   deg.SEI_porosity = 1;
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< SEI + Ekstrom cracks
-  deg.SEI_id[0] = 1;
-  deg.CS_id[0] = 5;
-  deg.LAM_id[0] = 0;
+  deg.SEI_id.add_model(1);
+  deg.CS_id.add_model(5);
+  deg.LAM_id.add_model(0);
   deg.SEI_porosity = 0;
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< SEI + Laresgoiti cracks (pure laresgoiti, i.e. with the simplified stress model)
-  deg.SEI_id[0] = 1;
-  deg.CS_id[0] = 1;
-  deg.LAM_id[0] = 0;
+  deg.SEI_id.add_model(1);
+  deg.CS_id.add_model(1);
+  deg.LAM_id.add_model(0);
   deg.SEI_porosity = 0;
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< reset
   deg.SEI_id.N = 1;
-  deg.SEI_id[0] = 0;
+  deg.SEI_id.add_model(0);
   deg.SEI_porosity = 0;
   deg.CS_id.N = 1;
-  deg.CS_id[0] = 0;
+  deg.CS_id.add_model(0);
   deg.CS_diffusion = 0;
   deg.LAM_id.N = 1;
-  deg.LAM_id[0] = 0;
+  deg.LAM_id.add_model(0);
   deg.pl_id = 0;
   /*				} //no all three 0 [we already did that simulation]
                   }

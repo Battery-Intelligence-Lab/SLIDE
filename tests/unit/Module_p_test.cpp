@@ -882,15 +882,15 @@ bool test_equaliseV()
   //!< 		4 similar and one aged cell
 
   DEG_ID deg;
-  deg.SEI_n = 1;        //!< there is 1 SEI model
-  deg.SEI_id[0] = 4;    //!< chirstensen SEI growth
-  deg.SEI_porosity = 0; //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
-  deg.CS_n = 1;         //!< there is 1 model (that there are no cracks)
-  deg.CS_id[0] = 0;     //!< no surface cracks
-  deg.CS_diffusion = 0; //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
-  deg.LAM_n = 1;        //!< there are 1 LAM model
-  deg.LAM_id[0] = 0;    //!< no LAM
-  deg.pl_id = 0;        //!< no litihium plating
+  ->setSUs($1, $3)
+    deg.SEI_id.add_model(4); //!< chirstensen SEI growth
+  deg.SEI_porosity = 0;      //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+
+  deg.CS_id.add_model(0); //!< no surface cracks
+  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+
+  deg.LAM_id.add_model(0); //!< no LAM
+  deg.pl_id = 0;           //!< no litihium plating
   double T2 = settings::T_ENV;
   bool checkCells2 = false;
 

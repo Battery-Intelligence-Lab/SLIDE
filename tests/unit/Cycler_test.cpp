@@ -200,45 +200,41 @@ bool test_CyclerCell()
   //!< test series of cell
   //!< cout<<"Test cycler made of a series module of Cells"<<endl;
 
-  auto cp2 = std::make_unique<Cell_Bucket>();
-  auto cp3 = std::make_unique<Cell_Bucket>();
-  std::unique_ptr<StorageUnit> cs[] = { cp2, cp3 };
+
+  std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
   std::string n = "module_series_cell";
-  auto ms = std::make_unique<Module_s>(n, T, true, false, ncel, 1, 1);
+  auto ms = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   ms->setSUs(cs, checkCells, true);
   test_Cycler_SU(ms.get(), checkCV);
 
   //!< test parallel of cells
   //!< cout<<"Test cycler made of a parallel module of Cells"<<endl;
-  auto cp4 = std::make_unique<Cell_Bucket>();
-  auto cp5 = std::make_unique<Cell_Bucket>();
-  std::unique_ptr<StorageUnit> cs2[] = { cp4, cp5 };
+  std::unique_ptr<StorageUnit> cs2[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
   n = "module_paralell_cell";
-  auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
+  auto mp = std::make_unique<Module_p>(n, T, true, false, std::size(cs2), 1, 1);
   mp->setSUs(cs2, checkCells, true);
   test_Cycler_SU(mp.get(), checkCV);
 
   //!< test complex module
   //!< cout<<"Cycler test complex module of Cells"<<endl;
-  constexpr int ncel1 = 2;
-  constexpr int ncel2 = 2;
-  int ncel3 = 3;
   std::string ids[] = { "1", "2", "3" };
   std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
   std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
   std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
-  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, ncel1, 1, 2);
-  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, ncel2, 1, 2);
-  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, ncel3, 1, 2);
-  mp1->setSUs(SU1, checkCells);
-  mp2->setSUs(SU2, checkCells);
-  mp3->setSUs(SU3, checkCells);
+
+  std::unique_ptr<Module_p> MU[] = { std::make_unique<Module_p>(ids[0], T, true, false, std::size(SU1), 1, 2),
+                                     std::make_unique<Module_p>(ids[1], T, true, false, std::size(SU2), 1, 2),
+                                     std::make_unique<Module_p>(ids[2], T, true, false, std::size(SU3), 1, 2) };
+
+  MU[0]->setSUs(SU1, checkCells);
+  MU[1]->setSUs(SU2, checkCells);
+  MU[2]->setSUs(SU3, checkCells);
   int nm = 3;
   std::string n4 = "cells_complex";
-  std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
   checkCells = true;
   auto msp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, true);
   msp->setSUs(MU, checkCells, true); //!< three module_p in series
+
   test_Cycler_SU(msp.get(), checkCV);
 }
 bool test_CyclerECM()
@@ -278,18 +274,12 @@ bool test_CyclerECM()
   //!< cout<<"Cycler test complex module of Cells"<<endl;
   constexpr int ncel1 = 2;
   constexpr int ncel2 = 2;
-  int ncel3 = 3;
+  constexpr int ncel3 = 3;
   std::string ids[] = { "1", "2", "3" };
-  auto cp10 = std::make_unique<Cell_ECM>();
-  auto cp20 = std::make_unique<Cell_ECM>();
-  auto cp30 = std::make_unique<Cell_ECM>();
-  auto cp40 = std::make_unique<Cell_ECM>();
-  auto cp50 = std::make_unique<Cell_ECM>();
-  auto cp60 = std::make_unique<Cell_ECM>();
-  auto cp70 = std::make_unique<Cell_ECM>();
-  std::unique_ptr<StorageUnit> SU1[] = { cp10, cp20 };
-  std::unique_ptr<StorageUnit> SU2[] = { cp30, cp40 };
-  std::unique_ptr<StorageUnit> SU3[] = { cp50, cp60, cp70 };
+  std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>() };
+  std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>() };
+  std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>() };
+
   auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, ncel1, 1, 2);
   auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, ncel2, 1, 2);
   auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, ncel3, 1, 2);
@@ -298,7 +288,7 @@ bool test_CyclerECM()
   mp3->setSUs(SU3, checkCells);
   int nm = 3;
   std::string n4 = "ECMcells_complex";
-  std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
+  std::unique_ptr<StorageUnit> MU[] = { std::move(mp1), std::move(mp2), std::move(mp3) };
   checkCells = true;
   auto msp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1);
   msp->setSUs(MU, checkCells, true); //!< three module_p in series
@@ -324,9 +314,7 @@ bool test_CyclerSPM()
   //!< test series of cell
   //!< cout<<"Test cycler made of a series module of SPM Cells"<<endl;
   ncel = 2;
-  auto cp2 = std::make_unique<Cell_SPM>();
-  auto cp3 = std::make_unique<Cell_SPM>();
-  std::unique_ptr<StorageUnit> cs[] = { cp2, cp3 };
+  std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
   n = "module_series_SPMcell";
   auto ms = std::make_unique<Module_s>(n, T, true, false, ncel, 1, 1);
   ms->setSUs(cs, checkCells, true);
@@ -334,10 +322,8 @@ bool test_CyclerSPM()
 
   //!< test parallel of cells
   //!< cout<<"Test cycler made of a parallel module of SPM Cells"<<endl;
-  auto cp4 = std::make_unique<Cell_SPM>();
-  auto cp5 = std::make_unique<Cell_SPM>();
   ncel = 2;
-  std::unique_ptr<StorageUnit> cs2[] = { cp4, cp5 };
+  std::unique_ptr<StorageUnit> cs2[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
   n = "module_parallel_SPMcell";
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
   mp->setSUs(cs2, checkCells, true);
@@ -360,7 +346,7 @@ bool test_CyclerSPM()
   mp3->setSUs(SU3, checkCells);
   int nm = 3;
   std::string n4 = "SPMcells_complex";
-  std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
+  std::unique_ptr<StorageUnit> MU[] = { std::move(mp1), std::move(mp2), std::move(mp3) };
   checkCells = true;
   auto msp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1); //!< top level coolsystem
   msp->setSUs(MU, checkCells, true);                                  //!< three module_p in series
@@ -386,28 +372,33 @@ bool test_CyclerVariations(double Rc)
   //!< cout<<"start test with cell-to-cell variations with contact resistance "<<Rc<<endl;
 
   //!< cell-to-cell variations
-  default_random_engine gen;
+  std::default_random_engine gen;
   double std1 = 0.004;
   double std2 = 0.025;
-  normal_distribution<double> distr_c(1.0, std1); //!< normal distribution with mean 1 and std 0.4% for cell capacity
-  normal_distribution<double> distr_r(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
-  normal_distribution<double> distr_d(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
+  std::normal_distribution<double> distr_c(1.0, std1); //!< normal distribution with mean 1 and std 0.4% for cell capacity
+  std::normal_distribution<double> distr_r(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
+  std::normal_distribution<double> distr_d(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
 
   //!< degradation
+
   DEG_ID deg;
-  deg.SEI_n = 1;        //!< there is 1 SEI model
-  deg.SEI_id[0] = 4;    //!< chirstensen SEI growth
-  deg.SEI_porosity = 0; //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
-  deg.CS_n = 1;         //!< there is 1 model (that there are no cracks)
-  deg.CS_id[0] = 0;     //!< no surface cracks
-  deg.CS_diffusion = 0; //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
-  deg.LAM_n = 1;        //!< there are 1 LAM model
-  deg.LAM_id[0] = 0;    //!< no LAM
-  deg.pl_id = 0;        //!< no litihium plating
+
+  deg.SEI_id.add_model(4); //!< chirstensen SEI growth
+  deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+
+  deg.CS_id.add_model(0); //!< no surface cracks
+  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+
+  deg.LAM_id.add_model(0); //!< no LAM
+  deg.pl_id = 0;           //!< no litihium plating
 
   //!< Make a parallel module with 9 cells, and contact resistance Rc
-  int ncel2 = 9;
+  constexpr int ncel2 = 9;
   std::string n2 = "Variations_p_module_" + std::to_string(Rc);
+
+  std::array<std::unique_ptr<StorageUnit>, ncel2> cs2;
+
+
   std::unique_ptr<Cell_SPM> cp7(new Cell_SPM("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   std::unique_ptr<Cell_SPM> cp8(new Cell_SPM("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   std::unique_ptr<Cell_SPM> cp9(new Cell_SPM("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
@@ -417,7 +408,6 @@ bool test_CyclerVariations(double Rc)
   std::unique_ptr<Cell_SPM> cp13(new Cell_SPM("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   std::unique_ptr<Cell_SPM> cp14(new Cell_SPM("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   std::unique_ptr<Cell_SPM> cp15(new Cell_SPM("cell9", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<StorageUnit> cs2[] = { cp7, cp8, cp9, cp10, cp11, cp12, cp13, cp14, cp15 };
   double Rcs2[ncel2] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
   double T2 = settings::T_ENV;
   bool checkCells2 = false;
@@ -486,15 +476,15 @@ bool test_Cycler_writeData(int control)
   int ncel = 3;
   bool checkCells = false;
   DEG_ID deg;
-  deg.SEI_n = 1;        //!< there is 1 SEI model
-  deg.SEI_id[0] = 4;    //!< chirstensen SEI growth
-  deg.SEI_porosity = 0; //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
-  deg.CS_n = 1;         //!< there is 1 model (that there are no cracks)
-  deg.CS_id[0] = 0;     //!< no surface cracks
-  deg.CS_diffusion = 0; //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
-  deg.LAM_n = 1;        //!< there are 1 LAM model
-  deg.LAM_id[0] = 0;    //!< no LAM
-  deg.pl_id = 0;        //!< no litihium plating
+
+  deg.SEI_id.add_model(4); //!< chirstensen SEI growth
+  deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+
+  deg.CS_id.add_model(0); //!< no surface cracks
+  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+
+  deg.LAM_id.add_model(0); //!< no LAM
+  deg.pl_id = 0;           //!< no litihium plating
   auto cp2 = std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1);
   auto cp3 = std::make_unique<Cell_SPM>("cell2", deg, 1, 1, 1, 1); //!< check that the middle cell heats up more
   auto cp4 = std::make_unique<Cell_SPM>("cell3", deg, 1, 1, 1, 1);
@@ -631,9 +621,6 @@ bool test_Cycler_CoolSystem()
 
     //!< ******************************************************************************************************************************************************
     //!< make the hierarchical module
-    int ncel11 = 2;
-    int ncel22 = 2;
-    int ncel33 = 3;
     std::string n11 = "H1";
     std::string n22 = "H2";
     std::string n33 = "H3";
@@ -644,12 +631,13 @@ bool test_Cycler_CoolSystem()
     auto cp55 = std::make_unique<Cell_SPM>();
     auto cp66 = std::make_unique<Cell_SPM>();
     auto cp77 = std::make_unique<Cell_SPM>();
-    std::unique_ptr<StorageUnit> SU1[] = { cp11, cp22 };
-    std::unique_ptr<StorageUnit> SU2[] = { cp33, cp44 };
-    std::unique_ptr<StorageUnit> SU3[] = { cp55, cp66, cp77 };
-    auto mp11 = std::make_unique<Module_s>(n11, T, true, false, ncel11, coolControl, 2);
-    auto mp22 = std::make_unique<Module_s>(n22, T, true, false, ncel22, coolControl, 2);
-    auto mp33 = std::make_unique<Module_s>(n33, T, true, false, ncel33, coolControl, 2);
+    std::array<std::unique_ptr<StorageUnit>, 2> SU1{};
+    std::array<std::unique_ptr<StorageUnit>, 2> SU2{};
+    std::array<std::unique_ptr<StorageUnit>, 3> SU3{};
+
+    auto mp11 = std::make_unique<Module_s>(n11, T, true, false, SU1.size(), coolControl, 2);
+    auto mp22 = std::make_unique<Module_s>(n22, T, true, false, SU2.size(), coolControl, 2);
+    auto mp33 = std::make_unique<Module_s>(n33, T, true, false, SU3.size(), coolControl, 2);
     mp11->setSUs(SU1, checkCells);
     mp22->setSUs(SU2, checkCells);
     mp33->setSUs(SU3, checkCells);
