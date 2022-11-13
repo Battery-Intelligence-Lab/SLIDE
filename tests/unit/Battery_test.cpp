@@ -54,7 +54,7 @@ void test_Battery_CoolSystem()
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
     int ncel = 1;
-    std::unique_ptr<Cell_SPM> cp0(new Cell_SPM);
+    auto cp0 = std::make_unique<Cell_SPM>();
     std::unique_ptr<StorageUnit> cs[ncel] = { cp0 };
     std::string n = "testCoolSystem";
     auto mp = std::make_unique<Module_s>(n, T, true, false, ncel, coolControl, 2); //!< open coolsystem
@@ -98,10 +98,10 @@ void test_Battery_CoolSystem()
     //!< **********************************************************************************************************************************************************
     //!< Make a simple module with SPM cells
     int ncel2 = 4;
-    std::unique_ptr<Cell_SPM> cp1(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp2(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp3(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp4(new Cell_SPM);
+    auto cp1 = std::make_unique<Cell_SPM>();
+    auto cp2 = std::make_unique<Cell_SPM>();
+    auto cp3 = std::make_unique<Cell_SPM>();
+    auto cp4 = std::make_unique<Cell_SPM>();
     std::unique_ptr<StorageUnit> cs2[ncel2] = { cp1, cp2, cp3, cp4 };
     std::string n2 = "testCoolSystem";
     auto mp2 = std::make_unique<Module_s>(n2, T, true, false, ncel2, coolControl, 2); //!< open coolsystem
@@ -150,13 +150,13 @@ void test_Battery_CoolSystem()
     std::string n11 = "H1";
     std::string n22 = "H2";
     std::string n33 = "H3";
-    std::unique_ptr<Cell_SPM> cp11(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp22(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp33(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp44(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp55(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp66(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp77(new Cell_SPM);
+    auto cp11 = std::make_unique<Cell_SPM>();
+    auto cp22 = std::make_unique<Cell_SPM>();
+    auto cp33 = std::make_unique<Cell_SPM>();
+    auto cp44 = std::make_unique<Cell_SPM>();
+    auto cp55 = std::make_unique<Cell_SPM>();
+    auto cp66 = std::make_unique<Cell_SPM>();
+    auto cp77 = std::make_unique<Cell_SPM>();
     std::unique_ptr<StorageUnit> SU1[ncel11] = { cp11, cp22 };
     std::unique_ptr<StorageUnit> SU2[ncel22] = { cp33, cp44 };
     std::unique_ptr<StorageUnit> SU3[ncel33] = { cp55, cp66, cp77 };
