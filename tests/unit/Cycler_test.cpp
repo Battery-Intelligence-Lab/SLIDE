@@ -257,7 +257,6 @@ bool test_CyclerECM()
   bool checkCells = false;
   bool checkCV = false; //!< Cells can't do a CV phase since they have no diffusion
                         //!< the resistive effect is much to quick for the PI controller in Cycler
-  int ncel;
   std::string n;
 
   //!< test cell
@@ -312,7 +311,6 @@ bool test_CyclerSPM()
   double T = settings::T_ENV;
   bool checkCells = false;
   bool checkCV = true;
-  int ncel;
   std::string n;
 
   //!< test cell
@@ -322,38 +320,32 @@ bool test_CyclerSPM()
 
   //!< test series of cell
   //!< cout<<"Test cycler made of a series module of SPM Cells"<<endl;
-  ncel = 2;
   std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
   n = "module_series_SPMcell";
-  auto ms = std::make_unique<Module_s>(n, T, true, false, ncel, 1, 1);
+  auto ms = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   ms->setSUs(cs, checkCells, true);
   test_Cycler_SU(ms.get(), checkCV);
 
   //!< test parallel of cells
   //!< cout<<"Test cycler made of a parallel module of SPM Cells"<<endl;
-  ncel = 2;
   std::unique_ptr<StorageUnit> cs2[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
   n = "module_parallel_SPMcell";
-  auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
+  auto mp = std::make_unique<Module_p>(n, T, true, false, std::size(cs2), 1, 1);
   mp->setSUs(cs2, checkCells, true);
   test_Cycler_SU(mp.get(), checkCV);
 
   //!< test complex module
   //!< cout<<"Cycler test complex module of SPM Cells"<<endl;
-  constexpr int ncel1 = 2;
-  constexpr int ncel2 = 2;
-  int ncel3 = 3;
   std::string ids[] = { "1", "2", "3" };
   std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
   std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
   std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
-  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, ncel1, 1, 2); //!< pass through coolsystem
-  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, ncel2, 1, 2);
-  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, ncel3, 1, 2);
+  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, std::size(SU1), 1, 2); //!< pass through coolsystem
+  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, std::size(SU2), 1, 2);
+  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, std::size(SU3), 1, 2);
   mp1->setSUs(SU1, checkCells);
   mp2->setSUs(SU2, checkCells);
   mp3->setSUs(SU3, checkCells);
-  int nm = 3;
   std::string n4 = "SPMcells_complex";
   std::unique_ptr<StorageUnit> MU[] = { std::move(mp1), std::move(mp2), std::move(mp3) };
   checkCells = true;
@@ -404,11 +396,9 @@ bool test_CyclerVariations(double Rc)
   deg.pl_id = 0;           //!< no litihium plating
 
   //!< Make a parallel module with 9 cells, and contact resistance Rc
-  constexpr int ncel2 = 9;
   std::string n2 = "Variations_p_module_" + std::to_string(Rc);
 
-
-  std::array<std::unique_ptr<StorageUnit>, ncel2> cs2{
+  std::unique_ptr<StorageUnit> cs2[] = {
     std::make_unique<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
     std::make_unique<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
     std::make_unique<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
@@ -560,12 +550,11 @@ bool test_Cycler_CoolSystem()
 
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
-    int ncel = 1;
     std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>() };
     auto cp0 = dynamic_cast<Cell_SPM *>(cs[0].get());
 
     std::string n = "testCoolSystem";
-    auto mp = std::make_unique<Module_s>(n, T, true, false, ncel, coolControl, 1);
+    auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), coolControl, 1);
     mp->setSUs(cs, checkCells, true);
     double Tini[1] = { cp0->T() };
     cyc.initialise(mp.get(), "Cycler_cooltest_oneCell");
@@ -596,7 +585,6 @@ bool test_Cycler_CoolSystem()
 
     //!< **********************************************************************************************************************************************************
     //!< Make a simple module with SPM cells
-    int ncel2 = 4;
     std::unique_ptr<StorageUnit> cs2[] = {
       std::make_unique<Cell_SPM>(),
       std::make_unique<Cell_SPM>(),

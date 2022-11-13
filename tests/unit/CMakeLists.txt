@@ -15,6 +15,18 @@ add_executable(unit_test_Converter converter_test.cpp)
 target_link_libraries(unit_test_Converter PRIVATE src)
 add_test(NAME unit_test_Converter COMMAND unit_test_Converter WORKING_DIRECTORY bin)
 
+add_executable(unit_test_Module_p Module_p_test.cpp)
+target_link_libraries(unit_test_Module_p PRIVATE src)
+add_test(NAME unit_test_Module_p COMMAND unit_test_Module_p WORKING_DIRECTORY bin)
+
+# add_executable(unit_test_Module_s Module_s_test.cpp)
+# target_link_libraries(unit_test_Module_s PRIVATE src)
+# add_test(NAME unit_test_Module_s COMMAND unit_test_Module_s WORKING_DIRECTORY bin)
+
 # add_executable(unit_test_Cycler Cycler_test.cpp)
 # target_link_libraries(unit_test_Cycler PRIVATE src)
 # add_test(NAME unit_test_Cycler COMMAND unit_test_Cycler WORKING_DIRECTORY bin)
+
+# add_executable(unit_test_Procedure Procedure_test.cpp)
+# target_link_libraries(unit_test_Procedure PRIVATE src)
+# add_test(NAME unit_test_Procedure COMMAND unit_test_Procedure WORKING_DIRECTORY bin)
