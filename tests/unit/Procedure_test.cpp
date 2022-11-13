@@ -127,7 +127,7 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
   constexpr double T2 = 273 + 25;
   constexpr bool checkCells2 = false;
 
-  auto mpp = std::make_unique<Module_p>(n2, T2, true, false, ncel2, cool, 2); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp = std::make_unique<Module_p>(ids[1], T2, true, false, ncel2, cool, 2); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
 
   mpp->setSUs(cs2, checkCells2, true);
   mpp->setRcontact(Rcs2);
@@ -228,7 +228,7 @@ bool test_Prcedure_CoolSystem()
     }
 
     std::string n2 = "testCoolSystem_module";
-    auto mp2 = std::make_unique<Module_s>(n2, T, true, false, ncel2, coolControl, 1);
+    auto mp2 = std::make_unique<Module_s>(ids[1], T, true, false, ncel2, coolControl, 1);
     mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cs2_ptr[0]->T(), cs2_ptr[1]->T(), cs2_ptr[2]->T(), cs2_ptr[3]->T() };
 
@@ -271,9 +271,9 @@ bool test_Prcedure_CoolSystem()
     auto mp22 = std::make_unique<Module_s>(n22, T, true, false, ncel22, coolControl, 2);
     auto mp33 = std::make_unique<Module_s>(n33, T, true, false, ncel33, coolControl, 2);
 
-    mp11->setSUs(SU1, ncel11, checkCells);
-    mp22->setSUs(SU2, ncel22, checkCells);
-    mp33->setSUs(SU3, ncel33, checkCells);
+    mp11->setSUs(SU1, checkCells);
+    mp22->setSUs(SU2, checkCells);
+    mp33->setSUs(SU3, checkCells);
 
     constexpr size_t nm = 3;
     std::string n44 = "testCoolSystem_complexModule";
@@ -387,7 +387,7 @@ bool test_Procedure_cycleAge_stress()
   cs3[3] = std::make_unique<Cell_SPM>("cell8", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
   cs3[4] = std::make_unique<Cell_SPM>("cell9", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
 
-  auto mpp3 = std::make_unique<Module_p>(n3, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp3 = std::make_unique<Module_p>(ids[2], T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
 
   mpp3->setSUs(cs3, checkCells2, true);
   auto p1 = Procedure(balance, Vbal, ndata, unittest);
@@ -530,7 +530,7 @@ bool test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
   double T2 = 273 + 25;
   bool checkCells2 = false;
 
-  auto mpp = std::make_unique<Module_p>(n2, T2, true, false, ncel2, cool, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp = std::make_unique<Module_p>(ids[1], T2, true, false, ncel2, cool, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
 
   mpp->setSUs(cs2, checkCells2, true);
   Vmax = mpp->Vmax();

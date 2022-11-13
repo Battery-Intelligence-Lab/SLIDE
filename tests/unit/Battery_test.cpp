@@ -54,8 +54,7 @@ void test_Battery_CoolSystem()
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
     int ncel = 1;
-    auto cp0 = std::make_unique<Cell_SPM>();
-    std::unique_ptr<StorageUnit> cs[] = { cp0 };
+    std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>() };
     std::string n = "testCoolSystem";
     auto mp = std::make_unique<Module_s>(n, T, true, false, ncel, coolControl, 2); //!< open coolsystem
     mp->setSUs(cs, checkCells, true);
@@ -104,10 +103,10 @@ void test_Battery_CoolSystem()
     auto cp4 = std::make_unique<Cell_SPM>();
     std::unique_ptr<StorageUnit> cs2[] = { cp1, cp2, cp3, cp4 };
     std::string n2 = "testCoolSystem";
-    auto mp2 = std::make_unique<Module_s>(n2, T, true, false, ncel2, coolControl, 2); //!< open coolsystem
+    auto mp2 = std::make_unique<Module_s>(ids[1], T, true, false, ncel2, coolControl, 2); //!< open coolsystem
     mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
-    auto b2 = std::make_unique<Battery>(n2);
+    auto b2 = std::make_unique<Battery>(ids[1]);
     b2->setModule(mp2);
     cyc.initialise(b2, "Cycler_cooltest_simpleModule");
 
@@ -163,9 +162,9 @@ void test_Battery_CoolSystem()
     auto mp11 = std::make_unique<Module_s>(n11, T, true, false, ncel11, coolControl, 0); //!< normal coolsystem (with fan)
     auto mp22 = std::make_unique<Module_s>(n22, T, true, false, ncel22, coolControl, 0);
     auto mp33 = std::make_unique<Module_s>(n33, T, true, false, ncel33, coolControl, 0);
-    mp11->setSUs(SU1, ncel11, checkCells);
-    mp22->setSUs(SU2, ncel22, checkCells);
-    mp33->setSUs(SU3, ncel33, checkCells);
+    mp11->setSUs(SU1, checkCells);
+    mp22->setSUs(SU2, checkCells);
+    mp33->setSUs(SU3, checkCells);
     int nm = 3;
     std::string n44 = "H4";
     std::unique_ptr<StorageUnit> MU[] = { mp11, mp22, mp33 };

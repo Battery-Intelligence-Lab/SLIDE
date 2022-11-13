@@ -15,7 +15,7 @@
 #include <fstream>
 
 namespace slide::tests::unit {
-bool test_Cycler_SU(std::unique_ptr<StorageUnit> su, bool testCV)
+bool test_Cycler_SU(StorageUnit *su, bool testCV)
 {
   /*
    * define all the tests with one storage unit
@@ -194,61 +194,52 @@ bool test_CyclerCell()
   //!< cout<<"Test cycler made of one Cell"<<endl;
 
 
-  auto cp1 = std::make_unique<Cell>();
-  test_Cycler_SU(cp1, checkCV);
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  test_Cycler_SU(cp1.get(), checkCV);
 
   //!< test series of cell
   //!< cout<<"Test cycler made of a series module of Cells"<<endl;
-  constexpr int ncel = 2;
-  auto cp2 = std::make_unique<Cell>();
-  auto cp3 = std::make_unique<Cell>();
+
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  auto cp3 = std::make_unique<Cell_Bucket>();
   std::unique_ptr<StorageUnit> cs[] = { cp2, cp3 };
   std::string n = "module_series_cell";
   auto ms = std::make_unique<Module_s>(n, T, true, false, ncel, 1, 1);
   ms->setSUs(cs, checkCells, true);
-  test_Cycler_SU(ms, checkCV);
+  test_Cycler_SU(ms.get(), checkCV);
 
   //!< test parallel of cells
   //!< cout<<"Test cycler made of a parallel module of Cells"<<endl;
-  auto cp4 = std::make_unique<Cell>();
-  auto cp5 = std::make_unique<Cell>();
+  auto cp4 = std::make_unique<Cell_Bucket>();
+  auto cp5 = std::make_unique<Cell_Bucket>();
   std::unique_ptr<StorageUnit> cs2[] = { cp4, cp5 };
   n = "module_paralell_cell";
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
   mp->setSUs(cs2, checkCells, true);
-  test_Cycler_SU(mp, checkCV);
+  test_Cycler_SU(mp.get(), checkCV);
 
   //!< test complex module
   //!< cout<<"Cycler test complex module of Cells"<<endl;
   constexpr int ncel1 = 2;
   constexpr int ncel2 = 2;
   int ncel3 = 3;
-  std::string n1 = "1";
-  std::string n2 = "2";
-  std::string n3 = "3";
-  auto cp10 = std::make_unique<Cell>();
-  auto cp20 = std::make_unique<Cell>();
-  auto cp30 = std::make_unique<Cell>();
-  auto cp40 = std::make_unique<Cell>();
-  auto cp50 = std::make_unique<Cell>();
-  auto cp60 = std::make_unique<Cell>();
-  auto cp70 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> SU1[] = { cp10, cp20 };
-  std::unique_ptr<StorageUnit> SU2[] = { cp30, cp40 };
-  std::unique_ptr<StorageUnit> SU3[] = { cp50, cp60, cp70 };
-  auto mp1 = std::make_unique<Module_p>(n1, T, true, false, ncel1, 1, 2);
-  auto mp2 = std::make_unique<Module_p>(n2, T, true, false, ncel2, 1, 2);
-  auto mp3 = std::make_unique<Module_p>(n3, T, true, false, ncel3, 1, 2);
-  mp1->setSUs(SU1, ncel1, checkCells);
-  mp2->setSUs(SU2, ncel2, checkCells);
-  mp3->setSUs(SU3, ncel3, checkCells);
+  std::string ids[] = { "1", "2", "3" };
+  std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
+  std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
+  std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
+  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, ncel1, 1, 2);
+  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, ncel2, 1, 2);
+  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, ncel3, 1, 2);
+  mp1->setSUs(SU1, checkCells);
+  mp2->setSUs(SU2, checkCells);
+  mp3->setSUs(SU3, checkCells);
   int nm = 3;
   std::string n4 = "cells_complex";
   std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
   checkCells = true;
   auto msp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, true);
   msp->setSUs(MU, checkCells, true); //!< three module_p in series
-  test_Cycler_SU(msp, checkCV);
+  test_Cycler_SU(msp.get(), checkCV);
 }
 bool test_CyclerECM()
 {
@@ -265,38 +256,30 @@ bool test_CyclerECM()
   //!< test cell
   //!< cout<<"Test cycler made of one ECM Cell"<<endl;
   auto cp1 = std::make_unique<Cell_ECM>();
-  test_Cycler_SU(cp1, checkCV);
+  test_Cycler_SU(cp1.get(), checkCV);
 
   //!< test series of cell
   //!< cout<<"Test cycler made of a series module of Cells"<<endl;
-  ncel = 2;
-  auto cp2 = std::make_unique<Cell_ECM>();
-  auto cp3 = std::make_unique<Cell_ECM>();
-  std::unique_ptr<StorageUnit> cs[] = { cp2, cp3 };
+  std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>() };
   n = "module_series_ECMcell";
-  auto ms = std::make_unique<Module_s>(n, T, true, false, ncel, 1, 1);
+  auto ms = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   ms->setSUs(cs, checkCells, true);
-  test_Cycler_SU(ms, checkCV);
+  test_Cycler_SU(ms.get(), checkCV);
 
   //!< test parallel of cells
   //!< cout<<"Test cycler made of a parallel module of Cells"<<endl;
-  ncel = 2;
-  auto cp4 = std::make_unique<Cell_ECM>();
-  auto cp5 = std::make_unique<Cell_ECM>();
-  std::unique_ptr<StorageUnit> cs2[] = { cp4, cp5 };
+  std::unique_ptr<StorageUnit> cs2[] = { std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>() };
   n = "module_parallel_ECMcell";
-  auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
+  auto mp = std::make_unique<Module_p>(n, T, true, false, std::size(cs2), 1, 1);
   mp->setSUs(cs2, checkCells, true);
-  test_Cycler_SU(mp, checkCV);
+  test_Cycler_SU(mp.get(), checkCV);
 
   //!< test complex module
   //!< cout<<"Cycler test complex module of Cells"<<endl;
   constexpr int ncel1 = 2;
   constexpr int ncel2 = 2;
   int ncel3 = 3;
-  std::string n1 = "1";
-  std::string n2 = "2";
-  std::string n3 = "3";
+  std::string ids[] = { "1", "2", "3" };
   auto cp10 = std::make_unique<Cell_ECM>();
   auto cp20 = std::make_unique<Cell_ECM>();
   auto cp30 = std::make_unique<Cell_ECM>();
@@ -307,19 +290,19 @@ bool test_CyclerECM()
   std::unique_ptr<StorageUnit> SU1[] = { cp10, cp20 };
   std::unique_ptr<StorageUnit> SU2[] = { cp30, cp40 };
   std::unique_ptr<StorageUnit> SU3[] = { cp50, cp60, cp70 };
-  auto mp1 = std::make_unique<Module_p>(n1, T, true, false, ncel1, 1, 2);
-  auto mp2 = std::make_unique<Module_p>(n2, T, true, false, ncel2, 1, 2);
-  auto mp3 = std::make_unique<Module_p>(n3, T, true, false, ncel3, 1, 2);
-  mp1->setSUs(SU1, ncel1, checkCells);
-  mp2->setSUs(SU2, ncel2, checkCells);
-  mp3->setSUs(SU3, ncel3, checkCells);
+  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, ncel1, 1, 2);
+  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, ncel2, 1, 2);
+  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, ncel3, 1, 2);
+  mp1->setSUs(SU1, checkCells);
+  mp2->setSUs(SU2, checkCells);
+  mp3->setSUs(SU3, checkCells);
   int nm = 3;
   std::string n4 = "ECMcells_complex";
   std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
   checkCells = true;
   auto msp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1);
   msp->setSUs(MU, checkCells, true); //!< three module_p in series
-  test_Cycler_SU(msp, checkCV);
+  test_Cycler_SU(msp.get(), checkCV);
 }
 
 bool test_CyclerSPM()
@@ -336,7 +319,7 @@ bool test_CyclerSPM()
   //!< test cell
   //!< cout<<"Test cycler made of one SPM Cell"<<endl;
   auto cp1 = std::make_unique<Cell_SPM>();
-  test_Cycler_SU(cp1, checkCV);
+  test_Cycler_SU(cp1.get(), checkCV);
 
   //!< test series of cell
   //!< cout<<"Test cycler made of a series module of SPM Cells"<<endl;
@@ -347,7 +330,7 @@ bool test_CyclerSPM()
   n = "module_series_SPMcell";
   auto ms = std::make_unique<Module_s>(n, T, true, false, ncel, 1, 1);
   ms->setSUs(cs, checkCells, true);
-  test_Cycler_SU(ms, checkCV);
+  test_Cycler_SU(ms.get(), checkCV);
 
   //!< test parallel of cells
   //!< cout<<"Test cycler made of a parallel module of SPM Cells"<<endl;
@@ -358,39 +341,30 @@ bool test_CyclerSPM()
   n = "module_parallel_SPMcell";
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
   mp->setSUs(cs2, checkCells, true);
-  test_Cycler_SU(mp, checkCV);
+  test_Cycler_SU(mp.get(), checkCV);
 
   //!< test complex module
   //!< cout<<"Cycler test complex module of SPM Cells"<<endl;
   constexpr int ncel1 = 2;
   constexpr int ncel2 = 2;
   int ncel3 = 3;
-  std::string n1 = "1";
-  std::string n2 = "2";
-  std::string n3 = "3";
-  auto cp10 = std::make_unique<Cell_SPM>();
-  auto cp20 = std::make_unique<Cell_SPM>();
-  auto cp30 = std::make_unique<Cell_SPM>();
-  auto cp40 = std::make_unique<Cell_SPM>();
-  auto cp50 = std::make_unique<Cell_SPM>();
-  auto cp60 = std::make_unique<Cell_SPM>();
-  auto cp70 = std::make_unique<Cell_SPM>();
-  std::unique_ptr<StorageUnit> SU1[] = { cp10, cp20 };
-  std::unique_ptr<StorageUnit> SU2[] = { cp30, cp40 };
-  std::unique_ptr<StorageUnit> SU3[] = { cp50, cp60, cp70 };
-  auto mp1 = std::make_unique<Module_p>(n1, T, true, false, ncel1, 1, 2); //!< pass through coolsystem
-  auto mp2 = std::make_unique<Module_p>(n2, T, true, false, ncel2, 1, 2);
-  auto mp3 = std::make_unique<Module_p>(n3, T, true, false, ncel3, 1, 2);
-  mp1->setSUs(SU1, ncel1, checkCells);
-  mp2->setSUs(SU2, ncel2, checkCells);
-  mp3->setSUs(SU3, ncel3, checkCells);
+  std::string ids[] = { "1", "2", "3" };
+  std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
+  std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
+  std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
+  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, ncel1, 1, 2); //!< pass through coolsystem
+  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, ncel2, 1, 2);
+  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, ncel3, 1, 2);
+  mp1->setSUs(SU1, checkCells);
+  mp2->setSUs(SU2, checkCells);
+  mp3->setSUs(SU3, checkCells);
   int nm = 3;
   std::string n4 = "SPMcells_complex";
   std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
   checkCells = true;
   auto msp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1); //!< top level coolsystem
   msp->setSUs(MU, checkCells, true);                                  //!< three module_p in series
-  test_Cycler_SU(msp, checkCV);
+  test_Cycler_SU(msp.get(), checkCV);
   //!< note the capacity of this module will be larger than the parallel module
   //!< 	getCapacity (dis)charges to the voltage limit of the total module (so in this case 3*cell voltage)
   //!< 	The 2 modules with 2 cells will reach their voltage limit after 2*cell capacity
@@ -447,12 +421,12 @@ bool test_CyclerVariations(double Rc)
   double Rcs2[ncel2] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
   double T2 = settings::T_ENV;
   bool checkCells2 = false;
-  auto mpp = std::make_unique<Module_p>(n2, T2, true, false, ncel2, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp = std::make_unique<Module_p>(ids[1], T2, true, false, ncel2, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
   mpp->setSUs(cs2, checkCells2, true);
   mpp->setRcontact(Rcs2, ncel2);
 
   //!< call the test function
-  test_Cycler_SU(mpp, false); //!< don't do CV phases
+  test_Cycler_SU(mpp.get(), false); //!< don't do CV phases
 }
 
 bool test_Cycler_writeData(int control)
@@ -626,7 +600,7 @@ bool test_Cycler_CoolSystem()
     auto cp4 = std::make_unique<Cell_SPM>();
     std::unique_ptr<StorageUnit> cs2[] = { cp1, cp2, cp3, cp4 };
     std::string n2 = "testCoolSystem";
-    auto mp2 = std::make_unique<Module_s>(n2, T, true, false, ncel2, coolControl, 1);
+    auto mp2 = std::make_unique<Module_s>(ids[1], T, true, false, ncel2, coolControl, 1);
     mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
     cyc.initialise(mp2, "Cycler_cooltest_simpleModule");
@@ -676,9 +650,9 @@ bool test_Cycler_CoolSystem()
     auto mp11 = std::make_unique<Module_s>(n11, T, true, false, ncel11, coolControl, 2);
     auto mp22 = std::make_unique<Module_s>(n22, T, true, false, ncel22, coolControl, 2);
     auto mp33 = std::make_unique<Module_s>(n33, T, true, false, ncel33, coolControl, 2);
-    mp11->setSUs(SU1, ncel11, checkCells);
-    mp22->setSUs(SU2, ncel22, checkCells);
-    mp33->setSUs(SU3, ncel33, checkCells);
+    mp11->setSUs(SU1, checkCells);
+    mp22->setSUs(SU2, checkCells);
+    mp33->setSUs(SU3, checkCells);
     int nm = 3;
     std::string n44 = "H4";
     std::unique_ptr<StorageUnit> MU[] = { mp11, mp22, mp33 };
