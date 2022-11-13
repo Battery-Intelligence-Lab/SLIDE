@@ -28,14 +28,14 @@ bool test_Constructor_p()
   constexpr int ncel = 2;
   auto cp1 = std::make_unique<Cell>();
   auto cp2 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp2 = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp2->setSUs(cs, ncel, checkCells, true);
+  mp2->setSUs(cs, checkCells, true);
 
   assert(mp2->getNSUs() == ncel);
   assert(mp2->T() == T);
@@ -51,14 +51,14 @@ bool test_BasicGetters_p()
   constexpr int ncel = 2;
   auto cp1 = std::make_unique<Cell>();
   auto cp2 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
 
   assert(mp->Cap() == ncel * cp1->Cap());
   assert(mp->Vmin() == cp1->Vmin());
@@ -77,7 +77,7 @@ bool test_setI_p()
   constexpr int ncel = 2;
   auto cp1 = std::make_unique<Cell>();
   auto cp2 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   double v1 = cp1->V();
@@ -85,29 +85,29 @@ bool test_setI_p()
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
   assert(mp->I() == 0);
   assert(mp->V() == cp1->V());
 
   //!< discharge
   Inew = 1.0 * ncel;
   V = mp->setCurrent(Inew, true);
-  assert(std::abs(mp->I() - Inew) < tol);
+  assert(NEAR(mp->I(), Inew, tol));
   assert(V < v1); //!< voltage must decrease
   //!< do not check individual cells, that is done in getCells
 
   //!< charge
   Inew = -1.0 * ncel;
   V = mp->setCurrent(Inew, true);
-  assert(std::abs(mp->I() - Inew) < tol);
+  assert(NEAR(mp->I(), Inew, tol));
   assert(mp->V() > v1); //!< voltage must increase
 
   //!< rest with different SOC values
   Inew = 0;
-  cp2->setSOC(0.4);                                                    //!< c2 has lower OCV -> should charge
-  V = mp->setCurrent(Inew, true);                                      //!< the large change in OCV causes a large voltage change, which cannot be fixed by setCurrent
-  assert(std::abs(cp1->V() - cp2->V()) < settings::MODULE_P_V_ABSTOL); //!< cell voltages are equal
-  assert(std::abs(cp1->I() - cp1->I()) < settings::MODULE_P_V_ABSTOL); //!< cell currents are opposite
+  cp2->setSOC(0.4);                                              //!< c2 has lower OCV -> should charge
+  V = mp->setCurrent(Inew, true);                                //!< the large change in OCV causes a large voltage change, which cannot be fixed by setCurrent
+  assert(NEAR(cp1->V(), cp2->V(), settings::MODULE_P_V_ABSTOL)); //!< cell voltages are equal
+  assert(NEAR(cp1->I(), cp1->I(), settings::MODULE_P_V_ABSTOL)); //!< cell currents are opposite
   assert(cp1->I() > 0);
   assert(cp2->I() < 0);
 
@@ -136,14 +136,14 @@ bool test_validStates_p()
   constexpr int ncel = 2;
   auto cp1 = std::make_unique<Cell>();
   auto cp2 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
 
   //!< valid states (current states)
   int nin = settings::STORAGEUNIT_NSTATES_MAX;
@@ -183,14 +183,14 @@ bool test_validCells_p()
   auto cp1 = std::make_unique<Cell>();
   auto cp2 = std::make_unique<Cell>();
   auto cp3 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
 
   //!< valid cells with the current cells
   std::unique_ptr<StorageUnit> cs2[ncel];
@@ -203,7 +203,7 @@ bool test_validCells_p()
   assert(mp->validSUs(cs2, ncel));
 
   //!< add an additional cell
-  std::unique_ptr<StorageUnit> cs3[3] = { cp1, cp2, cp3 };
+  std::unique_ptr<StorageUnit> cs3[] = { cp1, cp2, cp3 };
   assert(mp->validSUs(cs3, 3));
 
   if () {
@@ -221,12 +221,12 @@ bool test_timeStep_CC_p()
   constexpr int ncel = 2;
   auto cp1 = std::make_unique<Cell>();
   auto cp2 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
   double v1 = cp1->V();
   double soc1 = cp1->SOC();
 
@@ -295,14 +295,14 @@ bool test_Modules_p_ECM()
   constexpr int ncel = 2;
   auto cp1 = std::make_unique<Cell_ECM>();
   auto cp2 = std::make_unique<Cell_ECM>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
   double v1 = cp1->V();
   assert(mp->I() == 0);
   assert(mp->V() == cp1->V());
@@ -310,20 +310,20 @@ bool test_Modules_p_ECM()
   double Inew = 1.0 * ncel;
   double V;
   V = mp->setCurrent(Inew, true);
-  assert(std::abs(mp->I() - Inew) < tol);
+  assert(NEAR(mp->I(), Inew, tol));
   assert(V < v1); //!< voltage must decrease
   //!< do not check individual cells, that is done in getCells
   //!< charge
   Inew = -1.0 * ncel;
   V = mp->setCurrent(Inew, true);
-  assert(std::abs(mp->I() - Inew) < tol);
+  assert(NEAR(mp->I(), Inew, tol));
   assert(mp->V() > v1); //!< voltage must increase
   //!< rest with different SOC values
   Inew = 0;
   cp2->setSOC(0.4); //!< c2 has lower OCV -> should charge
   V = mp->setCurrent(Inew, true);
-  assert(std::abs(cp1->V() - cp2->V()) < settings::MODULE_P_V_ABSTOL); //!< cell voltages are equal
-  assert(std::abs(cp1->I() + cp2->I()) < tol);                         //!< cell currents are opposite
+  assert(NEAR(cp1->V(), cp2->V(), settings::MODULE_P_V_ABSTOL)); //!< cell voltages are equal
+  assert(std::abs(cp1->I() + cp2->I()) < tol);                   //!< cell currents are opposite
   assert(cp1->I() > 0);
   assert(cp2->I() < 0);
 
@@ -332,7 +332,7 @@ bool test_Modules_p_ECM()
   cp2 = std::unique_ptr<Cell_ECM>(new Cell_ECM());
   auto cp3 = std::make_unique<Cell_ECM>();
   //!< valid cells with the current cells
-  std::unique_ptr<StorageUnit> cs2[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs2[] = { cp1, cp2 };
   mp->setSUs(cs2, ncel);
   int nout;
   mp->getSUs(cs2, ncel, nout);
@@ -341,7 +341,7 @@ bool test_Modules_p_ECM()
   cs2[1] = cp3;
   assert(mp->validSUs(cs2, ncel));
   //!< add an additional cell
-  std::unique_ptr<StorageUnit> cs3[3] = { cp1, cp2, cp3 };
+  std::unique_ptr<StorageUnit> cs3[] = { cp1, cp2, cp3 };
   assert(mp->validSUs(cs3, 3));
 
   //!< CC timestep
@@ -406,14 +406,14 @@ bool test_Modules_p_SPM()
   constexpr int ncel = 2;
   auto cp1 = std::make_unique<Cell>();
   auto cp2 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
   double v1 = cp1->V();
   assert(mp->I() == 0);
   assert(mp->V() == cp1->V());
@@ -421,13 +421,13 @@ bool test_Modules_p_SPM()
   double Inew = 1.0 * ncel;
   double V;
   V = mp->setCurrent(Inew, true);
-  assert(std::abs(mp->I() - Inew) < tol);
+  assert(NEAR(mp->I(), Inew, tol));
   assert(V < v1); //!< voltage must decrease
   //!< do not check individual cells, that is done in getCells
   //!< charge
   Inew = -1.0 * ncel;
   V = mp->setCurrent(Inew, true);
-  assert(std::abs(mp->I() - Inew) < tol);
+  assert(NEAR(mp->I(), Inew, tol));
   assert(mp->V() > v1); //!< voltage must increase
   //!< rest with different SOC values
   //!< -> must be different lithium fractions since SOC does not affect the concentration
@@ -437,7 +437,7 @@ bool test_Modules_p_SPM()
   cp1 = std::unique_ptr<Cell_SPM>(new Cell_SPM());
   cp2 = std::unique_ptr<Cell_SPM>(new Cell_SPM());
   auto cp3 = std::make_unique<Cell_SPM>();
-  std::unique_ptr<StorageUnit> cs2[ncel] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> cs2[] = { cp1, cp2 };
   mp->setSUs(cs2, ncel);
   int nout;
   //!< valid cells with the current cells
@@ -448,7 +448,7 @@ bool test_Modules_p_SPM()
   cs22[1] = cp3;
   assert(mp->validSUs(cs22, ncel));
   //!< add an additional cell
-  std::unique_ptr<StorageUnit> cs33[3] = { cp1, cp2, cp3 };
+  std::unique_ptr<StorageUnit> cs33[] = { cp1, cp2, cp3 };
   assert(mp->validSUs(cs33, 3));
 
   //!< CC timestep
@@ -458,7 +458,7 @@ bool test_Modules_p_SPM()
   cs[1] = cp2;
   double soc1 = cp1->SOC();
   v1 = cp1->V();
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
   //!< time step with 0 current
   double dt = 5;
   mp->timeStep_CC(dt);
@@ -514,13 +514,13 @@ bool test_contactR()
   auto cp1 = std::make_unique<Cell>();
   auto cp2 = std::make_unique<Cell>();
   auto cp3 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2, cp3 };
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2, cp3 };
   double Rcs[ncel] = { Rc, Rc, Rc };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
   mp->setRcontact(Rcs, ncel);
 
   //!< total resistance:
@@ -531,7 +531,7 @@ bool test_contactR()
   double Rs = cp1->getRtot();
   double Rq = Rc + (Rs * (Rs + Rc)) / (Rc + 2 * Rs); //!< resistance of last two branches
   double Rtot = Rc + Rs * Rq / (Rs + Rq);
-  assert(std::abs(mp->getRtot() - Rtot) < tol);
+  assert(NEAR(mp->getRtot(), Rtot, tol));
 
   //!< setCurrent
   //!< check voltages at each node from the branch going 'down' and the branch going 'right'
@@ -557,22 +557,22 @@ bool test_contactR()
   //!< double V13 = Rcs[1] * (I2 + I3) + Rcs[2]*I3 + Rcell*I3;
   double V22 = Rcell * I2;            //!< voltage at node of 2nd cell going down
   double V23 = (Rcs[2] + Rcell) * I3; //!< voltage at node of 2nc cell going right
-  assert(std::abs(V11 - V12) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(V22 - V23) < settings::MODULE_P_V_ABSTOL);
+  assert(NEAR(V11, V12, settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(V22, V23, settings::MODULE_P_V_ABSTOL));
   assert(mp->validSUs()); //!< ensure the SUs have valid voltages
 
   //!< check the total voltage
   double V1 = cp1->V() - Rcs[0] * (I1 + I2 + I3);
   double V2 = cp2->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3);
   double V3 = cp3->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3) - Rcs[2] * I3;
-  assert(std::abs(V1 - V2) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(V1 - V3) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(V2 - V3) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(mp->V() - V2) < settings::MODULE_P_V_ABSTOL);
+  assert(NEAR(V1, V2, settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(V1, V3, settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(V2, V3, settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(mp->V(), V2, settings::MODULE_P_V_ABSTOL));
 
-  assert(std::abs(V1 - mp->Vi(0)) < tol); //!< these numbers should be exactly the same
-  assert(std::abs(V2 - mp->Vi(1)) < tol); //!< these numbers should be exactly the same
-  assert(std::abs(V3 - mp->Vi(2)) < tol); //!< these numbers should be exactly the same
+  assert(NEAR(V1, mp->Vi(0), tol)); //!< these numbers should be exactly the same
+  assert(NEAR(V2, mp->Vi(1), tol)); //!< these numbers should be exactly the same
+  assert(NEAR(V3, mp->Vi(2), tol)); //!< these numbers should be exactly the same
 
   //!< set charging current
   I = -20;
@@ -587,20 +587,20 @@ bool test_contactR()
   V12 = Rcs[1] * (I2 + I3) + Rcell * I2; //!< voltage at the node connecting the first cell, going right
   V22 = Rcell * I2;                      //!< voltage at node of 2nd cell going down
   V23 = (Rcs[2] + Rcell) * I3;           //!< voltage at node of 2nc cell going right
-  assert(std::abs(V11 - V12) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(V22 - V23) < settings::MODULE_P_V_ABSTOL);
+  assert(NEAR(V11, V12, settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(V22, V23, settings::MODULE_P_V_ABSTOL));
   assert(mp->validSUs()); //!< ensure the SUs have valid voltages
   V1 = cp1->V() - Rcs[0] * (I1 + I2 + I3);
   V2 = cp2->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3);
   V3 = cp3->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3) - Rcs[2] * I3;
-  assert(std::abs(V1 - V2) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(V1 - V3) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(V2 - V3) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(mp->V() - V2) < settings::MODULE_P_V_ABSTOL);
+  assert(NEAR(V1, V2, settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(V1, V3, settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(V2, V3, settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(mp->V(), V2, settings::MODULE_P_V_ABSTOL));
 
-  assert(std::abs(V1 - mp->Vi(0)) < tol); //!< these numbers should be exactly the same
-  assert(std::abs(V2 - mp->Vi(1)) < tol); //!< these numbers should be exactly the same
-  assert(std::abs(V3 - mp->Vi(2)) < tol); //!< these numbers should be exactly the same
+  assert(NEAR(V1, mp->Vi(0), tol)); //!< these numbers should be exactly the same
+  assert(NEAR(V2, mp->Vi(1), tol)); //!< these numbers should be exactly the same
+  assert(NEAR(V3, mp->Vi(2), tol)); //!< these numbers should be exactly the same
 }
 
 bool test_Hierarchichal_p()
@@ -621,9 +621,9 @@ bool test_Hierarchichal_p()
   auto cp5 = std::make_unique<Cell>();
   auto cp6 = std::make_unique<Cell>();
   auto cp7 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> SU1[ncel1] = { cp1, cp2 };
-  std::unique_ptr<StorageUnit> SU2[ncel2] = { cp3, cp4 };
-  std::unique_ptr<StorageUnit> SU3[ncel3] = { cp5, cp6, cp7 };
+  std::unique_ptr<StorageUnit> SU1[] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> SU2[] = { cp3, cp4 };
+  std::unique_ptr<StorageUnit> SU3[] = { cp5, cp6, cp7 };
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp1 = std::make_unique<Module_p>(n1, T, true, false, ncel1, 1, 2); //!< pass through cool systems
@@ -636,13 +636,13 @@ bool test_Hierarchichal_p()
   //!< make the hierarichical module
   int nm = 3;
   std::string n4 = "4";
-  std::unique_ptr<StorageUnit> MU[nm] = { mp1, mp2, mp3 };
+  std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
   checkCells = true;
   auto mp = std::make_unique<Module_p>(n4, T, true, true, 7, 1, 1);
-  mp->setSUs(MU, nm, checkCells, true);
+  mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
-  assert(std::abs(Vini - mp1->V()) < tol);
-  assert(std::abs(Vini - cp5->V()) < tol);
+  assert(NEAR(Vini, mp1->V(), tol));
+  assert(NEAR(Vini, cp5->V(), tol));
   assert(mp->getFullID() == "4");
   assert(mp1->getFullID() == "4_H1");
   assert(cp1->getFullID() == "4_H1_cell");
@@ -652,9 +652,9 @@ bool test_Hierarchichal_p()
   //!< set a CC current
   double Inew = -14; //!< should give about 2A per cell
   mp->setCurrent(Inew);
-  assert(std::abs(mp->I() - Inew) < tol);
-  assert(std::abs(mp1->V() - mp2->V()) < settings::MODULE_P_V_ABSTOL);
-  assert(std::abs(mp3->V() - mp2->V()) < settings::MODULE_P_V_ABSTOL);
+  assert(NEAR(mp->I(), Inew, tol));
+  assert(NEAR(mp1->V(), mp2->V(), settings::MODULE_P_V_ABSTOL));
+  assert(NEAR(mp3->V(), mp2->V(), settings::MODULE_P_V_ABSTOL));
   /*assert( std::abs(cp3->I() + 2)<tol); //!< this is not necessarily true, the functions only put constraints on the voltage
   assert( std::abs(cp7->I() + 2)<tol);		//!< so we should not expect certain tolerances on the current. E.g. if R very small, we can get larger current errors
   assert( std::abs(mp1->I() + 2*2)<tol); //!< m1 has two cells
@@ -666,7 +666,7 @@ bool test_Hierarchichal_p()
   mp->timeStep_CC(dt);
   assert(std::abs(cp1->SOC() - (0.5 - 2 * dt / 3600.0 / cp1->Cap())) < tol); //!< the SOC must have increased (check just 1 cell out of all 7)
   assert(mp->V() > Vini);
-  assert(std::abs(mp2->V() - mp3->V()) < tol); //!< submodules must have same voltage
+  assert(NEAR(mp2->V(), mp3->V(), tol)); //!< submodules must have same voltage
 }
 
 bool test_Hierarchical_cross_p()
@@ -686,9 +686,9 @@ bool test_Hierarchical_cross_p()
   auto cp4 = std::make_unique<Cell>();
   auto cp5 = std::make_unique<Cell>();
   auto cp6 = std::make_unique<Cell>();
-  std::unique_ptr<StorageUnit> SU1[ncel1] = { cp1, cp2 };
-  std::unique_ptr<StorageUnit> SU2[ncel2] = { cp3, cp4 };
-  std::unique_ptr<StorageUnit> SU3[ncel3] = { cp5, cp6 };
+  std::unique_ptr<StorageUnit> SU1[] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> SU2[] = { cp3, cp4 };
+  std::unique_ptr<StorageUnit> SU3[] = { cp5, cp6 };
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp1 = std::make_unique<Module_s>(n1, T, true, false, ncel1, 1, 2); //!< pass through coolsystems
@@ -701,23 +701,23 @@ bool test_Hierarchical_cross_p()
   //!< make the hierarichical module
   int nm = 3;
   std::string n4 = "4";
-  std::unique_ptr<StorageUnit> MU[nm] = { mp1, mp2, mp3 };
+  std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
   checkCells = true;
   auto mp = std::make_unique<Module_p>(n4, T, true, true, 7, 1, 1);
-  mp->setSUs(MU, nm, checkCells, true);
+  mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
-  assert(std::abs(Vini - mp1->V()) < tol);
+  assert(NEAR(Vini, mp1->V(), tol));
   assert(std::abs(Vini - cp5->V() * 2) < tol); //!< one module has 2 cells so voltage should split in 2
 
   //!< set a CC current
   double Inew = -6; //!< should give about 2A per cell
   mp->setCurrent(Inew);
-  assert(std::abs(mp->I() - Inew) < tol);
+  assert(NEAR(mp->I(), Inew, tol));
   assert(std::abs(cp3->I() + 2) < tol);
   assert(std::abs(cp6->I() + 2) < tol);
-  assert(std::abs(mp1->I() + 2) < tol);        //!< m1 has two cells
-  assert(std::abs(mp3->I() + 2) < tol);        //!< m3 has two cells
-  assert(std::abs(mp1->V() - mp3->V()) < tol); //!< check voltage is equal
+  assert(std::abs(mp1->I() + 2) < tol);  //!< m1 has two cells
+  assert(std::abs(mp3->I() + 2) < tol);  //!< m3 has two cells
+  assert(NEAR(mp1->V(), mp3->V(), tol)); //!< check voltage is equal
 
   /* the iterative function is now private
           Inew = 5;
@@ -736,8 +736,8 @@ bool test_Hierarchical_cross_p()
   mp->timeStep_CC(dt);
   assert(std::abs(cp1->SOC() - (0.5 - 2 * dt / 3600.0 / cp1->Cap())) < tol); //!< the SOC must have increased (check just 1 cell out of all 7)
   assert(mp->V() > Vini);
-  assert(std::abs(mp2->V() - mp3->V()) < tol); //!< submodules must have same voltage
-                                               //!< note: there is no check on sub-modules with different SOC but I assume that works since it works with sub-cells of different SOC
+  assert(NEAR(mp2->V(), mp3->V(), tol)); //!< submodules must have same voltage
+                                         //!< note: there is no check on sub-modules with different SOC but I assume that works since it works with sub-cells of different SOC
 }
 
 bool test_copy_p()
@@ -750,13 +750,13 @@ bool test_copy_p()
   //!< 	constexpr int ncel = 2;
   //!< 	auto cp1 = std::make_unique<Cell>();
   //!< 	auto cp2 = std::make_unique<Cell>();
-  //!< 	std::unique_ptr<StorageUnit> cs[ncel] = {cp1, cp2};
+  //!< 	std::unique_ptr<StorageUnit> cs[] = {cp1, cp2};
   //!< 	std::string n = "na";
   //!< 	double v1 = cp1->V();
   //!< 	double T = settings::T_ENV;
   //!< 	bool checkCells = false;
   //!< 	auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
-  //!< 	mp->setSUs(cs, ncel, checkCells, true);
+  //!< 	mp->setSUs(cs, checkCells, true);
 
   //!< 	//!< copy this one and check they are identical
   //!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
@@ -902,9 +902,9 @@ bool test_equaliseV()
   auto cp9 = std::make_unique<Cell_SPM>("cell3", deg, 1, 1, 1, 1);
   auto cp10 = std::make_unique<Cell_SPM>("cell4", deg, 1, 1, 1, 1);
   auto cp11 = std::make_unique<Cell_SPM>("cell5", deg, 1, 1, 1, 1);
-  std::unique_ptr<StorageUnit> cs1[ncel1] = { cp7, cp8, cp9, cp10, cp11 };
+  std::unique_ptr<StorageUnit> cs1[] = { cp7, cp8, cp9, cp10, cp11 };
   auto mpp1 = std::make_unique<Module_p>(n1, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
-  mpp1->setSUs(cs1, ncel1, checkCells2, true);
+  mpp1->setSUs(cs1, checkCells2, true);
   test_equaliseV_timing(mpp1, cs1, ncel1);
 
   //!< 5 cells with small distribution
@@ -922,9 +922,9 @@ bool test_equaliseV()
   std::unique_ptr<Cell_SPM> cp13(new Cell_SPM("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   std::unique_ptr<Cell_SPM> cp14(new Cell_SPM("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   std::unique_ptr<Cell_SPM> cp15(new Cell_SPM("cell9", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<StorageUnit> cs2[ncel1] = { cp16, cp12, cp13, cp14, cp15 };
+  std::unique_ptr<StorageUnit> cs2[] = { cp16, cp12, cp13, cp14, cp15 };
   auto mpp2 = std::make_unique<Module_p>(n2, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
-  mpp2->setSUs(cs2, ncel1, checkCells2, true);
+  mpp2->setSUs(cs2, checkCells2, true);
   test_equaliseV_timing(mpp2, cs2, ncel1);
 
   //!< 5 cells with large distribution
@@ -939,9 +939,9 @@ bool test_equaliseV()
   std::unique_ptr<Cell_SPM> cp113(new Cell_SPM("cell7", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen)));
   std::unique_ptr<Cell_SPM> cp114(new Cell_SPM("cell8", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen)));
   std::unique_ptr<Cell_SPM> cp115(new Cell_SPM("cell9", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen)));
-  std::unique_ptr<StorageUnit> cs3[ncel1] = { cp116, cp112, cp113, cp114, cp115 };
+  std::unique_ptr<StorageUnit> cs3[] = { cp116, cp112, cp113, cp114, cp115 };
   std::unique_ptr<Module_p> mpp3(new Module_p(n3, T2, true, false, ncel1, 1, 1)); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
-  mpp3->setSUs(cs3, ncel1, checkCells2, true);
+  mpp3->setSUs(cs3, checkCells2, true);
   test_equaliseV_timing(mpp3, cs3, ncel1);
 
   //!< 4 similar and one very different
@@ -951,9 +951,9 @@ bool test_equaliseV()
   std::unique_ptr<Cell_SPM> cp1113(new Cell_SPM("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   std::unique_ptr<Cell_SPM> cp1114(new Cell_SPM("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   auto cp1115 = std::make_unique<Cell_SPM>("cell9", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance
-  std::unique_ptr<StorageUnit> cs4[ncel1] = { cp1116, cp1112, cp1113, cp1114, cp1115 };
+  std::unique_ptr<StorageUnit> cs4[] = { cp1116, cp1112, cp1113, cp1114, cp1115 };
   auto mpp4 = std::make_unique<Module_p>(n4, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
-  mpp4->setSUs(cs4, ncel1, checkCells2, true);
+  mpp4->setSUs(cs4, checkCells2, true);
   test_equaliseV_timing(mpp4, cs4, ncel1);
 }
 

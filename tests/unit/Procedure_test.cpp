@@ -193,7 +193,7 @@ bool test_Prcedure_CoolSystem()
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
     constexpr size_t ncel = 1;
-    std::unique_ptr<StorageUnit> cs[ncel] = { std::make_unique<Cell_SPM>() };
+    std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>() };
 
     auto cp0 = dynamic_cast<Cell_SPM *>(cs[0].get());
 
@@ -277,7 +277,7 @@ bool test_Prcedure_CoolSystem()
 
     constexpr size_t nm = 3;
     std::string n44 = "testCoolSystem_complexModule";
-    std::unique_ptr<StorageUnit> MU[nm] = { std::move(mp11), std::move(mp22), std::move(mp33) };
+    std::unique_ptr<StorageUnit> MU[] = { std::move(mp11), std::move(mp22), std::move(mp33) };
 
     auto mp44 = std::make_unique<Module_s>(n44, T, true, true, 6, coolControl, 1);
     mp44->setSUs(MU, checkCells, true);
