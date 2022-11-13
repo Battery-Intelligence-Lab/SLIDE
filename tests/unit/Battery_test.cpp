@@ -61,7 +61,7 @@ void test_Battery_CoolSystem()
     double Tini[1] = { cp0->T() };
     auto b1 = std::make_unique<Battery>(n);
     b1->setModule(mp);
-    cyc.initialise(b1, "Cycler_cooltest_oneCell");
+    cyc.initialise(b1.get(), "Cycler_cooltest_oneCell");
 
     //!< do a few 1C cycles
     Icha = -cp0->Cap();
@@ -70,11 +70,11 @@ void test_Battery_CoolSystem()
       //!< charge
       vlim = mp->Vmax() - lim;
       tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -108,7 +108,7 @@ void test_Battery_CoolSystem()
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
     auto b2 = std::make_unique<Battery>(ids[1]);
     b2->setModule(mp2);
-    cyc.initialise(b2, "Cycler_cooltest_simpleModule");
+    cyc.initialise(b2.get(), "Cycler_cooltest_simpleModule");
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp1->Cap();
@@ -117,11 +117,11 @@ void test_Battery_CoolSystem()
       //!< charge
       vlim = mp2->Vmax() - lim;
       tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp2->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -173,7 +173,7 @@ void test_Battery_CoolSystem()
     double Tini22[7] = { cp11->T(), cp22->T(), cp33->T(), cp44->T(), cp55->T(), cp66->T(), cp77->T() };
     auto b3 = std::make_unique<Battery>(n44);
     b3->setModule(mp44);
-    cyc.initialise(b3, "Cycler_cooltest_complexModule");
+    cyc.initialise(b3.get(), "Cycler_cooltest_complexModule");
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp11->Cap();
@@ -182,11 +182,11 @@ void test_Battery_CoolSystem()
       //!< charge
       vlim = mp44->Vmax() - lim;
       tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp44->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
     }
 
     double Qgen3, Qcool3, Qheat3;

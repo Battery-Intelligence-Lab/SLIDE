@@ -32,7 +32,7 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
   double lim = 0.0;
   double Ah, Wh, dtime, V1;
 
-  cyc.initialise(su, "Cycler_test");
+  cyc.initialise(su.get(), "Cycler_test");
   double vlim, tlim, Ilim;
   double dt = 2;
   int ndata = 0;
@@ -222,17 +222,24 @@ bool test_CyclerCell()
   std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
   std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
 
-  std::unique_ptr<Module_p> MU[] = { std::make_unique<Module_p>(ids[0], T, true, false, std::size(SU1), 1, 2),
-                                     std::make_unique<Module_p>(ids[1], T, true, false, std::size(SU2), 1, 2),
-                                     std::make_unique<Module_p>(ids[2], T, true, false, std::size(SU3), 1, 2) };
 
-  MU[0]->setSUs(SU1, checkCells);
-  MU[1]->setSUs(SU2, checkCells);
-  MU[2]->setSUs(SU3, checkCells);
-  int nm = 3;
-  std::string n4 = "cells_complex";
+  auto mu1 = std::make_unique<Module_p>(ids[0], T, true, false, std::size(SU1), 1, 2);
+  auto mu2 = std::make_unique<Module_p>(ids[1], T, true, false, std::size(SU2), 1, 2);
+  auto mu3 = std::make_unique<Module_p>(ids[2], T, true, false, std::size(SU3), 1, 2);
+
+  mu1->setSUs(SU1, checkCells);
+  mu2->setSUs(SU2, checkCells);
+  mu3->setSUs(SU3, checkCells);
+
+  std::unique_ptr<StorageUnit> MU[] = {
+    std::move(mu1),
+    std::move(mu2),
+    std::move(mu3),
+  };
+
+
   checkCells = true;
-  auto msp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, true);
+  auto msp = std::make_unique<Module_s>("cells_complex", T, true, false, 7, 1, true);
   msp->setSUs(MU, checkCells, true); //!< three module_p in series
 
   test_Cycler_SU(msp.get(), checkCV);
@@ -272,21 +279,17 @@ bool test_CyclerECM()
 
   //!< test complex module
   //!< cout<<"Cycler test complex module of Cells"<<endl;
-  constexpr int ncel1 = 2;
-  constexpr int ncel2 = 2;
-  constexpr int ncel3 = 3;
   std::string ids[] = { "1", "2", "3" };
   std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>() };
   std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>() };
   std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>(), std::make_unique<Cell_ECM>() };
 
-  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, ncel1, 1, 2);
-  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, ncel2, 1, 2);
-  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, ncel3, 1, 2);
+  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, std::size(SU1), 1, 2);
+  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, std::size(SU2), 1, 2);
+  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, std::size(SU3), 1, 2);
   mp1->setSUs(SU1, checkCells);
   mp2->setSUs(SU2, checkCells);
   mp3->setSUs(SU3, checkCells);
-  int nm = 3;
   std::string n4 = "ECMcells_complex";
   std::unique_ptr<StorageUnit> MU[] = { std::move(mp1), std::move(mp2), std::move(mp3) };
   checkCells = true;
@@ -396,24 +399,25 @@ bool test_CyclerVariations(double Rc)
   constexpr int ncel2 = 9;
   std::string n2 = "Variations_p_module_" + std::to_string(Rc);
 
-  std::array<std::unique_ptr<StorageUnit>, ncel2> cs2;
 
+  std::array<std::unique_ptr<StorageUnit>, ncel2> cs2{
+    std::make_unique<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    std::make_unique<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    std::make_unique<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    std::make_unique<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    std::make_unique<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    std::make_unique<Cell_SPM>("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    std::make_unique<Cell_SPM>("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    std::make_unique<Cell_SPM>("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    std::make_unique<Cell_SPM>("cell9", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
+  };
 
-  std::unique_ptr<Cell_SPM> cp7(new Cell_SPM("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<Cell_SPM> cp8(new Cell_SPM("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<Cell_SPM> cp9(new Cell_SPM("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<Cell_SPM> cp10(new Cell_SPM("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<Cell_SPM> cp11(new Cell_SPM("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<Cell_SPM> cp12(new Cell_SPM("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<Cell_SPM> cp13(new Cell_SPM("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<Cell_SPM> cp14(new Cell_SPM("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  std::unique_ptr<Cell_SPM> cp15(new Cell_SPM("cell9", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
-  double Rcs2[ncel2] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
+  double Rcs2[] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
   double T2 = settings::T_ENV;
   bool checkCells2 = false;
-  auto mpp = std::make_unique<Module_p>(ids[1], T2, true, false, ncel2, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp = std::make_unique<Module_p>(n2, T2, true, false, std::size(cs2), 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
   mpp->setSUs(cs2, checkCells2, true);
-  mpp->setRcontact(Rcs2, ncel2);
+  mpp->setRcontact(Rcs2);
 
   //!< call the test function
   test_Cycler_SU(mpp.get(), false); //!< don't do CV phases
@@ -431,14 +435,14 @@ bool test_Cycler_writeData(int control)
   Cycler cyc;
   double tol = settings::MODULE_P_V_ABSTOL; //!< complex modules have larger under- and overshoot due to the larger numbers involved
   double lim = 0.0;
-  double Ah, Wh;
+  double Ah, Wh, dtime;
 
   //!< ******************************************************* test a single cell doing a single CCCV cycle *********************************************
-  cyc.initialise(su, "Cycler_test_cell");
+  cyc.initialise(su.get(), "Cycler_test_cell");
   double vlim, tlim, Ilim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
-  int succ;
+  Status succ;
   double I = su->Cap();
 
   //!< CCCV charge
@@ -468,12 +472,9 @@ bool test_Cycler_writeData(int control)
   assert(su->I() <= Ilim);
 
   //!< write the data
-  if (DATASTORE_CELL == 0)
-    std::cerr << "Warning in testCycler, we want to write data to test the cell's behaviour but the global variable CYCLER_STORE_CELL is 0 so no data will be stored\n";
   su->writeData("test_writeData");
 
   //!< ******************************************************* test three cells in a module doing lots of cycles *********************************************
-  int ncel = 3;
   bool checkCells = false;
   DEG_ID deg;
 
@@ -485,14 +486,13 @@ bool test_Cycler_writeData(int control)
 
   deg.LAM_id.add_model(0); //!< no LAM
   deg.pl_id = 0;           //!< no litihium plating
-  auto cp2 = std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1);
-  auto cp3 = std::make_unique<Cell_SPM>("cell2", deg, 1, 1, 1, 1); //!< check that the middle cell heats up more
-  auto cp4 = std::make_unique<Cell_SPM>("cell3", deg, 1, 1, 1, 1);
-  std::unique_ptr<StorageUnit> cs[] = { cp2, cp3, cp4 };
+  std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1),
+                                        std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1), //!< check that the middle cell heats up more
+                                        std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1) };
   std::string n = "mod1";
-  auto ms = std::make_unique<Module_s>(n, settings::T_ENV, true, false, ncel, control, 1);
+  auto ms = std::make_unique<Module_s>(n, settings::T_ENV, true, false, std::size(cs), control, 1);
   ms->setSUs(cs, checkCells, true);
-  cyc.initialise(ms, "test_writeData_sModule");
+  cyc.initialise(ms.get(), "test_writeData_sModule");
 
   //!< do 100 cycles
   for (int i = 0; i < 100; i++) {
@@ -539,7 +539,7 @@ bool test_Cycler_CoolSystem()
   int N = 10;
   Cycler cyc;
   double lim = 0.0;
-  double Ah, Wh;
+  double Ah, Wh, dtime;
   double vlim, tlim;
   int ndata = 0;
 
@@ -549,13 +549,14 @@ bool test_Cycler_CoolSystem()
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
     int ncel = 1;
-    auto cp0 = std::make_unique<Cell_SPM>();
-    std::unique_ptr<StorageUnit> cs[] = { cp0 };
+    std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>() };
+    auto cp0 = dynamic_cast<Cell_SPM *>(cs[0].get());
+
     std::string n = "testCoolSystem";
     auto mp = std::make_unique<Module_s>(n, T, true, false, ncel, coolControl, 1);
     mp->setSUs(cs, checkCells, true);
     double Tini[1] = { cp0->T() };
-    cyc.initialise(mp, "Cycler_cooltest_oneCell");
+    cyc.initialise(mp.get(), "Cycler_cooltest_oneCell");
 
     //!< do a few 1C cycles
     Icha = -cp0->Cap();
@@ -564,11 +565,11 @@ bool test_Cycler_CoolSystem()
       //!< charge
       vlim = mp->Vmax() - lim;
       tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -584,16 +585,19 @@ bool test_Cycler_CoolSystem()
     //!< **********************************************************************************************************************************************************
     //!< Make a simple module with SPM cells
     int ncel2 = 4;
-    auto cp1 = std::make_unique<Cell_SPM>();
-    auto cp2 = std::make_unique<Cell_SPM>();
-    auto cp3 = std::make_unique<Cell_SPM>();
-    auto cp4 = std::make_unique<Cell_SPM>();
-    std::unique_ptr<StorageUnit> cs2[] = { cp1, cp2, cp3, cp4 };
+    std::unique_ptr<StorageUnit> cs2[] = {
+      std::make_unique<Cell_SPM>(),
+      std::make_unique<Cell_SPM>(),
+      std::make_unique<Cell_SPM>(),
+      std::make_unique<Cell_SPM>()
+    };
+
+
     std::string n2 = "testCoolSystem";
-    auto mp2 = std::make_unique<Module_s>(ids[1], T, true, false, ncel2, coolControl, 1);
+    auto mp2 = std::make_unique<Module_s>(n2, T, true, false, std::size(cs2), coolControl, 1);
     mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
-    cyc.initialise(mp2, "Cycler_cooltest_simpleModule");
+    cyc.initialise(mp2.get(), "Cycler_cooltest_simpleModule");
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp1->Cap();
@@ -602,11 +606,11 @@ bool test_Cycler_CoolSystem()
       //!< charge
       vlim = mp2->Vmax() - lim;
       tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp2->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -656,11 +660,11 @@ bool test_Cycler_CoolSystem()
       //!< charge
       vlim = mp44->Vmax() - lim;
       tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp44->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
     }
 
     double Qgen3, Qcool3, Qheat3;

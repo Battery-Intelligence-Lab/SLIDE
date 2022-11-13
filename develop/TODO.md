@@ -21,6 +21,8 @@
   - [ ] Add a generic state term to cover time, Ah, Wh. 
   - [ ] In future it is possible to use enums as a counter for vector based states. 
 - [ ] Probably there is a bug in slide-pack where time, Ah, Wh values are not resetted after a throw. Try two cell in series config with one has smaller capacity so it reaches its capacity earlier. Then charge with 1C + large time step. Probably first cell will store Ah and second won't. and there will be difference in their Ah. Or even it does not, it will be different than real Ah. Just charge and discharge. 
+- [ ] Cycler should be able to take unique_ptr and convert. 
+
 
 ### From SLIDE v2: 
 
