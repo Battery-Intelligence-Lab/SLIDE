@@ -11,3 +11,7 @@ add_executable(unit_test_Cell_SPM Cell_SPM_test.cpp)
 target_link_libraries(unit_test_Cell_SPM PRIVATE src)
 add_test(NAME unit_test_Cell_SPM COMMAND unit_test_Cell_SPM WORKING_DIRECTORY bin)
 
+add_executable(unit_test_Converter converter_test.cpp)
+target_link_libraries(unit_test_Converter PRIVATE src)
+add_test(NAME unit_test_Converter COMMAND unit_test_Converter WORKING_DIRECTORY bin)
+

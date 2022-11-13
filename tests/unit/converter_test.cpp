@@ -75,11 +75,12 @@ bool testLosses()
   v = 2.7 * 15 * 20;
   std::cout<<"Losses for the EFL battery at Vmin are "<<c.getLosses(v,I)<<" W or "<<c.getLosses(v,I)/(I*v)*100<<" %"<<endl;
   */
+  return true;
 }
 
 int test_all_Converter()
 {
-  if (!TEST(testLosses(), "testLosses")) return 1;
+  if (!TEST(testLosses, "testLosses")) return 1;
 
   return 0;
 }

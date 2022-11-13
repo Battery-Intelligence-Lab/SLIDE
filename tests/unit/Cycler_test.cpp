@@ -30,21 +30,20 @@ bool test_Cycler_SU(std::unique_ptr<StorageUnit> su, bool testCV)
   Cycler cyc;
   double tol = settings::MODULE_P_V_ABSTOL; //!< complex modules have larger under- and overshoot due to the larger numbers involved
   double lim = 0.0;
-  double Ah, Wh, V1;
+  double Ah, Wh, dtime, V1;
 
   cyc.initialise(su, "Cycler_test");
   double vlim, tlim, Ilim;
   double dt = 2;
   int ndata = 0;
-  int succ;
   double I = su->Cap(); //!< use a 1C rate
 
   //!< CC charge
   //!< cout<<"\t CC charge"<<endl<<flush;
   vlim = su->Vmax() - lim;
   tlim = 99999999;
-  succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh); //!< CC charge must do a slight overshoot
-  assert(succ == 1);
+  auto succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
+  assert(succ == Status::ReachedVoltageLimit);
 
   assert(su->V() - vlim < tol);
   assert(su->V() >= vlim);
@@ -52,23 +51,23 @@ bool test_Cycler_SU(std::unique_ptr<StorageUnit> su, bool testCV)
   //!< rest for 1h to relax
   //!< cout<<"\t resting 1h after CC charge for SU "<<su->getFullID()<<endl;
   tlim = 3600;
-  succ = cyc.rest(tlim, dt, ndata, Ah, Ah);
-  assert(succ == 2);
-  assert(std::abs(su->I()) < 1e-10);
+  succ = cyc.rest(tlim, dt, ndata, Ah, Wh);
+  assert(succ == Status::ReachedTimeLimit);
+  assert(NEAR(su->I(), 0.0, 1e-10));
   //!< rest for 10h and check the voltage does not change
   //!< cout<<"\t resting 10h after CC charge for SU "<<su->getFullID()<<endl;
   tlim = 10 * 3600;
   V1 = su->V();
   succ = cyc.rest(tlim, dt, ndata, Ah, Ah);
-  assert(succ == 2);
-  assert(std::abs(su->I()) < 1e-10);
+  assert(succ == Status::ReachedTimeLimit);
+  assert(NEAR(su->I(), 0.0, 1e-10));
 
   //!< CC discharge
   //!< cout<<"\t CC discharge"<<endl<<flush;
   vlim = su->Vmin() + lim;
   tlim = 99999999;
-  succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh); //!< CC discharge must do a slight overshoot
-  assert(succ == 1);
+  succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC discharge must do a slight overshoot
+  assert(succ == Status::ReachedVoltageLimit);
   assert(su->V() - vlim < tol);
   assert(su->V() <= vlim);
 
@@ -76,29 +75,29 @@ bool test_Cycler_SU(std::unique_ptr<StorageUnit> su, bool testCV)
   //!< cout<<"\t resting 1h after CC discharge for SU "<<su->getFullID()<<endl;
   tlim = 3600;
   succ = cyc.rest(tlim, dt, ndata, Ah, Ah);
-  assert(succ == 2);
-  assert(std::abs(su->I()) < 1e-10);
+  assert(succ == Status::ReachedTimeLimit);
+  assert(NEAR(su->I(), 0.0, 1e-10));
   //!< rest for 10h and check the voltage does not change
   //!< cout<<"\t resting 10h after CC discharge for SU "<<su->getFullID()<<endl;
   tlim = 10 * 3600;
   V1 = su->V();
   succ = cyc.rest(tlim, dt, ndata, Ah, Ah);
-  assert(succ == 2);
-  assert(std::abs(su->I()) < 1e-10);
-  assert(std::abs(V1 - su->V()) < tol);
+  assert(succ == Status::ReachedTimeLimit);
+  assert(NEAR(su->I(), 0.0, 1e-10));
+  assert(NEAR(V1, su->V(), tol));
 
   //!< CC cycle for a specified time
   vlim = su->Vmax() + 100;
   tlim = 1000;
-  succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh);
-  assert(succ == 2);
+  succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+  assert(succ == Status::ReachedTimeLimit);
   assert(std::abs(Ah + I * tlim / 3600) < tol);
   vlim = su->Vmin() - 100;
   tlim = 1000;
-  succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh);
+  succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
   //!< note: this brings the complex module from SPM cells close to their minimum voltage (because not all sub-modules take the same current the charge-discharge is not symmetric)
   //!< 	so if cells are cooled below 20 degrees, this test fails since we reach the minimum voltage just before the time limit
-  assert(succ == 2);
+  assert(succ == Status::ReachedTimeLimit);
   assert(std::abs(Ah - I * tlim / 3600) < tol);
 
   if (testCV) {
@@ -107,74 +106,74 @@ bool test_Cycler_SU(std::unique_ptr<StorageUnit> su, bool testCV)
     vlim = su->Vmax() - lim;
     tlim = 99999999;
     //!< cout<<"\t \t starting CC phase"<<endl<<flush;
-    succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh); //!< CC charge must do a slight overshoot
+    succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
     //!< cout<<"\t \t terminating CC phase"<<endl<<flush;
-    assert(succ == 1);
+    assert(succ == Status::ReachedVoltageLimit);
     assert(su->V() - vlim < tol);
     assert(su->V() >= vlim);
     Ilim = 0.1;
     //!< cout<<"\t \t starting CV phase"<<endl<<flush;
-    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh); //!< CV charge must do a slight overshoot
+    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime); //!< CV charge must do a slight overshoot
     //!< cout<<"\t \t terminating CV phase with "<<succ<<"\t"<<su->V()<<"\t"<<su->I()<<endl<<flush;
-    assert(succ == 1);
-    assert(std::abs(su->V() - vlim) < tol);
+    assert(succ == Status::ReachedVoltageLimit);
+    assert(NEAR(su->V(), vlim, tol));
     assert(-su->I() <= Ilim);
 
     //!< rest for 1h to relax
     //!< cout<<"\t resting 1h after CCCV charge for SU "<<su->getFullID()<<endl;
     tlim = 3600;
     succ = cyc.rest(tlim, dt, ndata, Ah, Ah);
-    assert(succ == 2);
-    assert(std::abs(su->I()) < 1e-10);
+    assert(succ == Status::ReachedTimeLimit);
+    assert(NEAR(su->I(), 0.0, 1e-10));
     //!< rest for 10h and check the voltage does not change
     //!< cout<<"\t resting 10h after CCCV charge for SU "<<su->getFullID()<<endl;
     tlim = 10 * 3600;
     V1 = su->V();
     succ = cyc.rest(tlim, dt, ndata, Ah, Ah);
-    assert(succ == 2);
-    assert(std::abs(su->I()) < 1e-10);
-    assert(std::abs(V1 - su->V()) < tol);
+    assert(succ == Status::ReachedTimeLimit);
+    assert(NEAR(su->I(), 0.0, 1e-10));
+    assert(NEAR(V1, su->V(), tol));
 
     //!< CCCV discharge
     //!< cout<<"\t CCCV discharge"<<endl<<flush;
     vlim = su->Vmin() + lim;
     tlim = 99999999;
-    succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh); //!< CC charge must do a slight overshoot
-    assert(succ == 1);
+    succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
+    assert(succ == Status::ReachedVoltageLimit);
     assert(su->V() - vlim < tol);
     assert(su->V() <= vlim);
     Ilim = 0.1;
-    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh); //!< CV discharge must do a slight overshoot
+    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime); //!< CV discharge must do a slight overshoot
     //!< cout<<"\t \t terminating CV phase with "<<succ<<"\t"<<su->V()<<"\t"<<su->I()<<" and voltage error "<<abs(su->V()-vlim) <<endl<<flush;
-    assert(succ == 1);
-    assert(std::abs(su->V() - vlim) < tol);
+    assert(succ == Status::ReachedCurrentLimit);
+    assert(NEAR(su->V(), vlim, tol));
     assert(su->I() <= Ilim);
 
     //!< rest for 1h to relax
     //!< cout<<"\t resting 1h after CCCV discharge for SU "<<su->getFullID()<<endl;
     tlim = 3600;
     succ = cyc.rest(tlim, dt, ndata, Ah, Ah);
-    assert(succ == 2);
-    assert(std::abs(su->I()) < 1e-10);
+    assert(succ == Status::ReachedTimeLimit);
+    assert(NEAR(su->I(), 0.0, 1e-10));
     //!< rest for 10h and check the voltage does not change
     //!< cout<<"\t resting 10h after CCCV discharge for SU "<<su->getFullID()<<endl;
     tlim = 10 * 3600;
     V1 = su->V();
     succ = cyc.rest(tlim, dt, ndata, Ah, Ah);
-    assert(succ == 2);
-    assert(std::abs(su->I()) < 1e-10);
-    assert(std::abs(V1 - su->V()) < tol);
+    assert(succ == Status::ReachedTimeLimit);
+    assert(NEAR(su->I(), 0.0, 1e-10));
+    assert(NEAR(V1, su->V(), tol));
 
     //!< getCapacity
     //!< cout<<"\t getCapacity 1"<<endl<<flush;
-    double cap = cyc.getCapacity();
+    double cap = cyc.testCapacity(Ah, dtime);
     assert(std::abs(cap - su->Cap()) / su->Cap() < 0.15); //!< check we are close to the nominal capacity, i.e. error < 15%
     su->setBlockDegAndTherm(true);
-    double cap2 = cyc.getCapacity();
-    assert(std::abs(cap - cap2) < tol);                        //!< get the capacity while ignoring degradation
-    cyc.CC(-cap / 10.0, su->Vmin() + 1.4, 3600, 2, 0, Ah, Wh); //!< charge to get in the valid voltage region
+    double cap2 = cyc.testCapacity(Ah, dtime);
+    assert(std::abs(cap - cap2) < tol);                               //!< get the capacity while ignoring degradation
+    cyc.CC(-cap / 10.0, su->Vmin() + 1.4, 3600, 2, 0, Ah, Wh, dtime); //!< charge to get in the valid voltage region
     cyc.setDiagnostic(true);
-    double cap3 = cyc.getCapacity();
+    double cap3 = cyc.testCapacity(Ah, dtime);
     //!< cout<<"\t capacity measurements: "<<cap<<"\t"<<cap2<<"\t"<<cap3<<"\t for nominal capacity "<<su->Cap()<<endl; //
     //!< assert(std::abs(cap-cap3) < tol);								//!< get the capacity while stopping when one cell reached the voltage limit
     //!<  this should fail for a complex hierarchial module (see testCyclerSPM)
@@ -193,6 +192,8 @@ bool test_CyclerCell()
 
   //!< test cell
   //!< cout<<"Test cycler made of one Cell"<<endl;
+
+
   std::unique_ptr<Cell> cp1(new Cell());
   test_Cycler_SU(cp1, checkCV);
 
@@ -479,27 +480,27 @@ bool test_Cycler_writeData(int control)
   //!< CCCV charge
   vlim = su->Vmax() - lim;
   tlim = 99999999;
-  succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh);
-  assert(succ == 1);
+  succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+  assert(succ == Status::ReachedVoltageLimit);
   assert(su->V() - vlim < tol);
   assert(su->V() >= vlim);
   Ilim = 0.1;
-  succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh);
-  assert(succ == 1);
-  assert(std::abs(su->V() - vlim) < tol);
+  succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+  assert(succ == Status::ReachedCurrentLimit);
+  assert(NEAR(su->V(), vlim, tol));
   assert(-su->I() <= Ilim);
 
   //!< CCCV discharge
   vlim = su->Vmin() + lim;
   tlim = 99999999;
-  succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh);
-  assert(succ == 1);
+  succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+  assert(succ == Status::ReachedVoltageLimit);
   assert(su->V() - vlim < tol);
   assert(su->V() <= vlim);
   Ilim = 0.1;
-  succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh);
-  assert(succ == 1);
-  assert(std::abs(su->V() - vlim) < tol);
+  succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+  assert(succ == Status::ReachedCurrentLimit);
+  assert(NEAR(su->V(), vlim, tol));
   assert(su->I() <= Ilim);
 
   //!< write the data
@@ -534,16 +535,16 @@ bool test_Cycler_writeData(int control)
     //!< CCCV charge
     vlim = ms->Vmax() - lim;
     tlim = 99999999;
-    succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh);
+    succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
     Ilim = 0.1;
-    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh);
+    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
 
     //!< CCCV discharge
     vlim = ms->Vmin() + lim;
     tlim = 99999999;
-    succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh);
+    succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
     Ilim = 0.1;
-    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh);
+    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
   }
 
   //!< Some data might be written during the 100 cycles, push the rest out too (note the prefix must be the same or this last batch will end up in a different file)
