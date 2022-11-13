@@ -32,7 +32,7 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
   double lim = 0.0;
   double Ah, Wh, dtime, V1;
 
-  cyc.initialise(su.get(), "Cycler_test");
+  cyc.initialise(su, "Cycler_test");
   double vlim, tlim, Ilim;
   double dt = 2;
   int ndata = 0;
@@ -178,6 +178,8 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
     //!< assert(std::abs(cap-cap3) < tol);								//!< get the capacity while stopping when one cell reached the voltage limit
     //!<  this should fail for a complex hierarchial module (see testCyclerSPM)
   }
+
+  return true;
 }
 
 bool test_CyclerCell()
@@ -243,6 +245,8 @@ bool test_CyclerCell()
   msp->setSUs(MU, checkCells, true); //!< three module_p in series
 
   test_Cycler_SU(msp.get(), checkCV);
+
+  return true;
 }
 bool test_CyclerECM()
 {
@@ -296,6 +300,8 @@ bool test_CyclerECM()
   auto msp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1);
   msp->setSUs(MU, checkCells, true); //!< three module_p in series
   test_Cycler_SU(msp.get(), checkCV);
+
+  return true;
 }
 
 bool test_CyclerSPM()
@@ -361,6 +367,8 @@ bool test_CyclerSPM()
   //!< 	so the overall module won't have reached its voltage limit and you keep (dis)charging
   //!< 	and then the overall module reaches its voltage limit after > 2 * cell capacity, the first two will be over(dis)charged
   //!< so the capacity check with and without diagnostic will give a different result
+
+  return true;
 }
 
 bool test_CyclerVariations(double Rc)
@@ -421,6 +429,8 @@ bool test_CyclerVariations(double Rc)
 
   //!< call the test function
   test_Cycler_SU(mpp.get(), false); //!< don't do CV phases
+
+  return true;
 }
 
 bool test_Cycler_writeData(int control)
@@ -513,6 +523,8 @@ bool test_Cycler_writeData(int control)
 
   //!< Some data might be written during the 100 cycles, push the rest out too (note the prefix must be the same or this last batch will end up in a different file)
   ms->writeData("test_writeData_sModule");
+
+  return true;
 }
 
 bool test_Cycler_CoolSystem()
@@ -593,6 +605,11 @@ bool test_Cycler_CoolSystem()
     };
 
 
+    auto cp1 = dynamic_cast<Cell_SPM *>(cs2[0].get());
+    auto cp2 = dynamic_cast<Cell_SPM *>(cs2[1].get());
+    auto cp3 = dynamic_cast<Cell_SPM *>(cs2[2].get());
+    auto cp4 = dynamic_cast<Cell_SPM *>(cs2[3].get());
+
     std::string n2 = "testCoolSystem";
     auto mp2 = std::make_unique<Module_s>(n2, T, true, false, std::size(cs2), coolControl, 1);
     mp2->setSUs(cs2, checkCells, true);
@@ -647,11 +664,11 @@ bool test_Cycler_CoolSystem()
     mp33->setSUs(SU3, checkCells);
     int nm = 3;
     std::string n44 = "H4";
-    std::unique_ptr<StorageUnit> MU[] = { mp11, mp22, mp33 };
+    std::unique_ptr<StorageUnit> MU[] = { std::move(mp11), std::move(mp22), std::move(mp33) };
     auto mp44 = std::make_unique<Module_s>(n44, T, true, true, 7, coolControl, 1);
     mp44->setSUs(MU, checkCells, true);
     double Tini22[7] = { cp11->T(), cp22->T(), cp33->T(), cp44->T(), cp55->T(), cp66->T(), cp77->T() };
-    cyc.initialise(mp44, "Cycler_cooltest_complexModule");
+    cyc.initialise(mp44.get(), "Cycler_cooltest_complexModule");
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp11->Cap();
@@ -709,6 +726,8 @@ bool test_Cycler_CoolSystem()
     //!< Comparison of cool system performance in the different control strategies: print out the following statement
     //!< cout<<"Total heat balance of coolsystem complex module entire "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
   }
+
+  return true;
 }
 
 int test_all_Cycler()

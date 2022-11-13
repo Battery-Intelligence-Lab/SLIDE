@@ -401,30 +401,36 @@ bool test_setI()
 
   double Inew = 1;
   double V;
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(mp->I() == Inew);
   assert(V < 2 * v1); //!< voltage must decrease
   //!< do not check individual cells, that is done in getCells
 
   Inew = -1;
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(mp->I() == Inew);
   assert(mp->V() > 2 * v1); //!< voltage must increase
 
   //!< test things which should break
   if () {
-    Inew = 10000;                    //!< very large current, should give too low voltage
-    V = mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
+    Inew = 10000;                //!< very large current, should give too low voltage
+    mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
+    V = mp->V();
     try {
-      V = mp->setCurrent(Inew); //!< check the voltage, should fail
+      mp->setCurrent(Inew); //!< check the voltage, should fail
+      V = mp->V();
       assert(false);
     } catch (int e) {
     };
 
-    Inew = -10000;                   //!< very large current, should give too low voltage
-    V = mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
+    Inew = -10000;               //!< very large current, should give too low voltage
+    mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
+    V = mp->V();
     try {
-      V = mp->setCurrent(Inew); //!< check the voltage, should fail
+      mp->setCurrent(Inew); //!< check the voltage, should fail
+      V = mp->V();
       assert(false);
     } catch (int e) {
     };

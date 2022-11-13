@@ -63,7 +63,6 @@ Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncell
 }
 
 
-
 void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
 {
   /*

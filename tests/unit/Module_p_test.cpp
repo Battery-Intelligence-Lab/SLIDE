@@ -28,16 +28,17 @@ bool test_Constructor_p()
 
   auto cp1 = std::make_unique<Cell_Bucket>();
   auto cp2 = std::make_unique<Cell_Bucket>();
-  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
-  assert(cp1->getID() == "cell");
-  assert(cp1->getFullID() == "cell"); //!< has no parent yet
+  assert(cp1->getID() == "Cell_Bucket");
+  assert(cp1->getFullID() == "Cell_Bucket"); //!< has no parent yet
+
+  std::unique_ptr<StorageUnit> cs[] = { std::move(cp1), std::move(cp2) };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp2 = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
+  auto mp2 = std::make_unique<Module_p>(n, T, true, false, std::size(cs), 1, 1);
   mp2->setSUs(cs, checkCells, true);
 
-  assert(mp2->getNSUs() == ncel);
+  assert(mp2->getNSUs() == std::size(cs));
   assert(mp2->T() == T);
 }
 bool test_BasicGetters_p()
@@ -48,23 +49,25 @@ bool test_BasicGetters_p()
   //!< double Module_base_s::I()
   //!< double double Module_base_s::V()
 
+  std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
 
-  auto cp1 = std::make_unique<Cell_Bucket>();
-  auto cp2 = std::make_unique<Cell_Bucket>();
-  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
-  assert(cp1->getID() == "cell");
-  assert(cp1->getFullID() == "cell"); //!< has no parent yet
+  auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
+  auto cp2 = dynamic_cast<Cell_Bucket *>(cs[1].get());
+  assert(cp1->getID() == "Cell_Bucket");
+  assert(cp1->getFullID() == "Cell_Bucket"); //!< has no parent yet
+
+
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
+  auto mp = std::make_unique<Module_p>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
-  assert(mp->Cap() == ncel * cp1->Cap());
+  assert(mp->Cap() == std::size(cs) * cp1->Cap());
   assert(mp->Vmin() == cp1->Vmin());
   assert(mp->Vmax() == cp1->Vmax());
-  assert(mp->getVMIN() == cp1->getVMIN());
-  assert(mp->getVMAX() == cp1->getVMAX());
+  assert(mp->VMIN() == cp1->VMIN());
+  assert(mp->VMAX() == cp1->VMAX());
   assert(mp->I() == 0);
   assert(mp->V() == cp1->V());
 }
@@ -74,38 +77,43 @@ bool test_setI_p()
   double tol = 0.005;
   double Inew, V;
 
+  std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
 
-  auto cp1 = std::make_unique<Cell_Bucket>();
-  auto cp2 = std::make_unique<Cell_Bucket>();
-  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
-  assert(cp1->getID() == "cell");
-  assert(cp1->getFullID() == "cell"); //!< has no parent yet
+  auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
+  auto cp2 = dynamic_cast<Cell_Bucket *>(cs[1].get());
+  assert(cp1->getID() == "Cell_Bucket");
+  assert(cp1->getFullID() == "Cell_Bucket"); //!< has no parent yet
+
+
   double v1 = cp1->V();
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
+  auto mp = std::make_unique<Module_p>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
   assert(mp->I() == 0);
   assert(mp->V() == cp1->V());
 
   //!< discharge
-  Inew = 1.0 * ncel;
-  V = mp->setCurrent(Inew, true);
+  Inew = 1.0 * std::size(cs);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(NEAR(mp->I(), Inew, tol));
   assert(V < v1); //!< voltage must decrease
   //!< do not check individual cells, that is done in getCells
 
   //!< charge
-  Inew = -1.0 * ncel;
-  V = mp->setCurrent(Inew, true);
+  Inew = -1.0 * std::size(cs);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(NEAR(mp->I(), Inew, tol));
   assert(mp->V() > v1); //!< voltage must increase
 
   //!< rest with different SOC values
   Inew = 0;
-  cp2->setSOC(0.4);                                              //!< c2 has lower OCV -> should charge
-  V = mp->setCurrent(Inew, true);                                //!< the large change in OCV causes a large voltage change, which cannot be fixed by setCurrent
+  cp2->setSOC(0.4);           //!< c2 has lower OCV -> should charge
+  mp->setCurrent(Inew, true); //!< the large change in OCV causes a large voltage change, which cannot be fixed by setCurrent
+  V = mp->V();
   assert(NEAR(cp1->V(), cp2->V(), settings::MODULE_P_V_ABSTOL)); //!< cell voltages are equal
   assert(NEAR(cp1->I(), cp1->I(), settings::MODULE_P_V_ABSTOL)); //!< cell currents are opposite
   assert(cp1->I() > 0);
@@ -115,14 +123,16 @@ bool test_setI_p()
   if () {
     Inew = 10000; //!< very large current, should give too low voltage
     try {
-      V = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
+      mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
+      V = mp->V();
       assert(false);
     } catch (int e) {
     };
 
     Inew = -10000; //!< very large current, should give too low voltage
     try {
-      V = mp->setCurrent(Inew); //!< should fail
+      mp->setCurrent(Inew); //!< should fail
+      V = mp->V();
       assert(false);
     } catch (int e) {
     };
@@ -309,19 +319,22 @@ bool test_Modules_p_ECM()
   //!< discharge
   double Inew = 1.0 * ncel;
   double V;
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(NEAR(mp->I(), Inew, tol));
   assert(V < v1); //!< voltage must decrease
   //!< do not check individual cells, that is done in getCells
   //!< charge
   Inew = -1.0 * ncel;
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(NEAR(mp->I(), Inew, tol));
   assert(mp->V() > v1); //!< voltage must increase
   //!< rest with different SOC values
   Inew = 0;
   cp2->setSOC(0.4); //!< c2 has lower OCV -> should charge
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(NEAR(cp1->V(), cp2->V(), settings::MODULE_P_V_ABSTOL)); //!< cell voltages are equal
   assert(std::abs(cp1->I() + cp2->I()) < tol);                   //!< cell currents are opposite
   assert(cp1->I() > 0);
@@ -420,13 +433,15 @@ bool test_Modules_p_SPM()
   //!< discharge
   double Inew = 1.0 * ncel;
   double V;
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(NEAR(mp->I(), Inew, tol));
   assert(V < v1); //!< voltage must decrease
   //!< do not check individual cells, that is done in getCells
   //!< charge
   Inew = -1.0 * ncel;
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(NEAR(mp->I(), Inew, tol));
   assert(mp->V() > v1); //!< voltage must increase
   //!< rest with different SOC values
@@ -515,13 +530,13 @@ bool test_contactR()
   auto cp2 = std::make_unique<Cell_Bucket>();
   auto cp3 = std::make_unique<Cell_Bucket>();
   std::unique_ptr<StorageUnit> cs[] = { cp1, cp2, cp3 };
-  double Rcs[ncel] = { Rc, Rc, Rc };
+  double Rcs[] = { Rc, Rc, Rc };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
   auto mp = std::make_unique<Module_p>(n, T, true, false, ncel, 1, 1);
   mp->setSUs(cs, checkCells, true);
-  mp->setRcontact(Rcs, ncel);
+  mp->setRcontact(Rcs);
 
   //!< total resistance:
   //!< 		-Rp+-Rp-+-Rp-|
