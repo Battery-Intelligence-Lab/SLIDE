@@ -13,6 +13,8 @@
 
 #include <string>
 #include <memory>
+#include <fstream>
+#include <span>
 
 namespace slide::examples {
 inline auto get_exampleCell()
@@ -181,6 +183,106 @@ inline void drive_cycle_artemis()
   auto c = std::make_unique<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
   c->setBlockDegAndTherm(true);
 
+  double Cmaxpos{ 51385 };
+  double Cmaxneg{ 30555 };
+  double cps, cns;
+
+
+  auto &st = c->getStateObj();
+
+
+  for (int i = 0; i < 10; i++)
+    std::cout << st.z(i) << ' ';
+  std::cout << '\n';
+
+  c->setCurrent(1);
+
+  for (int i = 0; i < 10; i++)
+    std::cout << st.z(i) << ' ';
+  std::cout << '\n';
+
+  while (c->V() > 2.9)
+    c->timeStep_CC(1, 1);
+
+  for (int i = 0; i < 10; i++)
+    std::cout << st.z(i) << ' ';
+  std::cout << '\n';
+
+  c->setCurrent(0.005);
+  while (c->V() > 2.7)
+    c->timeStep_CC(1, 1);
+
+  for (int i = 0; i < 10; i++)
+    std::cout << st.z(i) << ' ';
+  std::cout << '\n';
+
+  c->setCurrent(0.0001);
+  while (c->V() > 2.7)
+    c->timeStep_CC(1, 1);
+
+  for (int i = 0; i < 10; i++)
+    std::cout << st.z(i) << ' ';
+  std::cout << '\n';
+
+  c->setCurrent(0);
+  c->timeStep_CC(1, 100);
+
+  for (int i = 0; i < 10; i++)
+    std::cout << st.z(i) << ' ';
+  std::cout << '\n';
+
+
+  std::ofstream out_fraction{ PathVar::results + std::string("Kokam_NMC_16Ah_OCV.csv") };
+
+  out_fraction << "Current [A],"
+               << "Voltage [V],"
+               << "Li+ fraction [-],"
+               << "Li- fraction [-],"
+               << "zp(3),"
+               << "zn(3)\n";
+
+  c->getCSurf(cps, cns, false);
+  double V_old{ c->V() }, fp_old{ cps / Cmaxpos }, fn_old{ cns / Cmaxneg };
+  out_fraction << c->I() << ',' << c->V() << ',' << fp_old << ',' << fn_old << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
+
+
+  c->setCurrent(-0.02);
+  double threshold{ 1e-4 };
+  while (c->V() < 4.2) {
+    c->getCSurf(cps, cns, false);
+    auto fp{ cps / Cmaxpos }, fn{ cns / Cmaxneg };
+
+    if (std::abs(V_old - c->V()) > threshold || std::abs(fp_old - fp) > threshold || std::abs(fn_old - fn) > threshold) {
+      V_old = c->V();
+      fp_old = fp;
+      fn_old = fn;
+      out_fraction << c->I() << ',' << c->V() << ',' << fp << ',' << fn << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
+    }
+    c->timeStep_CC(1, 1);
+  }
+
+  out_fraction.close();
+
+  c->getCSurf(cps, cns, false);
+  std::cout << "V: " << c->V() << " cps, cns : " << cps / Cmaxpos << ", " << cns / Cmaxneg << ',' << st.zp(3) << ',' << st.zn(3) << "\n";
+  for (int i = 0; i < 10; i++)
+    std::cout << st.z(i) << ' ';
+  std::cout << '\n';
+
+
+  double SOC_vs_Volt[] = { 2.7, 3.4872, 3.5606, 3.6206, 3.6492, 3.6845, 3.7635, 3.8388, 3.9289, 4.0439, 4.2 };
+  double SOC_vs_zn3[] = { 0.017456, 0.072543, 0.127650, 0.182757, 0.237865, 0.292971, 0.348078, 0.403186, 0.458292, 0.513400, 0.568507 };
+  double SOC_vs_zp3[] = { 0.670246, 0.630914, 0.591568, 0.552221, 0.512874, 0.473528, 0.434182, 0.394835, 0.355489, 0.316142, 0.276795 };
+
+  double SOC_vs_fp[] = { 0.970530, 0.913563, 0.856588, 0.799614, 0.742639, 0.685665, 0.628691, 0.571716, 0.514742, 0.457767, 0.400792 };
+  double SOC_vs_fn[] = { 0.028906, 0.120170, 0.211423, 0.302676, 0.393928, 0.485181, 0.576434, 0.667687, 0.758939, 0.850192, 0.941444 };
+
+  for (int i = 0; i < 11; i++) {
+    c->setC(SOC_vs_fp[i], SOC_vs_fn[i]);
+    std::cout << "i = " << i << " V = " << c->V() << '\n';
+  }
+
+
   DynamicMatrix<double> profile;
   loadCSV_Ncol(PathVar::data + profile_path, profile);
 
@@ -190,44 +292,62 @@ inline void drive_cycle_artemis()
   // auto cyc = Cycler(c.get(), ID);
   double dAh{ 0 }, dtime{ 0 }, dWh{ 0 };
 
-  std::cout << "V: " << c->V() << " [V] SOC: " << 100 * c->SOC() << " [%] \n";
-  init_cell_manual(c, 0.0, 4.08, dAh, dtime, dWh); // 4.08 -> 90% SOC and  3.42 V  -> 10% SOC
-  std::cout << "V: " << c->V() << " [V] SOC: " << 100 * c->SOC() << " [%] \n";
-  init_cell_manual(c, 0.0, 4.2, dAh, dtime, dWh); // 4.08 -> 90% SOC and  3.42 V  -> 10% SOC
-  std::cout << "V: " << c->V() << " [V] SOC: " << 100 * c->SOC() << " [%] \n";
+  auto experiment = [&](std::string name) {
+    std::vector<double> voltage;
+    std::vector<State_SPM> states;
+    std::vector<double> estimated_SOC;
+    double cap = c->Cap();
+    for (auto c_rate : profile.data) {
+      c->setCurrent(c_rate * cap, true);
+      voltage.push_back(c->V());
+      states.push_back(c->getStateObj());
 
-  std::cout << "SOC: " << 100 * c->SOC() << '\n';
-  std::vector<double> voltage;
-  std::vector<State_SPM> states;
-  double cap = c->Cap();
-  for (auto c_rate : profile.data) {
-    c->setCurrent(c_rate * cap, true);
-    voltage.push_back(c->V());
-    states.push_back(c->getStateObj());
-    c->timeStep_CC(1, 1);
+      estimated_SOC.push_back(100.0 * ((st.zn(3) - SOC_vs_zn3[0]) / (SOC_vs_zn3[10] - SOC_vs_zn3[0])));
+
+      c->timeStep_CC(1, 1);
+
+      if (st.zn(3) < SOC_vs_zn3[1]) // Until 10%
+        break;
+    }
+
+    std::string Vname = std::string("drive_voltage_from_") + name + "_percent.csv";
+    std::ofstream out(PathVar::results + Vname, std::ios_base::out);
+
+
+    out << "Current [A],Voltage[V],Estimated SOC[%]\n";
+
+    for (size_t i = 0; i < voltage.size(); i++)
+      out << profile.data[i] * cap << ',' << voltage[i] << ',' << estimated_SOC[i] << '\n';
+
+    out.close();
+
+
+    std::string Sname = std::string("drive_states_from_") + name + "_percent.csv";
+    std::ofstream Sout(PathVar::results + Sname, std::ios_base::out);
+
+    Sout << "I[A],V[V],T[T],delta,LLI,thickp,thickn,ep,en,ap,an,CS,Dp,Dn,delta_pl,"
+         << "zp_0,zp_1,zp_2,zp_3,zp_4,zn_0,zn_1,zn_2,zn_3,zn_4,rDCp,rDCn,rDCcc\n";
+
+    for (auto st : states) {
+      for (auto s : std::span<double>(st.begin(), st.begin() + 28))
+        Sout << s << ',';
+
+      Sout << '\n';
+    }
+
+    Sout.close();
+  };
+
+  // Experiment from 90%
+  // c->setCurrent(0.01);
+  // while (c->V() > SOC_vs_Volt[9]) // 9 -> 90%
+  //   c->timeStep_CC(1, 1);
+
+
+  for (int i = 9; i > 1; i--) {
+    c->setC(SOC_vs_fp[i], SOC_vs_fn[i]);
+    experiment(std::to_string(i) + "0");
   }
-
-  std::string Vname = "drive_voltage.csv";
-  std::ofstream out(PathVar::results + Vname, std::ios_base::out);
-
-  for (auto v : voltage)
-    out << v << '\n';
-
-  out.close();
-
-
-  std::string Sname = "drive_states.csv";
-  std::ofstream Sout(PathVar::results + Sname, std::ios_base::out);
-
-  for (auto st : states) {
-    for (auto s : st)
-      Sout << s << ',';
-
-    Sout << '\n';
-  }
-
-  Sout.close();
-
 
   // c->writeData("drive_cycle");
   std::cout << "V: " << c->V() << '\n';

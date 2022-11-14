@@ -33,8 +33,10 @@ public:
 
   static OCVcurves makeOCVcurves(cellType tp)
   {
-    if (tp != cellType::KokamNMC)
+    if (tp != cellType::KokamNMC) {
+      std::cerr << "NOT IMPLEMENTED cellType\n";
       throw "NOT IMPLEMENTED cellType";
+    }
 
     OCVcurves M(settings::path::Kokam::namepos, settings::path::Kokam::nameneg, settings::path::Kokam::nameentropicC, settings::path::Kokam::nameentropicCell);
     return M;
