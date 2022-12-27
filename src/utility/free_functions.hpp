@@ -160,7 +160,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
                 << " centigrade and I = " << su.I() << '\n';
 
     return Status::Vmax_violation;
-  } else if (v < su.VMIN() && su.isDischarging()) //#Check we dont actually look at the is discharging
+  } else if (v < su.VMIN() && su.isDischarging()) // #Check we dont actually look at the is discharging
   {
     if (printCrit)
       std::cout << "The voltage of cell " << su.getFullID() << " is " << v

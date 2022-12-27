@@ -176,8 +176,8 @@ bool test_Prcedure_CoolSystem()
   double Ccha = 1;
   double Cdis = 1;
   int Ncycle = 100;
-  double ncheck = 10;
-  double nbal = 10;
+  int ncheck = 10;
+  int nbal = 10;
 
   //!< General settings
   double T = settings::T_ENV;
@@ -467,9 +467,9 @@ bool test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
   double Cdis = 1;
   double Vmax;
   double Vmin;
-  int Ncycle = 5000;   //!< 1 CC cycle takes about 0.5 min
-  double ncheck = 500; //!< do a checkup ever 100 cycles
-  double nbal = 10;    //!< balance every 10 cycles
+  int Ncycle = 5000; //!< 1 CC cycle takes about 0.5 min
+  int ncheck = 500;  //!< do a checkup ever 100 cycles
+  int nbal = 10;     //!< balance every 10 cycles
 
   //!< test with series module
   constexpr size_t ncel = 5;

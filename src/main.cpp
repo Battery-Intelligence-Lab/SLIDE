@@ -109,20 +109,20 @@ int main()
    * 							ref: Yang, Leng, Zhang, Ge, Wang, Journal of Power Sources 360, 2017
    */
   //!< For now, assume we want to include 'Pinson&Bazant'-SEI growth, 'Delacourt'-LAM, 'Kindermann'-LAM and 'Yang'-lithium plating
-  slide::DEG_ID deg;
-  deg.SEI_id.add_model(2); //!< Pinson & Bazant SEI growth
-  deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+  // slide::DEG_ID deg;
+  // deg.SEI_id.add_model(2); //!< Pinson & Bazant SEI growth
+  // deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
 
-  deg.CS_id.add_model(0); //!< no surface cracks
-  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+  // deg.CS_id.add_model(0); //!< no surface cracks
+  // deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
 
-  //!< there are 2 LAM models (Delacourt and Kindermann)
-  deg.LAM_id.add_model(2); //!< Delacourt LAM
-  deg.LAM_id.add_model(3); //!< Kindermann LAM
+  // //!< there are 2 LAM models (Delacourt and Kindermann)
+  // deg.LAM_id.add_model(2); //!< Delacourt LAM
+  // deg.LAM_id.add_model(3); //!< Kindermann LAM
 
-  deg.pl_id = 1; //!< Yang lithium plating
+  // deg.pl_id = 1; //!< Yang lithium plating
 
-  std::cout << "Used ageing model: " << deg.print() << '\n';
+  // std::cout << "Used ageing model: " << deg.print() << '\n';
 
   //!< Then the user has to choose what is simulated.
   //!< In the code below, uncomment the line which calls the function you want to execute (uncommenting means removing the //!<in front of the line)
@@ -130,6 +130,65 @@ int main()
 
   auto numThreads = std::thread::hardware_concurrency(); //!< asd
   std::cout << "Available number of threads : " << numThreads << '\n';
+
+
+  // Hopefully module is working:
+
+  using namespace slide;
+
+
+  constexpr int ser = 15 * 20;
+  constexpr int par = 9 * 7;
+
+  //!< Make one cell with standard parameters//!<Degradation settings
+  slide::DEG_ID deg; //!< Kinetic SEI + porosity + Dai/Laresgoiti LAM
+
+  deg.SEI_id.add_model(4); //!< add model 4.
+  deg.SEI_porosity = 1;
+
+  deg.CS_id.add_model(0); //!< add model 0.
+  deg.CS_diffusion = 0;
+
+  deg.LAM_id.add_model(1);
+  deg.pl_id = 0;
+
+  //!< Wrap the cell in a series-module
+  auto modulei = std::make_unique<Module_s>("module1", settings::T_ENV, true, false, 1, 1, 0); //!< single-threaded, conventional coolsystem
+                                                                                               //!<(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
+
+  std::unique_ptr<StorageUnit> RinB[1] = { std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1) }; //!< cell-to-cell variation parameters are 0
+
+  modulei->setSUs(RinB, true, true);
+
+  //!< Wrap the module in a Battery and set number of series and parallel
+  auto bat = std::make_unique<Battery>("single_cell_multiplied_by_300s_63p");
+  bat->setSeriesandParallel(ser, par);
+  bat->setModule(std::move(modulei));
+
+
+  StorageUnit *su = bat.get();
+
+
+  //!< standard settings for degradation simulation
+  double Ccha = 1;
+  double Cdis = 1;
+  bool testCV = false;
+  double Vmax = su->Vmax();
+  double Vmin = su->Vmin();
+  int Ncycle = 10000;
+  int ncheck = 250; //!< do a checkup ever 250 cycles
+  int nbal = 10;    //!< balance every 10 cycles
+
+  //!< Make the procedure
+  bool balance = true;
+  double Vbal = 3.5; //!< rebalance to 3.1V
+  int ndata = 10;    //!< how often to store data (if 0, nothing is stored, not even usage stats)
+
+  Procedure p(balance, Vbal, ndata, false);
+
+  //!< Simulate the cycle ageing
+  p.cycleAge(su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
+
 
   //!< Benchmarks:
 
@@ -140,7 +199,7 @@ int main()
   // Timings:
 
   // slide::examples::estimatingOCVparameters();
-  slide::examples::drive_cycle_artemis();
+  // slide::examples::drive_cycle_artemis();
 
 
   // std::unique_ptr<slide::StorageUnit> cs[2];

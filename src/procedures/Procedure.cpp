@@ -8,7 +8,7 @@
 #include "../cells/cells.hpp"
 #include "../modules/modules.hpp"
 #include "../system/Battery.hpp"
-//#include "unit_tests.hpp"
+// #include "unit_tests.hpp"
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
 #include "Cycler.hpp"
@@ -574,7 +574,7 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   };
 
   //!< get a vector with pointers to the cells
-  std::vector<Cell *> cells; //!< vector, see https://en.cppreference.com/w/cpp/container/vector
+  std::vector<Cell *> cells;
   checkUp_getCells(su, cells);
 
   //!< Get the mutex to start writing in the results file

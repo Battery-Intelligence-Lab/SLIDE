@@ -6,7 +6,7 @@
  */
 
 #include "slide.hpp"
-//#include "unit_tests.hpp"
+// #include "unit_tests.hpp"
 #include "paperCode.hpp"
 
 #include <cmath>
@@ -66,7 +66,7 @@ void Vequalisation_Rdc(double Rdc)
 
   //!< Make the cycler
   Cycler cyc;
-  cyc.initialise(mpp4.get(), ID); //!<#TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
+  cyc.initialise(mpp4.get(), ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
   double vlim, tlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
@@ -191,8 +191,8 @@ void degrade(StorageUnit *su)
   double Vmax = su->Vmax();
   double Vmin = su->Vmin();
   int Ncycle = 10000;
-  double ncheck = 250; //!< do a checkup ever 250 cycles
-  double nbal = 10;    //!< balance every 10 cycles
+  int ncheck = 250; //!< do a checkup ever 250 cycles
+  int nbal = 10;    //!< balance every 10 cycles
 
   //!< Make the procedure
   bool balance = true;
@@ -237,7 +237,6 @@ void degradation_1cell()
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-
   auto mc = std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1); //!< cell-to-cell variation parameters are 0
 
   //!< Wrap the cell in a series-module
@@ -252,7 +251,7 @@ void degradation_1cell()
   bat->setModule(std::move(modulei));
 
   //!< call the degradation function
-  degrade(bat.get()); //!<#TODO
+  degrade(bat.get()); //!< #TODO
 }
 
 void degradation_electricalModel()

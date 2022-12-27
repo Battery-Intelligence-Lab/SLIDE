@@ -43,19 +43,12 @@ bool test_Constructor_p()
 }
 bool test_BasicGetters_p()
 {
-  //!< double Module_base_s::Cap()
-  //!< double Module_base_s::Vmin(){
-  //!< double Module_base_s::Vmax()
-  //!< double Module_base_s::I()
-  //!< double double Module_base_s::V()
-
   std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
   auto cp2 = dynamic_cast<Cell_Bucket *>(cs[1].get());
   assert(cp1->getID() == "Cell_Bucket");
   assert(cp1->getFullID() == "Cell_Bucket"); //!< has no parent yet
-
 
   std::string n = "na";
   double T = settings::T_ENV;

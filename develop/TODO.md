@@ -8,6 +8,8 @@
 
 ### Current priority: 
 
+- [ ] Some variables like ncheck and nbal were defined double but they are int. 
+- [ ] Instead of taking unique_ptr or raw ptr, functions should take object references. 
 - [ ] Literal operators for units are being added. 
 - [ ] Add CTest support for tests
 - [ ] Add static analysers: include-what-you-use, valgrind, etc. 

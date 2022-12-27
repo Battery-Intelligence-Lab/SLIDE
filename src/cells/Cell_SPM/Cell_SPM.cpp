@@ -298,7 +298,7 @@ double Cell_SPM::V(bool print)
     //!< the cell OCV at the reference temperature is OCV_p - OCV_n
     //!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
     //!< then the overpotentials and the resistive voltage drop are added
-    const auto entropic_effect = (st.T() - T_ref) * dOCV; //!<
+    const auto entropic_effect = 0; // (st.T() - T_ref) * dOCV; //!<
     const auto overpotential = etapi - etani;
     const auto OCV = (OCV_p - OCV_n + entropic_effect);
 
