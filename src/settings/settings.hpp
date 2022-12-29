@@ -71,7 +71,7 @@ constexpr int CELL_NDEG = 10; //!< maximum number of any type of degradation mod
 constexpr int MODULE_NSUs_MAX = 20; //!< maximum number of cells in a base module
                                     //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
 
-constexpr double T_ENV = 273.0 + 21.0; //!< environmental temperature
+constexpr double T_ENV = 273.0 + 15.0; //!< environmental temperature
 
 constexpr size_t CYCLER_NDATA_MAX{ 10000 }; //!< length of the arrays which hold the cycling data (if 2)
                                             //!< Large battery ~ 3000 SPM cells * (7+4) arrays * 8 Byte per double * N doubles
@@ -86,7 +86,7 @@ constexpr size_t MODULE_NDATA_MAX{ CYCLER_NDATA_MAX }; //!< if we store cell-lev
 constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all types of cells //!< used to prepare arrays which are long enough for getStates()
 
 //!< Data storage
-//#define DATASTORE_CELL 0   //!< if 0, no cell-level data is stored
+// #define DATASTORE_CELL 0   //!< if 0, no cell-level data is stored
 //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
 //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 #define DATASTORE_BATT 0 //!< if 0, no module-level data is stored

@@ -53,7 +53,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
   const double Idis = Cdis * su->Cap();
   double v{};
   Status succ{};
-  double tlim, Ilim, Ah, Wh;
+  double tlim, Ilim, Ah, Wh, dtime;
 
   //!< ID for storing the steps in the producedure (i.e. which data refers to which action)
   constexpr int ID_CCcharge = 1;
@@ -83,7 +83,6 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       tlim = std::numeric_limits<double>::max();
       Ilim = 0.1;
       try {
-        double dtime;
         Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
         succ = cyc.CC(Icha, Vmax, tlim, dt, ndata, Ah, Wh, dtime);
       } catch (int e) {
