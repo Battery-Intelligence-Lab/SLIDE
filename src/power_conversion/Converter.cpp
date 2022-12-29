@@ -20,9 +20,12 @@ Converter::Converter()
   Vdc = 1500; //!< should be larger than max battery voltage (15*20*4.2 = 1260)
   Vac = 1500; //!< random guess, 5 * 380V (line voltage)
 
-  Pnom = 200 * 1e3; //!< 200 kWh from Schimpe etc.
+  Pnom = 200e3; //!< 200 kWh from Schimpe etc.
 }
-void Converter::setPower(double Pn) { Pnom = Pn; }
+void Converter::setPower(double Pn)
+{
+  Pnom = Pn;
+}
 
 double Converter::getLosses(double Vin, double Iin)
 {
