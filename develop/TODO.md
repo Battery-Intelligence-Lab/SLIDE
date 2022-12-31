@@ -7,6 +7,7 @@
 ## TODO: 
 
 ### Current priority: 
+- [ ] Make more methods const : Vmin(), Vmax(), VMIN(), VMAX(), Cap()
 - [ ] Stressparam vs. classes may encapsulate calculating some things. 
 - [ ] cube and sqr functions added for utility. 
 - [ ] Module requires number of cells to construct which is unnecessary. 

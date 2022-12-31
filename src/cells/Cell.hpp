@@ -40,13 +40,13 @@ public:
   Cell(const std::string &ID_) : StorageUnit(ID_) {}
   virtual ~Cell() = default;
 
-  double Cap() final { return capNom; }
+  double Cap() const final override { return capNom; }
   void setCapacity(double capacity) { capNom = capacity; }
 
-  constexpr double Vmin() override { return limits.Vmin; }
-  constexpr double VMIN() override { return limits.VMIN; }
-  constexpr double VMAX() override { return limits.VMAX; }
-  constexpr double Vmax() override { return limits.Vmax; }
+  constexpr double Vmin() const override { return limits.Vmin; }
+  constexpr double VMIN() const override { return limits.VMIN; }
+  constexpr double VMAX() const override { return limits.VMAX; }
+  constexpr double Vmax() const override { return limits.Vmax; }
   constexpr double Tmax() { return limits.Tmax; }
   constexpr double Tmin() { return limits.Tmin; }
 

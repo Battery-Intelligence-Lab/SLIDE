@@ -153,7 +153,7 @@ int main()
   deg.pl_id = 0;
 
   //!< Wrap the cell in a series-module
-  auto modulei = std::make_unique<Module_s>("module1", settings::T_ENV, true, false, 2, 1, 0); //!< single-threaded, conventional coolsystem
+  auto modulei = std::make_unique<Module_p>("module1", settings::T_ENV, true, false, 2, 1, 0); //!< single-threaded, conventional coolsystem
                                                                                                //!<(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
 
   std::unique_ptr<StorageUnit> RinB[2] = { std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1),
@@ -192,14 +192,14 @@ int main()
   double dAh{}, dWh{}, dtime{};
   double Vnow = su->V();
   // cyc.CC(-0.1 * su->Cap(), su->Vmax(), 99999, 1, 1, dAh, dWh, dtime);
-  cyc.CCCV(-0.5 * su->Cap(), su->Vmax(), 0.0001 * su->Cap(), 1, 1, dAh, dWh, dtime);
+  // cyc.CCCV(-0.5 * su->Cap(), su->Vmax(), 0.0001 * su->Cap(), 1, 1, dAh, dWh, dtime);
   // cyc.CV(su->Vmax(), 0.0001 * su->Cap(), 99999, 1, 1, dAh, dWh, dtime);
-  double Vnow2 = su->V();
-  std::cout << dAh << ' ' << dWh << '\n';
 
 
   //!< Simulate the cycle ageing
-  // p.cycleAge(su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
+  p.cycleAge(su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
+  double Vnow2 = su->V();
+  std::cout << dAh << ' ' << dWh << '\n';
 
 
   //!< Benchmarks:

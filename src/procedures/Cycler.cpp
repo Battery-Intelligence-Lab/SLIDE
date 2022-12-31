@@ -864,7 +864,7 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
   }
 
   //!< do the CV phase
-  succ = CV(Vset, Ilim, tlim - dtime1, dt, ndt_data, Ah2, Wh2, dtime2);
+  succ = CV(Vset, Ilim, (tlim - dtime1), dt, ndt_data, Ah2, Wh2, dtime2);
   if (succ != Status::ReachedCurrentLimit) {
     if constexpr (settings::printBool::printNonCrit)
       std::cout << "Cycler::CCCV could not complete the CV phase, terminated with "

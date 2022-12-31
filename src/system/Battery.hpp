@@ -43,11 +43,11 @@ public:
   void setSeriesandParallel(int ser, int par);
 
   //!< basic getters and setters
-  double Cap() override { return cells->Cap() * nparallel; }
-  double Vmin() override { return cells->Vmin() * nseries; }
-  double VMIN() override { return cells->VMIN() * nseries; }
-  double Vmax() override { return cells->Vmax() * nseries; }
-  double VMAX() override { return cells->VMAX() * nseries; }
+  double Cap() const override { return cells->Cap() * nparallel; }
+  double Vmin() const override { return cells->Vmin() * nseries; }
+  double VMIN() const override { return cells->VMIN() * nseries; }
+  double Vmax() const override { return cells->Vmax() * nseries; }
+  double VMAX() const override { return cells->VMAX() * nseries; }
   double I() override { return cells->I() * nparallel; }
   double getRtot() override { return cells->getRtot() * nseries / static_cast<double>(nparallel); }
   size_t getNcells() override { return static_cast<double>(cells->getNcells() * nseries * nparallel); }

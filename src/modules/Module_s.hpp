@@ -33,13 +33,13 @@ public:
 
   //!< functions from Module_base
   // Since cells are in series following functions are just sum.
-  double Vmin() override { return transform_sum(SUs, free::get_Vmin<SU_t>); } //!< SUM all SUs' Vmin
-  double VMIN() override { return transform_sum(SUs, free::get_VMIN<SU_t>); } //!< SUM all SUs' VMIN
-  double Vmax() override { return transform_sum(SUs, free::get_Vmax<SU_t>); } //!< SUM all SUs' Vmax
-  double VMAX() override { return transform_sum(SUs, free::get_VMAX<SU_t>); } //!< SUM all SUs' VMAX
+  double Vmin() const override { return transform_sum(SUs, free::get_Vmin<SU_t>); } //!< SUM all SUs' Vmin
+  double VMIN() const override { return transform_sum(SUs, free::get_VMIN<SU_t>); } //!< SUM all SUs' VMIN
+  double Vmax() const override { return transform_sum(SUs, free::get_Vmax<SU_t>); } //!< SUM all SUs' Vmax
+  double VMAX() const override { return transform_sum(SUs, free::get_VMAX<SU_t>); } //!< SUM all SUs' VMAX
 
-  double I() override { return (SUs.empty() ? 0 : SUs[0]->I()); }           //!< the current is the same in all cells, so we can use first value. Return zero if SUs empty.
-  double Cap() override { return transform_min(SUs, free::get_Cap<SU_t>); } //!< module capacity is the capacity of the smallest cell
+  double I() override { return (SUs.empty() ? 0 : SUs[0]->I()); }                 //!< the current is the same in all cells, so we can use first value. Return zero if SUs empty.
+  double Cap() const override { return transform_min(SUs, free::get_Cap<SU_t>); } //!< module capacity is the capacity of the smallest cell
 
 
   double getOCV(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
