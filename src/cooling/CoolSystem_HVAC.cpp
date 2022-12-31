@@ -107,9 +107,9 @@ double CoolSystem_HVAC::dstate(double Qtotal, double Qchildren, double t)
   //!< increase the power required to run the cooling system
   //!< power scales like speed ^ 3 and rho ^1 (kinetic energy/mass * flow rate = rho * A * v * v^2 / 2)
   //!< 		see also https://fluidflowinfo.com/fan-performance-and-fan-laws/, and my undergrad course on wind energy [fan = opposite wind turbine]
-  const double v = flowrate / Across;                                   //!< speed of the fluid
-  const double E = (fluid_rho * Across * std::pow(v, 3) / 2) / eta * t; //!< this is the energy to speed up air from stationary to the required speed to cool the child SUs [W]
-  const double Eac = getACoperatingPower(Q_ac, t);                      //!< this is the energy to operate the AC unit
+  const double v = flowrate / Across;                            //!< speed of the fluid
+  const double E = (fluid_rho * Across * cube(v) / 2) / eta * t; //!< this is the energy to speed up air from stationary to the required speed to cool the child SUs [W]
+  const double Eac = getACoperatingPower(Q_ac, t);               //!< this is the energy to operate the AC unit
 
   //!< update the mean cooling power
   coolData.cData.Qevac_life += Qchildren;
@@ -151,10 +151,10 @@ double CoolSystem_HVAC::getACoperatingPower(double Qac, double t)
     return COP * Qac * t;
 
   //!< else we can suck in cold air
-  const double flr = Qac / (fluid_rho * fluid_cp * (T() - T_ENV));   //!< flow rate of environment air we need (cooling energy = flow rate * rho * cp * dT)
-  const double Acr = Across * 2;                                     //!< assume the surface area of the fan to suck in air is twice the surface area of the fan to cool the cells
-  const double v = flr / Acr;                                        //!< speed of the air
-  const double E = (fluid_rho * Acr * std::pow(v, 3) / 2) / eta * t; //!< energy to operate the fan
+  const double flr = Qac / (fluid_rho * fluid_cp * (T() - T_ENV)); //!< flow rate of environment air we need (cooling energy = flow rate * rho * cp * dT)
+  const double Acr = Across * 2;                                   //!< assume the surface area of the fan to suck in air is twice the surface area of the fan to cool the cells
+  const double v = flr / Acr;                                      //!< speed of the air
+  const double E = (fluid_rho * Acr * cube(v) / 2) / eta * t;      //!< energy to operate the fan
 
   return E;
 }

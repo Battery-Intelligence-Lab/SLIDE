@@ -656,13 +656,12 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
         return status; //!< previously -3
       }
     } else {
-      const auto v_prev = vi;
       vi = su->V();
       if (vi <= 0) {
         if constexpr (settings::printBool::printNonCrit)
           std::cout << "error in Cycler::CV in time step " << i
                     << " when getting the voltage. The previous voltage was "
-                    << v_prev << "V. Terminating the CV phase.\n";
+                    << vi << "V. Terminating the CV phase.\n";
         return Status::V_not_calculated;
       }
     }
@@ -865,7 +864,7 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
   }
 
   //!< do the CV phase
-  succ = CV(Vset, Ilim, tlim - dtime2, dt, ndt_data, Ah2, Wh2, dtime2);
+  succ = CV(Vset, Ilim, tlim - dtime1, dt, ndt_data, Ah2, Wh2, dtime2);
   if (succ != Status::ReachedCurrentLimit) {
     if constexpr (settings::printBool::printNonCrit)
       std::cout << "Cycler::CCCV could not complete the CV phase, terminated with "

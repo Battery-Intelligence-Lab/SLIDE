@@ -7,6 +7,7 @@
 
 #include "Converter.hpp"
 #include "../settings/settings.hpp"
+#include "../utility/utility.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -112,14 +113,14 @@ double Converter::getLosses(double Vin, double Iin)
   //!< double Iac = Idc * Vdc / Vac;		 //!< current on the AC side (ignoring losses)
 
   //!< filter
-  constexpr double R = 13.6e-3;                            //!< Value from Schimpe (for resistance of grid interface)
-  constexpr double Cdc = 3e-3;                             //!< DC link capacitance
-  constexpr double dV = 1;                                 //!< DC ripple voltage, wild guess since I can't find a value #TODO if is correct?
-  constexpr double Rg = 13.6e-3;                           //!< value from Schimpe (resistance to grid)
-  constexpr double Ri = 13.6e-3;                           //!< value from Schimpe (resistance to inverter)
-  double FIL_cdc = R * std::pow(2 * pi * f * Cdc * dV, 2); //!< losses in capacitor on DC bus
-  double FIL_lg = 3 * std::pow(Idc, 2) * Rg;               //!< losses in L at the output of the inverter
-  double FIL_lb = Iin * Iin * Ri;                          //!< losses in L at the input of the rectifier
+  constexpr double R = 13.6e-3;                    //!< Value from Schimpe (for resistance of grid interface)
+  constexpr double Cdc = 3e-3;                     //!< DC link capacitance
+  constexpr double dV = 1;                         //!< DC ripple voltage, wild guess since I can't find a value #TODO if is correct?
+  constexpr double Rg = 13.6e-3;                   //!< value from Schimpe (resistance to grid)
+  constexpr double Ri = 13.6e-3;                   //!< value from Schimpe (resistance to inverter)
+  double FIL_cdc = R * sqr(2 * pi * f * Cdc * dV); //!< losses in capacitor on DC bus
+  double FIL_lg = 3 * sqr(Idc) * Rg;               //!< losses in L at the output of the inverter
+  double FIL_lb = Iin * Iin * Ri;                  //!< losses in L at the input of the rectifier
 
   //!< total losses
   DC_cond = std::abs(DC_cond); //!< ensure all have same sign (some I^2, others I so if I < 0 they would have opposite sign)

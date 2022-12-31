@@ -219,7 +219,7 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       getC(cp, cn);
 
       //!< Add the effects of this model
-      dcs += csparam.CS3alpha * std::pow((cn[0] - cn[settings::nch + 1]) / Cmaxneg, 2.0);
+      dcs += csparam.CS3alpha * sqr((cn[0] - cn[settings::nch + 1]) / Cmaxneg);
       //!< equations (8) + (21)
       //!< Note that eqn (8) refers to the change with respect to time while here we use the spatial variation
       //!< This makes the model capture more of the spatial variation in stress
@@ -554,9 +554,6 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
 
   using settings::nch, std::pow;
 
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::getDaiStress starting\n";
-
   //!< Get the locations of the Chebyshev nodes
   double xp[nch + 2]; //!< location (x-value) of the positive Chebyshev nodes
 
@@ -610,7 +607,7 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
   //!< so the matrix-vector product we need is F = Q * (concentration * x^2 * R^3)
 
   std::array<double, 2 * nch + 3> Fp{}, Fn{}; //!< arrays with the product for the positive and negative electrode
-  const double Rp_cube{ geo.Rp * geo.Rp * geo.Rp }, Rn_cube{ geo.Rn * geo.Rn * geo.Rn };
+  const double Rp_cube{ cube(geo.Rp) }, Rn_cube{ cube(geo.Rn) };
   {
     for (size_t i = 0; i < 2 * nch + 3; i++) //!< loop for each row (one row = one node)
     {
@@ -630,59 +627,46 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
   const double ap = Fp[2 * nch + 2] - Fp[nch + 1]; //!< int( cp*r^2, r=0..Rp ) #TODO only difference of Fp and Fn is used.
   const double an = Fn[2 * nch + 2] - Fn[nch + 1]; //!< int( cn*r^2, r=0..Rn )
 
-  //!< Calculate the equations for all nodes
-  std::array<double, nch + 2> srp, srn; //!< radial stress in the positive/negative particle at the positive nodes [centre .. +surface]
-  std::array<double, nch + 2> stp, stn; //!< tangential stress in the positive/negative particle at the positive nodes [centre .. +surface]
-
-  for (size_t i = 0; i < nch + 2; i++) { //!< loop for the positive nodes
+  for (size_t i = 0; i < sigma_h_p.size(); i++) { //!< loop for the positive nodes
 
     const double rp = geo.Rp * xtot[nch + 1 + i];    //!< r(i) = R * x(i) radius of positive node i in the positive particle
     const double rn = geo.Rn * xtot[nch + 1 + i];    //!< radius of positive node i in the negative particle
     const double bp = Fp[nch + 1 + i] - Fp[nch + 1]; //!< integral from the centre to positive node i int(cp*zp^2, zp=0..rp(i)) = F[nch+1+i] - F[nch+1]
     const double bn = Fn[nch + 1 + i] - Fn[nch + 1]; //!< integral from the centre to positive node i int(cn*zn^2, zn=0..rn(i))
 
+    const auto rp_cube = cube(rp); // Temporary variable
+    const auto rn_cube = cube(rn); // Temporary variable
+
     //!< Implement the equations from Dai et al.
-    if (i == 0) { //!< centre node -> special formula (31 & 33) in Dai, Cai, White
-      srp[i] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 / std::pow(geo.Rp, 3.0) * ap - CP[nch + 1]);
-      srn[i] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 / std::pow(geo.Rn, 3.0) * an - CN[nch + 1]);
+    //!< Flip all arrays to get the opposite order (now it is [centre .. +surface] and we want [+surface .. centre]
+    //!< and store in the output arrays
+    const auto i_rev = sigma_h_p.size() - 1 - i; // reverse index.
 
-      stp[i] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 / std::pow(geo.Rp, 3.0) * ap - CP[nch + 1]);
-      stn[i] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 / std::pow(geo.Rn, 3.0) * an - CN[nch + 1]);
-    } else {                                                                                                                           //!< other nodes -> equation 13 in Dai, Cai, White
-      srp[i] = 2 * sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (1 / std::pow(geo.Rp, 3.0) * ap - 1 / std::pow(rp, 3.0) * bp); //!< ap = int (c x^2, x=0..R), bp = int (c x^2 , x=0..r)
-      srn[i] = 2 * sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (1 / std::pow(geo.Rn, 3.0) * an - 1 / std::pow(rn, 3.0) * bn);
+    //!< centre node -> special formula (31 & 33) in Dai, Cai, White
+    if (i == 0) {
+      sigma_r_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 * ap / Rp_cube - CP[nch + 1]);
+      sigma_r_n[i_rev] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 * an / Rn_cube - CN[nch + 1]);
 
-      stp[i] = sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (2 / std::pow(geo.Rp, 3.0) * ap + 1 / std::pow(rp, 3.0) * bp - cp[i]);
-      stn[i] = sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (2 / std::pow(geo.Rn, 3.0) * an + 1 / std::pow(rn, 3.0) * bn - cn[i]);
+      sigma_t_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 * ap / Rp_cube - CP[nch + 1]);
+      sigma_t_n[i_rev] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 * an / Rn_cube - CN[nch + 1]);
+    } else {                                                                                                     //!< other nodes -> equation 13 in Dai, Cai, White
+      sigma_r_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (ap / Rp_cube - bp / rp_cube); //!< ap = int (c x^2, x=0..R), bp = int (c x^2 , x=0..r)
+      sigma_r_n[i_rev] = 2 * sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (an / Rn_cube - bn / rn_cube);
+
+      sigma_t_p[i_rev] = sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (2 * ap / Rp_cube + bp / rp_cube - cp[i]);
+      sigma_t_n[i_rev] = sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (2 * an / Rn_cube + bn / rn_cube - cn[i]);
     }
-  }
 
-  //!< Flip all arrays to get the opposite order (now it is [centre .. +surface] and we want [+surface .. centre]
-  //!< and store in the output arrays
-  for (size_t i = 0; i < nch + 2; i++) { //!< loop for the positive nodes
-    sigma_r_p[i] = srp[nch + 2 - 1 - i];
-    sigma_r_n[i] = srn[nch + 2 - 1 - i];
-    sigma_t_p[i] = stp[nch + 2 - 1 - i];
-    sigma_t_n[i] = stn[nch + 2 - 1 - i];
-  }
-
-  //!< Make the hydrostatic stress sh = (sr + 2sp)/3
-  size_t sp{ 0 }, sn{ 0 };                                //!< node with the maximum hydrostatic stress in the positive/negative particle
-  for (size_t i = 0; i < nch + 2; i++) {                  //!< loop for all nodes
-    sigma_h_p[i] = (sigma_r_p[i] + 2 * sigma_t_p[i]) / 3; //!< calculate hydrostatic stress
-    sigma_h_n[i] = (sigma_r_n[i] + 2 * sigma_t_n[i]) / 3;
+    //!< Make the hydrostatic stress sh = (sr + 2sp)/3
+    sigma_h_p[i_rev] = (sigma_r_p[i_rev] + 2 * sigma_t_p[i_rev]) / 3; //!< calculate hydrostatic stress
+    sigma_h_n[i_rev] = (sigma_r_n[i_rev] + 2 * sigma_t_n[i_rev]) / 3;
 
     //!< find the maximum (in absolute value) of the stresses
-    if (std::abs(sigma_h_p[i]) > std::abs(sigma_h_p[sp]))
-      sp = i;
-    if (std::abs(sigma_h_n[i]) > std::abs(sigma_h_n[sp]))
-      sn = i;
+    if (std::abs(sigma_h_p[i_rev]) > std::abs(*sigma_p))
+      *sigma_p = sigma_h_p[i_rev]; //!< node with the maximum hydrostatic stress in the positive/negative particle
+    if (std::abs(sigma_h_n[i_rev]) > std::abs(*sigma_n))
+      *sigma_n = sigma_h_n[i_rev];
   }
-  *sigma_p = sigma_h_p[sp];
-  *sigma_n = sigma_h_n[sn];
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::getDaiStress terminating.\n";
 }
 
 void Cell_SPM::updateDaiStress() noexcept
@@ -697,7 +681,7 @@ void Cell_SPM::updateDaiStress() noexcept
   //!< Make variables to store the stress
   sigma_type sigma_r_p, sigma_r_n, sigma_t_p, sigma_t_n, sigma_h_p, sigma_h_n;
 
-  //!< Get the stress
+  //!< Get the stress // #TODO these variables are not used.
   getDaiStress(&sparam.s_dai_p, &sparam.s_dai_n, sigma_r_p, sigma_r_n, sigma_t_p, sigma_t_n, sigma_h_p, sigma_h_n);
   //!< indicate that the values in the class variables are updated
   sparam.s_dai_update = true;

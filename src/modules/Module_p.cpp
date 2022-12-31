@@ -432,7 +432,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
     Vmodule_valid = false;       //!< we are changing the current, so the stored voltage is no longer valid
 
     //!< STEP 1: CHANGE ICELL BY dIi/2 AND SEE HOW CELL VOLTAGE CHANGES to estimate resistance
-    std::array<double, settings::MODULE_NSUs_MAX> Vo, Ri, Iold; //#TODO these probably need to be vectors since NSUs will increase.
+    std::array<double, settings::MODULE_NSUs_MAX> Vo, Ri, Iold; // #TODO these probably need to be vectors since NSUs will increase.
     double Rtot = 0;                                            //!< total resistance of the parallel module, 1/Rtot = sum ( 1/R(i) )
     for (size_t i = 0; i < getNSUs(); i++) {
       Vo[i] = getVi(i, print); //!< terminal voltage reached from cell i
@@ -775,7 +775,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
       for (size_t j = i; j < SUs.size(); j++)
         Ii += SUs[j]->I(); //!< resistor i sees the currents through the cells 'behind' them
 
-      therm.Qcontact += Rcontact[i] * std::pow(Ii, 2) * nstep * dt;
+      therm.Qcontact += Rcontact[i] * sqr(Ii) * nstep * dt;
     }
 
     //!< If this module has a parent module, this parent will call the thermal model with the correct parameters

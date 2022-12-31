@@ -7,6 +7,10 @@
 ## TODO: 
 
 ### Current priority: 
+- [ ] Stressparam vs. classes may encapsulate calculating some things. 
+- [ ] cube and sqr functions added for utility. 
+- [ ] Module requires number of cells to construct which is unnecessary. 
+- [ ] Cycler CV is not working???? CCCV works if it does not have current beforehand it does not work... 
 - [ ] Create a small class config for limits reached. It should have CheckLimits.
 - [ ] Some variables like ncheck and nbal were defined double but they are int. 
 - [ ] Instead of taking unique_ptr or raw ptr, functions should take object references. 

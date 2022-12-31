@@ -29,7 +29,11 @@
 
 namespace slide {
 
-constexpr auto abs_sqrt(auto x) { return std::sqrt(std::abs(x)); }
+constexpr inline auto abs_sqrt(auto x) { return std::sqrt(std::abs(x)); }
+
+constexpr inline auto sqr(auto x) { return x * x; }
+constexpr inline auto cube(auto x) { return x * x * x; }
+
 
 template <typename T>
 void output_printer(const std::vector<T> &vec, const auto &save_path)
