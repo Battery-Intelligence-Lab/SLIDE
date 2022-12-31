@@ -471,7 +471,9 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
     if (!unitTest)
       std::cout << "Do a check-up on a separate thread after Ah = " << Ahtot << '\n';
     try {
-      checkUp(su2.get(), Ahtot, nrCycle);
+      checkUp(su, Ahtot, nrCycle);
+
+      // checkUp(su2.get(), Ahtot, nrCycle);
       //!< if you want to do it in this thread with the SU itself instead of copy to a separate thread
       //!< normally it was su #TODO ???
       //!< #TODO copy the SU to a new one (with same state), so we can do the capcheck with this copy and the main SU can keep cycling

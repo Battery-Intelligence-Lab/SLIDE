@@ -186,8 +186,18 @@ int main()
 
   Procedure p(balance, Vbal, ndata, false);
 
+  auto cyc = Cycler(su, "test");
+
+  double dAh, dWh, dtime;
+  double Vnow = su->V();
+  cyc.CC(-0.1 * su->Cap(), su->Vmax(), 99999, 1, 1, dAh, dWh, dtime);
+  double Vnow2 = su->V();
+
+  std::cout << dAh << ' ' << dWh << '\n';
+
+
   //!< Simulate the cycle ageing
-  p.cycleAge(su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
+  // p.cycleAge(su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
 
 
   //!< Benchmarks:

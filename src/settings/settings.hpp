@@ -96,7 +96,7 @@ constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all typ
 #define TIMING false
 
 //!< temperature
-constexpr int T_MODEL{ 0 }; //!< which thermal model to use
+constexpr int T_MODEL{ 2 }; //!< which thermal model to use
                             //!< 	0 no thermal model
                             //!< 	1 individual cell bulk thermal model
                             //!< 	2 coupled cell thermal model with cooling from modules

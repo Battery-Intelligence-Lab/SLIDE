@@ -7,7 +7,7 @@
 ## TODO: 
 
 ### Current priority: 
-
+- [ ] Create a small class config for limits reached. It should have CheckLimits.
 - [ ] Some variables like ncheck and nbal were defined double but they are int. 
 - [ ] Instead of taking unique_ptr or raw ptr, functions should take object references. 
 - [ ] Literal operators for units are being added. 
@@ -25,6 +25,7 @@
 - [ ] Probably there is a bug in slide-pack where time, Ah, Wh values are not resetted after a throw. Try two cell in series config with one has smaller capacity so it reaches its capacity earlier. Then charge with 1C + large time step. Probably first cell will store Ah and second won't. and there will be difference in their Ah. Or even it does not, it will be different than real Ah. Just charge and discharge. 
 - [ ] Cycler should be able to take unique_ptr and convert. 
 - [ ] setSUs and assigning unique pointers then testing individually is very difficult. Clearly a design problem.
+
 
 ### From SLIDE v2: 
 
@@ -103,6 +104,7 @@ slide_pack integration:
 - [x] SPMModel.h, SPMModel.cpp
 
 ### slide_pack changes: 
+- [x] Cycler.CC was charging a bit if already satisfied voltage limit is given.
 - [ ] StorageUnit parent shared_pointer -> raw poiner. 
 - [x] Module shared_ptr<StorageUnit> SUs[MODULE_NSUs_MAX] -> vector.
 - [ ] Rcontact is removed from Module and it will be moved into Module_s and Module_p

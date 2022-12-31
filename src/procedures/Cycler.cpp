@@ -353,6 +353,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
   constexpr bool prdet = false; //!< print details of what is happening at every time step
   Wh = 0;
   Ah = 0;
+  int i = 0;
 
   //!< check the voltage limit
   if (((I < 0) && (vi > vlim)) || ((I > 0) && (vi < vlim))) { //!< charging -> exceeded if Vnew > vlim
@@ -398,10 +399,11 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
         return Status::V_not_calculated;
       }
     }
-
+    auto myVnow = su->V();
     //!< Increase the throughput
     ttot += dti * nOnce;
     Ah = I * ttot / 3600.0;
+    i += nOnce;
     idat += nOnce;
     Wh += I * dti * nOnce / 3600 * vi;
 
@@ -417,7 +419,10 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
       break;
     }
 
-    const auto safetyStatus = free::check_safety(vi, *this); //!< #TODO this is pretty much unnecessary.
+    const auto safetyStatus = free::check_safety(vi, *this);
+    //!< #TODO this is pretty much unnecessary.
+    // Check if the given limit at the beginning inside voltage limits.
+    // Otherwise clamp!
 
     if (safetyStatus != Status::SafeVoltage)
       return safetyStatus;

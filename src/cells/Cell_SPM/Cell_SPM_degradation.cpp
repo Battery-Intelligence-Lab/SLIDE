@@ -610,8 +610,8 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
   //!< so the matrix-vector product we need is F = Q * (concentration * x^2 * R^3)
 
   std::array<double, 2 * nch + 3> Fp{}, Fn{}; //!< arrays with the product for the positive and negative electrode
+  const double Rp_cube{ geo.Rp * geo.Rp * geo.Rp }, Rn_cube{ geo.Rn * geo.Rn * geo.Rn };
   {
-    const double Rp_cube{ std::pow(geo.Rp, 3.0) }, Rn_cube{ std::pow(geo.Rn, 3.0) };
     for (size_t i = 0; i < 2 * nch + 3; i++) //!< loop for each row (one row = one node)
     {
       //!< calculate the matrix-vector product for row i as you would do it by hand:
