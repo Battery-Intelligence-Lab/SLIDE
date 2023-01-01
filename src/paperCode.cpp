@@ -177,7 +177,7 @@ void thermalModel()
   mpp4->writeData(ID);
 }
 
-void degrade(StorageUnit *su)
+void degrade(auto &&su)
 {
   /*
    * Test some cycle ageing for an arbitrarily large battery
@@ -202,7 +202,7 @@ void degrade(StorageUnit *su)
   Procedure p(balance, Vbal, ndata, false);
 
   //!< Simulate the cycle ageing
-  p.cycleAge(su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
+  p.cycleAge(&su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
 }
 
 void degradation_1cell()
@@ -251,7 +251,7 @@ void degradation_1cell()
   bat->setModule(std::move(modulei));
 
   //!< call the degradation function
-  degrade(bat.get()); //!< #TODO
+  degrade(*bat); //!< #TODO
 }
 
 void degradation_electricalModel()
@@ -287,7 +287,7 @@ void degradation_electricalModel()
   IDaddition = "_noThermalModel_HighRContact";
 
   auto su2 = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 10);
-  degrade(su2.get());
+  degrade(*su2);
 }
 
 void degradation_variations()
@@ -320,7 +320,7 @@ void degradation_variations()
   bool contactR = true;
   std::string IDaddition = "_noThermalModel";
   auto su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1.0);
-  degrade(su.get());
+  degrade(*su);
 
   //!< capacity spread
   coolControl = 1; //!< just for naming since there is no thermal model
@@ -330,7 +330,7 @@ void degradation_variations()
   contactR = true;
   IDaddition = "_noThermalModel";
   auto su2 = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  degrade(su2.get());
+  degrade(*su2);
 
   //!< degradation rate spread
   coolControl = 1; //!< just for naming since there is no thermal model
@@ -340,7 +340,7 @@ void degradation_variations()
   contactR = true;
   IDaddition = "_noThermalModel";
   auto su3 = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  degrade(su3.get());
+  degrade(*su3);
 
   //!< all three spread
   coolControl = 1; //!< just for naming since there is no thermal model
@@ -350,7 +350,7 @@ void degradation_variations()
   contactR = true;
   IDaddition = "_noThermalModel";
   auto su4 = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  degrade(su4.get());
+  degrade(*su4);
 }
 
 void degradation_thermal()
@@ -382,6 +382,6 @@ void degradation_thermal()
   bool contactR = true;
   std::string IDaddition = "_individualThermalModel";
   auto su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  degrade(su.get());
+  degrade(*su);
 }
 } // namespace slide::paperCode::paper2022
