@@ -512,7 +512,6 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
   double xp[nch + 2]; //!< location (x-value) of the positive Chebyshev nodes
 
   xp[0] = 1;
-
   std::copy(M->xch.begin(), M->xch.end(), &xp[1]);
   xp[nch + 1] = 0;
 
@@ -560,36 +559,31 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
   //!< 		int( c * r^2 dr) = int(c * (x*R)^2 * d(R*x)) = int(c x^2 R^3 dx)
   //!< so the matrix-vector product we need is F = Q * (concentration * x^2 * R^3)
 
-  std::array<double, 2 * nch + 3> Fp{}, Fn{}; //!< arrays with the product for the positive and negative electrode
-  const double Rp_cube{ cube(geo.Rp) }, Rn_cube{ cube(geo.Rn) };
-  {
-    for (size_t i = 0; i < 2 * nch + 3; i++) //!< loop for each row (one row = one node)
-    {
-      //!< calculate the matrix-vector product for row i as you would do it by hand:
-      //!< F(i) = sum(Q(i,j)*C(j)*x(j)^2*R^3, j=0..2*nch+2)
-      for (size_t j = 0; j < 2 * nch + 3; j++) {           //!< loop through the columns to calculate the sum
-        Fp[i] += M->Q[i][j] * (CP[j] * xtot[j] * xtot[j]); //!< 		Q(i,j)*C(j)*x(j)^2
-        Fn[i] += M->Q[i][j] * (CN[j] * xtot[j] * xtot[j]);
-      }
+  //!< Note: since Fp (Fn) is multiplied by Rp^3 (Rn^3) then divided by them they are eliminated to remove numerical problems.
 
-      Fp[i] *= Rp_cube; //!< *R^3 (R is constant)
-      Fn[i] *= Rn_cube;
+  std::array<double, 2 * nch + 3> Fp{}, Fn{}; //!< arrays with the product for the positive and negative electrode
+  for (size_t i = 0; i < 2 * nch + 3; i++)    //!< loop for each row (one row = one node)
+  {
+    //!< calculate the matrix-vector product for row i as you would do it by hand:
+    //!< F(i) = sum(Q(i,j)*C(j)*x(j)^2*R^3, j=0..2*nch+2)
+    for (size_t j = 0; j < 2 * nch + 3; j++) {    //!< loop through the columns to calculate the sum
+      Fp[i] += M->Q[i][j] * CP[j] * sqr(xtot[j]); //!< 		Q(i,j)*C(j)*x(j)^2
+      Fn[i] += M->Q[i][j] * CN[j] * sqr(xtot[j]);
     }
   }
 
   //!< Calculate the integral from the centre to the positive surface, which is a constant present in all equations
-  const double ap = Fp[2 * nch + 2] - Fp[nch + 1]; //!< int( cp*r^2, r=0..Rp ) #TODO only difference of Fp and Fn is used.
+  const double ap = Fp[2 * nch + 2] - Fp[nch + 1]; //!< int( cp*r^2, r=0..Rp ) // Note r^3 is eliminated!
   const double an = Fn[2 * nch + 2] - Fn[nch + 1]; //!< int( cn*r^2, r=0..Rn )
 
-  for (size_t i = 0; i < sigma_h_p.size(); i++) { //!< loop for the positive nodes
-
-    const double rp = geo.Rp * xtot[nch + 1 + i];    //!< r(i) = R * x(i) radius of positive node i in the positive particle
-    const double rn = geo.Rn * xtot[nch + 1 + i];    //!< radius of positive node i in the negative particle
-    const double bp = Fp[nch + 1 + i] - Fp[nch + 1]; //!< integral from the centre to positive node i int(cp*zp^2, zp=0..rp(i)) = F[nch+1+i] - F[nch+1]
-    const double bn = Fn[nch + 1 + i] - Fn[nch + 1]; //!< integral from the centre to positive node i int(cn*zn^2, zn=0..rn(i))
-
-    const auto rp_cube = cube(rp); // Temporary variable
-    const auto rn_cube = cube(rn); // Temporary variable
+  *sigma_p = *sigma_n = 0;                      //!< Reset the stress values.
+  for (size_t i = 0; i < sigma_h_p.size(); i++) //!< loop for the positive nodes
+  {
+    //!< r(i) = R * x(i) radius of positive node i in the positive particle
+    //!< radius of positive node i in the negative particle
+    const auto x_cube = cube(xtot[nch + 1 + i]);                  // Temporary variable
+    const double bp_x = (Fp[nch + 1 + i] - Fp[nch + 1]) / x_cube; //!< integral from the centre to positive node i int(cp*zp^2, zp=0..rp(i)) = F[nch+1+i] - F[nch+1]
+    const double bn_x = (Fn[nch + 1 + i] - Fn[nch + 1]) / x_cube; //!< integral from the centre to positive node i int(cn*zn^2, zn=0..rn(i))
 
     //!< Implement the equations from Dai et al.
     //!< Flip all arrays to get the opposite order (now it is [centre .. +surface] and we want [+surface .. centre]
@@ -598,17 +592,17 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
 
     //!< centre node -> special formula (31 & 33) in Dai, Cai, White
     if (i == 0) {
-      sigma_r_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 * ap / Rp_cube - CP[nch + 1]);
-      sigma_r_n[i_rev] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 * an / Rn_cube - CN[nch + 1]);
+      sigma_r_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 * ap - CP[nch + 1]);
+      sigma_r_n[i_rev] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 * an - CN[nch + 1]);
 
-      sigma_t_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 * ap / Rp_cube - CP[nch + 1]);
-      sigma_t_n[i_rev] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 * an / Rn_cube - CN[nch + 1]);
-    } else {                                                                                                     //!< other nodes -> equation 13 in Dai, Cai, White
-      sigma_r_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (ap / Rp_cube - bp / rp_cube); //!< ap = int (c x^2, x=0..R), bp = int (c x^2 , x=0..r)
-      sigma_r_n[i_rev] = 2 * sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (an / Rn_cube - bn / rn_cube);
+      sigma_t_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (9 * (1 - sparam.nup)) * (3 * ap - CP[nch + 1]);
+      sigma_t_n[i_rev] = 2 * sparam.omegan * sparam.En / (9 * (1 - sparam.nun)) * (3 * an - CN[nch + 1]);
+    } else {                                                                                   //!< other nodes -> equation 13 in Dai, Cai, White
+      sigma_r_p[i_rev] = 2 * sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (ap - bp_x); //!< ap = int (c x^2, x=0..R), bp = int (c x^2 , x=0..r)
+      sigma_r_n[i_rev] = 2 * sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (an - bn_x);
 
-      sigma_t_p[i_rev] = sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (2 * ap / Rp_cube + bp / rp_cube - cp[i]);
-      sigma_t_n[i_rev] = sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (2 * an / Rn_cube + bn / rn_cube - cn[i]);
+      sigma_t_p[i_rev] = sparam.omegap * sparam.Ep / (3 * (1 - sparam.nup)) * (2 * ap + bp_x - cp[i]);
+      sigma_t_n[i_rev] = sparam.omegan * sparam.En / (3 * (1 - sparam.nun)) * (2 * an + bn_x - cn[i]);
     }
 
     //!< Make the hydrostatic stress sh = (sr + 2sp)/3

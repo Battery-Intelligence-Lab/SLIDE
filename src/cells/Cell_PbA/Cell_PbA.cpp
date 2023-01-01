@@ -24,7 +24,7 @@ Cell_PbA::Cell_PbA()
   ID = "Cell_PbA";
   capNom = 20; //!< [Ah] Nominal capacity (data sheet)
 
-  k_OCVp.setCurve(PathVar::data + std::string("Cell_PbA/Lander_corrosion_speed.csv")); // #TODO loads data in constructor.
+  k_OCVp.setCurve(PathVar::data / "Cell_PbA/Lander_corrosion_speed.csv"); // #TODO loads data in constructor.
 }
 
 Cell_PbA::Cell_PbA(std::string IDi, double capin, double SOCin) : Cell_PbA()
@@ -314,10 +314,10 @@ double Cell_PbA::rho_empty()
 }
 double Cell_PbA::Ucorr()
 {
-  if (isCharging())
-    return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_c / Cap()) * st.I() * (1 + M_c * st.SOC() / (C_c - st.SOC()));
-  else
-    return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_d / Cap()) * st.I() * (1 + M_d * DOD() / (C_d - DOD()));
+                if (isCharging())
+                  return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_c / Cap()) * st.I() * (1 + M_c * st.SOC() / (C_c - st.SOC()));
+                else
+                  return Ucorr_0 - SOC_infl * g_OCV * DOD() + 0.5 * (rho_d / Cap()) * st.I() * (1 + M_d * DOD() / (C_d - DOD()));
 }
 
 //!< void Cell_PbA::backupStates()

@@ -11,6 +11,7 @@
 - [ ] cps - cns question
 
 ### Current priority: 
+- [ ] getDaiStress is simplified by removing unnecessary R multiplication and division. 
 - [ ] State classes should have const members. 
 - [ ] Make more methods const : Vmin(), Vmax(), VMIN(), VMAX(), Cap()
 - [ ] Stressparam vs. classes may encapsulate calculating some things. 

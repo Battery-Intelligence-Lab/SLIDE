@@ -356,9 +356,8 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
   int i = 0;
 
   //!< check the voltage limit
-  if (((I < 0) && (vi > vlim)) || ((I > 0) && (vi < vlim))) { //!< charging -> exceeded if Vnew > vlim
+  if ((I < 0 && vi > vlim) || (I > 0 && vi < vlim)) //!< charging -> exceeded if Vnew > vlim
     return Status::ReachedVoltageLimit;
-  }
 
   //!< apply current
   while (ttot < tlim) {
