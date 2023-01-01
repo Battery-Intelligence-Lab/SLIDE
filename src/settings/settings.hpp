@@ -51,9 +51,9 @@ constexpr bool overwrite_data = true; //!< if this is false then folder overwrit
 //!< Data storage  //!< from slidepack
 constexpr int DATASTORE_NHIST = 100; //!< length of the arrays with the histograms (if 1)
 
-constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeTimeData; //!< if 0, no cell-level data is stored
-                                                                     //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
-                                                                     //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
+constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeCumulativeData; //!< if 0, no cell-level data is stored
+                                                                           //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
+                                                                           //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
 
 constexpr auto DATASTORE_MODULE = moduleDataStorageLevel::noStorage; //!< See moduleDataStorageLevel for different options.

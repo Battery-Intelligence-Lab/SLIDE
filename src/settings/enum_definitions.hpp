@@ -9,14 +9,12 @@
 
 namespace slide::settings {
 enum printLevel {
-  printCrit = 1,            //!< threshold of verbose of when to print error messages for critical errors
-  printNonCrit,             //!< threshold of verbose of when to print error messages for noncritical errors
-  printCyclerFunctions,     //!< threshold of verbose of when to print the start and end of functions of the BasicCycler
-  printCyclerHighLevel,     //!< threshold of verbose of when to print the high-level flow of the program in the BasicCycler
-  printCyclerDetail,        //!< threshold of verbose of when to print the low-level detailed flow of the program in the BasicCycler
-  printfindCVcurrentDetail, //!< threshold of verbose of when to print the details of how the current for the CV phase is found
-  printCellFunctions        //!< threshold of verbose of when to print messages at the start and end of functions of the Cell
-
+  printCrit = 1,           //!< threshold of verbose of when to print error messages for critical errors
+  printNonCrit,            //!< threshold of verbose of when to print error messages for noncritical errors
+  printCyclerFunctions,    //!< threshold of verbose of when to print the start and end of functions of the BasicCycler
+  printCyclerHighLevel,    //!< threshold of verbose of when to print the high-level flow of the program in the BasicCycler
+  printCyclerDetail,       //!< threshold of verbose of when to print the low-level detailed flow of the program in the BasicCycler
+  printfindCVcurrentDetail //!< threshold of verbose of when to print the details of how the current for the CV phase is found
 };
 
 enum class cellDataStorageLevel {

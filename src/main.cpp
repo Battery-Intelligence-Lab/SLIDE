@@ -166,7 +166,6 @@ int main()
   bat->setSeriesandParallel(ser, par);
   bat->setModule(std::move(modulei));
 
-
   StorageUnit *su = bat.get();
 
 
@@ -176,9 +175,9 @@ int main()
   bool testCV = false;
   double Vmax = su->Vmax();
   double Vmin = su->Vmin();
-  int Ncycle = 500;
-  int ncheck = 250; //!< do a checkup ever 250 cycles
-  int nbal = 10;    //!< balance every 10 cycles
+  int Ncycle = 30;
+  int ncheck = 10; //!< do a checkup ever 250 cycles
+  int nbal = 5;    //!< balance every 10 cycles
 
   //!< Make the procedure
   bool balance = true;

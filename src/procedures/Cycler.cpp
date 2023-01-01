@@ -790,18 +790,8 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
 
 Status Cycler::CCCV(double I, double Vset, double Ilim, double dt, int ndt_data, double &Ah, double &Wh, double &dtime)
 {
-  /*
-   * Function to do both a CC and CV (dis)charge after each other.
-   *
-   * IN
-   * I 	absolute value of the current
-   * Vset voltage to which the cell should be (dis)charged
-   *
-   */
-
   const double tlim = std::numeric_limits<double>::max(); //!< #TODO why tlim is not good?
-  //!< check all input parameters are sensible
-
+  //!< #TODO check all input parameters are sensible
   return Cycler::CCCV_with_tlim(I, Vset, Ilim, tlim, dt, ndt_data, Ah, Wh, dtime);
 }
 
@@ -817,19 +807,8 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
    */
 
   //!< check all input parameters are sensible
-  if (I < 0) {
-    if constexpr (settings::printBool::printNonCrit)
-      std::cout << "Cycler::CCCV is called with I = " << I << " while we need a positive value. "
-                << "Recovering by taking the absolute value.\n";
-    I = std::abs(I);
-  }
-
-  if (Ilim < 0) {
-    if constexpr (settings::printBool::printNonCrit)
-      std::cout << "Cycler::CCCV is called with Ilim = " << Ilim
-                << " while we need a positive value. Recovering by taking the absolute value.\n";
-    Ilim = std::abs(Ilim);
-  }
+  I = std::abs(I);
+  Ilim = std::abs(Ilim);
 
   if (Vset < su->Vmin() || Vset > su->Vmax()) //!< #TODO su Vmax and Vmin require lots of computation
   {
@@ -852,24 +831,23 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
     return status;
   }
 
-  const auto sgn = (su->V() > Vset) ? 1 : -1; //!< OCV larger than Vset so we need to discharge
-  //!< do the CC phase
-  double Ah1, Ah2, Wh1, Wh2, dtime1, dtime2;
-  auto succ = CC(sgn * I, Vset, tlim, dt, ndt_data, Ah1, Wh1, dtime1);
+  I = (su->V() > Vset) ? I : -I; //!< OCV larger than Vset so we need to discharge
 
-  if (succ != Status::ReachedVoltageLimit) {
-    if constexpr (settings::printBool::printNonCrit)
+  double Ah1, Ah2, Wh1, Wh2, dtime1, dtime2;
+  auto succ = CC(I, Vset, tlim, dt, ndt_data, Ah1, Wh1, dtime1); //!< do the CC phase
+
+  if constexpr (settings::printBool::printNonCrit)
+    if (succ != Status::ReachedVoltageLimit)
       std::cout << "Cycler::CCCV could not complete the CC phase, terminated with "
                 << getStatusMessage(succ) << ". Trying to do a CV phase.\n";
-  }
 
-  //!< do the CV phase
-  succ = CV(Vset, Ilim, (tlim - dtime1), dt, ndt_data, Ah2, Wh2, dtime2);
-  if (succ != Status::ReachedCurrentLimit) {
-    if constexpr (settings::printBool::printNonCrit)
+
+  succ = CV(Vset, Ilim, (tlim - dtime1), dt, ndt_data, Ah2, Wh2, dtime2); //!< do the CV phase
+  if constexpr (settings::printBool::printNonCrit)
+    if (succ != Status::ReachedCurrentLimit)
       std::cout << "Cycler::CCCV could not complete the CV phase, terminated with "
                 << getStatusMessage(succ) << '\n';
-  }
+
 
   Ah = Ah1 + Ah2;
   Wh = Wh1 + Wh2;

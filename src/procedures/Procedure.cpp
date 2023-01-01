@@ -107,8 +107,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       //!< CV charge
       if (testCV) {
         try {
-          Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-          double dtime;
+          dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
           succ = cyc.CV(Vmax, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
         } catch (int e) {
           std::cout << "Error in CycleAge when CV charging in cycle "
@@ -124,8 +123,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
       //!< CC discharge
       try {
-        double dtime;
-        Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+        dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
         succ = cyc.CC(Idis, Vmin, tlim, dt, ndata, Ah, Wh, dtime);
       } catch (int e) {
         std::cout << "Error in CycleAge when discharging in cycle " << i << ", stop cycling.\n";
@@ -139,8 +137,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       //!< CV discharge
       if (testCV) {
         try {
-          Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-          double dtime;
+          dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
           succ = cyc.CV(Vmin, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
         } catch (int e) //!< #TODO if we need to check any status codes here?
         {

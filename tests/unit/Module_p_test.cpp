@@ -853,7 +853,7 @@ bool test_equaliseV_timing(std::unique_ptr<Module_p> mp, std::unique_ptr<Storage
   Cycler cyc;
   double lim = 0.0;
   int ndata = 0;
-  double Ah, Wh, vlim, tlim;
+  double Ah, Wh, dtime, vlim, tlim;
   tlim = 99999999;
   cyc.initialise(mp.get(), mp->getFullID());
   vlim = mp->Vmax() - lim;
