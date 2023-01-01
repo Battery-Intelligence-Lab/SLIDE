@@ -38,7 +38,7 @@ void CoolSystemData::initialise(CoolSystem &cs, CoolSystemHist_t &data)
 
   data.flr = Histogram<>(0, flr_max); //!< 0 to 0.02 m3/s per cell
   data.Q = Histogram<>(0, 5);
-  data.T = Histogram<>(C_to_Kelvin(0), C_to_Kelvin(100));
+  data.T = Histogram<>(0_degC, 100_degC);
   data.E = Histogram<>(0, E_max); //!< #TODO if it is really correct?
 }
 

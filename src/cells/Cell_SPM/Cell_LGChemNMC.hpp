@@ -10,10 +10,9 @@
  * See the licence file LICENCE.txt for more information.
  */
 
-#include "Cell_LGChemNMC.hpp"
-#include "State_SPM.hpp"
-#include "../../utility/io/read_CSVfiles.hpp"
-#include "../../param/param_default.hpp"
+#include "Cell_SPM.hpp"
+#include "../../utility/utility.hpp"
+#include "param/param_default.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -52,8 +51,6 @@ inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
    * 110 	the matrices for the solid diffusion discretisation, produced by MATLAB, are wrong
    * 111 	the OCV curves are too long
    */
-
-  verbose = verbosei;
 
   //!< maximum concentrations
   Cmaxpos = 51385; //!< value for NMC
@@ -108,7 +105,7 @@ inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
   double Rdc = 0.0102;                                                                              //!< DC resistance of the total cell in Ohm
   fp = 0.651673;                                                                                    //!< lithium fraction in the cathode at 50% soc [-]
   fn = 0.297109;                                                                                    //!< lithium fraction in the anode at 50% soc [-]
-  T = C_to_Kelvin(25.0);                                                                            //!< cell temperature
+  T = 25_degC;                                                                                      //!< cell temperature
   delta = 1e-9;                                                                                     //!< SEI thickness. Start with a fresh cell, which has undergone some formation cycles so it has an initial SEI layer.
                                                                                                     //!< never start with a value of 0, because some equations have a term 1/delta, which would give nan or inf
                                                                                                     //!< so this will give errors in the code

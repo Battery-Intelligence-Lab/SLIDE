@@ -109,7 +109,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   double fp{ 0.689332 }, fn{ 0.479283 }; //!< lithium fraction in the cathode/anode at 50% soc [-]
 
 
-  st.T() = C_to_Kelvin(25.0); //!< cell temperature
+  st.T() = 25.0_degC; //!< cell temperature
 
 
   //!< Set initial state:

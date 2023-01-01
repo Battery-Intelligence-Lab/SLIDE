@@ -109,8 +109,8 @@ bool setT_test()
 {
   Cell_Bucket c1;
   assert(c1.T() == settings::T_ENV);
-  c1.setT(C_to_Kelvin(0.0));
-  assert(c1.T() == C_to_Kelvin(0.0));
+  c1.setT(0.0_degC);
+  assert(c1.T() == 0.0_degC);
   return true;
 }
 bool setSOC_test()
@@ -163,7 +163,7 @@ bool setStates_test()
 
   //!< set states which violate voltage
   soc = 1;
-  t = C_to_Kelvin(25.0);
+  t = 25.0_degC;
   i = -1;
   s[0] = soc;
   s[1] = t;

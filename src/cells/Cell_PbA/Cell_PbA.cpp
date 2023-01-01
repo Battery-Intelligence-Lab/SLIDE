@@ -304,7 +304,7 @@ double Cell_PbA::f_minus_gassing()
 
 double Cell_PbA::f_minus_diffusion()
 {
-  return (8 * D_H2SO4 / h_batt * h_batt) * f_stratification() * std::pow(2.0, (st.T() - C_to_Kelvin(20.0)) / 10.0);
+  return (8 * D_H2SO4 / h_batt * h_batt) * f_stratification() * std::pow(2.0, (st.T() - 20.0_degC) / 10.0);
 }
 
 double Cell_PbA::rho_empty()

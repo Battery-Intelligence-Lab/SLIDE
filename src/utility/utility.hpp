@@ -22,5 +22,6 @@
 #include "slide_algorithms.hpp"
 #include "predicate_functions.hpp"
 #include "slide_aux.hpp"
+#include "units.hpp"
 
 #include "io/read_CSVfiles.hpp"

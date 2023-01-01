@@ -28,12 +28,12 @@ CoolSystem_HVAC::CoolSystem_HVAC()
   Q_ac = Qac_per_cell * Ncells;
   COP = 3; //!< value from Schimpe's paper of thermal model of battery but double check
 
-  controlAC_onoff_Ton = C_to_Kelvin(25);
-  controlAC_onoff_Toff = C_to_Kelvin(20); //!< if this value is < settings::T_ENV, then coolsystems can cool cells below their initial temperature (which is settings::T_ENV) resulting in negative total heat energy absorbed in cells. See unit tests for module_s
-                                          //!< and then some unit tests might fail because they demand positive heating energy (cells must heat up due to cycling)
-                                          //!< therefore, it is not recommended to set this T below settings::T_ENV (20 degrees at the moment)
+  controlAC_onoff_Ton = 25.0_degC;
+  controlAC_onoff_Toff = 20_degC; //!< if this value is < settings::T_ENV, then coolsystems can cool cells below their initial temperature (which is settings::T_ENV) resulting in negative total heat energy absorbed in cells. See unit tests for module_s
+                                  //!< and then some unit tests might fail because they demand positive heating energy (cells must heat up due to cycling)
+                                  //!< therefore, it is not recommended to set this T below settings::T_ENV (20 degrees at the moment)
   controlAC_onoff_Q = Q_ac;
-  controlAC_prop_T = C_to_Kelvin(20);
+  controlAC_prop_T = 20_degC;
   controlAC_prop_gain = 1.0 / (controlAC_onoff_Ton - controlAC_prop_T); //!< 1 at the T where the on/off control would go on, 0 at the target T
 
   //!< Data storage
@@ -56,15 +56,15 @@ CoolSystem_HVAC::CoolSystem_HVAC(size_t Ncells, int control, double Q0)
   //!< since the inertia in CoolSystem is based on Ncells only, and designed for 7.5W per cell
   fluid_V = fluid_V * Q_ac / (Qac_per_cell * Ncells); //!< increase proportional to the fraction of Q0 of the total heating
 
-  controlAC_onoff_Ton = C_to_Kelvin(25);
-  controlAC_onoff_Toff = C_to_Kelvin(20);
+  controlAC_onoff_Ton = 25_degC;
+  controlAC_onoff_Toff = 20_degC;
   if (control == 3) //!< todo control hotspot -> 20 to 30
-    controlAC_onoff_Ton = C_to_Kelvin(30);
+    controlAC_onoff_Ton = 30_degC;
   controlAC_onoff_Q = Q_ac;
-  controlAC_prop_T = C_to_Kelvin(20);      //!< todo control the local T to 20 degrees
-  if (control == 5) {                      //!< todo control the hotspot to 25 degrees
-    controlAC_prop_T = C_to_Kelvin(25);    //!< todo do something similar to cool3
-    controlAC_onoff_Ton = C_to_Kelvin(30); //!< todo
+  controlAC_prop_T = 20_degC;      //!< todo control the local T to 20 degrees
+  if (control == 5) {              //!< todo control the hotspot to 25 degrees
+    controlAC_prop_T = 25_degC;    //!< todo do something similar to cool3
+    controlAC_onoff_Ton = 30_degC; //!< todo
   }
   controlAC_prop_gain = 1.0 / (controlAC_onoff_Ton - controlAC_prop_T); //!< 1 at the T where the on/off control would go on, 0 at the target T
 

@@ -58,8 +58,8 @@ inline auto get_exampleCell()
   example_cell->setInitialConcentration(ocvfit.cmaxp, ocvfit.cmaxn, ocvfit.lifracpini, ocvfit.lifracnini);
   example_cell->setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.ep, ocvfit.en, ocvfit.thickp, ocvfit.thickn);
 
-  example_cell->setT(C_to_Kelvin(22));    // set the temperature of the cell to the given value
-  example_cell->setTenv(C_to_Kelvin(22)); // set the environmental temperature to the given value
+  example_cell->setT(22.0_degC);    // set the temperature of the cell to the given value
+  example_cell->setTenv(22.0_degC); // set the environmental temperature to the given value
 
   std::cout << "Voltage: " << example_cell->V() << " V.\n";
   std::cout << "Current: " << example_cell->I() << " A.\n";
@@ -328,8 +328,8 @@ inline void drive_cycle_artemis()
     Sout << "I[A],V[V],T[T],delta,LLI,thickp,thickn,ep,en,ap,an,CS,Dp,Dn,delta_pl,"
          << "zp_0,zp_1,zp_2,zp_3,zp_4,zn_0,zn_1,zn_2,zn_3,zn_4,rDCp,rDCn,rDCcc\n";
 
-    for (auto st : states) {
-      for (auto s : std::span<double>(st.begin(), st.begin() + 28))
+    for (auto st_i : states) {
+      for (auto s : std::span<double>(st_i.begin(), st_i.begin() + 28))
         Sout << s << ',';
 
       Sout << '\n';
