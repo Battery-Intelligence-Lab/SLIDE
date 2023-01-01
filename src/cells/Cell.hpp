@@ -108,7 +108,7 @@ public:
   virtual void storeData() override { cellData.storeData(*this); }                                  //!< Add another data point in the array.
   virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); } // #TODO *this may be Cell not actual type.
 
-  virtual CellThroughputData getThroughputs() { return {}; }
+  virtual ThroughputData getThroughputs() { return {}; }
 };
 
 } // namespace slide

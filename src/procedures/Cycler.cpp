@@ -899,7 +899,7 @@ double Cycler::testCapacity(double &Ah, double &ttot)
   su->getStates(sini);
 
   std::span<const double> sini_span{ sini };
-  //!< todo once we introduce a different temperature, set T to Tref
+  //!< #TODO once we introduce a different temperature, set T to Tref
 
   //!< *********************************************************** 2 full charge / discharge cycle ***********************************************************************
 

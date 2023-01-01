@@ -15,11 +15,6 @@
 #include <iostream>
 #include <fstream>
 
-//!< Degradation fits for Mat4Bat data and ageing with cell-to-cell variations is in
-//!< C:\Users\Jorn Reniers\Desktop\ESO\code\code_desktop\Battery\SPMcell_Mat4Batfit
-//!< Degradation.cpp
-//!< variationAgeing()
-
 namespace slide::paperCode::paper2022 {
 void Vequalisation_Rdc(double Rdc)
 {
@@ -72,16 +67,16 @@ void Vequalisation_Rdc(double Rdc)
   int ndata = 2; //!< store data every 2 seconds (or every dt)
 
   //!< do a CC charge-discharge
-  double Ah, Wh;
+  double Ah, Wh, dtime;
   double I = mpp4->Cap();
   vlim = mpp4->Vmax();
   tlim = 99999999;
-  cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh);
+  cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
   //!< CC discharge
   vlim = mpp4->Vmin();
   tlim = 99999999;
-  cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh);
+  cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
   //!< write the data
   mpp4->writeData(ID);
@@ -161,16 +156,16 @@ void thermalModel()
 
   for (int i = 0; i < 5; i++) {
     //!< do a CC charge-discharge
-    double Ah, Wh;
+    double Ah, Wh, dtime;
     double I = mpp4->Cap();
     vlim = mpp4->Vmax();
     tlim = 99999999;
-    cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh);
+    cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
     //!< CC discharge
     vlim = mpp4->Vmin();
     tlim = 99999999;
-    cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh);
+    cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
   }
 
   //!< write the data

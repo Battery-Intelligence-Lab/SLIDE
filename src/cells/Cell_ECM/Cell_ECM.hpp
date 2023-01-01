@@ -62,7 +62,7 @@ public:
   virtual bool validStates(bool print = true) override;
   void timeStep_CC(double dt, int steps = 1) override;
 
-  CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
 
 
   Cell_ECM *copy() override { return new Cell_ECM(*this); }

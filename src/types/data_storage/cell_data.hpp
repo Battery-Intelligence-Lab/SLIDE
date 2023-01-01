@@ -36,7 +36,7 @@ struct CellCommonHist
   Histogram<> I, V, T; //!< histograms for current, voltage, temperature
 };
 
-struct CellThroughputData
+struct ThroughputData
 {
   double time{}, Ah{}, Wh{};
 };
