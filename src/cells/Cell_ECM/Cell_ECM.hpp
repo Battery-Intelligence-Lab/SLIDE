@@ -37,7 +37,7 @@ public:
   Cell_ECM();
   Cell_ECM(double capin, double SOCin);
 
-  inline double I() override { return st.I(); }
+  inline double I() const override { return st.I(); }
   inline double getIr() { return st.Ir(); } //!< current through the parallel resistance
   inline double SOC() override { return st.SOC(); }
   inline double T() override { return st.T(); }

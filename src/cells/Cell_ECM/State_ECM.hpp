@@ -21,6 +21,10 @@ struct State_ECM : public State<4>
     N_states, // Do not use N_states for total states, use .size()
   };
 
+  // Const methods:
+  inline auto I() const { return (*this)[i_I]; } //!< Current, [A], + for discharge, - for charge
+
+  // Non-const methods:
   inline auto &I() { return (*this)[i_I]; }     //!< Current, [A], + for discharge, - for charge
   inline auto &Ir() { return (*this)[i_Ir]; }   //!< Current through the parallel resistance, [I]
   inline auto &SOC() { return (*this)[i_SOC]; } //!< state of charge [0-1]

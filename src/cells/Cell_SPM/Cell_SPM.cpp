@@ -699,21 +699,21 @@ void Cell_SPM::checkModelparam()
   using settings::nch;
   const bool Mnch = (M->Input[0] - nch) / M->Input[0] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Mnch)
-    std::cerr << "ERROR in Cell_KokamNMC::Cell_KokamNMC: the value of nch used in the MATLAB script " << M->Input[0]
+    std::cerr << "ERROR in Cell_SPM the value of nch used in the MATLAB script " << M->Input[0]
               << " is not the same as the value of nch used in the c++ code " << nch << ".\n";
 
   const bool Mrp = (M->Input[1] - geo.Rp) / M->Input[1] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Mrp)
-    std::cerr << "ERROR in Cell_KokamNMC::Cell_KokamNMC: the value of Rp used in the MATLAB script " << M->Input[1]
+    std::cerr << "ERROR in Cell_SPM the value of Rp used in the MATLAB script " << M->Input[1]
               << " is not the same as the value of Rp used in the c++ code " << geo.Rp << ".\n";
   const bool Mrn = (M->Input[2] - geo.Rn) / M->Input[2] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Mrn)
-    std::cerr << "ERROR in Cell_KokamNMC::Cell_KokamNMC: the value of Rn used in the MATLAB script " << M->Input[2]
+    std::cerr << "ERROR in Cell_SPM the value of Rn used in the MATLAB script " << M->Input[2]
               << " is not the same as the value of Rn used in the c++ code " << geo.Rn << ".\n";
   const auto a = static_cast<int>(M->Input[3]);
   const bool Meig = std::abs(M->An[a]) > 1e-10 || std::abs(M->Ap[a]) > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Meig)
-    std::cerr << "ERROR in Cell_KokamNMC::Cell_KokamNMC: the row of the 0-eigenvalue is " << M->Input[3]
+    std::cerr << "ERROR in Cell_SPM the row of the 0-eigenvalue is " << M->Input[3]
               << " but that row has a positive eigenvalue of " << M->Ap[a] << " and negative eigenvalue of " << M->An[a] << ". They are not 0.\n";
   if (Mnch || Mrp || Mrn || Meig) {
     std::cout << "The MATLAB script modelSetup.m produces matrices used by the C++ code for the discretisation of the solid diffusion equation."

@@ -48,7 +48,7 @@ public:
 
   auto *getParent() { return parent; };
 
-  virtual double I() = 0; //
+  virtual double I() const = 0; //
   virtual double getRtot() = 0;
   virtual size_t getNcells() = 0; //!< return the number of single cells connected to this SU
 

@@ -98,6 +98,10 @@ public:
   void overwriteCharacterisationStates(double Dpi, double Dni, double ri);                                       //!< overwrite the states related to the characterisation of a cell
 
   std::span<double> viewGeometricStates() { return std::span<double>(&delta(), &delta_pl() + 1); } //!< #Check and fix. Why this also checks SOC?
+
+  // Const methods:
+
+  inline auto I() const { return (*this)[i_I]; } //!< current [A]
 };
 
 inline void State_SPM::overwriteGeometricStates(double thickpi, double thickni, double epi, double eni, double api, double ani)

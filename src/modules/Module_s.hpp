@@ -38,7 +38,7 @@ public:
   double Vmax() const override { return transform_sum(SUs, free::get_Vmax<SU_t>); } //!< SUM all SUs' Vmax
   double VMAX() const override { return transform_sum(SUs, free::get_VMAX<SU_t>); } //!< SUM all SUs' VMAX
 
-  double I() override { return (SUs.empty() ? 0 : SUs[0]->I()); }                 //!< the current is the same in all cells, so we can use first value. Return zero if SUs empty.
+  double I() const override { return (SUs.empty() ? 0 : SUs[0]->I()); }                 //!< the current is the same in all cells, so we can use first value. Return zero if SUs empty.
   double Cap() const override { return transform_min(SUs, free::get_Cap<SU_t>); } //!< module capacity is the capacity of the smallest cell
 
 

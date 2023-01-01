@@ -6,7 +6,12 @@
 
 ## TODO: 
 
+### Open issues: 
+- [ ] sp - sn question 
+- [ ] cps - cns question
+
 ### Current priority: 
+- [ ] State classes should have const members. 
 - [ ] Make more methods const : Vmin(), Vmax(), VMIN(), VMAX(), Cap()
 - [ ] Stressparam vs. classes may encapsulate calculating some things. 
 - [ ] cube and sqr functions added for utility. 

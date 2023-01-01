@@ -60,7 +60,6 @@ void BasicCycler::reset()
 void BasicCycler::openFolder(int CyclingDataTimeIntervali)
 {
   //!< We first need to create folders otherwise cannot create files.
-
   if (CyclingDataTimeIntervali >= 0) {
     if constexpr (printBool::printCyclerDetail)
       std::cout << "BasicCycler::BasicCycler is making a subfolder to store the results.\n";

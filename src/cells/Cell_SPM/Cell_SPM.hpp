@@ -211,7 +211,7 @@ public:
 
   double getAnodeSurface() noexcept { return st.an() * st.thickn() * geo.elec_surf; } //!< get the anode pure surface area (without cracks) product of the effective surface area (an) with the electrode volume
 
-  double I() override { return st.I(); } //!< get the cell current [A]  positive for discharging
+  double I() const override { return st.I(); } //!< get the cell current [A]  positive for discharging
   double V(bool print = true) override;
 
   bool getCSurf(double &cps, double &cns, bool print);                                                                           //!< get the surface concentrations

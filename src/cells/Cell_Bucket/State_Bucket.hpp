@@ -20,6 +20,8 @@ struct State_Bucket : public State<3>
     N_states, // Do not use N_states for total states, use .size()
   };
 
+  inline auto I() const { return (*this)[i_I]; } //!< Current, [I]
+
   inline auto &I() { return (*this)[i_I]; }     //!< Current, [I]
   inline auto &SOC() { return (*this)[i_SOC]; } //!< state of charge [0-1]
   inline auto &T() { return (*this)[i_T]; }     //!< temperature, [K]

@@ -82,7 +82,6 @@ double Module_p::getVi(size_t i, bool print)
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module::getVi, you ask the voltage of cell " << i
                 << " but the size of the cell array is " << getNSUs() << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10;
   }
 

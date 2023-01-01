@@ -40,9 +40,6 @@ void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
   using namespace PhyConst;
   using std::exp;
 
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::SEI starting\n";
-
   //!< variables
   double is{ 0 }; //!< SEI side reaction current density of all models combined
 
@@ -129,9 +126,6 @@ void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
     std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 106;
   }
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::SEI terminating.\n";
 }
 
 void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dCS, double *dDn)
@@ -157,9 +151,6 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
 
   using namespace PhyConst;
 
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::CS starting.\n";
-
   //!< output parameters
   double ism = 0;                     //!< isei multiplier from all models to be considered
   double dcs = 0;                     //!< increase in surface area from all models to be considered
@@ -171,7 +162,6 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
     //!< a switch to calculate the effect according to model i
     switch (cs_id) {
     case 0: //!< no surface cracks
-      dcs += 0;
       break;
     case 1: //!< Laresgoiti's stress and crack growth model (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
             //!< this model calculates crack growth due to temporal variations in the li-concentration
@@ -179,7 +169,6 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       if (!sparam.s_lares_update) {
         std::cerr << "ERROR in Cell_SPM::CS. The stress values for Laresgoiti's stress model are not updated. Throwing an error.\n";
         //!< if you see this error, you have to call Cell_SPM::updateLaresgoitiStress(), which calculates the stress and stores the values, before you call this function
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw 108;
       }
 
@@ -194,6 +183,7 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       //!< 		isei also acts on this scale since it is an extra boundary condition ( itot = (jn + isei) =  (surface gradient)/nF )
       //!< 		crack growth -> increase isei_on_particle -> (jn + isei*(initial+crack_surface)/initial)*nF
       //!< 			such that if the crack surface area is the same as the initial electrode surface area, we double isei
+      ism += st.CS() / ASn; //!< increase SEI growth proportionally the crack surface
       break;
     case 2: //!< Laresgoiti's crack growth model (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
             //!< but with stress model from Dai, Cai, White, Journal of Power sources 247, 2014
@@ -203,13 +193,13 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       if (!sparam.s_dai_update) {
         std::cerr << "ERROR in Cell_SPM::CS. The stress values for Dai's stress model are not updated. Throwing an error.\n";
         //!< if you see this error, you have to call Cell_SPM::updateDaiStress(), which calculates the stress and stores the values before you call this function
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw 108;
       }
 
       //!< Add the effects of this model
       dcs += csparam.CS2alpha * std::sqrt(std::abs(sparam.s_dai_n - sparam.s_dai_n_prev) / sparam.s_dt);
       //!< equations (22)+ (27) from the paper but with Dai's stress
+      ism += st.CS() / ASn; //!< increase SEI growth proportionally the crack surface
       break;
     case 3: //!< model by Deshpande & Bernardi,Journal of the Electrochemical Society 164 (2), 2017
             //!< this model is adapted to calculate crack growth due to spatial variations in the li-concentration
@@ -217,13 +207,13 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
 
       double cp[settings::nch + 2], cn[settings::nch + 2];
       getC(cp, cn);
-
       //!< Add the effects of this model
       dcs += csparam.CS3alpha * sqr((cn[0] - cn[settings::nch + 1]) / Cmaxneg);
       //!< equations (8) + (21)
       //!< Note that eqn (8) refers to the change with respect to time while here we use the spatial variation
       //!< This makes the model capture more of the spatial variation in stress
       //!< Laresgoiti's model already accounted for temporal variation, so simply use that if you are interested in temporal rather than spatial variation
+      ism += st.CS() / ASn; //!< increase SEI growth proportionally the crack surface
       break;
     case 4: {
       //!< model from Barai, Smith, Chen, Kim, Mukherjee, Journal of the Electrochemical Society 162 (9), 2015
@@ -238,6 +228,7 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
 
       //!< Add the effects of this model
       dcs += csparam.CS4alpha * (Amax - st.CS()) * std::abs(I()); //!< see above, with m = csparam.CS4
+      ism += st.CS() / ASn;                                       //!< increase SEI growth proportionally the crack surface
     } break;
     case 5: {
       //!< model from Ekstrom and Lindbergh, Journal of the Electrochemical Society 162 (6), 2015
@@ -250,7 +241,7 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
 
       double kcr; //!< rate constant for the side reaction
       //!< Calculate the rate constant, equation (11) with an Arrhenius relation for the temperature (which wasn't considered by Ekstrom)
-      if (I() > 0)
+      if (isDischarging())
         kcr = 0;
       else if (cns / Cmaxneg < 0.3)
         kcr = 2 * csparam.CS5k * exp(csparam.CS5k_T / Rg * (1 / T_ref - 1 / st.T()));
@@ -261,18 +252,15 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
 
       //!< Add the effects of this model
       dcs += nsei * F * kcr * exp(-alphasei * nsei * F / (Rg * st.T()) * etasei); //!< equation (9)
+      ism += st.CS() / ASn;                                                       //!< increase SEI growth proportionally the crack surface
+
     } break;
     default: //!< unknown degradation model
       std::cerr << "ERROR in Cell_SPM::CS, unknown crack growth model with identifier "
                 << cs_id << ". Only values 0 to 5 are allowed. Throw an error.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw 106;
-      break;
     }
   }
-
-  ism += st.CS() / ASn; //!< increase SEI growth proportionally the crack surface
-
   //!< Make the output variables
   *isei_multiplyer = ism;
   *dCS = dcs;
@@ -289,18 +277,14 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
     //!< avoid increasing diffusion coefficient if the crack surface becomes larger than Amax
     //!< this is possible if the user chooses a different CS growth model, which does give larger crack surfaces (i.e. not CS4 which is Barai's crack growth model)
     const double Amax = std::max(csparam.CS4Amax, st.CS());
-
     //!< cap the decrease rate at a maximum value of 2e-7 (2e-5% = kill the battery in  about 1000h)
     const double Dnmax = std::min(2e-7, csparam.CS_diffusion * std::pow(1 - st.CS() / Amax, csparam.CS_diffusion - 1) / Amax * dcs);
     *dDn = -Dnmax * st.Dn();
   } else { //!< unknown degradation model
-    std::cerr << "ERROR in Cell_SPM::CS, unknown value for decreasing the diffusion constant " << deg_id.CS_diffusion << ". Only values 0 or 1 are allowed. Throw an error.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
+    std::cerr << "ERROR in Cell_SPM::CS, unknown value for decreasing the diffusion constant "
+              << deg_id.CS_diffusion << ". Only values 0 or 1 are allowed. Throw an error.\n";
     throw 106;
   }
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::CS terminating.\n";
 }
 
 void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, double *dthickn, double *dap, double *dan, double *dep, double *den)
@@ -361,9 +345,6 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
   using namespace PhyConst;
   using std::exp;
 
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::LAM starting.\n";
-
   //!< output parameters
   double dthickpp{}, dthicknn{}, dapp{}, dann{}, depp{}, denn{};
 
@@ -373,12 +354,6 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
     //!< calculate the effect of this model
     switch (lam_id) {
     case 0: //!< no LAM
-      dthickpp += 0;
-      dthicknn += 0;
-      dapp += 0;
-      dann += 0;
-      depp += 0;
-      denn += 0;
       break;
     case 1: //!< Stress model from Dai, Cai, White, Journal of Power sources 247, 2014
             //!< LAM equation similar to CS equation from Laresgoiti
@@ -387,13 +362,12 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
       if (!sparam.s_dai_update) {
         std::cerr << "ERROR in Cell_SPM::LAM. The stress values for Dai's stress model are not updated. Throwing an error.\n";
         //!< if you see this error, you have to call Cell_SPM::updateDaiStress(), which calculates the stress and stores the values before calling this function
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw 108;
       }
 
       //!< Laresgoiti's equation to link stress to LAM
       dthickpp += -lam_p.lam1p * std::abs(sparam.s_dai_p - sparam.s_dai_p_prev) / sparam.s_dt; //!< with Dai's stress model (values stored in s_dai_p)
-      dthicknn += -lam_p.lam1n * std::abs(sparam.s_dai_n - sparam.s_dai_n_prev) / sparam.s_dt;
+      dthicknn += -lam_p.lam1n * std::abs(sparam.s_dai_n - sparam.s_dai_n_prev) / sparam.s_dt; //!< #TODO sparam.s_dt was 2.0 in slide, why?
       //!< ageing fit
       //!< you need to divide by the time step to counter the effect of the time step
       //!< 	larger dt has double effect: increase the stress difference, and time integrate by larger time period
@@ -402,10 +376,6 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
       //!< 	so the effect of stress increases linearly with the size of the time setp
       //!< 	so divide by total time (dt*nstep) to cancel this out, i.e. ds is per second (and not per total time period)
       //!< assume the other effects are 0
-      dapp += 0;
-      dann += 0;
-      depp += 0;
-      denn += 0;
       break;
     case 2: //!< Model by Delacourt & Safari, Journal of the Electrochemical Society 159 (8), 2012
     {       //!< Get the molar flux on each particle
@@ -422,10 +392,6 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
       depp += ap * abs_jp + bp * std::sqrt(abs_jp); //!< equation (5) from the paper
       denn += an * abs_jn + bn * std::sqrt(abs_jn);
       //!< assume the other effects are 0
-      dthickpp += 0;
-      dthicknn += 0;
-      dapp += 0;
-      dann += 0;
     } break;
     case 3: //!< Model by Kindermann, Keil, Frank, Jossen, Journal of the Electrochemical Society 164 (12), 2017
     {
@@ -439,12 +405,12 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
         //!< std::cout << "Throw test: " << 40 << '\n';
         std::cout << "Error in Cell_SPM::LAM when calculating the cathode potential for LAM: "
                   << e << ".\n";
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw e;
       }
 
       //!< overpotential for the NMC dissolution reaction
       const double etap_LAM = OCVpt + etap - OCVnmc; //!< equation (9) from the paper
+
       //!< temperature dependent rate constant
       const double kt = lam_p.lam3k * exp(lam_p.lam3k_T * ArrheniusCoeff); //!< Arrhenius law
 
@@ -457,21 +423,12 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
       //!< Add the effects of this model
       depp += idiss;
       //!< assume the other effects are 0
-      denn += 0;
-      dthickpp += 0;
-      dthicknn += 0;
-      dapp += 0;
-      dann += 0;
     } break;
     case 4: //!< Model by Narayanrao, Joglekar, Inguva, Journal of the Electrochemical Society 160 (1), 2012
       //!< Add the effects of this model
       dapp += -lam_p.lam4p * st.ap(); //!< equation (7) from the paper
       dann += -lam_p.lam4n * st.an();
       //!< assume the other effects are 0
-      dthickpp += 0;
-      dthicknn += 0;
-      depp += 0;
-      denn += 0;
       break;
     default: //!< unknown degradation model
       std::cerr << "ERROR in Cell_SPM::LAM, unknown LAM degradation model with identifier "
@@ -489,9 +446,6 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
   *dan = dann;
   *dep = depp;
   *den = denn;
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::LAM terminating.\n";
 }
 
 double Cell_SPM::LiPlating(double OCVnt, double etan)
@@ -675,9 +629,6 @@ void Cell_SPM::updateDaiStress() noexcept
    * Function which will update the values stored in the stress variables relating with Dai's stress model
    */
 
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::updateDaiStress starting.\n";
-
   //!< Make variables to store the stress
   sigma_type sigma_r_p, sigma_r_n, sigma_t_p, sigma_t_n, sigma_h_p, sigma_h_n;
 
@@ -685,9 +636,6 @@ void Cell_SPM::updateDaiStress() noexcept
   getDaiStress(&sparam.s_dai_p, &sparam.s_dai_n, sigma_r_p, sigma_r_n, sigma_t_p, sigma_t_n, sigma_h_p, sigma_h_n);
   //!< indicate that the values in the class variables are updated
   sparam.s_dai_update = true;
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::updateDaiStress terminating.\n";
 }
 
 void Cell_SPM::getLaresgoitiStress(bool print, double *sigma_n)
@@ -707,9 +655,6 @@ void Cell_SPM::getLaresgoitiStress(bool print, double *sigma_n)
    * THROWS
    * 101 		the surface concentration is out of bounds
    */
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::getLaresgoitiStress starting.\n";
 
   //!< Arrays with the stress from Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015 (figure 5)
   constexpr std::array<double, 11> xx{ 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };        //!< li-fraction in the graphite
@@ -736,9 +681,6 @@ void Cell_SPM::getLaresgoitiStress(bool print, double *sigma_n)
 
   //!< Interpolate linearly to get the stress, Make the output variable
   *sigma_n = linInt(print, true, xx, yy, 11, zn_surf, is_xx_fixed);
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::getLaresgoitiStress terminating.\n";
 }
 
 void Cell_SPM::updateLaresgoitiStress(bool print) // #TODO get and update seems unnecesary.
@@ -753,397 +695,12 @@ void Cell_SPM::updateLaresgoitiStress(bool print) // #TODO get and update seems 
    * 			we need this input from higher level functions because at this point we cannot know if this will be a critical error or not
    */
 
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::updateLaresgoitiStress starting.\n";
-
   double s;
   getLaresgoitiStress(print, &s);
 
   //!< Update the stored value
   sparam.s_lares_n = s;
   sparam.s_lares_update = true; //!< indicate that the values in the class variables are updated
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::updateLaresgoitiStress terminating.\n";
 }
-
-//!< void Cell_SPM::LAM_old(bool print, double zp_surf, double etap,
-//!< 				   double *dthickp, double *dthickn, double *dap, double *dan, double *dep, double *den)
-//!< {
-//!< 	/*
-//!< 	 * Function to calculate the effect of loss of active material (LAM).
-//!< 	 *
-//!< 	 * LAM is simulated by decreasing the amount of active material.
-//!< 	 * This will increase the current density on the particle for the same overall cell current (because there is less material to 'spread' it over).
-//!< 	 * This will mean that for the same overall cell current,
-//!< 	 * 		there will be a larger change in lithium concentration,
-//!< 	 * 			so there is a larger change in open circuit voltage,
-//!< 	 * 			so a smaller capacity before a voltage limit is reached
-//!< 	 * 			so the capacity decreases,
-//!< 	 * 		and there will be a larger resistive voltage drop, so the 'effective' resistance increases
-//!< 	 *
-//!< 	 * There are a couple of variables describing the amount of active material:
-//!< 	 * 	elec_surf 	the (geometric) surface of the electrode, i.e. the product of the height and length of the electrode [m2]
-//!< 	 * 	thick		the thickness of the electrode material [m]
-//!< 	 * 	R 			radius of the particle of the single particle model [m]
-//!< 	 * 	e			the volume fraction of active material	[-]
-//!< 	 * 	a 			the effective surface, i.e. the surface per unit of electrode volume [m2 m-3]
-//!< 	 * 				a = 3*e/R
-//!< 	 *
-//!< 	 * 	The current density is calculated as:
-//!< 	 * 	i = I / (a * thick * elec_surf) = I / (3* e / R * thick * elec_surf)
-//!< 	 *
-//!< 	 * 	A decrease in any of these geometric parameters will have exactly the same effect on the battery:
-//!< 	 * 	you can double i by halving a, or by halving thick, or by halving elec_surf.
-//!< 	 * 	and you can halve a by halving e or doubling R.
-//!< 	 * 	So it doesn't really matter which of the geometric parameters you decrease to account for LAM.
-//!< 	 * 	However, this model doesn't allow to change elec_surf and R because these values are needed on multiple locations in the code.
-//!< 	 * 	E.g. the value of R is needed to calculate values of the matrices used for the diffusion state space model (because the spatial discretisation depends on R).
-//!< 	 * 	So if you were to change R, you have to re-calculate the matrices, which would needlessly complicate the model.
-//!< 	 * 	Therefore, degradation can only decrease the values of 'thick', 'a' and 'e'
-//!< 	 *
-//!< 	 * IN
-//!< 	 * print 	boolean indicating if we want to print error messages or not
-//!< 	 * 				if true, error messages are printed
-//!< 	 * 				if false no error messages are printed (but the error will still be thrown)
-//!< 	 * 			we need this input from higher level functions because at this point we cannot know if this will be a critical error or not
-//!< 	 * zp_surf 		li-fraction at the surface of the positive particle [-]
-//!< 	 * etap 		overpotential at the positive electrode [V]
-//!< 	 *
-//!< 	 * OUT
-//!< 	 * dthickp 		change in electrode thickness of the positive electrode [m s-1]
-//!< 	 * dthickn		change in electrode thickness of the negative electrode [m s-1]
-//!< 	 * dap			change in effective electrode surface of the positive electrode [m2 m-3 s-1]
-//!< 	 * dan			change in effective electrode surface of the negative electrode [m2 m-3 s-1]
-//!< 	 * dep			change in volume fraction of active material in the positive electrode [s-1]
-//!< 	 * den			change in volume fraction of active material in the negative electrode [s-1]
-//!< 	 *
-//!< 	 * THROWS
-//!< 	 * 106 			illegal value in id
-//!< 	 * 107			too many degradation models
-//!< 	 * 108 			the stress values are not updated
-//!< 	 */
-
-//!< 	using namespace PhyConst;
-
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::LAM starting.\n";
-
-//!< 	//!< output parameters
-//!< 	double dthickpp = 0;
-//!< 	double dthicknn = 0;
-//!< 	double dapp = 0;
-//!< 	double dann = 0;
-//!< 	double depp = 0;
-//!< 	double denn = 0;
-
-//!< 	//!< loop for each model to use
-//!< 	for (int i = 0; i < deg_id.LAM_id.N; i++)
-//!< 	{
-//!< 		const auto ArrheniusCoeff = calcArrheniusCoeff();
-//!< 		//!< calculate the effect of this model
-//!< 		switch (deg_id.LAM_id[i])
-//!< 		{
-//!< 		case 0: //!< no LAM
-//!< 			dthickpp += 0;
-//!< 			dthicknn += 0;
-//!< 			dapp += 0;
-//!< 			dann += 0;
-//!< 			depp += 0;
-//!< 			denn += 0;
-//!< 			break;
-//!< 		case 1: //!< Stress model from Dai, Cai, White, Journal of Power sources 247, 2014
-//!< 				//!< LAM equation similar to CS equation from Laresgoiti
-//!< 				//!< (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
-//!< 			//!< ensure the stress values are up to date
-//!< 			if (!sparam.s_dai_update)
-//!< 			{
-//!< 				std::cerr << "ERROR in Cell_SPM::LAM. The stress values for Dai's stress model are not updated. Throwing an error.\n";
-//!< 				//!< if you see this error, you have to call Cell_SPM::updateDaiStress(), which calculates the stress and stores the values before calling this function
-//!< 				throw 108;
-//!< 			}
-
-//!< 			//!< Laresgoiti's equation to link stress to LAM
-//!< 			dthickpp += -lam_p.lam1p * std::abs(sparam.s_dai_p - sparam.s_dai_p_prev) / 2.0; //!< with Dai's stress model (values stored in s_dai_p)
-//!< 			dthicknn += -lam_p.lam1n * std::abs(sparam.s_dai_n - sparam.s_dai_n_prev) / 2.0;
-//!< 			//!< ageing fit
-//!< 			//!< you need to divide by the time step to counter the effect of the time step
-//!< 			//!< 	larger dt has double effect: increase the stress difference, and time integrate by larger time period
-//!< 			//!< 	assuming stress changes are constant at ds per second, it would be ds (time_now - time_prev), or ds * dt
-//!< 			//!< 	and to cover a period of T (so we need T/dt steps of dt each), the total effect of stress is (ds*dt) * dt * T/dt = ds*dt*T
-//!< 			//!< 	so the effect of stress increases linearly with the size of the time setp
-//!< 			//!< 	so divide by total time (dt*nstep) to cancel this out, i.e. ds is per second (and not per total time period)
-//!< 			//!< assume the other effects are 0
-//!< 			dapp += 0;
-//!< 			dann += 0;
-//!< 			depp += 0;
-//!< 			denn += 0;
-//!< 			break;
-//!< 		case 2: //!< Model by Delacourt & Safari, Journal of the Electrochemical Society 159 (8), 2012
-//!< 		{		//!< Get the molar flux on each particle
-
-//!< 			const auto [i_app, jp, jn] = calcMolarFlux(); //!< current density, molar flux on the pos/neg particle
-//!< 			//!< Use Arrhenius relations to update the fitting parameters for the cell temperature
-//!< 			const double ap = lam_p.lam2ap * exp(lam_p.lam2t * ArrheniusCoeff);
-//!< 			const double an = lam_p.lam2an * exp(lam_p.lam2t * ArrheniusCoeff);
-//!< 			const double bp = lam_p.lam2bp * exp(lam_p.lam2t * ArrheniusCoeff);
-//!< 			const double bn = lam_p.lam2bn * exp(lam_p.lam2t * ArrheniusCoeff);
-
-//!< 			//!< Add the effects of this model
-//!< 			depp += ap * std::abs(jp) + bp * std::sqrt(std::abs(jp)); //!< equation (5) from the paper
-//!< 			denn += an * std::abs(jn) + bn * std::sqrt(std::abs(jn));
-//!< 			//!< assume the other effects are 0
-//!< 			dthickpp += 0;
-//!< 			dthicknn += 0;
-//!< 			dapp += 0;
-//!< 			dann += 0;
-//!< 		}
-//!< 		break;
-//!< 		case 3: //!< Model by Kindermann, Keil, Frank, Jossen, Journal of the Electrochemical Society 164 (12), 2017
-//!< 		{
-//!< 			double OCVpt; //!< cathode potential
-//!< 			try
-//!< 			{
-//!< 				OCVpt = OCV_curves.OCV_pos.interp(zp_surf, print);
-//!< 				//!< get OCV of positive electrode, throw error if out of bounds
-//!< 				//!< this should be updated for the cell's temperature using the entropic coefficient of the cathode
-//!< 				//!< but I couldn't find any data on this, so I have ignored the effect
-//!< 			}
-//!< 			catch (int e)
-//!< 			{
-//!< 				//!< std::cout << "Throw test: " << 40 << '\n';
-//!< 				std::cout << "Error in Cell_SPM::LAM when calculating the cathode potential for LAM: " << e << ".\n";
-//!< 				throw e;
-//!< 			}
-
-//!< 			//!< overpotential for the NMC dissolution reaction
-//!< 			const double etap_LAM = OCVpt + etap - OCVnmc; //!< equation (9) from the paper
-
-//!< 			//!< temperature dependent rate constant
-//!< 			const double kt = lam_p.lam3k * exp(lam_p.lam3k_T * ArrheniusCoeff); //!< Arrhenius law
-
-//!< 			//!< current density of the NMC dissolution reaction
-//!< 			const double idiss = std::max(-5e-6, -kt * exp(n * F / Rg / st.T() * etap_LAM) / (n * F)); //!< equation (8) from the paper
-//!< 			//!< cap the effect at 5e-6 to avoid a very fast drop of capacity (which could  cause an error)
-//!< 			//!< a value of 5e-6 gives dap = -3.5. The initial value is about 17000, so the cell is dead in 5,000 seconds
-//!< 			//!< so this cap is quite high
-
-//!< 			//!< Add the effects of this model
-//!< 			depp += idiss;
-//!< 			//!< assume the other effects are 0
-//!< 			denn += 0;
-//!< 			dthickpp += 0;
-//!< 			dthicknn += 0;
-//!< 			dapp += 0;
-//!< 			dann += 0;
-//!< 		}
-//!< 		break;
-//!< 		case 4: //!< Model by Narayanrao, Joglekar, Inguva, Journal of the Electrochemical Society 160 (1), 2012
-//!< 			//!< Add the effects of this model
-//!< 			dapp += -lam_p.lam4p * st.ap(); //!< equation (7) from the paper
-//!< 			dann += -lam_p.lam4n * st.an();
-//!< 			//!< assume the other effects are 0
-//!< 			dthickpp += 0;
-//!< 			dthicknn += 0;
-//!< 			depp += 0;
-//!< 			denn += 0;
-//!< 			break;
-//!< 		default: //!< unknown degradation model
-//!< 			std::cerr << "ERROR in Cell_SPM::LAM, unknown LAM degradation model with identifier " << deg_id.LAM_id[i] << ". Only values 0 to 4 are allowed. Throw an error.\n";
-//!< 			throw 106;
-//!< 			break;
-//!< 		}
-//!< 	}
-
-//!< 	//!< Make the output variables
-//!< 	*dthickp = dthickpp;
-//!< 	*dthickn = dthicknn;
-//!< 	*dap = dapp;
-//!< 	*dan = dann;
-//!< 	*dep = depp;
-//!< 	*den = denn;
-
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::LAM terminating.\n";
-//!< }
-
-//!< void Cell_SPM::CS_old(double OCVnt, double etan, double *isei_multiplyer, double *dCS, double *dDn)
-//!< {
-//!< 	/*
-//!< 	 * function to calculate the degradation effect of surface cracking due to fatigue
-//!< 	 *
-//!< 	 * IN
-//!< 	 * OCVnt 			the OCV of the negative electrode at the battery temperature [V]
-//!< 	 * etan 			the overpotential at the negative electrode [V]
-//!< 	 *
-//!< 	 * OUT
-//!< 	 * isei_multiplyer 	Extra SEI side reaction due to crack growth as a fraction of the original SEI side reaction current [-].
-//!< 	 * 						i.e. total SEI growth = (1+isei_multiplyer)*isei
-//!< 	 * dCS 				increase in surface area due to fatigue in this time step [m2 sec-1]
-//!< 	 * dDn 				decrease in the diffusion constant of the graphite due to surface cracks [m s-1 s-1]
-//!< 	 *
-//!< 	 * THROWS
-//!< 	 * 106 				illegal value in id or d
-//!< 	 * 107				too many degradation models
-//!< 	 * 108 				the stress values are not up to date
-//!< 	 */
-
-//!< 	using namespace PhyConst;
-
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::CS starting.\n";
-
-//!< 	//!< output parameters
-//!< 	double ism = 0; //!< isei multiplier from all models to be considered
-//!< 	double dcs = 0; //!< increase in surface area from all models to be considered
-
-//!< 	double ASn = getAnodeSurface(); //!< active surface area of the anode [m2]
-//!< 									//!< this active area is used to translate absolute values (such as currents) to relative values (such as current densities)
-
-//!< 	//!< Loop for each model we want to use
-//!< 	for (int i = 0; i < deg_id.CS_id.N; i++)
-//!< 	{
-
-//!< 		//!< a switch to calculate the effect according to model i
-//!< 		switch (deg_id.CS_id[i])
-//!< 		{
-//!< 		case 0: //!< no surface cracks
-//!< 			ism += 0;
-//!< 			dcs += 0;
-//!< 			break;
-//!< 		case 1: //!< Laresgoiti's stress and crack growth model (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
-//!< 				//!< this model calculates crack growth due to temporal variations in the li-concentration
-//!< 			//!< check the calculated stress values are up to date
-//!< 			if (!sparam.s_lares_update)
-//!< 			{
-//!< 				std::cerr << "ERROR in Cell_SPM::CS. The stress values for Laresgoiti's stress model are not updated. Throwing an error.\n";
-//!< 				//!< if you see this error, you have to call Cell_SPM::updateLaresgoitiStress(), which calculates the stress and stores the values, before you call this function
-//!< 				throw 108;
-//!< 			}
-
-//!< 			//!< Implement the equation from the paper
-//!< 			//!< capacity loss is m-power of the so-called stress amplitude (sigma_max - sigma_min)/2
-//!< 			//!< sigma_max and sigma_min are the max and min stresses 'of the cyclic signal' i.e. within one charge/discharge
-//!< 			//!< assume m = 1, then (max - min) = (max - t1) + (t1-t2) + (t2-t3) + ... + (tn - min)
-//!< 			//!< so stress amplitude can be substituted by (the stress in the previous time step) - (the stress in this time step)
-//!< 			dcs += csparam.CS1alpha * std::abs(sparam.s_lares_n - sparam.s_lares_n_prev) / 2; //!< equations (22)+ (27) from the paper
-//!< 			ism += st.CS() / ASn;															  //!< increase SEI growth proportionally the crack surface
-//!< 																							  //!< current density on particle = I /(elec_surf * thick * a)
-//!< 																							  //!< 		isei also acts on this scale since it is an extra boundary condition ( itot = (jn + isei) =  (surface gradient)/nF )
-//!< 																							  //!< 		crack growth -> increase isei_on_particle -> (jn + isei*(initial+crack_surface)/initial)*nF
-//!< 																							  //!< 			such that if the crack surface area is the same as the initial electrode surface area, we double isei
-//!< 			break;
-//!< 		case 2: //!< Laresgoiti's crack growth model (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
-//!< 				//!< but with stress model from Dai, Cai, White, Journal of Power sources 247, 2014
-//!< 				//!< instead of Laresgoiti's stress from figure 5
-//!< 				//!< this model calculates crack growth due to spatial (Dai) and temporal (Laresgoiti) variations in the li-concentration
-//!< 			//!< ensure the stress values are up to date
-//!< 			if (!sparam.s_dai_update)
-//!< 			{
-//!< 				std::cerr << "ERROR in Cell_SPM::CS. The stress values for Dai's stress model are not updated. Throwing an error.\n";
-//!< 				//!< if you see this error, you have to call Cell_SPM::updateDaiStress(), which calculates the stress and stores the values before you call this function
-//!< 				throw 108;
-//!< 			}
-
-//!< 			//!< Add the effects of this model
-//!< 			dcs += csparam.CS2alpha * std::abs(sparam.s_dai_n - sparam.s_dai_n_prev) / 2; //!< equations (22)+ (27) from the paper but with Dai's stress
-//!< 			ism += st.CS() / ASn;														  //!< increase SEI growth proportionally the crack surface
-//!< 			break;
-//!< 		case 3: //!< model by Deshpande & Bernardi,Journal of the Electrochemical Society 164 (2), 2017
-//!< 				//!< this model is adapted to calculate crack growth due to spatial variations in the li-concentration
-//!< 			//!< get concentrations
-//!< 			double cp[settings::nch + 2], cn[settings::nch + 2];
-//!< 			getC(cp, cn);
-
-//!< 			//!< Add the effects of this model
-//!< 			dcs += csparam.CS3alpha * std::pow((cn[0] - cn[settings::nch + 1]) / Cmaxneg, 2.0); //!< equations (8) + (21)
-//!< 																								//!< Note that eqn (8) refers to the change with respect to time while here we use the spatial variation
-//!< 																								//!< This makes the model capture more of the spatial variation in stress
-//!< 																								//!< Laresgoiti's model already accounted for temporal variation, so simply use that if you are interested in temporal rather than spatial variation
-//!< 			ism += st.CS() / ASn;																//!< increase SEI growth proportionally the crack surface
-//!< 			break;
-//!< 		case 4:
-//!< 		{
-//!< 			//!< model from Barai, Smith, Chen, Kim, Mukherjee, Journal of the Electrochemical Society 162 (9), 2015
-//!< 			//!< equation (1a): CS = Amax(1 - exp(-m * Ah)) with m a fitting parameter and Ah the charge throughput up to now
-//!< 			//!< 	dCS/dAh = m Amax exp(-m Ah) = m Amax - m Amax + m Amax exp(-m Ah) = m Amax - m CS = m(Amax - CS)
-//!< 			//!< 	dCS/dt = dCS/dAh * dAh/dt = dCS/dAh * abs(I) = m(Amax - CS)*abs(I)
-//!< 			//!< 		where we use the absolute value of I because 'Ah' is the total charge throughput, i.e. int ( abs(I) dt )
-
-//!< 			const double Amax = std::max(csparam.CS4Amax, st.CS());
-//!< 			//!< 'maximum crack surface area', a fitting parameters
-//!< 			//!< avoid negative crack growth if the crack surface becomes slightly larger than Amax
-//!< 			//!< this is possible due to discrete time steps: CS(t) is just smaller, but CS (t+1) = CS(t) + dCS*dt is just larger
-
-//!< 			//!< Add the effects of this model
-//!< 			dcs += csparam.CS4alpha * (Amax - st.CS()) * std::abs(I()); //!< see above, with m = csparam.CS4
-//!< 			ism += st.CS() / ASn;										//!< increase SEI growth proportionally the crack surface
-//!< 		}
-//!< 		break;
-//!< 		case 5:
-//!< 		{
-//!< 			//!< model from Ekstrom and Lindbergh, Journal of the Electrochemical Society 162 (6), 2015
-//!< 			//!< overpotential for the crack-side-reaction = overpotential for the SEI reaction
-//!< 			const double etasei = (OCVnt + etan - OCVsei + rsei * st.delta() * I()); //!< overpotential [V], equation (6)
-
-//!< 			//!< get surface concentration
-//!< 			double cps, cns;
-//!< 			getCSurf(&cps, &cns, true); //!< get the surface lithium concentration
-
-//!< 			double kcr; //!< rate constant for the side reaction
-//!< 			//!< Calculate the rate constant, equation (11) with an Arrhenius relation for the temperature (which wasn't considered by Ekstrom)
-//!< 			if (I() > 0)
-//!< 				kcr = 0;
-//!< 			else if (cns / Cmaxneg < 0.3)
-//!< 				kcr = 2 * csparam.CS5k * exp(csparam.CS5k_T / Rg * (1 / T_ref - 1 / st.T()));
-//!< 			else if (cns / Cmaxneg < 0.7)
-//!< 				kcr = 0;
-//!< 			else
-//!< 				kcr = csparam.CS5k * exp(csparam.CS5k_T / Rg * (1 / T_ref - 1 / st.T()));
-
-//!< 			//!< Add the effects of this model
-//!< 			dcs += nsei * F * kcr * exp(-alphasei * nsei * F / (Rg * st.T()) * etasei); //!< equation (9)
-//!< 			ism += st.CS() / ASn;															 //!< increase SEI growth proportionally the crack surface
-//!< 		}
-//!< 		break;
-//!< 		default: //!< unknown degradation model
-//!< 			std::cerr << "ERROR in Cell_SPM::CS, unknown crack growth model with identifier "
-//!< 					  << deg_id.CS_id[i] << ". Only values 0 to 5 are allowed. Throw an error.\n";
-//!< 			throw 106;
-//!< 			break;
-//!< 		}
-//!< 	}
-
-//!< 	//!< Make the output variables
-//!< 	*isei_multiplyer = ism;
-//!< 	*dCS = dcs;
-
-//!< 	//!< Decrease the negative diffusion constant if needed
-//!< 	if (deg_id.CS_diffusion == 0) //!< don't decrease the negative diffusion constant
-//!< 		*dDn = 0;
-//!< 	else if (deg_id.CS_diffusion == 1)
-//!< 	{ //!< decrease it according to Barai, Smith, Chen, Kim, Mukherjee, Journal of the Electrochemical Society 162 (9), 2015
-//!< 		//!< equation (2) D(t) = D0 (1 - CS)^gamma
-//!< 		//!< 	but this can become negative is CS is larger than 1, we assume there should be a term /Amax in eqn (2): D(t) = D0 (1 - (CS/Amax))^gamma, which becomes 0 if CS = Amax
-//!< 		//!< so dD/dt = - gamma D0 (1-CS/Amax)^(gamma-1) 1/Amax dCS/dt
-
-//!< 		//!< 'maximum crack surface area', a fitting parameters
-//!< 		//!< avoid increasing diffusion coefficient if the crack surface becomes larger than Amax
-//!< 		//!< this is possible if the user chooses a different CS growth model, which does give larger crack surfaces (i.e. not CS4 which is Barai's crack growth model)
-//!< 		const double Amax = std::max(csparam.CS4Amax, st.CS());
-
-//!< 		//!< cap the decrease rate at a maximum value of 2e-7 (2e-5% = kill the battery in  about 1000h)
-//!< 		const double Dnmax = std::min(2e-7, csparam.CS_diffusion * std::pow(1 - st.CS() / Amax, csparam.CS_diffusion - 1) / Amax * dcs);
-//!< 		*dDn = -Dnmax * st.Dn();
-//!< 	}
-//!< 	else
-//!< 	{ //!< unknown degradation model
-//!< 		std::cerr << "ERROR in Cell_SPM::CS, unknown value for decreasing the diffusion constant " << deg_id.CS_diffusion << ". Only values 0 or 1 are allowed. Throw an error.\n";
-//!< 		throw 106;
-//!< 	}
-
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::CS terminating\n";
-//!< }
 
 } // namespace slide
