@@ -103,10 +103,6 @@ constexpr int T_MODEL{ 1 }; //!< which thermal model to use
                             //!< if 1, statistics about the cooling system is stored
                             //!< if 2, operating power etc is stored every time step
 
-//!< Cell types
-//!< #define CELLTYPE_CELL 1     //!< regular cells
-//!< #define CELLTYPE_CELL_ECM 2 //!< ECM cells
-
 //!< Choose how much messages should be printed to the terminal
 constexpr int verbose{ printLevel::printCrit };
 //!< integer deciding how verbose the simulation should be
@@ -128,7 +124,6 @@ constexpr int verbose{ printLevel::printCrit };
 //!< Non-user related settings, please do not change!
 namespace slide::settings {
 constexpr auto CVcurrentFindingMethod = CVcurrentAlgorithm::falsePosition;
-//!< printLevel_bool::
 } // namespace slide::settings
 
 

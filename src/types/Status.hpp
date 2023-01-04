@@ -58,6 +58,9 @@ bool inline isStatusVoltageLimitsViolated(Status status)
 
 bool inline isCCLimitReached(Status status) { return status == Status::ReachedVoltageLimit || status == Status::ReachedTimeLimit; }
 bool inline isCVLimitReached(Status status) { return status == Status::ReachedCurrentLimit || status == Status::ReachedTimeLimit; }
+bool inline isCurrentLimitReached(Status status) { return status == Status::ReachedCurrentLimit; }
+bool inline isVoltageLimitReached(Status status) { return status == Status::ReachedVoltageLimit; }
+
 
 inline const char *getStatusMessage(Status status)
 {

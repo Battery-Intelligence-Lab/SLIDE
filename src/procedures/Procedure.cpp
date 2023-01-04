@@ -84,19 +84,19 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       Ilim = 0.1;
 
 
-      try {
-        dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-        succ = cyc.CC(Icha, Vmax, tlim, dt, ndata, Ah, Wh, dtime);
-      } catch (int e) {
+      dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+
+      succ = cyc.CC(Icha, Vmax, tlim, dt, ndata, Ah, Wh, dtime);
+
+      if (!isVoltageLimitReached(succ)) {
         std::cout << "Error in CycleAge when charging in cycle "
-                  << i << ", stop cycling.\n";
+                  << i << ", stop cycling.\n"
+                  << getStatusMessage(succ);
         break;
       }
+
       Ahtot += std::abs(Ah);
       storeThroughput(ID_CCcharge, Ah, Wh, su); //!< increase the throughput parameters
-
-      if (!diagnostic)
-        assert(succ == Status::ReachedVoltageLimit);
 
       if (Ah >= 0) {
         std::cerr << "Error in Procedure::cycleAge, we didn't manage to charge "
@@ -106,18 +106,18 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
       //!< CV charge
       if (testCV) {
-        try {
-          dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-          succ = cyc.CV(Vmax, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
-        } catch (int e) {
+        dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+        succ = cyc.CV(Vmax, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+        if (!isCurrentLimitReached(succ)) {
           std::cout << "Error in CycleAge when CV charging in cycle "
-                    << i << ", stopping cycling.\n";
+                    << i << ", stopping cycling.\n"
+                    << getStatusMessage(succ);
           break;
         }
 
         Ahtot += std::abs(Ah);
         storeThroughput(ID_CVcharge, Ah, Wh, su);
-        if (!diagnostic) //!< #TODO what is diagnostic?
+        if (!diagnostic) //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
           assert(succ == Status::ReachedCurrentLimit);
       }
 

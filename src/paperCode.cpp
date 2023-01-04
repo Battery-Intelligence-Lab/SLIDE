@@ -67,7 +67,7 @@ void Vequalisation_Rdc(double Rdc)
   int ndata = 2; //!< store data every 2 seconds (or every dt)
 
   //!< do a CC charge-discharge
-  double Ah, Wh, dtime;
+  double Ah{}, Wh{}, dtime{};
   double I = mpp4.Cap();
   vlim = mpp4.Vmax();
   tlim = 99999999;
@@ -93,7 +93,7 @@ void Vequalisation()
   if constexpr (settings::T_MODEL > 1)
     std::cerr << "Warning in paperCode::Vequalisation. We want to use a large contact "
                  "R which will lead to overheating if you use a full thermal model. "
-                 "Set Global::settings::T_MODEL to 0 or 1 to enable this simulation.\n";
+                 "Set settings::T_MODEL to 0 or 1 to enable this simulation.\n";
 
   //!< Simulate with no contact R and with a value of 1 mOhm
   Vequalisation_Rdc(0);
@@ -114,7 +114,7 @@ void thermalModel()
 
   if constexpr (settings::T_MODEL != 2)
     std::cerr << "Warning in paperCode::thermalModel. We want to calculate the thermal "
-                 "model but the global settings are wrong. Set Global::settings::T_MODEL "
+                 "model but the global settings are wrong. Set settings::T_MODEL "
                  "to 2 to enable this simulation.\n";
 
   std::string ID = "paper_thermalModel";
@@ -156,7 +156,7 @@ void thermalModel()
 
   for (int i = 0; i < 5; i++) {
     //!< do a CC charge-discharge
-    double Ah, Wh, dtime;
+    double Ah{}, Wh{}, dtime{};
     double I = mpp4->Cap();
     vlim = mpp4->Vmax();
     tlim = 99999999;
@@ -214,7 +214,7 @@ void degradation_1cell()
 
   if constexpr (settings::T_MODEL > 0)
     std::cerr << "Warning in paperCode::degradation_1cell. We want to simulate one "
-                 "cell without thermal model. Set Global::settings::T_MODEL to 0 to "
+                 "cell without thermal model. Set settings::T_MODEL to 0 to "
                  "enable this simulation.\n";
 
   constexpr int ser = 15 * 20;
@@ -263,7 +263,7 @@ void degradation_electricalModel()
 
   if constexpr (settings::T_MODEL > 0)
     std::cerr << "Warning in paperCode::degradation_electricalModel. We want to simulate "
-                 "N cells without thermal model. Set Global::settings::T_MODEL to 0 to "
+                 "N cells without thermal model. Set settings::T_MODEL to 0 to "
                  "enable this simulation.\n";
 
   //!< Get the battery from makeBattery
@@ -304,7 +304,7 @@ void degradation_variations()
 
   if constexpr (settings::T_MODEL > 0)
     std::cerr << "Warning in paperCode::degradation_variations. We want to simulate "
-                 "cells without thermal model. Set Global::settings::T_MODEL to 0 to "
+                 "cells without thermal model. Set settings::T_MODEL to 0 to "
                  "enable this simulation.\n";
 
   //!< resistance spread

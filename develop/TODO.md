@@ -6,6 +6,12 @@
 
 ## TODO: 
 
+
+### Comparing against slide-pack:
+- [ ] CC, CV, CCCV functions seem to be working. However CV is not doing the intended thing for both SLIDE and slide-pack.
+- [ ] paperCode::Vequalisation seems to be working. 
+- [ ] paperCode::thermalModel does not work for slide-pack.
+
 ### Open issues: 
 - [ ] sp - sn question 
 - [ ] cps - cns question
