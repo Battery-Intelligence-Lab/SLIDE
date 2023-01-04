@@ -210,7 +210,6 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   //!< iterate until the voltages are satisfactory close
   while (!reached) //!< #TODO if this algorithm is efficient.
   {
-
     //!< find the cells with the smallest and largest V
     const auto [minIter, maxIter] = std::minmax_element(std::begin(Vo), std::begin(Vo) + getNSUs());
 
@@ -350,14 +349,13 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
                       << ". The allowed absolute tolerance is " << settings::MODULE_P_V_ABSTOL
                       << " and relative tolerance " << settings::MODULE_P_V_RELTOL * Vo[imax] << '\n';
           }
-          std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
           return Status::RedistributeCurrent_failed;
         }
       }
     }
   }
 
-  std::cout << "Number of iterations in redistributeCurrent() is: " << ktot << '\n';
+  //  std::cout << "Number of iterations in redistributeCurrent() is: " << ktot << '\n';
 
   if (checkV) {
     double v;

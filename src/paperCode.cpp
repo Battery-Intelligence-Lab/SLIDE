@@ -34,7 +34,7 @@ void Vequalisation_Rdc(double Rdc)
   std::default_random_engine gen(seed);
   std::normal_distribution<double> distr_c(1.0, 0.004); //!< normal distribution with mean 1 and std 0.4%
   std::normal_distribution<double> distr_r(1.0, 0.025); //!< normal distribution with mean 1 and std 2.5%
-  std::normal_distribution<double> distr_d(1.0, 0.10);  //!< normal distribution with mean 1 and std 10%
+  std::normal_distribution<double> distr_d(1.0, 0.100); //!< normal distribution with mean 1 and std 10%
   slide::DEG_ID deg;
   deg.SEI_id.add_model(4); //!< add model 4.
   deg.SEI_porosity = 1;
@@ -97,7 +97,7 @@ void Vequalisation()
 
   //!< Simulate with no contact R and with a value of 1 mOhm
   Vequalisation_Rdc(0);
-  // Vequalisation_Rdc(0.001);
+  Vequalisation_Rdc(0.001);
 }
 
 void thermalModel()
