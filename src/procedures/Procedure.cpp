@@ -66,95 +66,89 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
   //!< loop for cycle ageing
   double Ahtot = 0;
-  try {
-    for (int i = 0; i < Ncycle; i++) {
-      //!< check duration of the simulation
-      v = su->V();
+  for (int i = 0; i < Ncycle; i++) {
+    //!< check duration of the simulation
+    v = su->V();
 
-      if (!unitTest)
-        std::cout << "SU " << su->getFullID() << " starting loop iteration " << i << " after "
-                  << clk << " with V = " << v << ", T = " << K_to_Celsius(su->T())
-                  << " and hot spot T = " << K_to_Celsius(su->getThotSpot()) << '\n';
+    if (!unitTest)
+      std::cout << "SU " << su->getFullID() << " starting loop iteration " << i << " after "
+                << clk << " with V = " << v << ", T = " << K_to_Celsius(su->T())
+                << " and hot spot T = " << K_to_Celsius(su->getThotSpot()) << '\n';
 
-      //!< Balance (in this thread) and do a check-up (on a separate thread) if needed
-      balanceCheckup(su, balance && (i % Nbal == 0), (i % Ncheck == 0), Ahtot, i, pref);
+    //!< Balance (in this thread) and do a check-up (on a separate thread) if needed
+    balanceCheckup(su, balance && (i % Nbal == 0), (i % Ncheck == 0), Ahtot, i, pref);
 
-      //!< CC charge
-      tlim = std::numeric_limits<double>::max();
-      Ilim = 0.1;
+    //!< CC charge
+    tlim = std::numeric_limits<double>::max();
+    Ilim = 0.1;
 
 
+    dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+    succ = cyc.CC(Icha, Vmax, tlim, dt, ndata, Ah, Wh, dtime);
+
+    if (!isVoltageLimitReached(succ)) {
+      std::cout << "Error in CycleAge when charging in cycle "
+                << i << ", stop cycling.\n"
+                << getStatusMessage(succ);
+      break;
+    }
+
+    Ahtot += std::abs(Ah);
+    storeThroughput(ID_CCcharge, Ah, Wh, su); //!< increase the throughput parameters
+
+    if (Ah >= 0) {
+      std::cerr << "Error in Procedure::cycleAge, we didn't manage to charge "
+                << "any energy. Stopping the cycling after " << i << " cycles.\n";
+      break;
+    }
+
+    //!< CV charge
+    if (testCV) {
       dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-
-      succ = cyc.CC(Icha, Vmax, tlim, dt, ndata, Ah, Wh, dtime);
-
-      if (!isVoltageLimitReached(succ)) {
-        std::cout << "Error in CycleAge when charging in cycle "
-                  << i << ", stop cycling.\n"
+      succ = cyc.CV(Vmax, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+      if (!isCurrentLimitReached(succ)) {
+        std::cout << "Error in CycleAge when CV charging in cycle "
+                  << i << ", stopping cycling.\n"
                   << getStatusMessage(succ);
         break;
       }
 
       Ahtot += std::abs(Ah);
-      storeThroughput(ID_CCcharge, Ah, Wh, su); //!< increase the throughput parameters
+      storeThroughput(ID_CVcharge, Ah, Wh, su);
+      if (!diagnostic) //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
+        assert(succ == Status::ReachedCurrentLimit);
+    }
 
-      if (Ah >= 0) {
-        std::cerr << "Error in Procedure::cycleAge, we didn't manage to charge "
-                  << "any energy. Stopping the cycling after " << i << " cycles.\n";
-        break;
-      }
+    //!< CC discharge
+    try {
+      dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+      succ = cyc.CC(Idis, Vmin, tlim, dt, ndata, Ah, Wh, dtime);
+    } catch (int e) {
+      std::cout << "Error in CycleAge when discharging in cycle " << i << ", stop cycling.\n";
+      break;
+    }
+    Ahtot += std::abs(Ah);
+    storeThroughput(ID_CCdischarge, Ah, Wh, su);
+    if (!diagnostic)
+      assert(succ == Status::ReachedVoltageLimit);
 
-      //!< CV charge
-      if (testCV) {
-        dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-        succ = cyc.CV(Vmax, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
-        if (!isCurrentLimitReached(succ)) {
-          std::cout << "Error in CycleAge when CV charging in cycle "
-                    << i << ", stopping cycling.\n"
-                    << getStatusMessage(succ);
-          break;
-        }
-
-        Ahtot += std::abs(Ah);
-        storeThroughput(ID_CVcharge, Ah, Wh, su);
-        if (!diagnostic) //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
-          assert(succ == Status::ReachedCurrentLimit);
-      }
-
-      //!< CC discharge
+    //!< CV discharge
+    if (testCV) {
       try {
         dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-        succ = cyc.CC(Idis, Vmin, tlim, dt, ndata, Ah, Wh, dtime);
-      } catch (int e) {
-        std::cout << "Error in CycleAge when discharging in cycle " << i << ", stop cycling.\n";
+        succ = cyc.CV(Vmin, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+      } catch (int e) //!< #TODO if we need to check any status codes here?
+      {
+        std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
         break;
       }
       Ahtot += std::abs(Ah);
-      storeThroughput(ID_CCdischarge, Ah, Wh, su);
+      storeThroughput(ID_CVdischarge, Ah, Wh, su);
       if (!diagnostic)
-        assert(succ == Status::ReachedVoltageLimit);
+        assert(succ == Status::ReachedCurrentLimit);
+    }
 
-      //!< CV discharge
-      if (testCV) {
-        try {
-          dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-          succ = cyc.CV(Vmin, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
-        } catch (int e) //!< #TODO if we need to check any status codes here?
-        {
-          std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
-          break;
-        }
-        Ahtot += std::abs(Ah);
-        storeThroughput(ID_CVdischarge, Ah, Wh, su);
-        if (!diagnostic)
-          assert(succ == Status::ReachedCurrentLimit);
-      }
-
-    }           //!< loop cycle ageing
-  } catch (...) //!< #TODO why empty?
-  {
-    std::cout << "Why do we enter here?\n";
-  }
+  } //!< loop cycle ageing
 
   //!< final checkup
   //!< This checkup will write the usage statistics, so it must be called with the actual SU and not with a copy
@@ -779,10 +773,10 @@ std::cout<<"Total heat generation of all cells is "<< Qgen<<endl;*/
   file << "time [s]" << ',' << "Current throughput [Ah]" << ',' << "Energy throughput [Wh]"
        << "Capacity [Ah]" << ',' << "States" << '\n';
   for (auto &cell : cells) {
-    const auto th = cell->getThroughputs();
+    const auto th = cell->getThroughputs(); // #TODO if throughputs are saved then they should be included in states. Therefore this should not be needed.
     const auto cap = checkCap(cell);
 
-    file << th.time << ',' << th.Ah << ',' << th.Wh << ','
+    file << th.time() << ',' << th.Ah() << ',' << th.Wh() << ','
          << cap << ',';
 
 

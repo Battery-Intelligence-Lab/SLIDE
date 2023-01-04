@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "../State.hpp"
 #include "../Histogram.hpp"
 
 #include <iostream>
@@ -36,10 +37,7 @@ struct CellCommonHist
   Histogram<> I, V, T; //!< histograms for current, voltage, temperature
 };
 
-struct ThroughputData
-{
-  double time{}, Ah{}, Wh{};
-};
+using ThroughputData = State<0, 3>;
 
 struct BatteryData
 {

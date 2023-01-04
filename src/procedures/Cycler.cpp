@@ -351,9 +351,6 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
   double vi{ vo };              //!< voltage in this iteration
   bool allowUp = true;          //!< do we allow nOnce to increase?
   constexpr bool prdet = false; //!< print details of what is happening at every time step
-  Wh = 0;
-  Ah = 0;
-  int i = 0;
 
   //!< check the voltage limit
   if ((I < 0 && vi > vlim) || (I > 0 && vi < vlim)) //!< charging -> exceeded if Vnew > vlim
@@ -402,7 +399,6 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, d
     //!< Increase the throughput
     ttot += dti * nOnce;
     Ah = I * ttot / 3600.0;
-    i += nOnce;
     idat += nOnce;
     Wh += I * dti * nOnce / 3600 * vi;
 
@@ -831,7 +827,7 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
 
   I = (su->V() > Vset) ? I : -I; //!< OCV larger than Vset so we need to discharge
 
-  double Ah1, Ah2, Wh1, Wh2, dtime1, dtime2;
+  double Ah1{}, Ah2{}, Wh1{}, Wh2{}, dtime1{}, dtime2{};
   auto succ = CC(I, Vset, tlim, dt, ndt_data, Ah1, Wh1, dtime1); //!< do the CC phase
 
   if constexpr (settings::printBool::printNonCrit)

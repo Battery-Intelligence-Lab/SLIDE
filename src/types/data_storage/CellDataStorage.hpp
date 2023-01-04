@@ -62,14 +62,14 @@ struct CellDataStorage<settings::cellDataStorageLevel::storeTimeData>
   inline void storeData(Cell_t &cell)
   {
     const auto throughputs = cell.getThroughputs();
-
+    // #TODO just write all states, throughputs will be included.
     data.push_back(cell.I());
     data.push_back(cell.V());
     data.push_back(cell.SOC());
     data.push_back(cell.T());
-    data.push_back(throughputs.time); // time
-    data.push_back(throughputs.Ah);   // Ah
-    data.push_back(throughputs.Wh);   // Wh
+    data.push_back(throughputs.time()); // time
+    data.push_back(throughputs.Ah());   // Ah
+    data.push_back(throughputs.Wh());   // Wh
   }
 };
 } // namespace slide
