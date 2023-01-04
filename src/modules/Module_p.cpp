@@ -86,8 +86,8 @@ double Module_p::getVi(size_t i, bool print)
   }
 
   double v = SUs[i]->V(print); //!< the voltage of cell i
-  if (v == 0)
-    return 0;
+  if (v <= 0)
+    return v;
 
   for (size_t j = 0; j <= i; j++) {
     double Ij{ 0 };                        //!< the current through parallel resistance j
@@ -111,8 +111,8 @@ double Module_p::V(bool print)
   Vmodule = 0;
   for (size_t i = 0; i < SUs.size(); i++) {
     const auto v = getVi(i, print);
-    if (v == 0)
-      return 0;
+    if (v <= 0)
+      return v;
 
     Vmodule += v; //!< #TODO there is definitely something fishy. getVi already does some calculations.
   }
@@ -746,7 +746,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module_p::timeStep_CC, the time step dt must be 0 or positive, but has value "
                 << dt << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10;
   }
 
@@ -788,7 +787,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
       if (typeid(*getCoolSystem()) != typeid(CoolSystem_HVAC)) {
         std::cerr << "ERROR in module_p::timeStep_CC in module " << getFullID() << ". this is a top-level"
                   << "module but does not have an HVAC coolsystem for active cooling with the environment.\n";
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw 14;
       }
 
@@ -827,8 +825,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
       if (status != Status::Success)
         throw 100000; //!< #TODO
     } catch (int e) {
-      std::cout << "error in Module_p::timeStep_CC when redistributing the current. Throwing the error on " << e << '\n';
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
+      std::cerr << "error in Module_p::timeStep_CC when redistributing the current. Throwing the error on " << e << '\n';
       throw e;
     }
   }

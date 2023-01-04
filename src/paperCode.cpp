@@ -1,8 +1,8 @@
 /*
  * paperCode.cpp
  *
- *  Created on: 9 Jul 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ * Created on: 9 Jul 2020
+ *  Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
 #include "slide.hpp"
@@ -54,32 +54,32 @@ void Vequalisation_Rdc(double Rdc)
 
   double Rcs[5] = { Rdc, Rdc, Rdc, Rdc, Rdc };
 
-  auto mpp4 = std::make_unique<Module_p>(name, settings::T_ENV, true, false, 5, 1, 1); //!< print, no multithread, coolcontrol 1, HVAC coolsystem
+  Module_p mpp4(name, settings::T_ENV, true, false, 5, 1, 1); //!< print, no multithread, coolcontrol 1, HVAC coolsystem
 
-  mpp4->setSUs(cs4, true, true);
-  mpp4->setRcontact(Rcs);
+  mpp4.setSUs(cs4, true, true);
+  mpp4.setRcontact(Rcs);
 
   //!< Make the cycler
   Cycler cyc;
-  cyc.initialise(mpp4.get(), ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
+  cyc.initialise(&mpp4, ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
   double vlim, tlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
 
   //!< do a CC charge-discharge
   double Ah, Wh, dtime;
-  double I = mpp4->Cap();
-  vlim = mpp4->Vmax();
+  double I = mpp4.Cap();
+  vlim = mpp4.Vmax();
   tlim = 99999999;
   cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
   //!< CC discharge
-  vlim = mpp4->Vmin();
+  vlim = mpp4.Vmin();
   tlim = 99999999;
   cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
 
   //!< write the data
-  mpp4->writeData(ID);
+  mpp4.writeData(ID);
 }
 
 void Vequalisation()
@@ -97,7 +97,7 @@ void Vequalisation()
 
   //!< Simulate with no contact R and with a value of 1 mOhm
   Vequalisation_Rdc(0);
-  Vequalisation_Rdc(0.001);
+  // Vequalisation_Rdc(0.001);
 }
 
 void thermalModel()
@@ -183,8 +183,8 @@ void degrade(auto &&su)
   double Ccha = 1;
   double Cdis = 1;
   bool testCV = false;
-  double Vmax = su->Vmax();
-  double Vmin = su->Vmin();
+  double Vmax = su.Vmax();
+  double Vmin = su.Vmin();
   int Ncycle = 10000;
   int ncheck = 250; //!< do a checkup ever 250 cycles
   int nbal = 10;    //!< balance every 10 cycles
@@ -366,8 +366,8 @@ void degradation_thermal()
 
   if constexpr (settings::T_MODEL != 1)
     std::cerr << "Warning in paperCode::degradation_thermal. We want to simulate "
-                 "cells with a noncoupled thermal model. Set Global::settings::T_MODEL "
-                 "to 0 to enable this simulation.\n";
+                 "cells with a noncoupled thermal model. Set settings::T_MODEL "
+                 "to 1 to enable this simulation.\n";
 
   //!< all three spread
   int coolControl = 1; //!< just for naming since there is no thermal model

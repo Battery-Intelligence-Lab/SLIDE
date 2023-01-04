@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 
-add_library(src STATIC)
+add_library(src STATIC
+            paperCode.cpp)
 
 #add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../")
 

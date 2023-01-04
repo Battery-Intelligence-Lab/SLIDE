@@ -776,7 +776,6 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
                 << ttot << "s and voltage " << vi << "V, we were running with time limit " << tlim
                 << " and current limit " << Ilim << "V and set voltage " << Vset << '\n';
 
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 100;
   }
 

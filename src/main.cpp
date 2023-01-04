@@ -136,70 +136,7 @@ int main()
 
   using namespace slide;
 
-
-  constexpr int ser = 15 * 20;
-  constexpr int par = 9 * 7;
-
-  //!< Make one cell with standard parameters//!<Degradation settings
-  slide::DEG_ID deg; //!< Kinetic SEI + porosity + Dai/Laresgoiti LAM
-
-  deg.SEI_id.add_model(4); //!< add model 4.
-  deg.SEI_porosity = 1;
-
-  deg.CS_id.add_model(0); //!< add model 0.
-  deg.CS_diffusion = 0;
-
-  deg.LAM_id.add_model(1);
-  deg.pl_id = 0;
-
-  //!< Wrap the cell in a series-module
-  auto modulei = std::make_unique<Module_p>("module1", settings::T_ENV, true, false, 2, 1, 0); //!< single-threaded, conventional coolsystem
-                                                                                               //!<(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
-
-  std::unique_ptr<StorageUnit> RinB[2] = { std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1),
-                                           std::make_unique<Cell_SPM>("cell2", deg, 1, 1, 1, 1) }; //!< cell-to-cell variation parameters are 0
-
-  modulei->setSUs(RinB, true, true);
-
-  //!< Wrap the module in a Battery and set number of series and parallel
-  auto bat = std::make_unique<Battery>("single_cell_multiplied_by_300s_63p");
-  bat->setSeriesandParallel(ser, par);
-  bat->setModule(std::move(modulei));
-
-  StorageUnit *su = bat.get();
-
-
-  //!< standard settings for degradation simulation
-  double Ccha = 1;
-  double Cdis = 1;
-  bool testCV = false;
-  double Vmax = su->Vmax();
-  double Vmin = su->Vmin();
-  int Ncycle = 30;
-  int ncheck = 10; //!< do a checkup ever 250 cycles
-  int nbal = 5;    //!< balance every 10 cycles
-
-  //!< Make the procedure
-  bool balance = true;
-  double Vbal = 3.5; //!< rebalance to 3.1V
-  int ndata = 10;    //!< how often to store data (if 0, nothing is stored, not even usage stats)
-
-  Procedure p(balance, Vbal, ndata, false);
-
-  auto cyc = Cycler(su, "test");
-
-  double dAh{}, dWh{}, dtime{};
-  double Vnow = su->V();
-  // cyc.CC(-0.1 * su->Cap(), su->Vmax(), 99999, 1, 1, dAh, dWh, dtime);
-  // cyc.CCCV(-0.5 * su->Cap(), su->Vmax(), 0.0001 * su->Cap(), 1, 1, dAh, dWh, dtime);
-  // cyc.CV(su->Vmax(), 0.0001 * su->Cap(), 99999, 1, 1, dAh, dWh, dtime);
-
-
-  //!< Simulate the cycle ageing
-  p.cycleAge(su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
-  double Vnow2 = su->V();
-  std::cout << dAh << ' ' << dWh << '\n';
-
+  paperCode::paper2022::Vequalisation();
 
   //!< Benchmarks:
 

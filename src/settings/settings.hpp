@@ -51,9 +51,9 @@ constexpr bool overwrite_data = true; //!< if this is false then folder overwrit
 //!< Data storage  //!< from slidepack
 constexpr int DATASTORE_NHIST = 100; //!< length of the arrays with the histograms (if 1)
 
-constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeCumulativeData; //!< if 0, no cell-level data is stored
-                                                                           //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
-                                                                           //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
+constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeTimeData; //!< if 0, no cell-level data is stored
+                                                                     //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
+                                                                     //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
 
 constexpr auto DATASTORE_MODULE = moduleDataStorageLevel::noStorage; //!< See moduleDataStorageLevel for different options.
@@ -96,7 +96,7 @@ constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all typ
 #define TIMING false
 
 //!< temperature
-constexpr int T_MODEL{ 2 }; //!< which thermal model to use
+constexpr int T_MODEL{ 1 }; //!< which thermal model to use
                             //!< 	0 no thermal model
                             //!< 	1 individual cell bulk thermal model
                             //!< 	2 coupled cell thermal model with cooling from modules
