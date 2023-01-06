@@ -20,6 +20,24 @@
 
 namespace slide::free {
 
+
+inline void visit_SUs(StorageUnit *su, auto &&fn)
+{
+  //!< visits storage units and applies function fn
+  //!< function should be void as of now.
+  if (auto c = dynamic_cast<Cell *>(su))
+    fn(c); // It is cell, no submodules so apply function.
+  else if (auto b = dynamic_cast<Battery *>(su)) {
+    fn(b);                                  // It is battery apply then call sub ones.
+    checkUp_getCells(b->getCells(), cells); //!< if SU is a battery, recursively call this function on the module with the cells
+  } else if (auto m = dynamic_cast<Module *>(su)) {
+    //!< If su is a module, recursively call this function on its children
+    fn(m);
+    for (auto &su_ptr : m->getSUs())
+      checkUp_getCells(su_ptr.get(), cells);
+  }
+}
+
 inline void write_data(std::ofstream &file, std::vector<double> &data, size_t N = 1)
 {
   for (size_t i{}; i < data.size(); i++) {
