@@ -204,7 +204,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
 
   const bool bound = true;
   //!< calculate the anode potential (needed for various degradation models)
-  const double dOCVn = OCV_curves.dOCV_neg.interp(zn_surf, print, bound); //!< entropic coefficient of the anode potential [V K-1]
+  const double dOCVn = OCV_curves.dOCV_neg.interp(zp_surf, print, bound); //!< entropic coefficient of the anode potential [V K-1]
   const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound);  //!< anode potential [V]
   const double OCVnt = OCV_n + (st.T() - T_ref) * dOCVn;                  //!< anode potential at the cell's temperature [V]
 
@@ -239,7 +239,6 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   LAM(print, zp_surf, etap, &dthickp, &dthickn, &dap, &dan, &dep, &den); //!< Throws but not wrapped in try-catch since only appears here.
 
   //!< lithium plating
-
   const double ipl = LiPlating(OCVnt, etan); //!< current density of the plating side reaction [A m-2]
   double dzn_pl[nch];                        //!< additional diffusion in the anode due to ipl
 

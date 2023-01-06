@@ -851,17 +851,18 @@ bool test_equaliseV_timing(std::unique_ptr<Module_p> mp, std::unique_ptr<Storage
 
   //!< Use a Cycler to do a full CC cycle with redistributeI every time step
   Cycler cyc;
+  ThroughputData th;
   double lim = 0.0;
   int ndata = 0;
-  double Ah, Wh, dtime, vlim, tlim;
+  double vlim, tlim;
   tlim = 99999999;
   cyc.initialise(mp.get(), mp->getFullID());
   vlim = mp->Vmax() - lim;
-  cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC charge
+  cyc.CC(-I, vlim, tlim, dt, ndata, th); //!< CC charge
   vlim = mp->Vmin() + lim;
-  cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC discharge
+  cyc.CC(I, vlim, tlim, dt, ndata, th); //!< CC discharge
 
-  std::cout << "Finished CC cycle\n";
+  std::cout << "Finished CC cycle.\n";
 }
 
 bool test_equaliseV()
@@ -873,9 +874,8 @@ bool test_equaliseV()
   //!< 		4 similar and one aged cell
 
   DEG_ID deg;
-  ->setSUs($1, $3)
-    deg.SEI_id.add_model(4); //!< chirstensen SEI growth
-  deg.SEI_porosity = 0;      //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+  deg.SEI_id.add_model(4); //!< chirstensen SEI growth
+  deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
 
   deg.CS_id.add_model(0); //!< no surface cracks
   deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
@@ -899,14 +899,14 @@ bool test_equaliseV()
   test_equaliseV_timing(mpp1, cs1, ncel1);
 
   //!< 5 cells with small distribution
-  default_random_engine gen;
+  std::default_random_engine gen;
   double std1 = 0;
   double std2 = 0;
   std1 = 0.004;
   std2 = 0.025;
-  normal_distribution<double> distr_c(1.0, std1); //!< normal distribution with mean 1 and std 0.4% for cell capacity
-  normal_distribution<double> distr_r(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
-  normal_distribution<double> distr_d(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
+  std::normal_distribution<double> distr_c(1.0, std1); //!< normal distribution with mean 1 and std 0.4% for cell capacity
+  std::normal_distribution<double> distr_r(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
+  std::normal_distribution<double> distr_d(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
   std::string n2 = "mp_variation";
   std::unique_ptr<Cell_SPM> cp16(new Cell_SPM("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
   std::unique_ptr<Cell_SPM> cp12(new Cell_SPM("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)));
@@ -921,9 +921,9 @@ bool test_equaliseV()
   //!< 5 cells with large distribution
   std1 = 0.1;
   std2 = 0.15;
-  normal_distribution<double> distr_c2(1.0, std1); //!< normal distribution with mean 1 and std 0.4% for cell capacity
-  normal_distribution<double> distr_r2(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
-  normal_distribution<double> distr_d2(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
+  std::normal_distribution<double> distr_c2(1.0, std1); //!< normal distribution with mean 1 and std 0.4% for cell capacity
+  std::normal_distribution<double> distr_r2(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
+  std::normal_distribution<double> distr_d2(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
   std::string n3 = "mp_largeVariation";
   std::unique_ptr<Cell_SPM> cp116(new Cell_SPM("cell5", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen)));
   std::unique_ptr<Cell_SPM> cp112(new Cell_SPM("cell6", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen)));

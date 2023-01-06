@@ -3,8 +3,8 @@
  *
  * Free functions to help to write everything shorter.
  *
- *  Created on: 05 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ * Created on: 05 Apr 2022
+ *  Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
 #pragma once

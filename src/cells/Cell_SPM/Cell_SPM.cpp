@@ -230,10 +230,12 @@ double Cell_SPM::getOCV(bool print)
   const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound); //!< anode potential [V]
   const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, print, bound); //!< cathode potential [V]
 
+  const auto entropic_effect = (st.T() - T_ref) * dOCV;
+
 #if TIMING
   timeData.getOCV += clk.duration();
 #endif
-  return (OCV_p - OCV_n + (st.T() - T_ref) * dOCV);
+  return (OCV_p - OCV_n + entropic_effect);
 }
 
 double Cell_SPM::V(bool print)
@@ -302,7 +304,7 @@ double Cell_SPM::V(bool print)
     //!< the cell OCV at the reference temperature is OCV_p - OCV_n
     //!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
     //!< then the overpotentials and the resistive voltage drop are added
-    const auto entropic_effect = 0; // (st.T() - T_ref) * dOCV; // #TODO
+    const auto entropic_effect = (st.T() - T_ref) * dOCV; // #TODO
     const auto overpotential = etapi - etani;
     const auto OCV = (OCV_p - OCV_n + entropic_effect);
 
