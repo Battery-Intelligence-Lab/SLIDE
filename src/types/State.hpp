@@ -10,8 +10,10 @@
 #pragma once
 
 #include "../settings/settings.hpp"
+#include "../utility/array_util.hpp"
 
 #include <array>
+#include <algorithm>
 
 namespace slide {
 
@@ -51,6 +53,8 @@ struct State : public std::array<double, N + N_cumulative>
         return "";
     }
   }
+
+  inline auto reset() { fill(0); }
 };
 
 } // namespace slide

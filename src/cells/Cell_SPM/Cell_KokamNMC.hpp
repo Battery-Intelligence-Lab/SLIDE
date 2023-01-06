@@ -143,7 +143,6 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
     validState(st, s_ini);
   } catch (int e) {
     std::cout << "Error in State::initialise, one of the states has an illegal value, throwing an error\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 12;
   }
 
@@ -177,7 +176,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   //!< fitting parameters
   lam_p = param::def::LAMparam_Kokam;
 
-  //!< li-plating parameters
+  //!< li-plating parameters #TODO these param should be inside PLparam but not multiplied by variance.
   npl = 1;
   alphapl = 1;
   OCVpl = 0;
