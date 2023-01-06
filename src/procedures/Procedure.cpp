@@ -53,7 +53,8 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
   const double Idis = Cdis * su->Cap();
   double v{};
   Status succ{};
-  double tlim, Ilim, Ah, Wh, dtime{};
+  double tlim, Ilim;
+  ThroughputData th;
 
   //!< ID for storing the steps in the producedure (i.e. which data refers to which action)
   constexpr int ID_CCcharge = 1;
@@ -83,8 +84,8 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
     Ilim = 0.1;
 
 
-    dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-    succ = cyc.CC(Icha, Vmax, tlim, dt, ndata, Ah, Wh, dtime);
+    th.reset(); //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+    succ = cyc.CC(Icha, Vmax, tlim, dt, ndata, th);
 
     if (!isVoltageLimitReached(succ)) {
       std::cout << "Error in CycleAge when charging in cycle "
@@ -93,10 +94,10 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       break;
     }
 
-    Ahtot += std::abs(Ah);
-    storeThroughput(ID_CCcharge, Ah, Wh, su); //!< increase the throughput parameters
+    Ahtot += std::abs(th.Ah());
+    storeThroughput(ID_CCcharge, th.Ah(), th.Wh(), su); //!< increase the throughput parameters
 
-    if (Ah >= 0) {
+    if (th.Ah() < 1e-5) {
       std::cerr << "Error in Procedure::cycleAge, we didn't manage to charge "
                 << "any energy. Stopping the cycling after " << i << " cycles.\n";
       break;
@@ -104,8 +105,8 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
     //!< CV charge
     if (testCV) {
-      dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-      succ = cyc.CV(Vmax, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+      th.reset(); //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+      succ = cyc.CV(Vmax, Ilim, tlim, dt, ndata, th);
       if (!isCurrentLimitReached(succ)) {
         std::cout << "Error in CycleAge when CV charging in cycle "
                   << i << ", stopping cycling.\n"
@@ -113,37 +114,37 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
         break;
       }
 
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_CVcharge, Ah, Wh, su);
-      if (!diagnostic) //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
+      Ahtot += th.Ah();
+      storeThroughput(ID_CVcharge, th.Ah(), th.Wh(), su); // #TODO why do we do this?
+      if (!diagnostic)                                    //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
         assert(succ == Status::ReachedCurrentLimit);
     }
 
     //!< CC discharge
     try {
-      dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-      succ = cyc.CC(Idis, Vmin, tlim, dt, ndata, Ah, Wh, dtime);
+      th.reset(); //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+      succ = cyc.CC(Idis, Vmin, tlim, dt, ndata, th);
     } catch (int e) {
       std::cout << "Error in CycleAge when discharging in cycle " << i << ", stop cycling.\n";
       break;
     }
-    Ahtot += std::abs(Ah);
-    storeThroughput(ID_CCdischarge, Ah, Wh, su);
+    Ahtot += th.Ah();
+    storeThroughput(ID_CCdischarge, th.Ah(), th.Wh(), su);
     if (!diagnostic)
       assert(succ == Status::ReachedVoltageLimit);
 
     //!< CV discharge
     if (testCV) {
       try {
-        dtime = Ah = Wh = 0; //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-        succ = cyc.CV(Vmin, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+        th.reset(); //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+        succ = cyc.CV(Vmin, Ilim, tlim, dt, ndata, th);
       } catch (int e) //!< #TODO if we need to check any status codes here?
       {
         std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
         break;
       }
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_CVdischarge, Ah, Wh, su);
+      Ahtot += th.Ah();
+      storeThroughput(ID_CVdischarge, th.Ah(), th.Wh(), su);
       if (!diagnostic)
         assert(succ == Status::ReachedCurrentLimit);
     }
@@ -157,15 +158,8 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
     if (!unitTest)
       std::cout << "Doing a final checkup after " << Ahtot << " Ah.\n";
     writeThroughput(su->getFullID(), Ahtot);
-
-    auto task_indv = [&](int i) {
-      if (i == 0)
-        checkUp(su, Ahtot, Ncycle); //!< check-up of the cells
-      else if (i == 1)
-        checkMod(su); //!< check-up of the modules
-    };
-
-    run(task_indv, 2, 2); //!< #TODO if parallel in two cores is really needed.
+    checkUp(su, Ahtot, Ncycle); //!< check-up of the cells
+    checkMod(su);               //!< check-up of the modules
   } catch (int e) {
     std::cout << "Error in CycleAge when getting a capacity checkup, skipping it\n";
   }
@@ -218,7 +212,8 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
 
   //!< Variables
   Cycler cyc;
-  double Ah, Wh, v;
+  double v;
+  ThroughputData th;
   Status succ;
   cyc.initialise(su, pref);
   cyc.setDiagnostic(diagnostic);
@@ -234,13 +229,11 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
 
   //!< fully discharge the SU at a C/2
   double tlim = std::numeric_limits<double>::max();
-  try {
-    double dtime;
-    succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), tlim, dt, ndata, Ah, Wh, dtime);
-    //!< std::cout << getStatusMessage(succ) << '\n'; //!< #TODO if we put and test all conditions.
-  } catch (int e) {
-    std::cout << "Error in useAge when initially discharging the battery, continue as normal.\n";
-  }
+  succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), tlim, dt, ndata, th);
+
+  if (!isLimitsReached(succ))
+    std::cout << "Error in useAge when initially discharging the battery, continue as normal.\n"
+              << getStatusMessage(succ) << '\n';
 
   //!< Make a clock to measure how long the simulation takes
   Clock clk;
@@ -260,71 +253,70 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
     balanceCheckup(su, balance && (i % Nbal == 0), (i % Ncheck == 0), Ahtot, i, pref);
 
     try {
-      succ = cyc.rest(4 * 3600, dt, ndata, Ah, Wh); //!< 1) 4h rest
+      succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 1) 4h rest
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting 1 in cycle " << i << '\n';
         break;
       }
 
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_rest1, Ah, Wh, su);
+      Ahtot += th.Ah();                                // #TODO this is wrong since we didn't RESET!
+      storeThroughput(ID_rest1, th.Ah(), th.Wh(), su); // #TODO why do we store this!
 
       //!< 2) 1C charge
-      double dtime;
-      cyc.CC(-su->Cap(), su->Vmax(), tlim, dt, ndata, Ah, Wh, dtime); //!< #TODO should have a condition.
+      cyc.CC(-su->Cap(), su->Vmax(), tlim, dt, ndata, th); //!< #TODO should have a condition.
 
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_cha1, Ah, Wh, su);
+      Ahtot += th.Ah();
+      storeThroughput(ID_cha1, th.Ah(), th.Wh(), su);
 
-      succ = cyc.rest(1 * 3600, dt, ndata, Ah, Wh); //!< 3) 1h rest
+      succ = cyc.rest(1 * 3600, dt, ndata, th); //!< 3) 1h rest
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting2 in cycle " << i << '\n';
         break;
       }
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_rest2, Ah, Wh, su);
+      Ahtot += th.Ah();
+      storeThroughput(ID_rest2, th.Ah(), th.Wh(), su);
 
-      cyc.CC(su->Cap(), su->Vmin(), tlim, dt, ndata, Ah, Wh, dtime); //!< 4) 1C discharge
+      cyc.CC(su->Cap(), su->Vmin(), tlim, dt, ndata, th); //!< 4) 1C discharge
 
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_dis1, Ah, Wh, su);
+      Ahtot += th.Ah();
+      storeThroughput(ID_dis1, th.Ah(), th.Wh(), su);
 
-      succ = cyc.rest(4 * 3600, dt, ndata, Ah, Wh); //!< 5) 4h rest
+      succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 5) 4h rest
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting3 in cycle " << i << '\n';
         break;
       }
 
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_rest3, Ah, Wh, su);
+      Ahtot += th.Ah();
+      storeThroughput(ID_rest3, th.Ah(), th.Wh(), su);
 
-      cyc.CC(-su->Cap() / 2.0, su->Vmax(), tlim, dt, ndata, Ah, Wh, dtime); //!< 6) 0.5C charge
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_cha2, Ah, Wh, su);
+      cyc.CC(-su->Cap() / 2.0, su->Vmax(), tlim, dt, ndata, th); //!< 6) 0.5C charge
+      Ahtot += th.Ah();
+      storeThroughput(ID_cha2, th.Ah(), th.Wh(), su);
 
-      succ = cyc.rest(4 * 3600, dt, ndata, Ah, Wh); //!< 7) 4h rest
+      succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 7) 4h rest
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting4 in cycle " << i << '\n';
         break;
       }
 
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_rest4, Ah, Wh, su);
+      Ahtot += th.Ah();
+      storeThroughput(ID_rest4, th.Ah(), th.Wh(), su);
 
-      succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), tlim, dt, ndata, Ah, Wh, dtime); //!< 8) 0.5C discharge
+      succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), tlim, dt, ndata, th); //!< 8) 0.5C discharge
 
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_dis2, Ah, Wh, su);
+      Ahtot += th.Ah();
+      storeThroughput(ID_dis2, th.Ah(), th.Wh(), su);
 
       //!< 9) 5h rest
-      succ = cyc.rest(5 * 3600, dt, ndata, Ah, Wh);
+      succ = cyc.rest(5 * 3600, dt, ndata, th);
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting5 in cycle " << i << '\n';
         break;
       }
 
-      Ahtot += std::abs(Ah);
-      storeThroughput(ID_rest5, Ah, Wh, su);
+      Ahtot += th.Ah();
+      storeThroughput(ID_rest5, th.Ah(), th.Wh(), su);
     } catch (int e) {
       std::cout << "An unexpected problem! May be CCs. See what is happening.\n";
       break;
@@ -372,10 +364,9 @@ void Procedure::storeThroughput(int ID, double Ah, double Wh, StorageUnit *su)
 
   double coolSystemLoad{ 0 }, convloss{ 0 }; //!< Zero initialization is important.
 
-  if (auto m = dynamic_cast<Module *>(su)) //!< pointer to module to cast su to a Module
-  {                                        //!< if this is a module, add the power needed to operate the cooling system
+  if (auto m = dynamic_cast<Module *>(su)) //!< if this is a module, add the power needed to operate the cooling system
     coolSystemLoad = m->getCoolingLoad() / 3600.0;
-  } else if (auto b = dynamic_cast<Battery *>(su)) //!< pointer to module to cast su to a Battery
+  else if (auto b = dynamic_cast<Battery *>(su)) //!< pointer to module to cast su to a Battery
   {
     coolSystemLoad = b->getCoolingLoad() / 3600.0;
     convloss = b->getAndResetConvLosses() / 3600.0;
@@ -558,7 +549,6 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   //!< Name of the file which will be written
   std::string name = su->getFullID() + "_checkUp.csv";
   std::string name_stats = su->getFullID() + "_cellStats.csv";
-  int separator = 9999999; //!< marker to separate different things in the document
   std::ofstream file, file_stats;
 
   //!< bring to correct voltage
@@ -569,11 +559,7 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
 
   //!< get a vector with pointers to the cells
   std::vector<Cell *> cells;
-  checkUp_getCells(su, cells);
 
-  //!< Get the mutex to start writing in the results file
-  std::lock_guard<std::mutex> writeGuard(MUTEX_procedure_checkUp); //!< locks the mutex if it is free
-  //!< #TODO remove mutex somehow.
   //!< write the usage stats of all cells in a separate document
   if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeHistogramData) {
     file_stats.open(name_stats); //!< open and clear whatever was there since we want to write the most recent stats only
@@ -589,7 +575,7 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   //!< else write the cumulative charge throughput
   if (Ah == 0) {
     file.open(name); //!< open from scratch, clear whatever was in the file before
-    checkUp_writeInitial(cells, file, separator);
+    checkUp_writeInitial(cells, file);
   } else
     file.open(name, std::ios_base::app); //!< append to the existing file
 
@@ -613,12 +599,7 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   //!< close the file
   file.close();
 
-  //!< The mutex will be automatically released when writeGuard goes out of scope at the end of this function
-  //!< see also https://en.cppreference.com/w/cpp/thread/lock_guard
-
-  if (!unitTest)
-    std::cout << "Finishing the check-up on a separate thread after Ah = "
-              << Ah << '\n';
+  if (!unitTest) std::cout << "Finishing the check-up on a separate thread after Ah = " << Ah << '\n';
 }
 
 void Procedure::checkUp_prep(StorageUnit *su)
@@ -644,43 +625,16 @@ void Procedure::checkUp_prep(StorageUnit *su)
   Cycler cyc;
   cyc.initialise(su, "pre-checkUp");
   try {
-    double dtime;
+    ThroughputData th{};
     cyc.setDiagnostic(true); //!< stop when the voltage of one cell has reached the maximum or minimum
-    cyc.CC(I, V, tlim, dt, ndata, ahi, whi, dtime);
+    cyc.CC(I, V, tlim, dt, ndata, th);
   } catch (int e) {
     std::cout << "Error in checkUp_prep when trying to charge SU " << su->getFullID()
               << " to " << V << " at I = " << I << ". Skipping.\n";
   }
 }
 
-void Procedure::checkUp_getCells(StorageUnit *su, std::vector<Cell *> &cells)
-{
-  /*
-   * This functions makes an array with pointers to the cells
-   *
-   * IN
-   * su			pointer to a storage unit
-   * cells 		std::vector with pointers to the cells found so far
-   *
-   * OUT
-   * cells 		append pointers to the newly found cells at the end
-   *
-   */
-
-  //!< If SU is a cell, simply return a pointer to it (after casting it to a cell)
-  if (auto c = dynamic_cast<Cell *>(su))
-    cells.push_back(c);
-  else if (auto b = dynamic_cast<Battery *>(su)) //!< if SU is a battery, recursively call this function on the module with the cells
-    checkUp_getCells(b->getCells(), cells);
-  else if (auto m = dynamic_cast<Module *>(su)) //!< If su is a module, recursively call this function on its children
-  {
-    auto &cs = m->getSUs();
-    for (auto &su_ptr : cs)
-      checkUp_getCells(su_ptr.get(), cells);
-  }
-}
-
-void Procedure::checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &file, int separator)
+void Procedure::checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &file)
 {
   /*
    * Write the cell IDs and the parameters of the cell-to-cell variations in each cell of the vector.
@@ -867,112 +821,6 @@ void Procedure::checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &fi
     std::cerr << "Error in checkUp_writeStats, the file is not open, could not write to it. Skipping this checkup.\n";
 }
 
-void Procedure::checkMod(StorageUnit *su)
-{
-  /*
-   * Overall function to do a check-up of the modules
-   */
-
-  //!< Name of the file which will be written
-  std::string name = su->getFullID() + "_checkModules.csv";
-  int separator = 9999999; //!< marker to separate different things in the document
-
-  //!< get a vector with pointers to the modules
-  std::vector<Module *> mods;
-  checkMod_getModules(su, mods);
-
-  //!< get the Battery if there is one
-  auto b = dynamic_cast<Battery *>(su);
-
-  //!< create file and write module ID names
-  std::ofstream file(PathVar::results + name); //!< open from scratch, clear whatever was in the file before
-  checkMod_writeInitial(mods, b, file, separator);
-
-  //!< write the usage stats of the cooling systems
-  if constexpr (settings::DATASTORE_COOL == 1) {
-    try {
-      checkMod_writeCoolStats(mods, b, file, separator);
-    } catch (...) {
-    };
-  }
-
-  //!< close the file
-  file.close();
-
-  if (!unitTest)
-    std::cout << "Finishing the check-up of the modules\n";
-}
-
-void Procedure::checkMod_getModules(StorageUnit *su, std::vector<Module *> &mods)
-{
-  /*
-   * This functions makes an array with pointers to the cells
-   *
-   * IN
-   * su			pointer to a storage unit
-   * modules 		std::vector with pointers to the modules found so far
-   *
-   * OUT
-   * modules 		append pointers to the newly found modules at the end
-   *
-   */
-
-  //!< if SU is a battery, recursively call this function on the module with the cells
-  if (auto b = dynamic_cast<Battery *>(su))
-    checkMod_getModules(b->getCells(), mods);
-
-  //!< check if this SU is a module
-  if (auto m = dynamic_cast<Module *>(su)) //!< cast it to a module and add a pointer to it to the vector
-  {
-    mods.push_back(m);
-
-    for (auto &cs_k : m->getSUs()) //!< recursively call on its children, to check if they are modules too
-      checkMod_getModules(cs_k.get(), mods);
-  } //!< else, do nothing
-}
-
-void Procedure::checkMod_writeInitial(std::vector<Module *> mods, Battery *batt, std::ofstream &file, int separator)
-{
-  /*
-   * Write the module IDs and the number of cells connected to this module
-   *
-   * This function starts the document 'name' from scratch and erases whatever was in there
-   */
-
-  const int IDnumber = 1;      //!< number in first column to indicate what is on this row [ID string and variations]
-  const int ID_separator = 99; //!< number in first column to indicate what is on this row [separator]
-  const auto ncells = mods.size() + 1;
-  const bool b{ batt != nullptr }; //!< boolean indicating if there is a Battery or not
-
-  if (file.is_open()) {
-    //!< first row are module IDs
-    file << IDnumber << ',';
-    if (b)
-      file << batt->getFullID() << ','; //!< value of total battery
-
-    for (auto &mod : mods)
-      file << mod->getFullID() << ',';
-
-    file << '\n';
-
-    //!< second row are number of cells connected to this module
-    file << IDnumber << ',';
-    if (b)
-      file << batt->getCells()->getNcells() << ','; //!< value of total battery
-
-    for (auto &mod : mods)
-      file << mod->getNcells() << ',';
-    file << '\n';
-
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (size_t i = 0; i < ncells; i++)
-      file << separator << ',';
-    file << '\n';
-  } else
-    std::cerr << "Error in checkUp_writeInitial, the file is no open. Skipping this part.\n";
-}
-
 struct GetHistograms //!< #TODO how do we remove these helper functions in constexpr?
 {
   const Histogram<> &Q{ EmptyHistogram }, &flr{ EmptyHistogram }, &E{ EmptyHistogram };
@@ -981,170 +829,84 @@ struct GetHistograms //!< #TODO how do we remove these helper functions in const
   template <typename T>
   GetHistograms(T &) {}
 
-  GetHistograms(CoolSystem_HVACHist_t &data) : Qac{ data.Qac }, Eac{ data.Eac }
+  GetHistograms(CoolSystem_HVACHist_t &data)
+    : Qac{ data.Qac }, Eac{ data.Eac }
   {
   }
 
-  GetHistograms(CoolSystemHist_t &data) : Q{ data.Q }, flr{ data.flr }, E{ data.E }, T{ data.T }
+  GetHistograms(CoolSystemHist_t &data)
+    : Q{ data.Q }, flr{ data.flr }, E{ data.E }, T{ data.T }
   {
   }
 };
 
-void Procedure::checkMod_writeCoolStats(std::vector<Module *> mods, Battery *batt, std::ofstream &file, int separator)
+void Procedure::checkMod(StorageUnit *su)
 {
   /*
-   * Write the statistics of the cooling system
-   * Remember that in copy(), usage stats are not copied across to the new module.
-   * So this function will write all zeros if called with a copy of the SU
+   * Overall function to do a check-up of the modules
    */
-  const auto ncells = mods.size() + 1; //!< +1 for the total battery
-  const int ID_tot = 2;
-  const int ID_histT = 5;
-  const int ID_histQ = 6;
-  const int ID_histflr = 7;
-  const int ID_histE = 8;
-  const int ID_histQac = 9;
-  const int ID_histEac = 10;
-  const int ID_separator = 99;
-  const bool b{ batt != nullptr }; //!< boolean indicating if there is a Battery or not
 
-  if (file.is_open()) {
-    //!< Write overall performance of the coolsystem (total heat evacuated or absorbed
-    file << ID_tot << ',';
-    if (b)
-      file << batt->getCoolSystem()->getTotalTime() << ','; //!< value of total battery
+  //!< Name of the file which will be written
+  std::string name_overall = su->getFullID() + "_checkModules_overall.csv";
+  std::string name_hist = su->getFullID() + "_checkModules_histograms.csv";
 
-    for (auto &mod : mods)                                 //!< loop for each cell (columns)
-      file << mod->getCoolSystem()->getTotalTime() << ','; //!< total time active [s]
+  //!< create file and write module ID names
+  std::ofstream file_overall(PathVar::results / name_overall); //!< open from scratch, clear whatever was in the file before
+  std::ofstream file_histograms(PathVar::results / name_hist); //!< open from scratch, clear whatever was in the file before
 
-    file << '\n';
+  file_overall << "Full ID,";              //!< Module IDs
+  file_overall << "Number of cells,";      //!< Number of cells inside SU
+  file_overall << "Total time,";           //!< total time active [s]
+  file_overall << "Total evacuated heat,"; //!< total heat evacuated from the children of this coolsystem [J]
+  file_overall << "Total absorbed heat\n"; //!< total heat absorbed in the coolant of this coolsystem [J]
 
-    file << ID_tot << ',';
-    if (b)
-      file << batt->getCoolSystem()->getHeatEvac() << ','; //!< value of total battery
+  auto writeModData = [&file_overall, &file_histograms](auto *su_now) {
+    const auto su_fullID = su_now->getFullID();
 
-    for (auto &mod : mods)                                //!< loop for each cell (columns)
-      file << mod->getCoolSystem()->getHeatEvac() << ','; //!< total heat evacuated from the children of this coolsystem [J]
+    file_overall << su_fullID << ',';
+    file_overall << su_now->getNcells() << ',';
+    file_overall << su_now->getCoolSystem()->getTotalTime() << ',';
+    file_overall << su_now->getCoolSystem()->getHeatEvac() << ',';
+    file_overall << su_now->getCoolSystem()->getHeatabsorbed() << '\n';
 
-    file << '\n';
+    if constexpr (settings::DATASTORE_COOL == 1) {
+      // Temperature statistics:
+      file_histograms << "Temperature statistics:," << su_fullID << '\n';
+      file_histograms << "Time histogram:\n";
+      file_histograms << GetHistograms(su_now->getCoolSystem()->coolData.tData).T << '\n';
+      file_histograms << "Cooling power per cell histogram:\n";
+      file_histograms << GetHistograms(su_now->getCoolSystem()->coolData.tData).Q << '\n';
+      file_histograms << "Flow rate per cell histogram:\n";
+      file_histograms << GetHistograms(su_now->getCoolSystem()->coolData.tData).flr << '\n';
+      file_histograms << "Fan power per cell histogram:\n";
+      file_histograms << GetHistograms(su_now->getCoolSystem()->coolData.tData).E << '\n';
 
-    file << ID_tot << ',';
-    if (b)
-      file << batt->getCoolSystem()->getHeatabsorbed() << ','; //!< value of total battery
+      if (auto c = dynamic_cast<CoolSystem_HVAC *>(su_now->getCoolSystem())) {
+        file_histograms << "Qac histogram:\n";
+        file_histograms << GetHistograms(c->HVACdata.tData).Qac << '\n';
 
-    for (auto &mod : mods)                                    //!< loop for each cell (columns)
-      file << mod->getCoolSystem()->getHeatabsorbed() << ','; //!< total heat absorbed in the coolant of this coolsystem [J]
-
-    file << '\n';
-
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (size_t i = 0; i < ncells; i++)
-      file << separator << ',';
-    file << '\n';
-
-    //!< write statistics of the temperature
-    file << ID_histT << ',';
-    if (b)
-      file << GetHistograms(batt->getCoolSystem()->coolData.tData).T << '\n';
-
-    for (auto &mod : mods) //!< loop for each cell (columns)
-      file << GetHistograms(mod->getCoolSystem()->coolData.tData).T << '\n';
-    file << '\n';
-
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (size_t i = 0; i < ncells; i++)
-      file << separator << ',';
-    file << '\n';
-
-    //!< statistics of the heat extracted from children per cell
-    file << ID_histQ << ',';
-    if (b)
-      file << GetHistograms(batt->getCoolSystem()->coolData.tData).Q << '\n';
-
-    for (auto &mod : mods) //!< loop for each cell (columns)
-      file << GetHistograms(mod->getCoolSystem()->coolData.tData).Q << '\n';
-    file << '\n';
-
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (size_t i = 0; i < ncells; i++)
-      file << separator << ',';
-    file << '\n';
-
-    //!< statistics of the flow rate per cell
-
-    file << ID_histflr << ',';
-    if (b)
-      file << GetHistograms(batt->getCoolSystem()->coolData.tData).flr << '\n';
-
-    for (auto &mod : mods) //!< loop for each cell (columns)
-      file << GetHistograms(mod->getCoolSystem()->coolData.tData).flr << '\n';
-    file << '\n';
-
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (size_t i = 0; i < ncells; i++)
-      file << separator << ',';
-    file << '\n';
-
-    //!< statistics of the operating power for the fan per cell
-    file << ID_histE << ',';
-    if (b)
-      file << GetHistograms(batt->getCoolSystem()->coolData.tData).E << '\n';
-
-    for (auto &mod : mods) //!< loop for each cell (columns)
-      file << GetHistograms(mod->getCoolSystem()->coolData.tData).E << '\n';
-    file << '\n';
-
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (size_t i = 0; i < ncells; i++)
-      file << separator << ',';
-    file << '\n';
-
-    //!< Check if this module has an HVAC coolsystem. If so, also write cooling power of the AC system
-    file << ID_histQac << ',';
-    if (b)
-      file << GetHistograms(batt->getCoolSystem()->HVACdata.tData).Qac << '\n';
-    for (auto &mod : mods) //!< loop for each cell (columns)
-    {
-      if (auto c = dynamic_cast<CoolSystem_HVAC *>(mod->getCoolSystem()))
-        file << GetHistograms(c->HVACdata.tData).Qac << '\n';
-      else
-        file << 0 << '\n';
+        file_histograms << "Eac histogram:\n";
+        file_histograms << GetHistograms(c->HVACdata.tData).Qac << '\n';
+      }
     }
-    file << '\n';
+  };
 
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (size_t i = 0; i < ncells; i++)
-      file << separator << ',';
-    file << '\n';
+  // #TODO eliminate use of two lambdas.
+  // #TODO move the above logic into data storage so polymorphism takes care of pointer cast
+  auto writeModMain = [&](auto *su_now) {
+    if (auto *b = dynamic_cast<Battery *>(su_now))
+      writeModData(b);
+    else if (auto *m = dynamic_cast<Module *>(su_now))
+      writeModData(m);
+  };
 
-    //!< Check if this module has an HVAC coolsystem. If so, also write operating power of the AC system
-    file << ID_histEac << ',';
-    if (b)
-      file << GetHistograms(batt->getCoolSystem()->HVACdata.tData).Eac << '\n';
-    for (auto &mod : mods) //!< loop for each cell (columns)
-    {
-      if (auto c = dynamic_cast<CoolSystem_HVAC *>(mod->getCoolSystem()))
-        file << GetHistograms(c->HVACdata.tData).Eac << '\n';
-      else
-        file << 0 << '\n';
-    }
-    file << '\n';
+  free::visit_SUs(su, writeModMain);
 
-    //!< write a row with markers to indicate we have finished this section
-    file << ID_separator << ',';
-    for (size_t i = 0; i < ncells; i++)
-      file << separator << ',';
-    file << '\n';
+  //!< close the files
+  file_overall.close();
+  file_histograms.close();
 
-  } //!< if file is open
-  else
-    std::cerr << "Error in checkUp_writeStats, the file is not open, could not write to it. Skipping this checkup.\n";
+  if (!unitTest) std::cout << "Finished checking modules.\n";
 }
 
 void Procedure::writeThroughput(std::string SUID, double Ahtot)
@@ -1165,13 +927,13 @@ void Procedure::writeThroughput(std::string SUID, double Ahtot)
   std::string name = SUID + "_throughput.csv";
   std::ofstream file;
   if (Ahtot == 0) {
-    file.open(PathVar::results + name); //!< open from scratch, clear whatever was in the file before
+    file.open(PathVar::results / name); //!< open from scratch, clear whatever was in the file before
     file << "ID number" << ',' << "cells charge throughput" << ','
          << "Cells energy throughput" << ','
          << "total energy to operate the thermal management system" << ','
          << "losses in the converter" << '\n';
   } else
-    file.open(PathVar::results + name, std::ios_base::app); //!< append to the existing file
+    file.open(PathVar::results / name, std::ios_base::app); //!< append to the existing file
 
   //!< Write the data
   for (const auto &th : throughput)
