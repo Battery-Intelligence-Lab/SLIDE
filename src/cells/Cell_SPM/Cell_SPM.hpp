@@ -19,10 +19,10 @@
 
 #include "State_SPM.hpp" //!< class that represents the state of a cell, the state is the collection of all time-varying conditions of the battery
 #include "Model_SPM.hpp" //!< defines a struct with the values for the matrices used in the spatial discretisation of the diffusion PDE
+#include "param/param_SPM.hpp"
 #include "../Cell.hpp"
 #include "../../utility/utility.hpp"   // Do not remove they are required in cpp files.
 #include "../../settings/settings.hpp" // Do not remove they are required in cpp files.
-#include "param/param_SPM.hpp"
 #include "../../types/OCVcurves.hpp"
 
 #include <vector>
@@ -162,8 +162,6 @@ public:
   Cell_SPM(Model_SPM *M_ptr) : M(M_ptr) {}
 
   //!< getters
-  //!< double getNominalCap() const noexcept { return nomCapacity; } //!< returns nominal capacity of the cell [Ah]	(e.g. to convert from Crate to Amperes)
-
   double T() noexcept override { return st.T(); }   //!< returns the uniform battery temperature in [K]
   double getTenv() const noexcept { return T_env; } //!< get the environmental temperature [K]
 
@@ -176,6 +174,8 @@ public:
     st = st_new;
     Vcell_valid = false;
   }
+
+  std::array<double, 4> getVariations() const noexcept override { return { var_cap, var_R, var_degSEI, var_degLAM }; } // #TODO : deprecated will be deleted.
 
   void getTemperatures(double *Tenv, double *Tref) noexcept //!< get the environmental and reference temperature
   {

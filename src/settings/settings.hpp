@@ -40,6 +40,7 @@ constexpr size_t nch{ 5 }; ////!< number of points in the spatial discretisation
 //!< do NOT CHANGE this value, if you do change it, you have to recalculate the spatial discretisation with the supplied MATLAB scripts.
 //!< See the word document '2 overview of the code', section 'MATLAB setup before running the C++ code'
 
+
 constexpr double Tmin_Cell_C{ 0 };  //!< the minimum temperature allowed in the simulation [oC]
 constexpr double Tmax_Cell_C{ 60 }; //!< the maximum temperature allowed in the simulation [oC]
 

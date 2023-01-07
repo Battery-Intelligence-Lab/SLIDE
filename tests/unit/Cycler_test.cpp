@@ -33,7 +33,7 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
   double Ah, Wh, dtime, V1;
 
   cyc.initialise(su, "Cycler_test");
-  double vlim, tlim, Ilim;
+  double vlim, Ilim;
   double dt = 2;
   int ndata = 0;
   double I = su->Cap(); //!< use a 1C rate
@@ -41,8 +41,7 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
   //!< CC charge
   //!< cout<<"\t CC charge"<<endl<<flush;
   vlim = su->Vmax() - lim;
-  tlim = 99999999;
-  auto succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
+  auto succ = cyc.CC(-I, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
   assert(succ == Status::ReachedVoltageLimit);
 
   assert(su->V() - vlim < tol);
@@ -50,7 +49,7 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
 
   //!< rest for 1h to relax
   //!< cout<<"\t resting 1h after CC charge for SU "<<su->getFullID()<<endl;
-  tlim = 3600;
+  double tlim = 3600;
   succ = cyc.rest(tlim, dt, ndata, Ah, Wh);
   assert(succ == Status::ReachedTimeLimit);
   assert(NEAR(su->I(), 0.0, 1e-10));
@@ -65,8 +64,7 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
   //!< CC discharge
   //!< cout<<"\t CC discharge"<<endl<<flush;
   vlim = su->Vmin() + lim;
-  tlim = 99999999;
-  succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC discharge must do a slight overshoot
+  succ = cyc.CC(I, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime); //!< CC discharge must do a slight overshoot
   assert(succ == Status::ReachedVoltageLimit);
   assert(su->V() - vlim < tol);
   assert(su->V() <= vlim);
@@ -104,16 +102,15 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
     //!< CCCV charge
     //!< cout<<"\t CCCV charge"<<endl<<flush;
     vlim = su->Vmax() - lim;
-    tlim = 99999999;
     //!< cout<<"\t \t starting CC phase"<<endl<<flush;
-    succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
+    succ = cyc.CC(-I, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
     //!< cout<<"\t \t terminating CC phase"<<endl<<flush;
     assert(succ == Status::ReachedVoltageLimit);
     assert(su->V() - vlim < tol);
     assert(su->V() >= vlim);
     Ilim = 0.1;
     //!< cout<<"\t \t starting CV phase"<<endl<<flush;
-    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime); //!< CV charge must do a slight overshoot
+    succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, Ah, Wh, dtime); //!< CV charge must do a slight overshoot
     //!< cout<<"\t \t terminating CV phase with "<<succ<<"\t"<<su->V()<<"\t"<<su->I()<<endl<<flush;
     assert(succ == Status::ReachedVoltageLimit);
     assert(NEAR(su->V(), vlim, tol));
@@ -137,13 +134,12 @@ bool test_Cycler_SU(StorageUnit *su, bool testCV)
     //!< CCCV discharge
     //!< cout<<"\t CCCV discharge"<<endl<<flush;
     vlim = su->Vmin() + lim;
-    tlim = 99999999;
-    succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
+    succ = cyc.CC(I, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime); //!< CC charge must do a slight overshoot
     assert(succ == Status::ReachedVoltageLimit);
     assert(su->V() - vlim < tol);
     assert(su->V() <= vlim);
     Ilim = 0.1;
-    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime); //!< CV discharge must do a slight overshoot
+    succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, Ah, Wh, dtime); //!< CV discharge must do a slight overshoot
     //!< cout<<"\t \t terminating CV phase with "<<succ<<"\t"<<su->V()<<"\t"<<su->I()<<" and voltage error "<<abs(su->V()-vlim) <<endl<<flush;
     assert(succ == Status::ReachedCurrentLimit);
     assert(NEAR(su->V(), vlim, tol));
@@ -439,7 +435,7 @@ bool test_Cycler_writeData(int control)
 
   //!< ******************************************************* test a single cell doing a single CCCV cycle *********************************************
   cyc.initialise(su.get(), "Cycler_test_cell");
-  double vlim, tlim, Ilim;
+  double vlim, Ilim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
   Status succ;
@@ -447,26 +443,24 @@ bool test_Cycler_writeData(int control)
 
   //!< CCCV charge
   vlim = su->Vmax() - lim;
-  tlim = 99999999;
-  succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+  succ = cyc.CC(-I, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
   assert(succ == Status::ReachedVoltageLimit);
   assert(su->V() - vlim < tol);
   assert(su->V() >= vlim);
   Ilim = 0.1;
-  succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+  succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, Ah, Wh, dtime);
   assert(succ == Status::ReachedCurrentLimit);
   assert(NEAR(su->V(), vlim, tol));
   assert(-su->I() <= Ilim);
 
   //!< CCCV discharge
   vlim = su->Vmin() + lim;
-  tlim = 99999999;
-  succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+  succ = cyc.CC(I, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
   assert(succ == Status::ReachedVoltageLimit);
   assert(su->V() - vlim < tol);
   assert(su->V() <= vlim);
   Ilim = 0.1;
-  succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+  succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, Ah, Wh, dtime);
   assert(succ == Status::ReachedCurrentLimit);
   assert(NEAR(su->V(), vlim, tol));
   assert(su->I() <= Ilim);
@@ -498,17 +492,15 @@ bool test_Cycler_writeData(int control)
   for (int i = 0; i < 100; i++) {
     //!< CCCV charge
     vlim = ms->Vmax() - lim;
-    tlim = 99999999;
-    succ = cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+    succ = cyc.CC(-I, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     Ilim = 0.1;
-    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+    succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
     //!< CCCV discharge
     vlim = ms->Vmin() + lim;
-    tlim = 99999999;
-    succ = cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+    succ = cyc.CC(I, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     Ilim = 0.1;
-    succ = cyc.CV(vlim, Ilim, tlim, dt, ndata, Ah, Wh, dtime);
+    succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, Ah, Wh, dtime);
   }
 
   //!< Some data might be written during the 100 cycles, push the rest out too (note the prefix must be the same or this last batch will end up in a different file)
@@ -542,7 +534,7 @@ bool test_Cycler_CoolSystem()
   Cycler cyc;
   double lim = 0.0;
   double Ah, Wh, dtime;
-  double vlim, tlim;
+  double vlim;
   int ndata = 0;
 
   //!< Loop for each setting of the cool controller
@@ -565,12 +557,11 @@ bool test_Cycler_CoolSystem()
     for (int i = 0; i < N; i++) {
       //!< charge
       vlim = mp->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -610,12 +601,11 @@ bool test_Cycler_CoolSystem()
     for (int i = 0; i < 5; i++) {
       //!< charge
       vlim = mp2->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp2->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -664,12 +654,11 @@ bool test_Cycler_CoolSystem()
     for (int i = 0; i < 5; i++) {
       //!< charge
       vlim = mp44->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp44->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     double Qgen3, Qcool3, Qheat3;

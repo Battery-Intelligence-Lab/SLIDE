@@ -854,13 +854,12 @@ bool test_equaliseV_timing(std::unique_ptr<Module_p> mp, std::unique_ptr<Storage
   ThroughputData th;
   double lim = 0.0;
   int ndata = 0;
-  double vlim, tlim;
-  tlim = 99999999;
+  double vlim;
   cyc.initialise(mp.get(), mp->getFullID());
   vlim = mp->Vmax() - lim;
-  cyc.CC(-I, vlim, tlim, dt, ndata, th); //!< CC charge
+  cyc.CC(-I, vlim, TIME_INF, dt, ndata, th); //!< CC charge
   vlim = mp->Vmin() + lim;
-  cyc.CC(I, vlim, tlim, dt, ndata, th); //!< CC discharge
+  cyc.CC(I, vlim, TIME_INF, dt, ndata, th); //!< CC discharge
 
   std::cout << "Finished CC cycle.\n";
 }

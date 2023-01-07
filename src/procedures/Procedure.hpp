@@ -50,13 +50,11 @@ public:
   void checkUp(StorageUnit *su, double Ah, int nrCycle); //!< main checkup function which will call the others
   void checkUp_prep(StorageUnit *su);                    //!< bring the SU to a good voltage
   void checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &file);
-  void checkUp_writeMain(std::vector<Cell *> &cells, std::ofstream &file);
-  void checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &file);
 
   //!< cooling system procedures
   void checkMod(StorageUnit *su); //!< main function to do a checkup on the modules
 
   //!< write the charge and energy throughput
-  void writeThroughput(std::string SUID, double Ahtot);
+  void writeThroughput(const std::string &SUID, double Ahtot);
 };
 } // namespace slide

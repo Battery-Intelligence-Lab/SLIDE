@@ -28,6 +28,7 @@ private:
 
 public:
   Cycler() = default;
+  Cycler(StorageUnit *sui) : su(sui) {}
   Cycler(StorageUnit *sui, const std::string &IDi) : ID(IDi), su(sui) {}
   Cycler(std::unique_ptr<StorageUnit> &sui, const std::string &IDi) : Cycler(sui.get(), IDi) {}
 
@@ -39,10 +40,10 @@ public:
   double getSafetyVmax() { return su->VMAX() * 1.01; }
 
   Status rest(double tlim, double dt, int ndt_data, double &Ah, double &Wh);
-  Status CC(double I, double vlim, double tlim, double dt, int ndt_data, double &Ah, double &Wh, double &ttot);
-  Status CV(double Vset, double Ilim, double tlim, double dt, int ndt_data, double &Ah, double &Wh, double &ttot);
-  Status CCCV(double I, double Vset, double Ilim, double dt, int ndt_data, double &Ah, double &Wh, double &ttot);
-  Status CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, double dt, int ndt_data, double &Ah, double &Wh, double &ttot);
+  Status CC(double I, double vlim, double tlim, double dt, int ndt_data, ThroughputData &th);
+  Status CV(double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th);
+  Status CCCV(double I, double Vset, double Ilim, double dt, int ndt_data, ThroughputData &th);
+  Status CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th);
 
   Status Profile(std::span<double> I_vec, double vlim, double tlim, double dt, int ndt_data, double &Ah, double &Wh);
 
@@ -50,6 +51,12 @@ public:
   int writeData();
 
   double testCapacity(double &Ah, double &ttot);
+  double testCapacity()
+  {
+    double Ah{}, ttot{};
+    return testCapacity(Ah, ttot);
+  }
+
 
   StorageUnit *getSU() { return su; }
 };

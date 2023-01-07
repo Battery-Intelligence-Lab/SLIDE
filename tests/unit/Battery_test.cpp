@@ -45,7 +45,7 @@ void test_Battery_CoolSystem()
   Cycler cyc;
   double lim = 0.0;
   double Ah, Wh;
-  double vlim, tlim;
+  double vlim;
   int ndata = 0;
 
   //!< Loop for each setting of the cool controller
@@ -68,12 +68,11 @@ void test_Battery_CoolSystem()
     for (int i = 0; i < N; i++) {
       //!< charge
       vlim = mp->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -114,12 +113,11 @@ void test_Battery_CoolSystem()
     for (int i = 0; i < 5; i++) {
       //!< charge
       vlim = mp2->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp2->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -179,12 +177,11 @@ void test_Battery_CoolSystem()
     for (int i = 0; i < 5; i++) {
       //!< charge
       vlim = mp44->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp44->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     double Qgen3, Qcool3, Qheat3;

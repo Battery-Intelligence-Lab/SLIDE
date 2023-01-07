@@ -8,15 +8,23 @@
 
 
 ### Comparing against slide-pack:
+- [ ] 
 - [ ] CC, CV, CCCV functions seem to be working. However CV is not doing the intended thing for both SLIDE and slide-pack.
 - [ ] paperCode::Vequalisation seems to be working. 
 - [ ] paperCode::thermalModel does not work for slide-pack.
 
 ### Open issues: 
 - [ ] sp - sn question 
-- [ ] cps - cns question
+- [ ] cps - cns question: dOCV_neg and dOCV_tot are taking zp_surf as input due to our data. Very important. 
 
 ### Current priority: 
+- [ ] Consider using std::variant for some data types. 
+- [ ] Procedure: 
+  - [ ] Markers to incidate end of this section deleted. As well as seperators. 
+  - [x] checkUp_getCells and checkUp_getModules are deleted and replaced with visitors. 
+  - [ ] Reduce dynamic pointer cast in Procedure and let Polymorphism work. 
+  - [ ] Capacity checking protocol in Procedure::CheckUp is removed.  
+- [ ] TIME_INF is created for a large time value. 
 - [ ] getDaiStress is simplified by removing unnecessary R multiplication and division. 
 - [ ] State classes should have const members. 
 - [ ] Make more methods const : Vmin(), Vmax(), VMIN(), VMAX(), Cap()

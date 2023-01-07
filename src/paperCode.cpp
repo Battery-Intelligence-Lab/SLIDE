@@ -62,21 +62,20 @@ void Vequalisation_Rdc(double Rdc)
   //!< Make the cycler
   Cycler cyc;
   cyc.initialise(&mpp4, ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
-  double vlim, tlim;
+  double vlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
 
   //!< do a CC charge-discharge
-  double Ah{}, Wh{}, dtime{};
+  ThroughputData th{};
+
   double I = mpp4.Cap();
   vlim = mpp4.Vmax();
-  tlim = 99999999;
-  cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+  cyc.CC(-I, vlim, TIME_INF, dt, ndata, th);
 
   //!< CC discharge
   vlim = mpp4.Vmin();
-  tlim = 99999999;
-  cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+  cyc.CC(I, vlim, TIME_INF, dt, ndata, th);
 
   //!< write the data
   mpp4.writeData(ID);
@@ -150,22 +149,21 @@ void thermalModel()
   //!< Make the cycler
   Cycler cyc;
   cyc.initialise(mpp4.get(), ID);
-  double vlim, tlim;
+  double vlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
 
+
   for (int i = 0; i < 5; i++) {
     //!< do a CC charge-discharge
-    double Ah{}, Wh{}, dtime{};
+    ThroughputData th{};
     double I = mpp4->Cap();
     vlim = mpp4->Vmax();
-    tlim = 99999999;
-    cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+    cyc.CC(-I, vlim, TIME_INF, dt, ndata, th);
 
     //!< CC discharge
     vlim = mpp4->Vmin();
-    tlim = 99999999;
-    cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh, dtime);
+    cyc.CC(I, vlim, TIME_INF, dt, ndata, th);
   }
 
   //!< write the data

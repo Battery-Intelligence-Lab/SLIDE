@@ -109,6 +109,8 @@ public:
   virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); } // #TODO *this may be Cell not actual type.
 
   virtual ThroughputData getThroughputs() { return {}; }
+
+  virtual std::array<double, 4> getVariations() const noexcept { return {}; } // #TODO will be deleted in future.
 };
 
 } // namespace slide

@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <array>
 #include <span>
+#include <variant>
 
 namespace slide {
 

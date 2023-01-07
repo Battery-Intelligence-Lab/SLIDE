@@ -276,7 +276,7 @@ Status Cycler::setCurrent(double I, double vlim)
   return Status::Success;
 }
 
-Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, double &Ah, double &Wh, double &ttot)
+Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, ThroughputData &throughput)
 {
   /*
    * Apply a constant current to the connected storage unit until either a voltage or time limit.
@@ -782,14 +782,13 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
   return succ;
 }
 
-Status Cycler::CCCV(double I, double Vset, double Ilim, double dt, int ndt_data, double &Ah, double &Wh, double &dtime)
+Status Cycler::CCCV(double I, double Vset, double Ilim, double dt, int ndt_data, ThroughputData &th)
 {
-  const double tlim = std::numeric_limits<double>::max(); //!< #TODO why tlim is not good?
   //!< #TODO check all input parameters are sensible
-  return Cycler::CCCV_with_tlim(I, Vset, Ilim, tlim, dt, ndt_data, Ah, Wh, dtime);
+  return Cycler::CCCV_with_tlim(I, Vset, Ilim, TIME_INF, dt, ndt_data, th);
 }
 
-Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, double dt, int ndt_data, double &Ah, double &Wh, double &dtime)
+Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th)
 {
   /*
    * Function to do both a CC and CV (dis)charge after each other.
@@ -827,25 +826,24 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
 
   I = (su->V() > Vset) ? I : -I; //!< OCV larger than Vset so we need to discharge
 
-  double Ah1{}, Ah2{}, Wh1{}, Wh2{}, dtime1{}, dtime2{};
-  auto succ = CC(I, Vset, tlim, dt, ndt_data, Ah1, Wh1, dtime1); //!< do the CC phase
+  ThroughputData th1{}, th2{};
+  auto succ = CC(I, Vset, tlim, dt, ndt_data, th1); //!< do the CC phase
 
   if constexpr (settings::printBool::printNonCrit)
     if (succ != Status::ReachedVoltageLimit)
       std::cout << "Cycler::CCCV could not complete the CC phase, terminated with "
                 << getStatusMessage(succ) << ". Trying to do a CV phase.\n";
 
-
-  succ = CV(Vset, Ilim, (tlim - dtime1), dt, ndt_data, Ah2, Wh2, dtime2); //!< do the CV phase
+  const auto t_remaining = tlim - th1.time();
+  succ = CV(Vset, Ilim, t_remaining, dt, ndt_data, th2); //!< do the CV phase
   if constexpr (settings::printBool::printNonCrit)
     if (succ != Status::ReachedCurrentLimit)
       std::cout << "Cycler::CCCV could not complete the CV phase, terminated with "
                 << getStatusMessage(succ) << '\n';
 
 
-  Ah = Ah1 + Ah2;
-  Wh = Wh1 + Wh2;
-  dtime = dtime1 + dtime2;
+  th = th1 + th2;
+
   return succ;
 }
 
@@ -858,12 +856,9 @@ double Cycler::testCapacity(double &Ah, double &ttot)
    * in diagnostic mode, we cannot really do a CV since the small voltage errors during CV will cause some cells to exceed their voltage limit
    * therefore, we have to measure it with a slow (dis)charge
    */
-  constexpr double tlim = std::numeric_limits<double>::max();
   constexpr double dt = 1; //!< use a 2 second time step for accuracy (probably 5 would be fine as well)
   constexpr double crate = 1.0 / 25.0;
-  double Ah1{ 0 }, cap1{ 0 }, Wh{};
-
-  Ah = 0;
+  ThroughputData th1{}, th2{};
 
   std::vector<double> sini; //!< #TODO if it is avoidable.
   sini.clear();
@@ -876,11 +871,10 @@ double Cycler::testCapacity(double &Ah, double &ttot)
   //!< *********************************************************** 2 full charge / discharge cycle ***********************************************************************
 
   //!< fully charge and discharge the cell
-  double dtime{};
   const auto cap = su->Cap();
   //!< fully charge battery to its specified maximum voltage )
-  auto status = CC(-crate * cap, su->Vmax(), tlim, dt, 0, Ah1, Wh, dtime);
-  ttot += dtime;
+  auto status = CC(-crate * cap, su->Vmax(), TIME_INF, dt, 0, th1);
+  ttot += th1.time();
 
   if (status != Status::ReachedVoltageLimit) {
     if constexpr (settings::printBool::printCrit)
@@ -894,8 +888,8 @@ double Cycler::testCapacity(double &Ah, double &ttot)
   }
 
   //!< fully discharge the battery
-  status = CC(crate * cap, su->Vmin(), tlim, dt, 0, cap1, Wh, dtime);
-  ttot += dtime;
+  status = CC(crate * cap, su->Vmin(), TIME_INF, dt, 0, th2);
+  ttot += th2.time();
 
   if (status != Status::ReachedVoltageLimit) {
     if constexpr (settings::printBool::printCrit)
@@ -907,8 +901,8 @@ double Cycler::testCapacity(double &Ah, double &ttot)
     return 0;
   }
 
-  Ah = std::abs(Ah1) + std::abs(cap1);
-  return std::abs(cap1);
+  Ah = th1.Ah() + th2.Ah();
+  return th2.Ah();
 }
 
 Status Cycler::Profile(std::span<double> I_vec, double vlim, double tlim, double dt, int ndt_data, double &Ah, double &Wh)
