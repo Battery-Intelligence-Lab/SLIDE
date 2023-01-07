@@ -18,13 +18,14 @@
 #include <algorithm>
 
 namespace slide {
-void Cycler::initialise(StorageUnit *sui, const std::string &IDi)
+Cycler &Cycler::initialise(StorageUnit *sui, const std::string &IDi)
 {
   su = sui;
   ID = IDi;
+  return *this;
 }
 
-void Cycler::setDiagnostic(bool newDia)
+Cycler &Cycler::setDiagnostic(bool newDia)
 {
   /*
    * enable or disable diagnostic mode.
@@ -33,6 +34,7 @@ void Cycler::setDiagnostic(bool newDia)
    * this is detected even if the voltage of the entire series string is still within its voltage limits.
    */
   diagnostic = newDia;
+  return *this;
 }
 
 int Cycler::writeData()

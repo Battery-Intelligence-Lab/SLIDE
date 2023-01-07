@@ -1,7 +1,8 @@
 /*
  * settings.hpp
  *
- * Author : Volkan Kumtepeli
+ * Created on: 3 Mar 2020
+ *  Author(s): Jorn Reniers, Volkan Kumtepeli
  *
  * Defines constants to be used in the program.
  *
@@ -17,16 +18,14 @@
 #include "slide_paths.hpp"
 #include "tolerances.hpp"
 
-#include <string>
-
 namespace slide::settings::cool //!< Cooling System Settings.
 {
 constexpr double flowrate_perCell{ 0.0005 }; //!< flow rate m3/s, per cell value
 }
 
 namespace slide::settings {
-constexpr bool isParallel{ true };                //!< Parallelises the code if possible.
-constexpr unsigned int numMaxParallelWorkers = 8; //!< Maximum number of threads to use if isParallel true.
+constexpr bool isParallel{ true };                 //!< Parallelises the code if possible.
+constexpr unsigned int numMaxParallelWorkers = 32; //!< Maximum number of threads to use if isParallel true.
 
 //!< if this assertion fails, the user has changed something in the code at some point, without accounting for this change somewhere else.
 //!< e.g. if you add an extra state-variable, you have to increase the value of 'ns' (defined in Constants.hpp), and add it in all functions in State.
@@ -40,12 +39,8 @@ constexpr size_t nch{ 5 }; ////!< number of points in the spatial discretisation
 //!< do NOT CHANGE this value, if you do change it, you have to recalculate the spatial discretisation with the supplied MATLAB scripts.
 //!< See the word document '2 overview of the code', section 'MATLAB setup before running the C++ code'
 
-
-constexpr double Tmin_Cell_C{ 0 };  //!< the minimum temperature allowed in the simulation [oC]
-constexpr double Tmax_Cell_C{ 60 }; //!< the maximum temperature allowed in the simulation [oC]
-
-constexpr double Tmin_Cell_K{ PhyConst::Kelvin + Tmin_Cell_C }; //!< the minimum temperature allowed in the simulation [K]
-constexpr double Tmax_Cell_K{ PhyConst::Kelvin + Tmax_Cell_C }; //!< the maximum temperature allowed in the simulation [K]
+constexpr double Tmin_Cell_K{ 0.0_degC };  //!< the minimum temperature allowed in the simulation [K]
+constexpr double Tmax_Cell_K{ 60.0_degC }; //!< the maximum temperature allowed in the simulation [K]
 
 constexpr bool overwrite_data = true; //!< if this is false then folder overwriting is forbidden so you need to delete folders in results.
 
@@ -72,7 +67,7 @@ constexpr int CELL_NDEG = 10; //!< maximum number of any type of degradation mod
 constexpr int MODULE_NSUs_MAX = 20; //!< maximum number of cells in a base module
                                     //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
 
-constexpr double T_ENV = 273.0 + 15.0; //!< environmental temperature
+constexpr double T_ENV = 15.0_degC; //!< environmental temperature
 
 constexpr size_t CYCLER_NDATA_MAX{ 10000 }; //!< length of the arrays which hold the cycling data (if 2)
                                             //!< Large battery ~ 3000 SPM cells * (7+4) arrays * 8 Byte per double * N doubles
