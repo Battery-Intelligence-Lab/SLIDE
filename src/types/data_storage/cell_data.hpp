@@ -16,7 +16,7 @@ namespace slide {
 
 struct ProcedureThroughputData
 {
-  int ID;                //!< the ID of the (dis)charge
+  // int ID;                // #TODO the ID of the (dis)charge Maybe ID in future.
   double charge;         //!< the charge throughput of every (dis)charge
   double energy;         //!< the energy throughput of every (dis)charge
   double coolSystemLoad; //!< the energy [Wh] required to run the cooling system of the battery in every cycle

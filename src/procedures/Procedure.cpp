@@ -1,14 +1,12 @@
 /*
  * Procedure.cpp
  *
- *  Created on: 3 Mar 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ * Created on: 3 Mar 2020
+ *  Author(s): Jorn Reniers, Volkan Kumtepeli
  */
-
 #include "../cells/cells.hpp"
 #include "../modules/modules.hpp"
 #include "../system/Battery.hpp"
-// #include "unit_tests.hpp"
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
 #include "Cycler.hpp"
@@ -46,7 +44,6 @@ struct GetHistograms //!< #TODO how do we remove these helper functions in const
   }
 };
 
-
 Procedure::Procedure(bool balance_, double Vbal_, int ndata_, bool unitTest_)
   : balance{ balance_ }, unitTest{ unitTest_ }, ndata{ ndata_ }, balance_voltage{ Vbal_ }
 {
@@ -61,8 +58,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
   //!< Initialise the Cycler
   std::string pref = "cycleAge"; //!< prefix appended at the start of the names of all files
   const bool diagnostic = true;  //!< stop (dis)charging when one of the cells reaches a voltage limit
-  Cycler cyc;
-  cyc.initialise(su, pref);
+  Cycler cyc(su, pref);
   cyc.setDiagnostic(diagnostic);
 
   //!< variables
@@ -73,12 +69,6 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
   Status succ{};
   double Ilim;
   ThroughputData th;
-
-  //!< ID for storing the steps in the producedure (i.e. which data refers to which action)
-  constexpr int ID_CCcharge = 1;
-  constexpr int ID_CVcharge = 2;
-  constexpr int ID_CCdischarge = 3;
-  constexpr int ID_CVdischarge = 4;
 
   //!< Make a clock to measure how long the simulation takes
   Clock clk;
@@ -100,7 +90,6 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
     //!< CC charge
     Ilim = 0.1;
 
-
     th.reset(); //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
     succ = cyc.CC(Icha, Vmax, TIME_INF, dt, ndata, th);
 
@@ -111,8 +100,8 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       break;
     }
 
-    Ahtot += std::abs(th.Ah());
-    storeThroughput(ID_CCcharge, th.Ah(), th.Wh(), su); //!< increase the throughput parameters
+    Ahtot += th.Ah();
+    storeThroughput(th.Ah(), th.Wh(), su); //!< increase the throughput parameters
 
     if (th.Ah() < 1e-5) {
       std::cerr << "Error in Procedure::cycleAge, we didn't manage to charge "
@@ -132,9 +121,9 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       }
 
       Ahtot += th.Ah();
-      storeThroughput(ID_CVcharge, th.Ah(), th.Wh(), su); // #TODO why do we do this?
-      if (!diagnostic)                                    //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
-        assert(succ == Status::ReachedCurrentLimit);
+      storeThroughput(th.Ah(), th.Wh(), su);                  // #TODO why do we do this?
+      if (!diagnostic && succ != Status::ReachedCurrentLimit) //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
+        break;
     }
 
     //!< CC discharge
@@ -146,24 +135,24 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
       break;
     }
     Ahtot += th.Ah();
-    storeThroughput(ID_CCdischarge, th.Ah(), th.Wh(), su);
-    if (!diagnostic)
-      assert(succ == Status::ReachedVoltageLimit);
+    storeThroughput(th.Ah(), th.Wh(), su);
+    if (!diagnostic && succ != Status::ReachedVoltageLimit)
+      break;
 
     //!< CV discharge
     if (testCV) {
-      try {
-        th.reset(); //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-        succ = cyc.CV(Vmin, Ilim, TIME_INF, dt, ndata, th);
-      } catch (int e) //!< #TODO if we need to check any status codes here?
+      th.reset(); //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
+      succ = cyc.CV(Vmin, Ilim, TIME_INF, dt, ndata, th);
+      if (!isCurrentLimitReached(succ)) //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
       {
-        std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
+        std::cout << "Error in CycleAge when CV discharging in cycle "
+                  << i << ", stop cycling.\n";
+
         break;
       }
+
       Ahtot += th.Ah();
-      storeThroughput(ID_CVdischarge, th.Ah(), th.Wh(), su);
-      if (!diagnostic)
-        assert(succ == Status::ReachedCurrentLimit);
+      storeThroughput(th.Ah(), th.Wh(), su);
     }
 
   } //!< loop cycle ageing
@@ -171,8 +160,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
   //!< final checkup
   //!< This checkup will write the usage statistics, so it must be called with the actual SU and not with a copy
   //!< because usage statistics of cells and modules (or their cooling systems) are not copied over in copy()
-  if (!unitTest)
-    std::cout << "Doing a final checkup after " << Ahtot << " Ah.\n";
+  if (!unitTest) std::cout << "Doing a final checkup after " << Ahtot << " Ah.\n";
   writeThroughput(su->getFullID(), Ahtot);
   checkUp(su, Ahtot, Ncycle); //!< check-up of the cells
   checkMod(su);               //!< check-up of the modules
@@ -251,7 +239,6 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
   Clock clk;
 
   //!< loop for use case ageing
-  double Ahtot = 0;
   for (unsigned i = 0; i < Ncycle; i++) {
     //!< check duration of the simulation
     v = su->V();
@@ -262,7 +249,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
                 << " and hot spot T = " << K_to_Celsius(su->getThotSpot()) << '\n';
 
     //!< Balance (in this thread) and do a check-up (on a separate thread) if needed
-    balanceCheckup(su, balance && (i % Nbal == 0), (i % Ncheck == 0), Ahtot, i, pref);
+    balanceCheckup(su, balance && (i % Nbal == 0), (i % Ncheck == 0), th.Ah(), i, pref);
 
     try {
       succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 1) 4h rest
@@ -271,27 +258,24 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
         break;
       }
 
-      Ahtot += th.Ah();                                // #TODO this is wrong since we didn't RESET!
-      storeThroughput(ID_rest1, th.Ah(), th.Wh(), su); // #TODO why do we store this!
+      storeThroughput(th, su); // #TODO why do we store this!
 
       //!< 2) 1C charge
       cyc.CC(-su->Cap(), su->Vmax(), TIME_INF, dt, ndata, th); //!< #TODO should have a condition.
 
-      Ahtot += th.Ah();
-      storeThroughput(ID_cha1, th.Ah(), th.Wh(), su);
+      storeThroughput(th, su);
 
       succ = cyc.rest(1 * 3600, dt, ndata, th); //!< 3) 1h rest
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting2 in cycle " << i << '\n';
         break;
       }
-      Ahtot += th.Ah();
-      storeThroughput(ID_rest2, th.Ah(), th.Wh(), su);
+
+      storeThroughput(th, su);
 
       cyc.CC(su->Cap(), su->Vmin(), TIME_INF, dt, ndata, th); //!< 4) 1C discharge
 
-      Ahtot += th.Ah();
-      storeThroughput(ID_dis1, th.Ah(), th.Wh(), su);
+      storeThroughput(th, su);
 
       succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 5) 4h rest
       if (succ != Status::ReachedTimeLimit) {
@@ -299,12 +283,10 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
         break;
       }
 
-      Ahtot += th.Ah();
-      storeThroughput(ID_rest3, th.Ah(), th.Wh(), su);
+      storeThroughput(th, su);
 
       cyc.CC(-su->Cap() / 2.0, su->Vmax(), TIME_INF, dt, ndata, th); //!< 6) 0.5C charge
-      Ahtot += th.Ah();
-      storeThroughput(ID_cha2, th.Ah(), th.Wh(), su);
+      storeThroughput(th, su);
 
       succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 7) 4h rest
       if (succ != Status::ReachedTimeLimit) {
@@ -312,13 +294,15 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
         break;
       }
 
-      Ahtot += th.Ah();
-      storeThroughput(ID_rest4, th.Ah(), th.Wh(), su);
+      storeThroughput(th, su);
 
       succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), TIME_INF, dt, ndata, th); //!< 8) 0.5C discharge
+      if (succ != Status::ReachedVoltageLimit) {
+        std::cout << "Error in useAge when 0.5C discharge in cycle " << i << '\n';
+        break;
+      }
 
-      Ahtot += th.Ah();
-      storeThroughput(ID_dis2, th.Ah(), th.Wh(), su);
+      storeThroughput(th, su);
 
       //!< 9) 5h rest
       succ = cyc.rest(5 * 3600, dt, ndata, th);
@@ -327,8 +311,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
         break;
       }
 
-      Ahtot += th.Ah();
-      storeThroughput(ID_rest5, th.Ah(), th.Wh(), su);
+      storeThroughput(th, su);
     } catch (int e) {
       std::cout << "An unexpected problem! May be CCs. See what is happening.\n";
       break;
@@ -338,9 +321,9 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
   //!< final checkup
   //!< This checkup will write the usage statistics, so it must be called with the actual SU and not with a copy
   //!< because usage statistics of cells and modules (or their cooling systems) are not copied over in copy()
-  writeThroughput(su->getFullID(), Ahtot);
-  checkUp(su, Ahtot, Ncycle); //!< check-up of the cells #TODO if we can use the previous definition of this task_indv
-  checkMod(su);               //!< check-up of the modules
+  writeThroughput(su->getFullID(), th.Ah());
+  checkUp(su, th.Ah(), Ncycle); //!< check-up of the cells #TODO if we can use the previous definition of this task_indv
+  checkMod(su);                 //!< check-up of the modules
 
 //!< push a write such that if cells still have cycling data, this is written
 #if DATASTORE_CELL == 2
@@ -348,7 +331,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
 #endif
 }
 
-void Procedure::storeThroughput(int ID, double Ah, double Wh, StorageUnit *su)
+void Procedure::storeThroughput(ThroughputData th, StorageUnit *su)
 {
   /*
    * Function to store data of this action in the procedure.
@@ -363,7 +346,6 @@ void Procedure::storeThroughput(int ID, double Ah, double Wh, StorageUnit *su)
    */
 
   //!< Data storage is slightly different depending on whether this function is done with a Cell, Module or Battery
-
   double coolSystemLoad{ 0 }, convloss{ 0 }; //!< Zero initialization is important.
 
   if (auto m = dynamic_cast<Module *>(su)) //!< if this is a module, add the power needed to operate the cooling system
@@ -374,7 +356,7 @@ void Procedure::storeThroughput(int ID, double Ah, double Wh, StorageUnit *su)
     convloss = b->getAndResetConvLosses() / 3600.0;
   }
 
-  throughput.push_back({ ID, Ah, Wh, coolSystemLoad, convloss });
+  throughput.push_back({ th.Ah(), th.Wh(), coolSystemLoad, convloss });
 }
 
 void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, double Ahtot, int nrCycle, std::string pref)
@@ -394,33 +376,27 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
 
       file << nrCycle << '\n';
 
-      for (auto s_i : s)
-        file << s_i << '\n';
+      for (auto s_i : s) file << s_i << '\n';
 
       file.close();
     } else {
       std::cout << "Error in Procedure::balanceCheckup. File:\n"
-                << PathVar::results / name
-                << " could not be opened.\n";
+                << PathVar::results / name << " could not be opened.\n";
     }
   }
   //!< balance
   if (balance) {
-    try {
-      if (!unitTest)
-        std::cout << "Starting balancing.\n";
-      su->setBlockDegAndTherm(true);
-      rebalance(su);
-      su->setBlockDegAndTherm(false); //!< is skipped if error in rebalance
-      if (!unitTest)
-        std::cout << "Finish balancing.\n";
-    } catch (int e) {
+    if (!unitTest) std::cout << "Starting balancing.\n";
+    su->setBlockDegAndTherm(true);
+    const auto status = rebalance(su);
+    if (!unitTest) std::cout << "Finish balancing.\n";
+
+    if (isStatusBad(status))
       std::cout << "Error in CycleAge when balancing the cells, skipping it.\n";
-    }
 
     su->setBlockDegAndTherm(false); //!< ensure degradation is always turned on
 
-    //!< #TODO if degradation should be toggled to previous state not just make it false.
+    //!< #TODO degradation should be toggled to previous state not just make it false.
   }
 
   //!< do a capacity checkup in a separate thread
@@ -428,9 +404,8 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
     //!< push a write such that if cells still have cycling data, this is written
     if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeTimeData)
       if (Ahtot > 0) {
-        std::cout << "flush cycling data stored in the cells.\n";
+        su->writeData(pref); //!< only do if cycling data. Usage statistics are written by the checkup
         try {
-          su->writeData(pref); //!< only do if cycling data. Usage statistics are written by the checkup
         } catch (...) {
           std::cerr << "Error when flushing the data from the cells, skipping for now\n";
           //!< note: this might result in corrupt data collection until the next write since some cells finished
@@ -444,8 +419,7 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
 
     //!< update the statistics of the cooling system
     //!< Note that this cannot be done with a copy, so we have to do it in this thread
-    if (!unitTest)
-      std::cout << "Write thermal stats of the modules.\n";
+    if (!unitTest) std::cout << "Write thermal stats of the modules.\n";
 
     checkMod(su);
     //!< write the throughput parameters
@@ -454,7 +428,7 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
   }
 }
 
-void Procedure::rebalance(StorageUnit *su)
+Status Procedure::rebalance(StorageUnit *su)
 {
   /*
    * Bring all lowest-level cells to the same voltage and 0 current.
@@ -463,45 +437,41 @@ void Procedure::rebalance(StorageUnit *su)
    * Note, this is a very crude balancing algorithm.
    * Normally you would go to the mean of all cells in a module, and use hierarchical balancing between modules
    */
+  constexpr double Cset = 1.0 / 2.0;    //!< use a C/2 current in the CC phase of the rebalance
+  constexpr double Clim = 1.0 / 1000.0; //!< crate for CV limit current
+  constexpr double dt = 1;
+  constexpr int ndata = 0;
 
-  const double Cset = 1.0 / 2.0;    //!< use a C/2 current in the CC phase of the rebalance
-  const double Clim = 1.0 / 1000.0; //!< crate for CV limit current
-  double dt = 2;
-  const int ndata = 0;
-  double Ahi, Whi;
-
-  //!< check if this is a p or s module, the type of the object stored at su is ... (hence *su)
-  auto m = dynamic_cast<Module *>(su);
   //!< if it is a module, recursively call this function on all children to rebalance the cells
-  if (m) {
+  if (auto m = dynamic_cast<Module *>(su)) {
     for (auto &cs_k : m->getSUs()) {
-      try {
-        rebalance(cs_k.get());
-      } catch (int e) {
+      const auto status = rebalance(cs_k.get());
+      if (!isStatusSuccessful(status)) {
         const auto k = std::distance(m->getSUs()[0].get(), cs_k.get());
         std::cout << "Error when rebalancing of SU " << k << " whose ID = "
-                  << cs_k->getFullID() << ", error " << e << ".\n";
+                  << cs_k->getFullID() << ", error " << getStatusMessage(status) << ".\n";
+
+        return status;
       }
     }
 
     //!< if it is a parallel module, redistributeCurrent to ensure we end up with a valid voltage
-    auto mp = dynamic_cast<Module_p *>(su);
-    if (mp)
-      mp->redistributeCurrent(true, true); //!< check the voltages are valid
+    if (auto mp = dynamic_cast<Module_p *>(su)) {
+      const auto status = mp->redistributeCurrent(true, true); //!< check the voltages are valid
+      if (!isStatusSuccessful(status))
+        return status;
+    }
+  } else if (typeid(*su) == typeid(Cell_SPM)) {
+    const double Iset = su->Cap() * Cset;
+    const double Ilim = su->Cap() * Clim;
+    ThroughputData th{};
+    Cycler(su).CCCV(Iset, balance_voltage, Ilim, dt, ndata, th); //!< #TODO if we can do it without a cycler since it initialises a string?
+    auto status = su->setCurrent(0, true, true);                 //!< set the current of the cell to 0
+
+    if (isStatusBad(status)) return status; //!< #TODO -> we are doing this because previously setCurrent was throwing.
   }
 
-  //!< if it is an SPM cell,
-  if (typeid(*su) == typeid(Cell_SPM)) {
-    Cycler cyc(su, "rebalance"); //!< #TODO if we can do it without a cycler since it initialises a string?
-    double Iset = su->Cap() * Cset;
-    double Ilim = su->Cap() * Clim;
-    double dtime;
-    cyc.CCCV(Iset, balance_voltage, Ilim, dt, ndata, Ahi, Whi, dtime);
-    auto status = su->setCurrent(0, true, true); //!< set the current of the cell to 0
-
-    if (isStatusBad(status))
-      throw 5555; //!< #TODO -> we are doing this because previously setCurrent was throwing.
-  }
+  return Status::Success;
 }
 
 void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)

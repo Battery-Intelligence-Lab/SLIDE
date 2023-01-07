@@ -39,6 +39,7 @@ enum class Status : int_fast8_t //!< -128 to 127 = 1 byte.
   //!< Auxillary definitions:
   Critical = VMIN_violation, //!< Non-critical status definition.
   NotSafe = VMINsafety_violation
+
 };
 
 const char *getStatusMessage(Status status);

@@ -28,7 +28,7 @@ protected:
   double balance_voltage{ 3.65 };
 
   std::vector<ProcedureThroughputData> throughput;
-  void storeThroughput(int ID, double Ah, double Wh, StorageUnit *su);
+  void storeThroughput(ThroughputData th, StorageUnit *su);
 
 public:
   Procedure() = default;
@@ -44,7 +44,7 @@ public:
   void balanceCheckup(StorageUnit *su, bool balance, bool checkup, double Ah, int nrCycle, std::string pref);
 
   //!< balancing
-  void rebalance(StorageUnit *su);
+  Status rebalance(StorageUnit *su);
 
   //!< check-up procedures
   void checkUp(StorageUnit *su, double Ah, int nrCycle); //!< main checkup function which will call the others
