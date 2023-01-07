@@ -43,9 +43,9 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
   /*
    * Simulate a cycle ageing experiment with the given parameters
    */
-  //!< prefix appended at the start of the names of all files
-  //!< stop (dis)charging when one of the cells reaches a voltage limit
-  auto cyc = Cycler(su, "cycleAge").setDiagnostic(true);
+  const std::string pref{ "cycleAge" }; //!< prefix appended at the start of the names of all files
+  constexpr auto diagnostic = true;     //!< stop (dis)charging when one of the cells reaches a voltage limit
+  auto cyc = Cycler(su, pref).setDiagnostic(diagnostic);
 
   //!< variables
   constexpr double dt = 2;
@@ -66,6 +66,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
     //!< Balance (in this thread) and do a check-up (on a separate thread) if needed
     balanceCheckup(su, balance && (i % Nbal == 0), (i % Ncheck == 0), th.Ah(), i, pref);
 
+    const auto th_before = th.Ah();
     succ = cyc.CC(Icha, Vmax, TIME_INF, dt, ndata, th); //!< CC charge
 
     if (!isVoltageLimitReached(succ)) {
@@ -76,7 +77,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
     storeThroughput(th, su); //!< increase the throughput parameters
 
-    if (th.Ah() < 1e-5) {
+    if ((th.Ah() - th_before) < 1e-5) {
       std::cerr << "Error in Procedure::cycleAge, we didn't manage to charge "
                 << "any energy. Stopping the cycling after " << i << " cycles.\n";
       break;
@@ -97,30 +98,22 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
         break;
     }
 
-    //!< CC discharge
-    try {
-      succ = cyc.CC(Idis, Vmin, TIME_INF, dt, ndata, th);
-    } catch (int e) {
+
+    succ = cyc.CC(Idis, Vmin, TIME_INF, dt, ndata, th); //!< CC discharge
+    storeThroughput(th, su);
+    if (!diagnostic && !isVoltageLimitReached(succ)) {
       std::cout << "Error in CycleAge when discharging in cycle " << i << ", stop cycling.\n";
       break;
-    }
-
-    storeThroughput(th, su);
-    if (!diagnostic && succ != Status::ReachedVoltageLimit)
-      break;
+    } // #TODO depending on diagnostics a bad status may be skipped.
 
     //!< CV discharge
     if (testCV) {
       //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
       succ = cyc.CV(Vmin, Ilim, TIME_INF, dt, ndata, th);
-      if (!isCurrentLimitReached(succ)) //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
-      {
-        std::cout << "Error in CycleAge when CV discharging in cycle "
-                  << i << ", stop cycling.\n";
-
+      if (!isCurrentLimitReached(succ)) { //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
+        std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
         break;
       }
-
       storeThroughput(th, su);
     }
 
@@ -175,25 +168,15 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
   //!< settings
   constexpr bool diagnostic = true;  //!< stop (dis)charging when one of the cells reaches a voltage limit
   const std::string pref = "useAge"; //!< prefix appended at the start of the names of all files
-  const double dt = 1;
+  constexpr double dt = 1;
   constexpr unsigned Ncycle = 20; //!< 365 * 10; //!< 10 year
   constexpr unsigned Ncheck = 10; //!< do a checkup ever month
   constexpr unsigned Nbal = 7;    //!< balance every week
 
   //!< Variables
   auto cyc = Cycler(su, pref).setDiagnostic(diagnostic);
-  double v;
   ThroughputData th{};
   Status succ;
-  constexpr int ID_rest1 = 1;
-  constexpr int ID_cha1 = 2;
-  constexpr int ID_rest2 = 3;
-  constexpr int ID_dis1 = 4;
-  constexpr int ID_rest3 = 5;
-  constexpr int ID_cha2 = 6;
-  constexpr int ID_rest4 = 7;
-  constexpr int ID_dis2 = 8;
-  constexpr int ID_rest5 = 9;
 
   //!< fully discharge the SU at a C/2
   succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), TIME_INF, dt, ndata, th);
@@ -207,12 +190,9 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
 
   //!< loop for use case ageing
   for (unsigned i = 0; i < Ncycle; i++) {
-    //!< check duration of the simulation
-    v = su->V();
-
     if (!unitTest)
       std::cout << "SU " << su->getFullID() << " starting loop iteration " << i << " after "
-                << clk << " with V = " << v << ", T = " << K_to_Celsius(su->T())
+                << clk << " with V = " << su->V() << ", T = " << K_to_Celsius(su->T())
                 << " and hot spot T = " << K_to_Celsius(su->getThotSpot()) << '\n';
 
     //!< Balance (in this thread) and do a check-up (on a separate thread) if needed
@@ -220,66 +200,59 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
 
     try {
       succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 1) 4h rest
+      storeThroughput(th, su);                  // #TODO why do we store this!
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting 1 in cycle " << i << '\n';
         break;
       }
 
-      storeThroughput(th, su); // #TODO why do we store this!
-
       //!< 2) 1C charge
       cyc.CC(-su->Cap(), su->Vmax(), TIME_INF, dt, ndata, th); //!< #TODO should have a condition.
-
       storeThroughput(th, su);
 
       succ = cyc.rest(1 * 3600, dt, ndata, th); //!< 3) 1h rest
+      storeThroughput(th, su);
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting2 in cycle " << i << '\n';
         break;
       }
 
-      storeThroughput(th, su);
-
       cyc.CC(su->Cap(), su->Vmin(), TIME_INF, dt, ndata, th); //!< 4) 1C discharge
-
-      storeThroughput(th, su);
+      storeThroughput(th, su);                                // #TODO sometimes we don't check limits.
 
       succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 5) 4h rest
+      storeThroughput(th, su);
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting3 in cycle " << i << '\n';
         break;
       }
 
-      storeThroughput(th, su);
-
       cyc.CC(-su->Cap() / 2.0, su->Vmax(), TIME_INF, dt, ndata, th); //!< 6) 0.5C charge
       storeThroughput(th, su);
 
       succ = cyc.rest(4 * 3600, dt, ndata, th); //!< 7) 4h rest
+      storeThroughput(th, su);
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting4 in cycle " << i << '\n';
         break;
       }
 
-      storeThroughput(th, su);
-
       succ = cyc.CC(su->Cap() / 2.0, su->Vmin(), TIME_INF, dt, ndata, th); //!< 8) 0.5C discharge
+      storeThroughput(th, su);
       if (succ != Status::ReachedVoltageLimit) {
         std::cout << "Error in useAge when 0.5C discharge in cycle " << i << '\n';
         break;
       }
 
-      storeThroughput(th, su);
-
       //!< 9) 5h rest
       succ = cyc.rest(5 * 3600, dt, ndata, th);
+      storeThroughput(th, su);
       if (succ != Status::ReachedTimeLimit) {
         std::cout << "Error in useAge when resting5 in cycle " << i << '\n';
         break;
       }
 
-      storeThroughput(th, su);
-    } catch (int e) {
+    } catch (...) {
       std::cout << "An unexpected problem! May be CCs. See what is happening.\n";
       break;
     }
