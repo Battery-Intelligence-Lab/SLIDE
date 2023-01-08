@@ -8,6 +8,7 @@
 #pragma once
 
 #include "../StorageUnit.hpp"
+#include "../types/data_storage/cell_data.hpp"
 
 #include <string>
 #include <memory>
@@ -39,7 +40,7 @@ public:
   double getSafetyVmin() { return su->VMIN() * 0.99; } //!< #TODO probably causing many calculations.
   double getSafetyVmax() { return su->VMAX() * 1.01; }
 
-  Status rest(double tlim, double dt, int ndt_data, double &Ah, double &Wh);
+  Status rest(double tlim, double dt, int ndt_data, ThroughputData &th);
   Status CC(double I, double vlim, double tlim, double dt, int ndt_data, ThroughputData &th);
   Status CV(double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th);
   Status CCCV(double I, double Vset, double Ilim, double dt, int ndt_data, ThroughputData &th);

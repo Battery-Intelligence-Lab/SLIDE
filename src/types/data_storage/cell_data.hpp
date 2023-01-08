@@ -39,6 +39,16 @@ struct CellCommonHist
 
 using ThroughputData = State<0, 3>;
 
+// auto operator+(const ThroughputData &a, const ThroughputData &b)
+// {
+//   auto c = a;
+//   for (size_t i = 0; i < c.size(); i++)
+//     c[i] += b[i];
+
+//   return c;
+// }
+
+
 struct BatteryData
 {
   double Timetot;  //!< total time [s]

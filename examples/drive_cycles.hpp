@@ -232,7 +232,7 @@ inline void drive_cycle_artemis()
   std::cout << '\n';
 
 
-  std::ofstream out_fraction{ PathVar::results + std::string("Kokam_NMC_16Ah_OCV.csv") };
+  std::ofstream out_fraction{ PathVar::results / "Kokam_NMC_16Ah_OCV.csv" };
 
   out_fraction << "Current [A],"
                << "Voltage [V],"
@@ -284,7 +284,7 @@ inline void drive_cycle_artemis()
 
 
   DynamicMatrix<double> profile;
-  loadCSV_Ncol(PathVar::data + profile_path, profile);
+  loadCSV_Ncol(PathVar::data / profile_path, profile);
 
   // Set the characterisation parameters of the cell to the ones given as input to this function
 
@@ -311,7 +311,7 @@ inline void drive_cycle_artemis()
     }
 
     std::string Vname = std::string("drive_voltage_from_") + name + "_percent.csv";
-    std::ofstream out(PathVar::results + Vname, std::ios_base::out);
+    std::ofstream out(PathVar::results / Vname, std::ios_base::out);
 
 
     out << "Current [A],Voltage[V],Estimated SOC[%]\n";
@@ -323,7 +323,7 @@ inline void drive_cycle_artemis()
 
 
     std::string Sname = std::string("drive_states_from_") + name + "_percent.csv";
-    std::ofstream Sout(PathVar::results + Sname, std::ios_base::out);
+    std::ofstream Sout(PathVar::results / Sname, std::ios_base::out);
 
     Sout << "I[A],V[V],T[T],delta,LLI,thickp,thickn,ep,en,ap,an,CS,Dp,Dn,delta_pl,"
          << "zp_0,zp_1,zp_2,zp_3,zp_4,zn_0,zn_1,zn_2,zn_3,zn_4,rDCp,rDCn,rDCcc\n";

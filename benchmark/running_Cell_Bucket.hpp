@@ -25,10 +25,10 @@ inline void run_Cell_Bucket()
   auto cyc = Cycler(&c, ID);
 
   for (size_t i{ 0 }; i < N; i++) {
-    double Ah, Wh, dtime;
+    ThroughputData th;
 
-    cyc.CCCV(1, 4, 0.1, 1, 1, Ah, Wh, dtime);
-    cyc.CCCV(1, 3, 0.1, 1, 1, Ah, Wh, dtime);
+    cyc.CCCV(1, 4, 0.1, 1, 1, th);
+    cyc.CCCV(1, 3, 0.1, 1, 1, th);
   }
 
   c.writeData("test");
@@ -48,10 +48,9 @@ inline void run_Cell_ECM()
   auto cyc = Cycler(&c, ID);
 
   for (size_t i{ 0 }; i < N; i++) {
-    double Ah, Wh, dtime;
-
-    cyc.CCCV(1, 4, 0.1, 1, 1, Ah, Wh, dtime);
-    cyc.CCCV(1, 3, 0.1, 1, 1, Ah, Wh, dtime);
+    ThroughputData th;
+    cyc.CCCV(1, 4, 0.1, 1, 1, th);
+    cyc.CCCV(1, 3, 0.1, 1, 1, th);
   }
 
   c.writeData("test");

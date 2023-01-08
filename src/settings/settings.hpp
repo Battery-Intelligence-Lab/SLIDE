@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "../utility/units.hpp"
 #include "enum_definitions.hpp"
 #include "constants.hpp"
 #include "slide_paths.hpp"

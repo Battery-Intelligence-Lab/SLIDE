@@ -10,8 +10,6 @@
 
 #pragma once
 
-#include "settings.hpp"
-
 namespace slide::settings {
 constexpr size_t CELL_NDATA_MAX = DATASTORE_CELL <= cellDataStorageLevel::storeHistogramData ? CELL_NDATA_HIST_MAX : CELL_NDATA_INST_MAX;
 //!< length of arrays in which we store cycling data at every time step

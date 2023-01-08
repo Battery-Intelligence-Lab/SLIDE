@@ -54,7 +54,7 @@ struct State : public std::array<double, N + N_cumulative>
     }
   }
 
-  inline auto reset() { fill(0); }
+  inline auto reset() { this->fill(0); }
 };
 
 } // namespace slide

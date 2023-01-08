@@ -381,9 +381,9 @@ void readOCVinput(const std::string &namepos, const std::string &nameneg, const 
    */
 
   try {
-    OCVp.setCurve(PathVar::data + namepos);
-    OCVn.setCurve(PathVar::data + nameneg);
-    OCVcell.setCurve(PathVar::data + namecell);
+    OCVp.setCurve(PathVar::data / namepos);
+    OCVn.setCurve(PathVar::data / nameneg);
+    OCVcell.setCurve(PathVar::data / namecell);
   } catch (int e) {
     //!< std::cout << "Throw test: " << 80 << '\n';
     std::cerr << "ERROR in determineOCV::readOCVinput, an error " << e << " happened while reading the files. Throwing the error on.\n";
@@ -734,7 +734,7 @@ void estimateOCVparameters() // #TODO this function is slow and hand-tuned. Chan
   std::ofstream output;
 
   //!< write the parameters in a csv file
-  output.open(PathVar::results + nameparam, std::ios_base::out);
+  output.open(PathVar::results / nameparam, std::ios_base::out);
   output << "AMp" << ',' << par[0] << '\n'
          << "AMn" << ',' << par[1] << '\n'
          << "start pos" << ',' << par[2] << '\n'
@@ -751,7 +751,7 @@ void estimateOCVparameters() // #TODO this function is slow and hand-tuned. Chan
   double fp[3], fn[3]; //!< arrays to store the lithium fractions at 100%, 50% and 0% SOC
   discharge(OCVp, OCVn, cap, par[0], par[1], cmaxp, cmaxn, par[2], par[3], Vend, OCVsim, OCVnsim, OCVpsim, fp, fn);
   //!< Write this best-fit OCV curve in a csv file so the user can check it using the matlab script readEstimateOCV.m
-  output.open(PathVar::results + nameOCV);
+  output.open(PathVar::results / nameOCV);
   for (size_t i = 0; i < OCVsim.x.size(); i++)
     output << OCVsim.x[i] << ',' << OCVsim.y[i] << ',' << OCVnsim.x[i] << ','
            << OCVnsim.y[i] << ',' << OCVpsim.x[i] << ',' << OCVpsim.y[i] << '\n';
@@ -776,7 +776,7 @@ void estimateOCVparameters() // #TODO this function is slow and hand-tuned. Chan
   const double thickn = par[1] / (elec_surf * en);
 
   //!< Append these parameters in the csv file where we had written the fitted parameters
-  output.open(PathVar::results + nameparam, std::ios_base::app);
+  output.open(PathVar::results / nameparam, std::ios_base::app);
   output << "cathode volume fraction ep" << ',' << ep << '\n';
   output << "anode volume fraction en" << ',' << en << '\n';
   output << "electrode surface ele_surf" << ',' << elec_surf << '\n';
@@ -824,7 +824,7 @@ void writeOCVParam(int h, const std::array<double, 4> &par)
 
   std::ofstream output; //!< write the parameters
   const auto na = "OCVFit_" + std::to_string(h) + "_param.csv";
-  output.open(PathVar::results + na, std::ios_base::out);
+  output.open(PathVar::results / na, std::ios_base::out);
   output << "AMp" << ',' << par[0] << '\n';
   output << "AMn" << ',' << par[1] << '\n';
   output << "start pos" << ',' << par[2] << '\n';

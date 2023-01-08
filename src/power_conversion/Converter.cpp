@@ -118,8 +118,8 @@ double Converter::getLosses(double Vin, double Iin)
   constexpr double Rg = 13.6e-3;                             //!< value from Schimpe (resistance to grid)
   constexpr double Ri = 13.6e-3;                             //!< value from Schimpe (resistance to inverter)
   constexpr double FIL_cdc = R * sqr(2 * pi * f * Cdc * dV); //!< losses in capacitor on DC bus
-  const double FIL_lg = 3 * Rg * sqr(Idc);               //!< losses in L at the output of the inverter
-  const double FIL_lb = Ri * sqr(Iin);                   //!< losses in L at the input of the rectifier
+  const double FIL_lg = 3 * Rg * sqr(Idc);                   //!< losses in L at the output of the inverter
+  const double FIL_lb = Ri * sqr(Iin);                       //!< losses in L at the input of the rectifier
 
   //!< total losses
   DC_cond = std::abs(DC_cond); //!< ensure all have same sign (some I^2, others I so if I < 0 they would have opposite sign)

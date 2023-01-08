@@ -46,7 +46,7 @@ struct checkUpProcedure
                            //	the first column contains the current in [A] (positive for discharge, negative for charge)
                            //	the second column contains the time in [sec] the current should be maintained
                            //	the profile must be a net discharge, i.e. sum (I*dt) > 0
-  int profileLength; //!< length of the current profiles for the pulse test (number of rows in the csv file)
+  int profileLength;       //!< length of the current profiles for the pulse test (number of rows in the csv file)
 
   std::vector<double> I, T; //!< profile data;
 
@@ -58,7 +58,7 @@ struct checkUpProcedure
     try {
       if constexpr (settings::printBool::printCyclerHighLevel)
         std::cout << "checkUpProcedure::set_profileName is reading the current profile.\n";
-      slide::loadCSV_2col(PathVar::data + profileName, I, T); //!< read the file
+      slide::loadCSV_2col(PathVar::data / profileName, I, T); //!< read the file
     } catch (int e) {
       //!< std::cout << "Throw test: " << 74 << '\n';
       if constexpr (settings::printBool::printCrit)

@@ -20,24 +20,6 @@
 
 namespace slide::free {
 
-
-inline void visit_SUs(StorageUnit *su, auto &&fn)
-{
-  //!< visits storage units and applies function fn
-  //!< function should be void as of now.
-  if (auto c = dynamic_cast<Cell *>(su))
-    fn(c); // It is cell, no submodules so apply function.
-  else if (auto b = dynamic_cast<Battery *>(su)) {
-    fn(b);                                  // It is battery apply then call sub ones.
-    checkUp_getCells(b->getCells(), cells); //!< if SU is a battery, recursively call this function on the module with the cells
-  } else if (auto m = dynamic_cast<Module *>(su)) {
-    //!< If su is a module, recursively call this function on its children
-    fn(m);
-    for (auto &su_ptr : m->getSUs())
-      checkUp_getCells(su_ptr.get(), cells);
-  }
-}
-
 inline void write_data(std::ofstream &file, std::vector<double> &data, size_t N = 1)
 {
   for (size_t i{}; i < data.size(); i++) {
@@ -236,7 +218,7 @@ auto inline check_current(bool checkV, auto &su) //!< Check voltage.
 
 inline std::ofstream openFile(auto &SU, const auto &folder, const std::string &prefix, const std::string &suffix)
 {
-  const auto name = PathVar::results + (prefix + "_" + SU.getFullID() + "_" + suffix);
+  const auto name = PathVar::results / (prefix + "_" + SU.getFullID() + "_" + suffix);
 
   //  std::string name = getName(cell, prefix); //!< name of the file
   std::ofstream file(name, std::ios_base::app); // #TODO app-> initially open then append.

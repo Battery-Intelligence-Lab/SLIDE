@@ -144,7 +144,7 @@ void CyclerOld::getOCV(slide::FixedData<double> &Ah_fixed, std::vector<double> &
   double ah_neg_p;                                //!< charge on the cathode OCV curve with a negative x-value (i.e. the points with a higher OCVp than the OCVp at the fully charged condition)
   double ah_neg_n;                                //!< charge on the anode OCV curve with a negative x-value (i.e. the points with a lower OCVn than the OCVn at the fully charged condition)
   bool bound = false;                             //!< in linear interpolation return the closest point if you are out of range
-                      //!<	this ensures the electrode OCV remains constant after it has reached the full lithium concentration
+                                                  //!<	this ensures the electrode OCV remains constant after it has reached the full lithium concentration
 
   //!< Data collection: we don't want to store a point every time step because that leads to very large arrays.
   constexpr int nStore = 750;                                       //!< store a value every 750 time steps
@@ -350,11 +350,11 @@ double CyclerOld::checkUp_batteryStates(bool blockDegradation, bool checkCap, in
   if constexpr (printBool::printCyclerHighLevel)
     std::cout << "CyclerOld::checkUp_batteryStates is writing the capacity to the csv file.\n";
 
-  const auto fol = PathVar::results + ID; //!< we want to write the file in a subfolder, so append the name of the subfolder before the name of the csv file
+  const auto fol = PathVar::results / ID; //!< we want to write the file in a subfolder, so append the name of the subfolder before the name of the csv file
   std::ofstream output;
 
   const auto w_mode = !fileStatus.is_DegradationData_batteryState_created ? std::ios_base::out : std::ios_base::app; //!< Check if created earlier, if not then create, if created then append.
-  output.open(fol + "DegradationData_batteryState.csv", w_mode);
+  output.open(fol / "DegradationData_batteryState.csv", w_mode);
 
   if (!output.is_open()) {
     //!< we couldn't open the file
@@ -435,7 +435,7 @@ void CyclerOld::checkUp_OCVcurves(bool blockDegradation, double ocvpini, double 
   if constexpr (printBool::printCyclerHighLevel)
     std::cout << "CyclerOld::checkUp_OCVcurves is writing the OCV curves to a csv file.\n";
 
-  const auto fol = PathVar::results + ID;                                                                   //!< we want to write the file in a subfolder, so append the name of the subfolder before the name of the csv file
+  const auto fol = PathVar::results / ID;                                                                   //!< we want to write the file in a subfolder, so append the name of the subfolder before the name of the csv file
   const auto w_mode = !fileStatus.is_DegradationData_OCV_created ? std::ios_base::out : std::ios_base::app; //!< Check if created earlier, if not then create, if created then append.
 
   std::ofstream output(fol + "DegradationData_OCV.csv", w_mode);
@@ -771,7 +771,7 @@ void CyclerOld::checkUp_pulse(bool blockDegradation, const std::string &profileN
   try {
     if constexpr (printBool::printCyclerHighLevel)
       std::cout << "CyclerOld::checkUp_pulse is reading the current profile.\n";
-    slide::loadCSV_2col(PathVar::data + profileName, I, T); //!< read the file
+    slide::loadCSV_2col(PathVar::data / profileName, I, T); //!< read the file
   } catch (int e) {
     //!< std::cout << "Throw test: " << 54 << '\n';
     if constexpr (printBool::printCrit)
@@ -1268,7 +1268,7 @@ void CyclerOld::calendarAgeing(double dt, double V, double Ti, int Time, int tim
       }
       //!< recharge every day
       else if (mode == 1) {
-        for (int j = 0; j < timeCheck; j++) //!<#CHECK
+        for (int j = 0; j < timeCheck; j++) //!< #CHECK
         {                                   //!< a loop for every day
           if constexpr (printBool::printCyclerHighLevel)
             std::cout << "CyclerOld::calendarAgeing is resting the cell in day " << j << " of period " << i << ".\n";
@@ -1422,7 +1422,7 @@ void CyclerOld::profileAgeing(const std::string &nameI, int limit, double Vma, d
 
   static thread_local std::vector<double> I(length), T(length); //!< arrays to store the current profile as doubles
   try {
-    slide::loadCSV_2col(PathVar::data + nameI, I, T); //!< read the file
+    slide::loadCSV_2col(PathVar::data / nameI, I, T); //!< read the file
   } catch (int e) {
     //!< std::cout << "Throw test: " << 67 << '\n';
     std::cout << "error in CyclerOld::profileAgeing when reading the file with the current profile called "

@@ -4,13 +4,14 @@
  * Created on: 3 Mar 2020
  *  Author(s): Jorn Reniers, Volkan Kumtepeli
  */
+#include "Procedure.hpp"
+#include "procedure_util.hpp"
+#include "Cycler.hpp"
 #include "../cells/cells.hpp"
 #include "../modules/modules.hpp"
 #include "../system/Battery.hpp"
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
-#include "Cycler.hpp"
-#include "Procedure.hpp"
 
 #include <cmath>
 #include <random>
@@ -453,11 +454,11 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   std::vector<Cell *> cells;
 
   auto copyCells = [&cells](auto *su_now) {
-    if (auto *c = dynamic_cast<Cell *>(su_now))
-      cells.push_back(c->copy());
+    if (auto c = dynamic_cast<Cell *>(su_now))
+      cells.push_back(static_cast<Cell *>(c->copy()));
   };
 
-  free::visit_SUs(su, copyCells);
+  visit_SUs(su, copyCells);
 
   //!< write the usage stats of all cells in a separate document
   // if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeHistogramData)
@@ -594,7 +595,7 @@ void Procedure::checkMod(StorageUnit *su)
       writeModData(m);
   };
 
-  free::visit_SUs(su, writeModMain);
+  visit_SUs(su, writeModMain);
 
   //!< close the files
   file_overall.close();
@@ -631,7 +632,7 @@ void Procedure::writeThroughput(const std::string &SUID, double Ahtot)
 
   //!< Write the data
   for (const auto &th : throughput)
-    file << th.ID << ',' << th.charge << ',' << th.energy << ','
+    file << th.charge << ',' << th.energy << ','
          << th.coolSystemLoad << ',' << th.convloss << '\n';
 
   //!< close the file
