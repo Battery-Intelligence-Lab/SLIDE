@@ -230,10 +230,12 @@ double Cell_SPM::getOCV(bool print)
   const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound); //!< anode potential [V]
   const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, print, bound); //!< cathode potential [V]
 
+  const auto entropic_effect = (st.T() - T_ref) * dOCV;
+
 #if TIMING
   timeData.getOCV += clk.duration();
 #endif
-  return (OCV_p - OCV_n + (st.T() - T_ref) * dOCV);
+  return (OCV_p - OCV_n + entropic_effect);
 }
 
 double Cell_SPM::V(bool print)
@@ -248,7 +250,11 @@ double Cell_SPM::V(bool print)
    * 			we need this input from higher level functions because at this point we cannot know if an error will be critical or not
    *
    * OUT
-   * V 		battery voltage [V]
+   * V 		  cell voltage [V]
+   * OCVp		cathode potential [V]
+   * OCVn		anode potential [V]
+   * etap 	overpotential at positive electrode [V], < 0 on discharge
+   * etan 	overpotential at negative electrode [V], > 0 on discharge
    * bool 	indicates if the voltage is in the allowed range Vmin <= V <= Vmax
    *
    * THROWS
@@ -298,19 +304,12 @@ double Cell_SPM::V(bool print)
     //!< the cell OCV at the reference temperature is OCV_p - OCV_n
     //!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
     //!< then the overpotentials and the resistive voltage drop are added
-    const auto entropic_effect = (st.T() - T_ref) * dOCV; //!<
+    const auto entropic_effect = (st.T() - T_ref) * dOCV; // #TODO
     const auto overpotential = etapi - etani;
     const auto OCV = (OCV_p - OCV_n + entropic_effect);
 
     st.V() = OCV + overpotential - getRdc() * I(); //
     Vcell_valid = true;                            //!< we now have the most up to date value stored
-
-    //!< //!< make the output variables
-    //!< if constexpr (settings::printBool::printCellFunctions)
-    //!< 	std::cout << "Cell_SPM::getVoltage terminating with V = " << *v << " and valid is " << (Vmin <= *v && *v <= Vmax) << '\n';
-
-    //!< Return whether this voltage is within the allowed limits or not
-    //!< return (*v > Vmax) - (*v < Vmin);
   }
 
 #if TIMING
@@ -354,8 +353,8 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   st.delta_pl() = 0; //!< thickness of the plated lithium layer. You can start with 0 here
 
-  constexpr double fp = 0.689332; //!< lithium fraction in the cathode at 50% soc (3.68136 V) [-]
-  constexpr double fn = 0.479283; //!< lithium fraction in the anode at 50% soc (3.68136 V) [-]
+  constexpr double fp = 0.689332; //!< 0.689332 lithium fraction in the cathode at 50% soc (3.68136 V) [-]
+  constexpr double fn = 0.479283; //!< 0.479283 lithium fraction in the anode at 50% soc (3.68136 V) [-]
   setC(fp, fn);
   st.SOC() = 0.5; //!< Since fp and fn are set at 50%.
 
@@ -367,132 +366,6 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   cellData.initialise(*this);
 }
-
-//!< int Cell_SPM::getVoltage_ne(bool print, double *v, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp)
-//!< {
-//!< 	/*
-//!< 	 * Function to calculate the cell voltage and give detailed feedback about the cell
-//!< 	 *
-//!< 	 * IN
-//!< 	 * print 	boolean indicating if we want to print error messages or not
-//!< 	 * 				if true, error messages are printed
-//!< 	 * 				if false no error messages are printed (but the error will still be thrown)
-//!< 	 * 			we need this input from higher level functions because at this point we cannot know if an error will be critical or not
-//!< 	 *
-//!< 	 * OUT
-//!< 	 * V 		battery voltage [V]
-//!< 	 * OCVp		cathode potential [V]
-//!< 	 * OCVn		anode potential [V]
-//!< 	 * etap 	overpotential at positive electrode [V], < 0 on discharge
-//!< 	 * etan 	overpotential at negative electrode [V],  > 0 on discharge
-//!< 	 * Rdrop 	resistive voltage drop [V], < 0 on discharge, > 0 on charge
-//!< 	 * Temp 	cell temperature [K]
-//!< 	 * bool 	indicates if the voltage is in the allowed range Vmin <= V <= Vmax
-//!< 	 *
-//!< 	 * THROWS
-//!< 	 * 101		invalid surface concentration detected
-//!< 	 */
-
-//!< 	//!< #HOTFUNC
-//!< 	using namespace PhyConst;
-
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::getVoltage starting\n";
-
-//!< 	//!< Get the surface concentrations
-//!< 	double cps, cns;
-//!< 	const auto flag = getCSurf(cps, cns, print);
-
-//!< 	//!< check if the surface concentration is within the allowed range
-//!< 	//!< 	0 < cp < Cmaxpos
-//!< 	//!< 	0 < cn < Cmaxneg
-//!< 	//!< don't allow 0 or Cmax because in that case, i0 will be 0, and the overpotentials will have 1/0 = inf or nan
-//!< 	if (!flag)
-//!< 	{
-//!< 		if (print) //!< print error message unless you want to suppress the output
-//!< 			std::cerr << "ERROR in Cell_SPM::getVoltage: concentration out of bounds. "
-//!< 					  << "the positive lithium fraction is " << cps / Cmaxpos
-//!< 					  << " and the negative lithium fraction is " << cns / Cmaxneg
-//!< 					  << " they should both be between 0 and 1.\n";
-
-//!< 		*v = nan("double"); //!< set the voltage to nan (Not A Number)
-//!< 		return 2;			//!< Surface concentration is out of bounds.
-//!< 	}
-//!< 	else
-//!< 	{
-//!< 		//!< Calculate the li-fraction (instead of the li-concentration)
-//!< 		const double zp_surf = (cps / Cmaxpos);
-//!< 		const double zn_surf = (cns / Cmaxneg);
-
-//!< 		//!< Calculate the electrode potentials
-//!< 		const bool bound = true;											   //!< in linear interpolation, throw an error if you are out of the allowed range
-//!< 		const double dOCV = OCV_curves.dOCV_tot.interp(zp_surf, print, bound); //!< entropic coefficient of the total cell voltage [V/K]
-//!< 		const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound); //!< anode potential [V]
-//!< 		const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, print, bound); //!< cathode potential [V]
-
-//!< 		const double i_app = Icell / elec_surf; //!< current density on the electrodes [I m-2]
-
-//!< 		const auto [etapi, etani] = calcOverPotential(cps, cns, i_app);
-
-//!< 		//!< Calculate the cell voltage
-//!< 		//!< the cell OCV at the reference temperature is OCV_p - OCV_n
-//!< 		//!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
-//!< 		//!< then the overpotentials and the resistive voltage drop are added
-//!< 		*v = (OCV_p - OCV_n + (st.T() - T_ref) * dOCV) + (etapi - etani) - getRdc() * Icell;
-
-//!< 		//!< make the output variables
-//!< 		*OCVp = OCV_p;
-//!< 		*OCVn = OCV_n;
-//!< 		*etap = etapi;
-//!< 		*etan = etani;
-//!< 		*Rdrop = -getRdc() * Icell;
-//!< 		*Temp = st.T();
-
-//!< 		if constexpr (settings::printBool::printCellFunctions)
-//!< 			std::cout << "Cell_SPM::getVoltage terminating with V = " << *v << " and valid is "
-//!< 					  << (Vmin() <= *v && *v <= Vmax()) << '\n';
-
-//!< 		//!< Return whether this voltage is within the allowed limits or not
-//!< 		return (*v > Vmax()) - (*v < Vmin());
-//!< 	}
-//!< }
-
-//!< int Cell_SPM::getVoltage(bool print, double *v, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp)
-//!< {
-//!< 	/*
-//!< 	 * Function to calculate the cell voltage and give detailed feedback about the cell
-//!< 	 *
-//!< 	 * IN
-//!< 	 * print 	boolean indicating if we want to print error messages or not
-//!< 	 * 				if true, error messages are printed
-//!< 	 * 				if false no error messages are printed (but the error will still be thrown)
-//!< 	 * 			we need this input from higher level functions because at this point we cannot know if an error will be critical or not
-//!< 	 *
-//!< 	 * OUT
-//!< 	 * V 		battery voltage [V]
-//!< 	 * OCVp		cathode potential [V]
-//!< 	 * OCVn		anode potential [V]
-//!< 	 * etap 	overpotential at positive electrode [V], < 0 on discharge
-//!< 	 * etan 	overpotential at negative electrode [V],  > 0 on discharge
-//!< 	 * Rdrop 	resistive voltage drop [V], < 0 on discharge, > 0 on charge
-//!< 	 * Temp 	cell temperature [K]
-//!< 	 * bool 	indicates if the voltage is in the allowed range Vmin <= V <= Vmax
-//!< 	 *
-//!< 	 * THROWS
-//!< 	 * 101		invalid surface concentration detected
-//!< 	 */
-
-//!< 	//!< Throwing version of getVoltage_ne;
-
-//!< 	auto status = getVoltage_ne(print, V, OCVp, OCVn, etap, etan, Rdrop, Temp);
-
-//!< 	if (status == 2)
-//!< 	{
-//!< 		throw 101;
-//!< 	}
-
-//!< 	return status;
-//!< }
 
 Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
 {
@@ -523,9 +396,21 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
 bool Cell_SPM::validStates(bool print)
 {
   /*
+   * Check the array contains states which are valid for an SPM
+   * This function checks
+   * 		0 < SoC < 1, but does not check SoC is compatible with the concentration
+   * 		//todo calculate SoC based on the uniform concentration
+   * 		Tmin < T < Tmax
+   * 		0 < surface concentration < maximum concentration
+   * 		a = 3e/R
+   * 		all other values (except I) > 0
+   *
    * note: does NOT check the voltage, only whether all fields are in the allowed range
+   * There are no limits on the transformed concentration, because this is the (twice) transformed concentration.
+   * The limits are on the real concentrations, which must be calculated first.
+   * This can't be done here because it requires parameters of the Cell itself.
+   * see Cell_SPM::getC or Cell_SPM::getCsurf
    */
-
 #if TIMING
   Clock clk;
 #endif
@@ -554,6 +439,23 @@ bool Cell_SPM::validStates(bool print)
                 << " they should both be between 0 and 1.\n";
     range = false;
   }
+  //!< thickness of the SEI layer a value of 0 gives problems in some equations,
+  //!< which have a term 1/delta, which would give nan or inf if delta = 0
+  //!< a negative value might lead to a further decrease in SEI thickness,
+  //!< so it will keep getting more and more negative
+
+  if (st.delta() <= 0) {
+    std::cerr << "Error in State::validState. The SEI thickness delta is " << st.delta()
+              << ", which is too low. Only strictly positive values are allowed.\n";
+    range = false;
+  }
+
+  //!< lost lithium  a value of 0 is allowed (it won't lead to errors in the code)
+  if (st.LLI() < 0) {
+    std::cerr << "Error in State::validState. The lost lithium LLI is " << st.LLI()
+              << ", which is too low. Only non-negative values are allowed.\n";
+    throw 15;
+  }
 
   const double app = 3 * st.ep() / geo.Rp;
 
@@ -570,6 +472,37 @@ bool Cell_SPM::validStates(bool print)
       std::cerr << "SOME ERROR #TODO!\n";
     range = false;
   }
+
+  //!< surface area of the cracks growing at the particle surface
+  //!< don't allow 0 because it might give problems in some of the equations,
+  //!< which might grow CS proportional to the existing CS (so a value of 0 gives 0 increase)
+  //!< a negative value might lead to a further decrease in CS, so it will keep getting more
+  //!< and more negative
+  if (st.CS()) {
+    std::cerr << "Error in State::validState. The crack surface area is " << st.CS()
+              << ", which is too low. It must be strictly positive.\n";
+    range = false;
+  }
+
+  //!< specific resistance of the electrodes (one value for both electrodes combined)
+  if (st.rDCp() < 0 || st.rDCn() < 0 || st.rDCcc() < 0) {
+    std::cerr << "Error in State::validState. The specific resistance is "
+              << "too low, it must be strictly positive.\n";
+    range = false;
+  }
+
+  //!< thickness of the plated litium layer 0 is allowed
+  //!< a negative value might lead to a further decrease in thickness,
+  //!< so it will keep getting more and more negative
+
+  const bool delpl = st.delta_pl() < 0;
+  if (st.delta_pl() < 0) {
+    std::cerr << "Error in State::validState. The thickness of the plated lithium is "
+              << st.delta_pl() << ", which is too low. Only positive values are allowed.\n";
+    range = false;
+  }
+
+
 #if TIMING
   timeData.validStates += clk.duration(); //!< time in seconds
 #endif
@@ -619,9 +552,6 @@ void Cell_SPM::setTenv(double Tenv)
 //!< 	 * 			Instead, we check that the values are positive and that VMAX is below the maximum of the cathode OCV.
 //!< 	 */
 
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::setVlimits starting with upper limit " << VMAX << " and lower limit " << VMIN << '\n';
-
 //!< 	bool vmax = VMAX < 0 || VMAX > OCV_curves.OCV_pos.y[0];
 //!< 	if (vmax)
 //!< 		std::cerr << "ERROR in Cell_SPM::setVlimits. The value of the maximum voltage is " << VMAX
@@ -637,9 +567,6 @@ void Cell_SPM::setTenv(double Tenv)
 
 //!< 	Vmax = VMAX;
 //!< 	Vmin = VMIN;
-
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::setVlimits terminating with upper limit " << Vmax << " and lower limit " << Vmin << '\n';
 //!< }
 
 void Cell_SPM::setT(double Ti)
@@ -674,8 +601,6 @@ void Cell_SPM::setC(double cp0, double cn0)
    */
   //!< #NOTHOTFUNCTION
   using settings::nch;
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::setC starting.\n";
 
   bool pp = (cp0 < 0) || (cp0 > 1);
   if (pp)
@@ -726,8 +651,7 @@ void Cell_SPM::setC(double cp0, double cn0)
   sparam.s_dai_update = false;
   sparam.s_lares_update = false;
 
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::setC terminating.\n";
+  Vcell_valid = false;
 }
 
 Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double resf, double degfsei, double degflam) : Cell_SPM()
@@ -737,7 +661,7 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
 
   st.rDCcc() *= resf; //!< current collector
   st.rDCp() *= resf;  //!< cathode
-  st.rDCn() *= resf;  //!< anode
+  st.rDCn() *= resf;  //!< anode   #TODO if you memoize Rdc then getRdc here.
 
   //!< set the capacity
   setCapacity(Cap() * capf); //!< nominal capacity
@@ -747,7 +671,7 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
   sei_p *= var_degSEI;
   csparam *= var_degSEI;
   lam_p *= var_degLAM;
-  plparam *= var_degSEI;
+  pl_p *= var_degSEI;
 
 
   //!< set the degradation ID and related settings
@@ -765,390 +689,6 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
     sparam.s_lares = sparam.s_lares || cs_id == 1;
 }
 
-//!< void Cell_SPM::setCurrent(bool print, bool check, double I)
-//!< {
-//!< 	/*
-//!< 	 * Function to set the cell current to the specified value.
-//!< 	 * The current is slowly ramped from the actual cell current to the specified value.
-//!< 	 *
-//!< 	 * IN
-//!< 	 * print 	boolean indicating if we want to print error messages or not
-//!< 	 * 				if true, error messages are printed
-//!< 	 * 				if false no error messages are printed (but the error will still be thrown)
-//!< 	 * 			we need this input from higher level functions because at this point we cannot know if this will be a critical error or not
-//!< 	 * check 	if true, a check is done to see if the battery state at the end is valid or not (an error is thrown if not)
-//!< 	 * 			if false, the current is just set without checking if the state is valid or not
-//!< 	 * I 		value to which the current should be set [A]
-//!< 	 * 			> 0 for discharge
-//!< 	 * 			< 0 for charge
-//!< 	 *
-//!< 	 * THROWS
-//!< 	 * 105 		check == true and the specified current could not be set without violating the cell's limits.
-//!< 	 * 			the original battery state and current are restored
-//!< 	 */
-//!< 	//!< #HOTFUNC -> ~500k calls over 20M.
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::setCurrent starting with current " << I << '\n';
-
-//!< 	//!< check if the specified value is different from the actual cell current
-//!< 	if (std::abs(Icell - I) < 1e-6)
-//!< 	{
-//!< 		//!< No integration if the current is close enough.
-//!< 		Icell = I;
-//!< 		return;
-//!< 	}
-
-//!< 	//!< Store the old current and state to restore it if needed
-//!< 	const auto sold = getStates();
-//!< 	const auto Iold = I();
-
-//!< 	//!< settings
-//!< 	bool blockDegradation = true; //!< don't account for degradation while the current is ramping
-//!< 	bool reached = false;		  //!< boolean indicating if we have reached the set current
-//!< 	int sgn;					  //!< sgn whether we should increase or decrease the current
-//!< 	if (I > Icell)
-//!< 		sgn = 1;
-//!< 	else
-//!< 		sgn = -1;
-
-//!< 	//!< loop to ramp the current
-//!< 	while (!reached)
-//!< 	{
-//!< 		//!< increase the current
-//!< 		Icell += sgn * dIcell;
-
-//!< 		//!< check if you have reached the specified current
-//!< 		if (sgn * Icell > sgn * I)
-//!< 		{ //!< increase I: Icell > I, decrease I: Icell < I
-//!< 			Icell = I;
-//!< 			reached = true;
-//!< 		}
-
-//!< 		//!< take one small time step
-//!< 		integratorStep(print, dt_I, blockDegradation);
-//!< 	}
-
-//!< 	//!< Check the cell's conditions are still valid if we want to check the final state
-//!< 	double v, ocvp, ocvn, etap, etan, rdrop, tem;
-//!< 	bool valid;
-//!< 	if (check)
-//!< 	{
-//!< 		//!< check the state
-//!< 		try
-//!< 		{
-//!< 			validState(); //!< throws an error if the state is illegal
-//!< 		}
-//!< 		catch (int e)
-//!< 		{
-//!< 			//!< std::cout << "Throw test: " << 38 << '\n';
-//!< 			if (print)
-//!< 				std::cout << "Cell_SPM::setCurrent illegal state after setting the current to "
-//!< 						  << I() << ", error: " << e << ". Throwing an error.\n";
-//!< 			setStates(sold, Iold); //!< restore the original battery state and current
-//!< 			throw e;
-//!< 		}
-
-//!< 		//!< check the voltage
-
-//!< 		const int status = getVoltage_ne(print, &v, &ocvp, &ocvn, &etap, &etan, &rdrop, &tem);
-//!< 		if (status != 0)
-//!< 		{
-//!< 			if (print)
-//!< 				std::cerr << "Cell_SPM::setCurrent Illegal voltage after trying to set the current to "
-//!< 						  << I() << ", the voltage is: " << v << "V. Throwing an error.\n";
-//!< 			setStates(sold, Iold); //!< restore the original battery state and current
-//!< 			throw 105;
-//!< 		}
-//!< 	}
-
-//!< 	//!< the stress values stored in the class variables for stress are no longer valid because the cell current has changed
-//!< 	sparam.s_dai_update = false;
-//!< 	sparam.s_lares_update = false;
-
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 	{
-//!< 		if (check)
-//!< 			std::cout << "Cell_SPM::setCurrent terminating with current " << I << " and voltage " << v << '\n';
-//!< 		else
-//!< 			std::cout << "Cell_SPM::setCurrent terminating with current " << I << " without checking the voltage.\n";
-//!< 	}
-//!< }
-
-//!< 	bool Cell_SPM::validStates(bool print)
-//!< 	{
-//!< 		/*
-//!< 		 * Check the array contains states which are valid for an SPM
-//!< 		 * This function checks
-//!< 		 * 		the length of the array
-//!< 		 * 		0 < SoC < 1, but does not check SoC is compatible with the concentration
-//!< 		 * 		//todo calculate SoC based on the uniform concentration
-//!< 		 * 		Tmin < T < Tmax
-//!< 		 * 		0 < surface concentration < maximum concentration
-//!< 		 * 		a = 3e/R
-//!< 		 * 		all other values (except I) > 0
-//!< 		 */
-//!< #if TIMING
-//!< 		std::clock_t tstart = std::clock();
-//!< #endif
-
-//!< 		//!< There are no limits on the transformed concentration, because this is the (twice) transformed concentration.
-//!< 		//!< The limits are on the real concentrations, which must be calculated first.
-//!< 		//!< This can't be done here because it requires parameters of the Cell itself.
-//!< 		//!< see Cell_SPM::getC or Cell_SPM::getCsurf
-
-//!< 		constexpr double tol = 1e-5;
-
-//!< 		const bool verb = settings::printBool::printCrit && print; //!< print if the (global) verbose-setting is above the threshold
-//!< 		bool range = true;										   //!< are all in the allowed range?
-
-//!< 		if (!checkSOC(st.SOC())) //!< check whether SoC in the allowed range
-//!< 		{
-//!< 			if (verb)
-//!< 				std::cerr << "ERROR in Cell_SPM::validState, SoC is outside of the range, 0 <= SoC <= 1: "
-//!< 						  << st.SOC() << '\n';
-//!< 			range = false;
-//!< 		}
-
-//!< 		//!< temperature of the cell (in Kelvin), the temperature limits are defined in State.hpp
-//!< 		if (st.T() < Tmin()) //!< check the temperature is above 0 degrees
-//!< 		{
-//!< 			std::cerr << "Error in Cell_SPM::validState. The temperature " << st.T()
-//!< 					  << "K is too low. The minimum value is " << settings::Tmin_K << '\n';
-//!< 			range = false;
-//!< 		}
-//!< 		else if (st.T() > Tmax()) //!< check the temperature is below 60 degrees
-//!< 		{
-//!< 			std::cerr << "Error in Cell_SPM::validState. The temperature " << st.T()
-//!< 					  << "K is too high. The maximum value is " << settings::Tmax_K << '\n';
-//!< 			range = false;
-//!< 		}
-
-//!< 		//!< thickness of the SEI layer
-//!< 		const bool del = st.delta() <= 0;
-//!< 		if (del)
-//!< 		{
-//!< 			std::cerr << "Error in State::validState. The SEI thickness delta is " << st.delta()
-//!< 					  << ", which is too low. Only strictly positive values are allowed.\n";
-//!< 			throw 15;
-//!< 		}
-//!< 		//!< a value of 0 gives problems in some equations, which have a term 1/delta, which would give nan or inf if delta = 0
-//!< 		//!< a negative value might lead to a further decrease in SEI thickness, so it will keep getting more and more negative
-
-//!< 		//!< //!< lost lithium
-//!< 		//!< bool li = st.LLI() < 0;
-//!< 		//!< if (li)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The lost lithium LLI is " << st.LLI()
-//!< 		//!< 			  << ", which is too low. Only non-negative values are allowed.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-//!< 		//!< //!< a value of 0 is allowed (it won't lead to errors in the code)
-
-//!< 		//!< //!< thickness of the electrodes
-//!< 		//!< bool tpmin = st.thickp() <= s_ini.thickp() / 5;
-//!< 		//!< if (tpmin)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the thickness of the positive electrode is " << st.thickp() << ", which is too low. The minimum is " << s_ini.thickp() / 5 << ", 1/5 of the original thickness"
-//!< 		//!< 			  << '\n';
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-//!< 		//!< //!< errors will happen if the thickness becomes 0 or negative. otherwise no direct problems are expected
-//!< 		//!< //!< on a longer term, you will get discretisation errors (see above, too little active material -> too large concentration swings in one time step -> numerical errors / concentration out of bound, etc
-//!< 		//!< bool tpmax = st.thickp() > s_ini.thickp() * 1.001; //!< leave a 0.1% margin for numerical errors
-//!< 		//!< if (tpmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The thickness of the positive electrode is " << st.thickp()
-//!< 		//!< 			  << ", which is too high. The maximum is " << s_ini.thickp() << ", the original thickness\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-//!< 		//!< bool tnmin = st.thickn() <= s_ini.thickn() / 5;
-//!< 		//!< if (tnmin)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the thickness of the negative electrode is " << st.thickn()
-//!< 		//!< 			  << ", which is too low. The minimum is " << s_ini.thickn() / 5 << ", 1/5 of the original thickness\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< //!< errors will happen if the thickness becomes 0 or negative. otherwise no direct problems are expected
-//!< 		//!< //!< on a longer term, you will get discretisation errors (see above, too little active material -> too large concentration swings in one time step -> numerical errors / concentration out of bound, etc
-//!< 		//!< bool tnmax = st.thickn() > s_ini.thickn() * 1.001;
-//!< 		//!< if (tnmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The thickness of the negative electrode is " << st.thickn()
-//!< 		//!< 			  << ", which is too high. The maximum is " << s_ini.thickn() << ", the original thickness.\n";
-
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< //!< volume fraction of the active material in the electrodes
-//!< 		//!< bool epmin = st.ep() <= s_ini.ep() / 5;
-//!< 		//!< if (epmin)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the volume fraction of the positive electrode is "
-//!< 		//!< 			  << st.ep() << ", which is too low. The minimum is " << s_ini.ep() / 5 << ", 1/5 of the original volume fraction.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< //!< errors will happen if the volume fraction becomes 0 or negative. otherwise no direct problems are expected
-//!< 		//!< //!< on a longer term, you will get discretisation errors (see above, too little active material -> too large concentration swings in one time step -> numerical errors / concentration out of bound, etc
-//!< 		//!< bool epmax = st.ep() > s_ini.ep() * 1.001;
-//!< 		//!< if (epmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The volume fraction of the positive electrode is " << st.ep()
-//!< 		//!< 			  << ", which is too high. The maximum is " << s_ini.ep() << ", the original volume fraction.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< bool enmin = st.en() <= s_ini.en() / 5;
-//!< 		//!< if (enmin)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the volume fraction of the negative electrode is " << st.en()
-//!< 		//!< 			  << ", which is too low. The minimum is " << s_ini.en() / 5 << ", 1/5 of the original volume fraction.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< //!< errors will happen if the volume fraction becomes 0 or negative. otherwise no direct problems are expected
-//!< 		//!< //!< on a longer term, you will get discretisation errors (see above, too little active material -> too large concentration swings in one time step -> numerical errors / concentration out of bound, etc
-//!< 		//!< bool enmax = st.en() > s_ini.en() * 1.001;
-//!< 		//!< if (enmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The volume fraction of the negative electrode is " << st.en()
-//!< 		//!< 			  << ", which is too high. The maximum is " << s_ini.en() << ", the original volume fraction.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< //!< effective surface area of the porous electrodes
-//!< 		//!< bool apmin = st.ap() <= s_ini.ap() / 5;
-//!< 		//!< if (apmin)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the effective surface of the positive electrode is " << st.ap()
-//!< 		//!< 			  << ", which is too low. The minimum is " << s_ini.ap() / 5 << ", 1/5 of the original effective surface.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-//!< 		//!< //!< errors will happen if the effective surface becomes 0 or negative. otherwise no direct problems are expected
-//!< 		//!< //!< on a longer term, you will get discretisation errors (see above, too little active material -> too large concentration swings in one time step -> numerical errors / concentration out of bound, etc
-//!< 		//!< bool apmax = st.ap() > s_ini.ap() * 1.001;
-//!< 		//!< if (apmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The effective surface of the positive electrode is " << st.ap()
-//!< 		//!< 			  << ", which is too high. The maximum is " << s_ini.ap() << ", the original effective surface.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< bool anmin = st.an() <= s_ini.an() / 5;
-//!< 		//!< if (anmin)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the effective surface of the negative electrode is " << st.an()
-//!< 		//!< 			  << ", which is too low. The minimum is " << s_ini.an() / 5 << ", 1/5 of the original effective surface.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< //!< errors will happen if the effective surface becomes 0 or negative. otherwise no direct problems are expected
-//!< 		//!< //!< on a longer term, you will get discretisation errors (see above, too little active material -> too large concentration swings in one time step -> numerical errors / concentration out of bound, etc
-//!< 		//!< bool anmax = st.an() > s_ini.an() * 1.001;
-//!< 		//!< if (anmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The effective surface of the negative electrode is " << st.an()
-//!< 		//!< 			  << ", which is too high. The maximum is " << s_ini.an() << ", the original effective surface.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< surface area of the cracks growing at the particle surface
-//!< 		const bool csmin = st.CS() <= 0;
-//!< 		if (csmin)
-//!< 		{
-//!< 			std::cerr << "Error in State::validState. The crack surface area is " << st.CS()
-//!< 					  << ", which is too low. It must be strictly positive.\n";
-//!< 			range = false;
-//!< 		}
-
-//!< 		//!< //!< don't allow 0 because it might give problems in some of the equations, which might grow CS proportional to the existing CS (so a value of 0 gives 0 increase)
-//!< 		//!< //!< a negative value might lead to a further decrease in CS, so it will keep getting more and more negative
-//!< 		//!< bool csmax = st.CS() > 1e4 * s_ini.CS();
-//!< 		//!< if (csmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the crack surface area is "
-//!< 		//!< 			  << st.CS() << ", which is too high. The maximum is " << 1e4 * s_ini.CS()
-//!< 		//!< 			  << ", 10,000 times the original crack surface area.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-//!< 		//!< normally, the initial value is 1% of the total real electrode surface area, so 10,000*initial value = 100 * total electrode surface area
-//!< 		//!< but in theory no maximum value will give errors in the code
-
-//!< 		//!< //!< diffusion constant at reference temperature for the electrodes
-//!< 		//!< bool dpmin = st.Dp() <= s_ini.Dp() / 5;
-//!< 		//!< if (dpmin)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the diffusion constant of the positive electrode is " << st.Dp()
-//!< 		//!< 			  << ", which is too low. The minimum is " << s_ini.Dp() / 5 << ", 1/5 of the original diffusion constant.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< //!< errors will happen if the diffusion constant becomes 0 or negative. otherwise no direct problems are expected
-//!< 		//!< //!< on a longer term, you will get discretisation errors (see above, too bad diffusion -> too large surface concentration swings in one time step -> numerical errors / concentration out of bound, etc
-//!< 		//!< bool dpmax = st.Dp() > s_ini.Dp() * 1.001;
-//!< 		//!< if (dpmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The diffusion constant of the positive electrode is "
-//!< 		//!< 			  << st.Dp() << ", which is too high. The maximum is "
-//!< 		//!< 			  << s_ini.Dp() << ", the original diffusion constant.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< bool dnmin = st.Dn() <= s_ini.Dn() / 5;
-//!< 		//!< if (dnmin)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the diffusion constant of the negative electrode is " << st.Dn()
-//!< 		//!< 			  << ", which is too low. The minimum is " << s_ini.Dn() / 5 << ", 1/5 of the original diffusion constant.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-//!< 		//!< //!< errors will happen if the diffusion constant becomes 0 or negative. otherwise no direct problems are expected
-//!< 		//!< //!< on a longer term, you will get discretisation errors (see above, too bad diffusion -> too large surface concentration swings in one time step -> numerical errors / concentration out of bound, etc
-//!< 		//!< bool dnmax = st.Dn() > s_ini.Dn() * 1.001;
-//!< 		//!< if (dnmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The diffusion constant of the negative electrode is "
-//!< 		//!< 			  << st.Dn() << ", which is too high. The maximum is "
-//!< 		//!< 			  << s_ini.Dn() << ", the original effective diffusion constant.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< specific resistance of the electrodes (one value for both electrodes combined)
-//!< 		bool rmin = st.rDCp() < 0 || st.rDCn() < 0 || st.rDCcc() < 0;
-//!< 		if (rmin)
-//!< 		{
-//!< 			std::cerr << "Error in State::validState. The specific resistance is "
-//!< 					  << "too low, it must be strictly positive.\n";
-//!< 			range = false;
-//!< 		}
-
-//!< 		//!< bool rmax = st.r() > 1000 * s_ini.r();
-//!< 		//!< if (rmax)
-//!< 		//!< {
-//!< 		//!< 	std::cerr << "Error in State::validState. The cell has degraded too much and the specific resistance is " << st.r()
-//!< 		//!< 			  << ", which is too high. The maximum is " << 1000 * s_ini.r() << ", 1000 times the original specific resistance.\n";
-//!< 		//!< 	throw 15;
-//!< 		//!< }
-
-//!< 		//!< thickness of the plated litium layer
-//!< 		const bool delpl = st.delta_pl() < 0;
-//!< 		if (delpl)
-//!< 		{
-//!< 			std::cerr << "Error in State::validState. The thickness of the plated lithium is " << st.delta_pl()
-//!< 					  << ", which is too low. Only strictly positive values are allowed.\n";
-//!< 			range = false;
-
-//!< 			//!< 0 is allowed
-//!< 			//!< a negative value might lead to a further decrease in thickness, so it will keep getting more and more negative
-//!< 		}
-
-//!< #if TIMING
-//!< 		T_validStates += (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC); //!< time in seconds
-//!< #endif
-
-//!< 		return range;
-//!< 	}
-
 void Cell_SPM::checkModelparam()
 {
   //!< check if the inputs to the MATLAB code are the same as the ones here in the C++ code
@@ -1161,21 +701,21 @@ void Cell_SPM::checkModelparam()
   using settings::nch;
   const bool Mnch = (M->Input[0] - nch) / M->Input[0] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Mnch)
-    std::cerr << "ERROR in Cell_KokamNMC::Cell_KokamNMC: the value of nch used in the MATLAB script " << M->Input[0]
+    std::cerr << "ERROR in Cell_SPM the value of nch used in the MATLAB script " << M->Input[0]
               << " is not the same as the value of nch used in the c++ code " << nch << ".\n";
 
   const bool Mrp = (M->Input[1] - geo.Rp) / M->Input[1] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Mrp)
-    std::cerr << "ERROR in Cell_KokamNMC::Cell_KokamNMC: the value of Rp used in the MATLAB script " << M->Input[1]
+    std::cerr << "ERROR in Cell_SPM the value of Rp used in the MATLAB script " << M->Input[1]
               << " is not the same as the value of Rp used in the c++ code " << geo.Rp << ".\n";
   const bool Mrn = (M->Input[2] - geo.Rn) / M->Input[2] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Mrn)
-    std::cerr << "ERROR in Cell_KokamNMC::Cell_KokamNMC: the value of Rn used in the MATLAB script " << M->Input[2]
+    std::cerr << "ERROR in Cell_SPM the value of Rn used in the MATLAB script " << M->Input[2]
               << " is not the same as the value of Rn used in the c++ code " << geo.Rn << ".\n";
   const auto a = static_cast<int>(M->Input[3]);
   const bool Meig = std::abs(M->An[a]) > 1e-10 || std::abs(M->Ap[a]) > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Meig)
-    std::cerr << "ERROR in Cell_KokamNMC::Cell_KokamNMC: the row of the 0-eigenvalue is " << M->Input[3]
+    std::cerr << "ERROR in Cell_SPM the row of the 0-eigenvalue is " << M->Input[3]
               << " but that row has a positive eigenvalue of " << M->Ap[a] << " and negative eigenvalue of " << M->An[a] << ". They are not 0.\n";
   if (Mnch || Mrp || Mrn || Meig) {
     std::cout << "The MATLAB script modelSetup.m produces matrices used by the C++ code for the discretisation of the solid diffusion equation."

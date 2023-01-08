@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 
-add_library(src STATIC)
+add_library(src STATIC
+            paperCode.cpp)
 
 #add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../")
 
@@ -13,12 +14,6 @@ add_subdirectory(procedures)
 add_subdirectory(factories)
 add_subdirectory(settings)
 
-# add_subdirectory(unit_tests)
-# target_sources(src
-#   PRIVATE
-#   slide.hpp
-# )
-
 target_link_libraries(src
   PRIVATE
   cells
@@ -29,6 +24,5 @@ target_link_libraries(src
   procedures
   factories
   settings
-  # unit_tests
   # pthread -> For WSL.
 )

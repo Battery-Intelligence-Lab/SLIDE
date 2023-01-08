@@ -53,22 +53,22 @@ struct Model_SPM
      */
     try {
       //!< Read the data which have one column (arrays)
-      loadCSV_1col(PathVar::data + "Cheb_Nodes.csv", xch);
-      loadCSV_1col(PathVar::data + "Cheb_An.csv", An);
-      loadCSV_1col(PathVar::data + "Cheb_Ap.csv", Ap);
-      loadCSV_1col(PathVar::data + "Cheb_Bn.csv", Bn);
-      loadCSV_1col(PathVar::data + "Cheb_Bp.csv", Bp);
-      loadCSV_1col(PathVar::data + "Cheb_Cc.csv", Cc);
-      loadCSV_1col(PathVar::data + "Cheb_Dn.csv", Dn);
-      loadCSV_1col(PathVar::data + "Cheb_Dp.csv", Dp);
-      loadCSV_1col(PathVar::data + "Cheb_input.csv", Input);
+      loadCSV_1col(PathVar::data / "Cheb_Nodes.csv", xch);
+      loadCSV_1col(PathVar::data / "Cheb_An.csv", An);
+      loadCSV_1col(PathVar::data / "Cheb_Ap.csv", Ap);
+      loadCSV_1col(PathVar::data / "Cheb_Bn.csv", Bn);
+      loadCSV_1col(PathVar::data / "Cheb_Bp.csv", Bp);
+      loadCSV_1col(PathVar::data / "Cheb_Cc.csv", Cc);
+      loadCSV_1col(PathVar::data / "Cheb_Dn.csv", Dn);
+      loadCSV_1col(PathVar::data / "Cheb_Dp.csv", Dp);
+      loadCSV_1col(PathVar::data / "Cheb_input.csv", Input);
 
       //!< Read the data which have multiple columns (matrices)
-      loadCSV_mat(PathVar::data + "Cheb_Cn.csv", Cn);
-      loadCSV_mat(PathVar::data + "Cheb_Cp.csv", Cp);
-      loadCSV_mat(PathVar::data + "Cheb_Vn.csv", Vn);
-      loadCSV_mat(PathVar::data + "Cheb_Vp.csv", Vp);
-      loadCSV_mat(PathVar::data + "Cheb_Q.csv", Q);
+      loadCSV_mat(PathVar::data / "Cheb_Cn.csv", Cn);
+      loadCSV_mat(PathVar::data / "Cheb_Cp.csv", Cp);
+      loadCSV_mat(PathVar::data / "Cheb_Vn.csv", Vn);
+      loadCSV_mat(PathVar::data / "Cheb_Vp.csv", Vp);
+      loadCSV_mat(PathVar::data / "Cheb_Q.csv", Q);
     } catch (int e) {
       std::cout << "Error in Model_SPM::Model_SPM() when reading the files: "
                 << e << ".\n";

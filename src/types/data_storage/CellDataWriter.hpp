@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <array>
 #include <span>
+#include <variant>
 
 namespace slide {
 
@@ -30,12 +31,6 @@ inline void writeData(std::ofstream &file, std::span<Histogram<>> histograms)
 
 inline void writeVarAndStates(std::ofstream &file, auto &cell)
 {
-  //!< write throughput data, cell-to-cell variations and the battery state:
-  file << "Varstates:,";
-  for (const auto var : cell.viewVariations())
-    file << var << ',';
-  file << '\n';
-
   file << "States:,";                       // #TODO we need names for states.
   for (const auto st_i : cell.viewStates()) // Time and Throughput data is written here if available.
     file << st_i << ',';

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "../State.hpp"
 #include "../Histogram.hpp"
 
 #include <iostream>
@@ -15,7 +16,7 @@ namespace slide {
 
 struct ProcedureThroughputData
 {
-  int ID;                //!< the ID of the (dis)charge
+  // int ID;                // #TODO the ID of the (dis)charge Maybe ID in future.
   double charge;         //!< the charge throughput of every (dis)charge
   double energy;         //!< the energy throughput of every (dis)charge
   double coolSystemLoad; //!< the energy [Wh] required to run the cooling system of the battery in every cycle
@@ -36,10 +37,17 @@ struct CellCommonHist
   Histogram<> I, V, T; //!< histograms for current, voltage, temperature
 };
 
-struct CellThroughputData
-{
-  double time{}, Ah{}, Wh{};
-};
+using ThroughputData = State<0, 3>;
+
+// auto operator+(const ThroughputData &a, const ThroughputData &b)
+// {
+//   auto c = a;
+//   for (size_t i = 0; i < c.size(); i++)
+//     c[i] += b[i];
+
+//   return c;
+// }
+
 
 struct BatteryData
 {

@@ -63,7 +63,6 @@ Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncell
 }
 
 
-
 void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
 {
   /*
@@ -131,18 +130,15 @@ Status Module::checkVoltage(double &v, bool print) noexcept
   //!< const bool printNonCrit = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< check the voltage of the module
-  //!< v = V(print); -> Hey we dont need to calculate this anymore.
+  v = V(print); // -> Hey we dont need to calculate this anymore.
   //!< #TODO here was a not useful chuck of code for repeated checking.
   //!< We may have constant limits for module voltage.
 
   //!< check the voltages of the connected cells
   double vi;
   auto res = Status::Success;
-  for (const auto &SU : SUs) {
-    const auto resi = SU->checkVoltage(vi, print);
-    if (resi < res || resi > res)
-      res = resi;
-  }
+  for (const auto &SU : SUs)
+    res = std::max(res, SU->checkVoltage(vi, print)); // get the worst status.
 
   return res;
 }
@@ -151,7 +147,7 @@ double Module::getVhigh()
 {
   //!< return the voltage of the cell with the highest voltage
   //!< 	note CELL not child SU
-  double Vhigh = Vmin(); //#TODO
+  double Vhigh = Vmin(); // #TODO
   for (const auto &SU : SUs)
     Vhigh = std::max(Vhigh, SU->getVhigh()); //!< will be called recursively to the cell levels
 
@@ -161,7 +157,7 @@ double Module::getVhigh()
 double Module::getVlow()
 {
   //!< return the voltage of the cell with the lowest voltage note CELL not child SU
-  double Vlow = Vmax(); //#TODO
+  double Vlow = Vmax(); // #TODO
   for (const auto &SU : SUs)
     Vlow = std::min(Vlow, SU->getVlow()); //!< will be called recursively to the cell levels
 
@@ -198,7 +194,7 @@ bool Module::validStates(bool print)
   const bool verb = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< check the resulting state is valid
-  bool val = validSUs(verb); //#TODO validSUs does not take vector.
+  bool val = validSUs(verb); // #TODO validSUs does not take vector.
 
   return val;
 }

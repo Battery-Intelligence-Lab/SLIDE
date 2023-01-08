@@ -37,7 +37,7 @@ public:
   Cell_ECM();
   Cell_ECM(double capin, double SOCin);
 
-  inline double I() override { return st.I(); }
+  inline double I() const override { return st.I(); }
   inline double getIr() { return st.Ir(); } //!< current through the parallel resistance
   inline double SOC() override { return st.SOC(); }
   inline double T() override { return st.T(); }
@@ -62,7 +62,7 @@ public:
   virtual bool validStates(bool print = true) override;
   void timeStep_CC(double dt, int steps = 1) override;
 
-  CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
 
 
   Cell_ECM *copy() override { return new Cell_ECM(*this); }

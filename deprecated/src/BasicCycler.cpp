@@ -60,12 +60,11 @@ void BasicCycler::reset()
 void BasicCycler::openFolder(int CyclingDataTimeIntervali)
 {
   //!< We first need to create folders otherwise cannot create files.
-
   if (CyclingDataTimeIntervali >= 0) {
     if constexpr (printBool::printCyclerDetail)
       std::cout << "BasicCycler::BasicCycler is making a subfolder to store the results.\n";
 
-    const auto fol = PathVar::results + ID;
+    const auto fol = PathVar::results / ID;
 
     if (settings::overwrite_data)
       fs::remove_all(fol);
@@ -161,7 +160,7 @@ void BasicCycler::writeCyclingData(const std::string &name, bool clear)
 
     //!< Open the file
     //!< We want to write the file in the subfolder of this cell, but Windows and Linux use the opposite subfolder separation symbol
-    const auto fol = PathVar::results + ID;
+    const auto fol = PathVar::results / ID;
     const auto fullName = fol + name; //!< include the subfolder in the full name
     std::ofstream output(fullName);   //!< open the file
     if (output.is_open()) {
@@ -2406,7 +2405,7 @@ int BasicCycler::followI(int nI, const std::string &nameI, bool blockDegradation
   //!< Read the current profile
   static thread_local std::vector<double> I(nI), T(nI);
   try {
-    slide::loadCSV_2col(PathVar::data + nameI, I, T, nI); //!< read the file
+    slide::loadCSV_2col(PathVar::data / nameI, I, T, nI); //!< read the file
   } catch (int e) {
     //!< std::cout << "Throw test: " << 30 << '\n';
     std::cout << "error in BasicCycler::followI when reading the file with the current profile called "

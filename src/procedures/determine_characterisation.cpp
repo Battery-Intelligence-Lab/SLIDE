@@ -621,7 +621,7 @@ void estimateCharacterisation()
 
   for (size_t i = 0; i < nCCCV; i++) { //!< loop to read the voltage profile of each cycle
 
-    slide::loadCSV_2col(PathVar::data + names[i], Vdata_all[i].x, Vdata_all[i].y); //!< read the csv file with the voltage profile
+    slide::loadCSV_2col(PathVar::data / names[i], Vdata_all[i].x, Vdata_all[i].y); //!< read the csv file with the voltage profile
 
     //!< check the data is in the correct format
     const bool val = validOCV(checkRange, Vdata_all[i]); //!< boolean indicating if the data is in the correct format
@@ -647,7 +647,7 @@ void estimateCharacterisation()
   std::cout << "The best fit is: Rdc = " << Rdc << ", Dp = " << Dp << ", Dn = " << Dn << ", kp = " << kp << ", kn = " << kn << ".\n";
 
   std::ofstream output; //!< write the parameters in a csv file
-  output.open(PathVar::results + nameparam, std::ios_base::out);
+  output.open(PathVar::results / nameparam, std::ios_base::out);
   output << "Rdc" << ',' << Rdc << '\n';
   output << "Dp" << ',' << Dp << '\n';
   output << "Dn" << ',' << Dn << '\n';
@@ -670,7 +670,7 @@ void estimateCharacterisation()
     CCCV(Crates[i], Ccuts[i], Tref, Dp, Dn, kp, kn, Rdc, ocvfit, M_ptr, Vsim, Tsim);
 
     //!< write the simulated voltages in a csv file
-    output.open(PathVar::results + nameCCCVfit + names[i]);
+    output.open(PathVar::results / (nameCCCVfit + names[i]));
     for (size_t i = 0; i < Vsim.size(); i++)
       output << Vsim.x[i] << ',' << Vsim.y[i] << ',' << Tsim.y[i] << '\n';
     output.close();
@@ -679,7 +679,7 @@ void estimateCharacterisation()
   //!< Calculate the error of the best fit
   double errcomb = 0;                                            //!< the combined error of all CCCV experiments for this combination of Dp, Dn, kp and kn
   std::vector<double> erri(nCCCV);                               //!< the error for this CCCV cycle
-  output.open(PathVar::results + nameparam, std::ios_base::app); //!< append the errors in the file with the parameter values
+  output.open(PathVar::results / nameparam, std::ios_base::app); //!< append the errors in the file with the parameter values
 
   for (int i = 0; i < nCCCV; i++) { //!< loop through all CCCV experiments
     //!< Simulate this CCCV experiment
@@ -754,7 +754,7 @@ void writeCharacterisationParam(int h, const std::array<double, 5> &par, double 
             << Dp << ", Dn = " << Dn << ", kp = " << kp << ", kn = " << kn << ".\n";
   std::ofstream output;
   //!< write the parameters and the magnitude of the error
-  const auto na = PathVar::results + ("characterisationFit_" + std::to_string(h) + "_param.csv");
+  const auto na = PathVar::results / ("characterisationFit_" + std::to_string(h) + "_param.csv");
   output.open(na, std::ios_base::out);
   output << "Rdc" << ',' << Rdc << '\n'
          << "Dp" << ',' << Dp << '\n'

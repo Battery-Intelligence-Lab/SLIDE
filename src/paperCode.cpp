@@ -1,12 +1,12 @@
 /*
  * paperCode.cpp
  *
- *  Created on: 9 Jul 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ * Created on: 9 Jul 2020
+ *  Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
 #include "slide.hpp"
-//#include "unit_tests.hpp"
+// #include "unit_tests.hpp"
 #include "paperCode.hpp"
 
 #include <cmath>
@@ -14,11 +14,6 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
-
-//!< Degradation fits for Mat4Bat data and ageing with cell-to-cell variations is in
-//!< C:\Users\Jorn Reniers\Desktop\ESO\code\code_desktop\Battery\SPMcell_Mat4Batfit
-//!< Degradation.cpp
-//!< variationAgeing()
 
 namespace slide::paperCode::paper2022 {
 void Vequalisation_Rdc(double Rdc)
@@ -39,7 +34,7 @@ void Vequalisation_Rdc(double Rdc)
   std::default_random_engine gen(seed);
   std::normal_distribution<double> distr_c(1.0, 0.004); //!< normal distribution with mean 1 and std 0.4%
   std::normal_distribution<double> distr_r(1.0, 0.025); //!< normal distribution with mean 1 and std 2.5%
-  std::normal_distribution<double> distr_d(1.0, 0.10);  //!< normal distribution with mean 1 and std 10%
+  std::normal_distribution<double> distr_d(1.0, 0.100); //!< normal distribution with mean 1 and std 10%
   slide::DEG_ID deg;
   deg.SEI_id.add_model(4); //!< add model 4.
   deg.SEI_porosity = 1;
@@ -59,32 +54,31 @@ void Vequalisation_Rdc(double Rdc)
 
   double Rcs[5] = { Rdc, Rdc, Rdc, Rdc, Rdc };
 
-  auto mpp4 = std::make_unique<Module_p>(name, settings::T_ENV, true, false, 5, 1, 1); //!< print, no multithread, coolcontrol 1, HVAC coolsystem
+  Module_p mpp4(name, settings::T_ENV, true, false, 5, 1, 1); //!< print, no multithread, coolcontrol 1, HVAC coolsystem
 
-  mpp4->setSUs(cs4, true, true);
-  mpp4->setRcontact(Rcs);
+  mpp4.setSUs(cs4, true, true);
+  mpp4.setRcontact(Rcs);
 
   //!< Make the cycler
   Cycler cyc;
-  cyc.initialise(mpp4.get(), ID); //!<#TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
-  double vlim, tlim;
+  cyc.initialise(&mpp4, ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
+  double vlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
 
   //!< do a CC charge-discharge
-  double Ah, Wh;
-  double I = mpp4->Cap();
-  vlim = mpp4->Vmax();
-  tlim = 99999999;
-  cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh);
+  ThroughputData th{};
+
+  double I = mpp4.Cap();
+  vlim = mpp4.Vmax();
+  cyc.CC(-I, vlim, TIME_INF, dt, ndata, th);
 
   //!< CC discharge
-  vlim = mpp4->Vmin();
-  tlim = 99999999;
-  cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh);
+  vlim = mpp4.Vmin();
+  cyc.CC(I, vlim, TIME_INF, dt, ndata, th);
 
   //!< write the data
-  mpp4->writeData(ID);
+  mpp4.writeData(ID);
 }
 
 void Vequalisation()
@@ -98,7 +92,7 @@ void Vequalisation()
   if constexpr (settings::T_MODEL > 1)
     std::cerr << "Warning in paperCode::Vequalisation. We want to use a large contact "
                  "R which will lead to overheating if you use a full thermal model. "
-                 "Set Global::settings::T_MODEL to 0 or 1 to enable this simulation.\n";
+                 "Set settings::T_MODEL to 0 or 1 to enable this simulation.\n";
 
   //!< Simulate with no contact R and with a value of 1 mOhm
   Vequalisation_Rdc(0);
@@ -119,7 +113,7 @@ void thermalModel()
 
   if constexpr (settings::T_MODEL != 2)
     std::cerr << "Warning in paperCode::thermalModel. We want to calculate the thermal "
-                 "model but the global settings are wrong. Set Global::settings::T_MODEL "
+                 "model but the global settings are wrong. Set settings::T_MODEL "
                  "to 2 to enable this simulation.\n";
 
   std::string ID = "paper_thermalModel";
@@ -155,29 +149,28 @@ void thermalModel()
   //!< Make the cycler
   Cycler cyc;
   cyc.initialise(mpp4.get(), ID);
-  double vlim, tlim;
+  double vlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
 
+
   for (int i = 0; i < 5; i++) {
     //!< do a CC charge-discharge
-    double Ah, Wh;
+    ThroughputData th{};
     double I = mpp4->Cap();
     vlim = mpp4->Vmax();
-    tlim = 99999999;
-    cyc.CC(-I, vlim, tlim, dt, ndata, Ah, Wh);
+    cyc.CC(-I, vlim, TIME_INF, dt, ndata, th);
 
     //!< CC discharge
     vlim = mpp4->Vmin();
-    tlim = 99999999;
-    cyc.CC(I, vlim, tlim, dt, ndata, Ah, Wh);
+    cyc.CC(I, vlim, TIME_INF, dt, ndata, th);
   }
 
   //!< write the data
   mpp4->writeData(ID);
 }
 
-void degrade(StorageUnit *su)
+void degrade(auto &&su)
 {
   /*
    * Test some cycle ageing for an arbitrarily large battery
@@ -188,11 +181,11 @@ void degrade(StorageUnit *su)
   double Ccha = 1;
   double Cdis = 1;
   bool testCV = false;
-  double Vmax = su->Vmax();
-  double Vmin = su->Vmin();
+  double Vmax = su.Vmax();
+  double Vmin = su.Vmin();
   int Ncycle = 10000;
-  double ncheck = 250; //!< do a checkup ever 250 cycles
-  double nbal = 10;    //!< balance every 10 cycles
+  int ncheck = 250; //!< do a checkup ever 250 cycles
+  int nbal = 10;    //!< balance every 10 cycles
 
   //!< Make the procedure
   bool balance = true;
@@ -202,7 +195,7 @@ void degrade(StorageUnit *su)
   Procedure p(balance, Vbal, ndata, false);
 
   //!< Simulate the cycle ageing
-  p.cycleAge(su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
+  p.cycleAge(&su, Ncycle, ncheck, nbal, testCV, Ccha, Cdis, Vmax, Vmin);
 }
 
 void degradation_1cell()
@@ -219,7 +212,7 @@ void degradation_1cell()
 
   if constexpr (settings::T_MODEL > 0)
     std::cerr << "Warning in paperCode::degradation_1cell. We want to simulate one "
-                 "cell without thermal model. Set Global::settings::T_MODEL to 0 to "
+                 "cell without thermal model. Set settings::T_MODEL to 0 to "
                  "enable this simulation.\n";
 
   constexpr int ser = 15 * 20;
@@ -237,7 +230,6 @@ void degradation_1cell()
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-
   auto mc = std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1); //!< cell-to-cell variation parameters are 0
 
   //!< Wrap the cell in a series-module
@@ -252,7 +244,7 @@ void degradation_1cell()
   bat->setModule(std::move(modulei));
 
   //!< call the degradation function
-  degrade(bat.get()); //!<#TODO
+  degrade(*bat); //!< #TODO
 }
 
 void degradation_electricalModel()
@@ -269,7 +261,7 @@ void degradation_electricalModel()
 
   if constexpr (settings::T_MODEL > 0)
     std::cerr << "Warning in paperCode::degradation_electricalModel. We want to simulate "
-                 "N cells without thermal model. Set Global::settings::T_MODEL to 0 to "
+                 "N cells without thermal model. Set settings::T_MODEL to 0 to "
                  "enable this simulation.\n";
 
   //!< Get the battery from makeBattery
@@ -288,7 +280,7 @@ void degradation_electricalModel()
   IDaddition = "_noThermalModel_HighRContact";
 
   auto su2 = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 10);
-  degrade(su2.get());
+  degrade(*su2);
 }
 
 void degradation_variations()
@@ -310,7 +302,7 @@ void degradation_variations()
 
   if constexpr (settings::T_MODEL > 0)
     std::cerr << "Warning in paperCode::degradation_variations. We want to simulate "
-                 "cells without thermal model. Set Global::settings::T_MODEL to 0 to "
+                 "cells without thermal model. Set settings::T_MODEL to 0 to "
                  "enable this simulation.\n";
 
   //!< resistance spread
@@ -321,7 +313,7 @@ void degradation_variations()
   bool contactR = true;
   std::string IDaddition = "_noThermalModel";
   auto su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1.0);
-  degrade(su.get());
+  degrade(*su);
 
   //!< capacity spread
   coolControl = 1; //!< just for naming since there is no thermal model
@@ -331,7 +323,7 @@ void degradation_variations()
   contactR = true;
   IDaddition = "_noThermalModel";
   auto su2 = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  degrade(su2.get());
+  degrade(*su2);
 
   //!< degradation rate spread
   coolControl = 1; //!< just for naming since there is no thermal model
@@ -341,7 +333,7 @@ void degradation_variations()
   contactR = true;
   IDaddition = "_noThermalModel";
   auto su3 = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  degrade(su3.get());
+  degrade(*su3);
 
   //!< all three spread
   coolControl = 1; //!< just for naming since there is no thermal model
@@ -351,7 +343,7 @@ void degradation_variations()
   contactR = true;
   IDaddition = "_noThermalModel";
   auto su4 = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  degrade(su4.get());
+  degrade(*su4);
 }
 
 void degradation_thermal()
@@ -372,8 +364,8 @@ void degradation_thermal()
 
   if constexpr (settings::T_MODEL != 1)
     std::cerr << "Warning in paperCode::degradation_thermal. We want to simulate "
-                 "cells with a noncoupled thermal model. Set Global::settings::T_MODEL "
-                 "to 0 to enable this simulation.\n";
+                 "cells with a noncoupled thermal model. Set settings::T_MODEL "
+                 "to 1 to enable this simulation.\n";
 
   //!< all three spread
   int coolControl = 1; //!< just for naming since there is no thermal model
@@ -383,6 +375,6 @@ void degradation_thermal()
   bool contactR = true;
   std::string IDaddition = "_individualThermalModel";
   auto su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
-  degrade(su.get());
+  degrade(*su);
 }
 } // namespace slide::paperCode::paper2022

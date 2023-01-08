@@ -34,7 +34,7 @@ public:
   Cell_Bucket(std::string IDi, double capin, double SOCin);
 
   inline double SOC() override { return st.SOC(); }
-  inline double I() override { return st.I(); }
+  inline double I() const override { return st.I(); }
   double V(bool print = true) override;
 
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }         //!< returns the states of the cell collectively.
@@ -60,7 +60,7 @@ public:
   bool validStates(bool print = true) override;
   void timeStep_CC(double dt, int steps = 1) override;
 
-  CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
 
 
   Cell_Bucket *copy() override { return new Cell_Bucket(*this); }

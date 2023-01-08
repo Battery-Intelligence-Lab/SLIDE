@@ -28,7 +28,7 @@ protected:
   double balance_voltage{ 3.65 };
 
   std::vector<ProcedureThroughputData> throughput;
-  void storeThroughput(int ID, double Ah, double Wh, StorageUnit *su);
+  void storeThroughput(ThroughputData th, StorageUnit *su);
 
 public:
   Procedure() = default;
@@ -44,23 +44,17 @@ public:
   void balanceCheckup(StorageUnit *su, bool balance, bool checkup, double Ah, int nrCycle, std::string pref);
 
   //!< balancing
-  void rebalance(StorageUnit *su);
+  Status rebalance(StorageUnit *su);
 
   //!< check-up procedures
-  void checkUp(StorageUnit *su, double Ah, int nrCycle);              //!< main checkup function which will call the others
-  void checkUp_prep(StorageUnit *su);                                 //!< bring the SU to a good voltage
-  void checkUp_getCells(StorageUnit *su, std::vector<Cell *> &cells); //!< makes an array with pointers to the individual cells in the battery
-  void checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &file, int separator);
-  void checkUp_writeMain(std::vector<Cell *> &cells, std::ofstream &file);
-  void checkUp_writeStats(std::vector<Cell *> &cells, std::ofstream &file);
+  void checkUp(StorageUnit *su, double Ah, int nrCycle); //!< main checkup function which will call the others
+  void checkUp_prep(StorageUnit *su);                    //!< bring the SU to a good voltage
+  void checkUp_writeInitial(std::vector<Cell *> &cells, std::ofstream &file);
 
   //!< cooling system procedures
-  void checkMod(StorageUnit *su);                                         //!< main function to do a checkup on the modules
-  void checkMod_getModules(StorageUnit *su, std::vector<Module *> &mods); //!< make a vector with all the modules from the SU
-  void checkMod_writeInitial(std::vector<Module *> mods, Battery *batt, std::ofstream &file, int separator);
-  void checkMod_writeCoolStats(std::vector<Module *> mods, Battery *batt, std::ofstream &file, int separator);
+  void checkMod(StorageUnit *su); //!< main function to do a checkup on the modules
 
   //!< write the charge and energy throughput
-  void writeThroughput(std::string SUID, double Ahtot);
+  void writeThroughput(const std::string &SUID, double Ahtot);
 };
 } // namespace slide

@@ -381,9 +381,9 @@ void readOCVinput(const std::string &namepos, const std::string &nameneg, const 
    */
 
   try {
-    OCVp.setCurve(PathVar::data + namepos);
-    OCVn.setCurve(PathVar::data + nameneg);
-    OCVcell.setCurve(PathVar::data + namecell);
+    OCVp.setCurve(PathVar::data / namepos);
+    OCVn.setCurve(PathVar::data / nameneg);
+    OCVcell.setCurve(PathVar::data / namecell);
   } catch (int e) {
     //!< std::cout << "Throw test: " << 80 << '\n';
     std::cerr << "ERROR in determineOCV::readOCVinput, an error " << e << " happened while reading the files. Throwing the error on.\n";
@@ -629,7 +629,7 @@ auto hierarchicalOCVfit(int hmax, slide::FixedData<double> AMp_space, slide::Fix
   return std::pair(par, err); //!< Return parameters and error.
 }
 
-void estimateOCVparameters()
+void estimateOCVparameters() // #TODO this function is slow and hand-tuned. Change with determining sn and AMp from boundary.
 {
   /*
    * Function which will find the parameters which best fit the OCV curve of the user.
@@ -708,27 +708,23 @@ void estimateOCVparameters()
   const double AMn_guess = cap * 3600.0 / (n * F * cmaxn);
 
   //!< //!< Define the search space for the amount of active material on each electrode
-  constexpr double step = 0.1; //!< take steps of 10% of the guessed active material
-  constexpr double AMmax = 5;  //!< the maximum amount of active material is 5 times the guessed amount
-  constexpr double AMmin = 0;  //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
-
-  //!< //!< Define the search space for the initial lithium fractions at each electrode
-  constexpr double df = 0.1;   //!< take steps of 10% of the lithium fraction
-  constexpr double fmin = 0.0; //!< the minimum lithium fraction is 0
-  constexpr double fmax = 1.0; //!< the maximum lithium fraction is 1
-
-  //!< Define the search space for the amount of active material on each electrode
-  auto AMp_space = slide::range_fix(AMmin * AMp_guess, AMmax * AMp_guess + 3.2 * step * AMp_guess, step * AMp_guess); //!< From 0 to 5x of guessed active material with 10% steps.
-  auto AMn_space = slide::range_fix(AMmin * AMn_guess, AMmax * AMn_guess, step * AMn_guess);
+  constexpr double step = 0.02; //!< take steps of 5% of the guessed active material
+  constexpr double AMmax = 2.5; //!< the maximum amount of active material is 5 times the guessed amount
+  constexpr double AMmin = 1;   //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
 
   //!< Define the search space for the initial lithium fractions at each electrode
-  auto sp_space = slide::range_fix(fmin, fmax, df); //!< From 0 to 1 lithium fraction
-  auto sn_space = slide::range_fix(fmin, fmax, df);
+  auto sp_space = slide::linspace_fix(0.38, 0.4, 51); //!< From 0 to 1 lithium fraction 5% increase of the lithium fraction
+  auto sn_space = slide::linspace_fix(0.55, 0.58, 51);
+
+  //!< Define the search space for the amount of active material on each electrode
+  auto AMp_space = slide::linspace_fix(AMmin * AMp_guess, AMmax * AMp_guess, 100); //!< From 0 to 5x of guessed active material with 10% steps.
+  auto AMn_space = slide::linspace_fix(AMmin * AMn_guess, AMmax * AMn_guess, 100);
+
 
   //!< ***************************************************** 3 Fit the parameters ***********************************************************************
 
   //!< Call the hierarchical search algorithm, which does the fitting
-  constexpr int hmax = 2;                                                                                                               //!< number of levels in the hierarchy to consider.
+  constexpr int hmax = 3;                                                                                                               //!< number of levels in the hierarchy to consider.
   const auto [par, err] = hierarchicalOCVfit(hmax, AMp_space, AMn_space, sp_space, sn_space, namepos, nameneg, namecell, cmaxp, cmaxn); //!< parameters of the best fit and lowest error.
 
   //!< ***************************************************** 4 write outputs ***********************************************************************
@@ -738,7 +734,7 @@ void estimateOCVparameters()
   std::ofstream output;
 
   //!< write the parameters in a csv file
-  output.open(PathVar::results + nameparam, std::ios_base::out);
+  output.open(PathVar::results / nameparam, std::ios_base::out);
   output << "AMp" << ',' << par[0] << '\n'
          << "AMn" << ',' << par[1] << '\n'
          << "start pos" << ',' << par[2] << '\n'
@@ -755,7 +751,7 @@ void estimateOCVparameters()
   double fp[3], fn[3]; //!< arrays to store the lithium fractions at 100%, 50% and 0% SOC
   discharge(OCVp, OCVn, cap, par[0], par[1], cmaxp, cmaxn, par[2], par[3], Vend, OCVsim, OCVnsim, OCVpsim, fp, fn);
   //!< Write this best-fit OCV curve in a csv file so the user can check it using the matlab script readEstimateOCV.m
-  output.open(PathVar::results + nameOCV);
+  output.open(PathVar::results / nameOCV);
   for (size_t i = 0; i < OCVsim.x.size(); i++)
     output << OCVsim.x[i] << ',' << OCVsim.y[i] << ',' << OCVnsim.x[i] << ','
            << OCVnsim.y[i] << ',' << OCVpsim.x[i] << ',' << OCVpsim.y[i] << '\n';
@@ -780,7 +776,7 @@ void estimateOCVparameters()
   const double thickn = par[1] / (elec_surf * en);
 
   //!< Append these parameters in the csv file where we had written the fitted parameters
-  output.open(PathVar::results + nameparam, std::ios_base::app);
+  output.open(PathVar::results / nameparam, std::ios_base::app);
   output << "cathode volume fraction ep" << ',' << ep << '\n';
   output << "anode volume fraction en" << ',' << en << '\n';
   output << "electrode surface ele_surf" << ',' << elec_surf << '\n';
@@ -794,7 +790,7 @@ void estimateOCVparameters()
   output << "anode lithium fraction at 0% SOC" << ',' << fn[2] << '\n';
   output << "capacity of the cell in Ah" << ',' << cap << '\n';
   output << "maximum voltage of the cell" << ',' << OCVcell.y[0] << '\n';
-  output << "minimum voltage of the cell" << ',' << OCVcell.y[ncell - 1] << '\n';
+  output << "minimum voltage of the cell" << ',' << OCVcell.y.back() << '\n';
   output << "The error on the OCV curve with this fit is" << ',' << err << '\n';
 
   //!< then note down the settings used to get this fit
@@ -813,9 +809,9 @@ void estimateOCVparameters()
   output << "relative step size in the search for active material" << ',' << step << '\n';
   output << "relative minimum amount of active material" << ',' << AMmin << '\n';
   output << "relative maximum amount of active material" << ',' << AMmax << '\n';
-  output << "step size in the search for the starting li-fraction" << ',' << df << '\n';
-  output << "minimum li-fraction" << ',' << fmin << '\n';
-  output << "maximum li-fraction" << ',' << fmax << '\n';
+  output << "step size in the search for the starting li-fraction" << ',' << sp_space.dstep() << '\n';
+  output << "minimum li-fraction" << ',' << 0.0 << '\n';
+  output << "maximum li-fraction" << ',' << 1.0 << '\n';
   output << "number of levels in the search hierarchy" << ',' << hmax << '\n';
   output.close();
 }
@@ -828,7 +824,7 @@ void writeOCVParam(int h, const std::array<double, 4> &par)
 
   std::ofstream output; //!< write the parameters
   const auto na = "OCVFit_" + std::to_string(h) + "_param.csv";
-  output.open(PathVar::results + na, std::ios_base::out);
+  output.open(PathVar::results / na, std::ios_base::out);
   output << "AMp" << ',' << par[0] << '\n';
   output << "AMn" << ',' << par[1] << '\n';
   output << "start pos" << ',' << par[2] << '\n';

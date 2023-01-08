@@ -24,6 +24,11 @@ struct State_Bucket : public State<3>
   inline auto &SOC() { return (*this)[i_SOC]; } //!< state of charge [0-1]
   inline auto &T() { return (*this)[i_T]; }     //!< temperature, [K]
 
+  // Const versions of the methods
+  inline auto I() const { return (*this)[i_I]; }     //!< Current, [I]
+  inline auto SOC() const { return (*this)[i_SOC]; } //!< state of charge [0-1]
+  inline auto T() const { return (*this)[i_T]; }     //!< temperature, [K]
+
   constexpr static auto description(size_t i)
   {
     if (i >= N_states)

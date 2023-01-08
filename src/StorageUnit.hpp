@@ -44,11 +44,11 @@ public:
   //!< Return the full ID string, including the ID of the parent module
   virtual std::string getFullID() { return (parent != nullptr) ? parent->getFullID() + "_" + getID() : getID(); }
 
-  virtual double Cap() = 0; //
+  virtual double Cap() const = 0; //
 
   auto *getParent() { return parent; };
 
-  virtual double I() = 0; //
+  virtual double I() const = 0; //
   virtual double getRtot() = 0;
   virtual size_t getNcells() = 0; //!< return the number of single cells connected to this SU
 
@@ -74,10 +74,10 @@ public:
   virtual double getVhigh() = 0;                                   //!< return the voltage of the cell with the highest voltage
   virtual double getVlow() = 0;                                    //!< return the voltage of the cell with the lowest voltage
 
-  virtual double Vmin() = 0; //!< lower voltage limit of the cell
-  virtual double VMIN() = 0; //!< safety cut off
-  virtual double Vmax() = 0; //!< upper voltage limit of the cell
-  virtual double VMAX() = 0; //!< safety cut off
+  virtual double Vmin() const = 0; //!< lower voltage limit of the cell
+  virtual double VMIN() const = 0; //!< safety cut off
+  virtual double Vmax() const = 0; //!< upper voltage limit of the cell
+  virtual double VMAX() const = 0; //!< safety cut off
 
   //!< thermal model
   virtual double T() = 0;

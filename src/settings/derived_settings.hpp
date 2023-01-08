@@ -10,8 +10,6 @@
 
 #pragma once
 
-#include "settings.hpp"
-
 namespace slide::settings {
 constexpr size_t CELL_NDATA_MAX = DATASTORE_CELL <= cellDataStorageLevel::storeHistogramData ? CELL_NDATA_HIST_MAX : CELL_NDATA_INST_MAX;
 //!< length of arrays in which we store cycling data at every time step
@@ -35,5 +33,4 @@ constexpr auto printCyclerFunctions = settings::verbose >= printLevel::printCycl
 constexpr auto printCyclerHighLevel = settings::verbose >= printLevel::printCyclerHighLevel;         //!< threshold of verbose of when to print the high-level flow of the program in the BasicCycler
 constexpr auto printCyclerDetail = settings::verbose >= printLevel::printCyclerDetail;               //!< threshold of verbose of when to print the low-level detailed flow of the program in the BasicCycler
 constexpr auto printfindCVcurrentDetail = settings::verbose >= printLevel::printfindCVcurrentDetail; //!< threshold of verbose of when to print the details of how the current for the CV phase is found
-constexpr auto printCellFunctions = settings::verbose >= printLevel::printCellFunctions;             //!< threshold of verbose of when to print messages at the start and end of functions of the Cell
 } // namespace slide::settings::printBool

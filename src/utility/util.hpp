@@ -29,7 +29,11 @@
 
 namespace slide {
 
-constexpr auto abs_sqrt(auto x) { return std::sqrt(std::abs(x)); }
+constexpr inline auto abs_sqrt(auto x) { return std::sqrt(std::abs(x)); }
+
+constexpr inline auto sqr(auto x) { return x * x; }
+constexpr inline auto cube(auto x) { return x * x * x; }
+
 
 template <typename T>
 void output_printer(const std::vector<T> &vec, const auto &save_path)
@@ -49,35 +53,6 @@ void output_printer(const std::vector<T> &vec, const auto &save_path)
 
 
 namespace slide::util {
-//!< template <int pLevel>
-//!< inline void print(const std::string& message) //!< Print messages.
-//!<  {
-//!<  if constexpr (settings::verbose >= pLevel)
-//!<   {
-//!<        std::cout << message << '\n';
-//!<     }
-//!<  }
-
-//!< struct Counter //!< Counts how many times it is called.
-//!< {
-
-//!<     //!< To use counter create a static Counter object in the function you would like to measure
-//!<     //!< slide::util::Counter myCounterName(printEveryXiter);  Then just call it
-//!<     //!< myCounterName();
-//!<     static count{0};
-//!<     long long printEveryXiter{500000};
-
-//!<     Counter() = default;
-//!<     Counter(unsigned long long printEveryXiter) : printEveryXiter(printEveryXiter){};
-
-//!<     void operator()()
-//!<     {
-//!<         count++;
-
-//!<         if (count % printEveryXiter == 0)
-//!<             std::cout << "Counter: " << count << '\n';
-//!<     }
-//!< };
 
 } // namespace slide::util
 

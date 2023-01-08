@@ -16,7 +16,8 @@ namespace slide {
 
 auto transform_sum(const auto &SUs, auto &function)
 {
-  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), 0.0, std::plus<>(), function);
+  using out_type = decltype(function(SUs[0]));
+  return std::transform_reduce(std::cbegin(SUs), std::cend(SUs), out_type(0), std::plus<>(), function);
 }
 
 auto transform_max(const auto &SUs, auto &function)

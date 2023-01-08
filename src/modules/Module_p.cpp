@@ -82,13 +82,12 @@ double Module_p::getVi(size_t i, bool print)
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module::getVi, you ask the voltage of cell " << i
                 << " but the size of the cell array is " << getNSUs() << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10;
   }
 
   double v = SUs[i]->V(print); //!< the voltage of cell i
-  if (v == 0)
-    return 0;
+  if (v <= 0)
+    return v;
 
   for (size_t j = 0; j <= i; j++) {
     double Ij{ 0 };                        //!< the current through parallel resistance j
@@ -112,8 +111,8 @@ double Module_p::V(bool print)
   Vmodule = 0;
   for (size_t i = 0; i < SUs.size(); i++) {
     const auto v = getVi(i, print);
-    if (v == 0)
-      return 0;
+    if (v <= 0)
+      return v;
 
     Vmodule += v; //!< #TODO there is definitely something fishy. getVi already does some calculations.
   }
@@ -211,7 +210,6 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   //!< iterate until the voltages are satisfactory close
   while (!reached) //!< #TODO if this algorithm is efficient.
   {
-
     //!< find the cells with the smallest and largest V
     const auto [minIter, maxIter] = std::minmax_element(std::begin(Vo), std::begin(Vo) + getNSUs());
 
@@ -351,14 +349,13 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
                       << ". The allowed absolute tolerance is " << settings::MODULE_P_V_ABSTOL
                       << " and relative tolerance " << settings::MODULE_P_V_RELTOL * Vo[imax] << '\n';
           }
-          std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
           return Status::RedistributeCurrent_failed;
         }
       }
     }
   }
 
-  std::cout << "Number of iterations in redistributeCurrent() is: " << ktot << '\n';
+  //  std::cout << "Number of iterations in redistributeCurrent() is: " << ktot << '\n';
 
   if (checkV) {
     double v;
@@ -432,7 +429,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
     Vmodule_valid = false;       //!< we are changing the current, so the stored voltage is no longer valid
 
     //!< STEP 1: CHANGE ICELL BY dIi/2 AND SEE HOW CELL VOLTAGE CHANGES to estimate resistance
-    std::array<double, settings::MODULE_NSUs_MAX> Vo, Ri, Iold; //#TODO these probably need to be vectors since NSUs will increase.
+    std::array<double, settings::MODULE_NSUs_MAX> Vo, Ri, Iold; // #TODO these probably need to be vectors since NSUs will increase.
     double Rtot = 0;                                            //!< total resistance of the parallel module, 1/Rtot = sum ( 1/R(i) )
     for (size_t i = 0; i < getNSUs(); i++) {
       Vo[i] = getVi(i, print); //!< terminal voltage reached from cell i
@@ -747,7 +744,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module_p::timeStep_CC, the time step dt must be 0 or positive, but has value "
                 << dt << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10;
   }
 
@@ -775,7 +771,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
       for (size_t j = i; j < SUs.size(); j++)
         Ii += SUs[j]->I(); //!< resistor i sees the currents through the cells 'behind' them
 
-      therm.Qcontact += Rcontact[i] * std::pow(Ii, 2) * nstep * dt;
+      therm.Qcontact += Rcontact[i] * sqr(Ii) * nstep * dt;
     }
 
     //!< If this module has a parent module, this parent will call the thermal model with the correct parameters
@@ -789,7 +785,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
       if (typeid(*getCoolSystem()) != typeid(CoolSystem_HVAC)) {
         std::cerr << "ERROR in module_p::timeStep_CC in module " << getFullID() << ". this is a top-level"
                   << "module but does not have an HVAC coolsystem for active cooling with the environment.\n";
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw 14;
       }
 
@@ -828,8 +823,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
       if (status != Status::Success)
         throw 100000; //!< #TODO
     } catch (int e) {
-      std::cout << "error in Module_p::timeStep_CC when redistributing the current. Throwing the error on " << e << '\n';
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
+      std::cerr << "error in Module_p::timeStep_CC when redistributing the current. Throwing the error on " << e << '\n';
       throw e;
     }
   }

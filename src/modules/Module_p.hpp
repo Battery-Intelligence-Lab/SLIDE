@@ -28,14 +28,14 @@ public:
   //!< functions from Module_base
   //!< the voltage limits are the most constraining limits of all cells
   //!< ie the highest Vmin of SUs is the Vmin of the module
-  double Vmin() override { return transform_max(SUs, free::get_Vmin<SU_t>); }
-  double VMIN() override { return transform_max(SUs, free::get_VMIN<SU_t>); }
+  double Vmin() const override { return transform_max(SUs, free::get_Vmin<SU_t>); }
+  double VMIN() const override { return transform_max(SUs, free::get_VMIN<SU_t>); }
 
-  double Vmax() override { return transform_min(SUs, free::get_Vmax<SU_t>); }
-  double VMAX() override { return transform_min(SUs, free::get_VMAX<SU_t>); }
+  double Vmax() const override { return transform_min(SUs, free::get_Vmax<SU_t>); }
+  double VMAX() const override { return transform_min(SUs, free::get_VMAX<SU_t>); }
 
-  double I() override { return transform_sum(SUs, free::get_I<SU_t>); }     //!< the current is the sum  of the current of each cell. Returns 0 if empty.
-  double Cap() override { return transform_sum(SUs, free::get_Cap<SU_t>); } //!< module capacity (sum of cells)
+  double I() const override { return transform_sum(SUs, free::get_I<SU_t>); }     //!< the current is the sum  of the current of each cell. Returns 0 if empty.
+  double Cap() const override { return transform_sum(SUs, free::get_Cap<SU_t>); } //!< module capacity (sum of cells)
 
   // #TODO -> getOCV print parameter is inactive here...
   double getOCV(bool print = true) override { return transform_mean(SUs, free::get_OCV<SU_t>); }

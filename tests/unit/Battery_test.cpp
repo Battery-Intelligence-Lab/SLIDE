@@ -45,7 +45,7 @@ void test_Battery_CoolSystem()
   Cycler cyc;
   double lim = 0.0;
   double Ah, Wh;
-  double vlim, tlim;
+  double vlim;
   int ndata = 0;
 
   //!< Loop for each setting of the cool controller
@@ -53,16 +53,14 @@ void test_Battery_CoolSystem()
 
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
-    int ncel = 1;
-    std::unique_ptr<Cell_SPM> cp0(new Cell_SPM);
-    std::unique_ptr<StorageUnit> cs[ncel] = { cp0 };
+    std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>() };
     std::string n = "testCoolSystem";
-    std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, coolControl, 2)); //!< open coolsystem
-    mp->setSUs(cs, ncel, checkCells, true);
+    auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), coolControl, 2); //!< open coolsystem
+    mp->setSUs(cs, checkCells, true);
     double Tini[1] = { cp0->T() };
-    std::unique_ptr<Battery> b1(new Battery(n));
+    auto b1 = std::make_unique<Battery>(n);
     b1->setModule(mp);
-    cyc.initialise(b1, "Cycler_cooltest_oneCell");
+    cyc.initialise(b1.get(), "Cycler_cooltest_oneCell");
 
     //!< do a few 1C cycles
     Icha = -cp0->Cap();
@@ -70,12 +68,11 @@ void test_Battery_CoolSystem()
     for (int i = 0; i < N; i++) {
       //!< charge
       vlim = mp->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -97,19 +94,18 @@ void test_Battery_CoolSystem()
 
     //!< **********************************************************************************************************************************************************
     //!< Make a simple module with SPM cells
-    int ncel2 = 4;
-    std::unique_ptr<Cell_SPM> cp1(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp2(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp3(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp4(new Cell_SPM);
-    std::unique_ptr<StorageUnit> cs2[ncel2] = { cp1, cp2, cp3, cp4 };
+    auto cp1 = std::make_unique<Cell_SPM>();
+    auto cp2 = std::make_unique<Cell_SPM>();
+    auto cp3 = std::make_unique<Cell_SPM>();
+    auto cp4 = std::make_unique<Cell_SPM>();
+    std::unique_ptr<StorageUnit> cs2[] = { cp1, cp2, cp3, cp4 };
     std::string n2 = "testCoolSystem";
-    std::unique_ptr<Module_s> mp2(new Module_s(n2, T, true, false, ncel2, coolControl, 2)); //!< open coolsystem
-    mp2->setSUs(cs2, ncel2, checkCells, true);
+    auto mp2 = std::make_unique<Module_s>(ids[1], T, true, false, std::size(cs2), coolControl, 2); //!< open coolsystem
+    mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
-    std::unique_ptr<Battery> b2(new Battery(n2));
+    auto b2 = std::make_unique<Battery>(ids[1]);
     b2->setModule(mp2);
-    cyc.initialise(b2, "Cycler_cooltest_simpleModule");
+    cyc.initialise(b2.get(), "Cycler_cooltest_simpleModule");
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp1->Cap();
@@ -117,12 +113,11 @@ void test_Battery_CoolSystem()
     for (int i = 0; i < 5; i++) {
       //!< charge
       vlim = mp2->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp2->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     //!< check the energy balance of the outer module
@@ -150,31 +145,31 @@ void test_Battery_CoolSystem()
     std::string n11 = "H1";
     std::string n22 = "H2";
     std::string n33 = "H3";
-    std::unique_ptr<Cell_SPM> cp11(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp22(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp33(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp44(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp55(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp66(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp77(new Cell_SPM);
-    std::unique_ptr<StorageUnit> SU1[ncel11] = { cp11, cp22 };
-    std::unique_ptr<StorageUnit> SU2[ncel22] = { cp33, cp44 };
-    std::unique_ptr<StorageUnit> SU3[ncel33] = { cp55, cp66, cp77 };
-    std::unique_ptr<Module_s> mp11(new Module_s(n11, T, true, false, ncel11, coolControl, 0)); //!< normal coolsystem (with fan)
-    std::unique_ptr<Module_s> mp22(new Module_s(n22, T, true, false, ncel22, coolControl, 0));
-    std::unique_ptr<Module_s> mp33(new Module_s(n33, T, true, false, ncel33, coolControl, 0));
-    mp11->setSUs(SU1, ncel11, checkCells);
-    mp22->setSUs(SU2, ncel22, checkCells);
-    mp33->setSUs(SU3, ncel33, checkCells);
+    auto cp11 = std::make_unique<Cell_SPM>();
+    auto cp22 = std::make_unique<Cell_SPM>();
+    auto cp33 = std::make_unique<Cell_SPM>();
+    auto cp44 = std::make_unique<Cell_SPM>();
+    auto cp55 = std::make_unique<Cell_SPM>();
+    auto cp66 = std::make_unique<Cell_SPM>();
+    auto cp77 = std::make_unique<Cell_SPM>();
+    std::unique_ptr<StorageUnit> SU1[] = { cp11, cp22 };
+    std::unique_ptr<StorageUnit> SU2[] = { cp33, cp44 };
+    std::unique_ptr<StorageUnit> SU3[] = { cp55, cp66, cp77 };
+    auto mp11 = std::make_unique<Module_s>(n11, T, true, false, ncel11, coolControl, 0); //!< normal coolsystem (with fan)
+    auto mp22 = std::make_unique<Module_s>(n22, T, true, false, ncel22, coolControl, 0);
+    auto mp33 = std::make_unique<Module_s>(n33, T, true, false, ncel33, coolControl, 0);
+    mp11->setSUs(SU1, checkCells);
+    mp22->setSUs(SU2, checkCells);
+    mp33->setSUs(SU3, checkCells);
     int nm = 3;
     std::string n44 = "H4";
-    std::unique_ptr<StorageUnit> MU[nm] = { mp11, mp22, mp33 };
-    std::unique_ptr<Module_s> mp44(new Module_s(n44, T, true, true, 7, coolControl, 2)); //!< open coolsystem
-    mp44->setSUs(MU, nm, checkCells, true);
+    std::unique_ptr<StorageUnit> MU[] = { mp11, mp22, mp33 };
+    auto mp44 = std::make_unique<Module_s>(n44, T, true, true, 7, coolControl, 2); //!< open coolsystem
+    mp44->setSUs(MU, checkCells, true);
     double Tini22[7] = { cp11->T(), cp22->T(), cp33->T(), cp44->T(), cp55->T(), cp66->T(), cp77->T() };
-    std::unique_ptr<Battery> b3(new Battery(n44));
+    auto b3 = std::make_unique<Battery>(n44);
     b3->setModule(mp44);
-    cyc.initialise(b3, "Cycler_cooltest_complexModule");
+    cyc.initialise(b3.get(), "Cycler_cooltest_complexModule");
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp11->Cap();
@@ -182,12 +177,11 @@ void test_Battery_CoolSystem()
     for (int i = 0; i < 5; i++) {
       //!< charge
       vlim = mp44->Vmax() - lim;
-      tlim = 99999999;
-      cyc.CC(Icha, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
 
       //!< CC discharge
       vlim = mp44->Vmin() + lim;
-      cyc.CC(Idis, vlim, tlim, dt, ndata, Ah, Wh);
+      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, Ah, Wh, dtime);
     }
 
     double Qgen3, Qcool3, Qheat3;

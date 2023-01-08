@@ -22,10 +22,10 @@ namespace slide {
 class Battery : public StorageUnit
 {
 protected:
-  size_t nseries{ 1 }, nparallel{ 1 };     //!< number of series/parallel 'copies' of this module
   std::unique_ptr<Module> cells{};         //!< Module with the cells of this battery
   std::unique_ptr<CoolSystem_HVAC> cool{}; //!< HVAC system of the battery
   std::unique_ptr<Converter> conv{};       //!< power electronic converter. Dual step DC/DC and DC/AC
+  int nseries{ 1 }, nparallel{ 1 };        //!< number of series/parallel 'copies' of this module
 
   double convlosses{};     //!< losses in the converter during a given period (set to 0 by reset_convlosses)
   double convlosses_tot{}; //!< total cumulative losses in the converter during the entire lifetime
@@ -43,14 +43,14 @@ public:
   void setSeriesandParallel(int ser, int par);
 
   //!< basic getters and setters
-  double Cap() override { return cells->Cap() * static_cast<double>(nparallel); }
-  double Vmin() override { return cells->Vmin() * static_cast<double>(nseries); }
-  double VMIN() override { return cells->VMIN() * static_cast<double>(nseries); }
-  double Vmax() override { return cells->Vmax() * static_cast<double>(nseries); }
-  double VMAX() override { return cells->VMAX() * static_cast<double>(nseries); }
-  double I() override { return cells->I() * static_cast<double>(nparallel); }
-  double getRtot() override { return cells->getRtot() * static_cast<double>(nseries) / static_cast<double>(nparallel); }
-  size_t getNcells() override { return static_cast<double>(cells->getNcells() * nseries * nparallel); }
+  double Cap() const override { return cells->Cap() * nparallel; }
+  double Vmin() const override { return cells->Vmin() * nseries; }
+  double VMIN() const override { return cells->VMIN() * nseries; }
+  double Vmax() const override { return cells->Vmax() * nseries; }
+  double VMAX() const override { return cells->VMAX() * nseries; }
+  double I() const override { return cells->I() * nparallel; }
+  double getRtot() override { return cells->getRtot() * nseries / static_cast<double>(nparallel); }
+  size_t getNcells() override { return cells->getNcells() * nseries * nparallel; }
 
   Module *getCells() { return cells.get(); }
   //!< int getNstates() { return cells->getNstates() + 1; } //!< +1 for the temperature of this battery

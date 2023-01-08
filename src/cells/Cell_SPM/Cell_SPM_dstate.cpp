@@ -178,9 +178,6 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   using namespace PhyConst;
   using settings::nch;
 
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::dState starting.\n";
-
   //!< Calculcate the lithium fractions at the surface of the particles
   auto [Dpt, Dnt] = calcDiffConstant();
   auto [i_app, jp, jn] = calcMolarFlux(); //!< current density, molar flux on the pos/neg particle
@@ -207,7 +204,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
 
   const bool bound = true;
   //!< calculate the anode potential (needed for various degradation models)
-  const double dOCVn = OCV_curves.dOCV_neg.interp(zn_surf, print, bound); //!< entropic coefficient of the anode potential [V K-1]
+  const double dOCVn = OCV_curves.dOCV_neg.interp(zp_surf, print, bound); //!< entropic coefficient of the anode potential [V K-1]
   const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound);  //!< anode potential [V]
   const double OCVnt = OCV_n + (st.T() - T_ref) * dOCVn;                  //!< anode potential at the cell's temperature [V]
 
@@ -242,7 +239,6 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   LAM(print, zp_surf, etap, &dthickp, &dthickn, &dap, &dan, &dep, &den); //!< Throws but not wrapped in try-catch since only appears here.
 
   //!< lithium plating
-
   const double ipl = LiPlating(OCVnt, etan); //!< current density of the plating side reaction [A m-2]
   double dzn_pl[nch];                        //!< additional diffusion in the anode due to ipl
 
@@ -273,9 +269,6 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
 #if TIMING
   timeData.dstate += clk.duration(); //!< time in seconds
 #endif
-
-  if constexpr (settings::printBool::printCellFunctions)
-    std::cout << "Cell_SPM::dState terminating with degradation.\n";
 }
 
 void Cell_SPM::timeStep_CC(double dt, int nstep)
@@ -407,9 +400,6 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
 //!< 	 * blockDegradation if true, degradation is not accounted for in this time step
 //!< 	 */
 
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::ETI starting.\n";
-
 //!< 	//!< Calculate the time derivatives
 //!< 	auto states = st;
 
@@ -422,8 +412,6 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
 
 //!< 	setStates(std::move(states)); //!< store new states, checks if they are illegal (throws an error in that case)
 
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::ETI terminating.\n";
 //!< }
 
 //!< void Cell_SPM::ETI_electr(bool print, double I, double dti, bool blockDegradation, bool pos)
@@ -455,9 +443,6 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
 //!< 	 * 109 				illegal input parameters
 //!< 	 */
 
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::ETI_electr starting\n";
-
 //!< 	if (!blockDegradation)
 //!< 	{
 //!< 		std::cerr << "ERROR in Cell_SPM::ETI_electr, you are cycling only one electrode but want to account for degradation. This is not allowed.\n";
@@ -484,8 +469,6 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
 
 //!< 	setStates(std::move(states)); //!< store new states
 
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::ETI_electr terminating.\n";
 //!< }
 
 //!< void Cell_SPM::integratorStep(bool print, double dti, bool blockDegradation)
@@ -504,15 +487,10 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
 //!< 	 * blockDegradation if true, degradation is not accounted for in this time step
 //!< 	 */
 
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::integratorStep starting.\n";
-
 //!< 	State_SPM new_states{Int_FWEuler(print, dti, blockDegradation)};
 
 //!< 	setStates(std::move(new_states)); //!< store new states, checks if they are illegal (throws an error in that case)
 
-//!< 	if constexpr (settings::printBool::printCellFunctions)
-//!< 		std::cout << "Cell_SPM::integratorStep terminating.\n";
 //!< }
 
 //!< Base integrators:

@@ -40,13 +40,13 @@ public:
   Cell(const std::string &ID_) : StorageUnit(ID_) {}
   virtual ~Cell() = default;
 
-  double Cap() final { return capNom; }
+  double Cap() const final override { return capNom; }
   void setCapacity(double capacity) { capNom = capacity; }
 
-  constexpr double Vmin() override { return limits.Vmin; }
-  constexpr double VMIN() override { return limits.VMIN; }
-  constexpr double VMAX() override { return limits.VMAX; }
-  constexpr double Vmax() override { return limits.Vmax; }
+  constexpr double Vmin() const override { return limits.Vmin; }
+  constexpr double VMIN() const override { return limits.VMIN; }
+  constexpr double VMAX() const override { return limits.VMAX; }
+  constexpr double Vmax() const override { return limits.Vmax; }
   constexpr double Tmax() { return limits.Tmax; }
   constexpr double Tmin() { return limits.Tmin; }
 
@@ -57,9 +57,6 @@ public:
   double getVlow() final { return V(); }  //!< return the voltage of the cell with the lowest voltage
 
   virtual double getThotSpot() override { return T(); }
-
-  virtual std::span<double> viewVariations() { return {}; } //!< Return the parameters of this cell's variation
-  //!< void getStates(getStates_t s) = 0;
 
   //!< double getRtot() = 0;
 
@@ -111,7 +108,9 @@ public:
   virtual void storeData() override { cellData.storeData(*this); }                                  //!< Add another data point in the array.
   virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); } // #TODO *this may be Cell not actual type.
 
-  virtual CellThroughputData getThroughputs() { return {}; }
+  virtual ThroughputData getThroughputs() { return {}; }
+
+  virtual std::array<double, 4> getVariations() const noexcept { return {}; } // #TODO will be deleted in future.
 };
 
 } // namespace slide

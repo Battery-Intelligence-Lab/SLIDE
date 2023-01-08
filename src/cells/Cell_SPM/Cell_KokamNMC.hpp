@@ -104,13 +104,12 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   checkModelparam(); //!< check if the inputs to the MATLAB code are the same as the ones here in the C++ code
 
   //!< Initialise state variables
-  double fp, fn, T, delta; //!< LLI, thickp, thickn, ep, en, ap, an, CS, Dp, Dn, R, delta_pl;
-  double Rdc = 0.0102;     //!< DC resistance of the total cell in Ohm
+  double Rdc = 0.0102; //!< DC resistance of the total cell in Ohm
 
   double fp{ 0.689332 }, fn{ 0.479283 }; //!< lithium fraction in the cathode/anode at 50% soc [-]
 
 
-  st.T() = C_to_Kelvin(25.0); //!< cell temperature
+  st.T() = 25.0_degC; //!< cell temperature
 
 
   //!< Set initial state:
@@ -144,7 +143,6 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
     validState(st, s_ini);
   } catch (int e) {
     std::cout << "Error in State::initialise, one of the states has an illegal value, throwing an error\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 12;
   }
 
@@ -178,14 +176,14 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   //!< fitting parameters
   lam_p = param::def::LAMparam_Kokam;
 
-  //!< li-plating parameters
+  //!< li-plating parameters #TODO these param should be inside PLparam but not multiplied by variance.
   npl = 1;
   alphapl = 1;
   OCVpl = 0;
   rhopl = 10000e3;
   //!< fitting parameters
-  plparam.pl1k = 4.5e-10;
-  plparam.pl1k_T = -2.014008e5;
+  pl_p.pl1k = 4.5e-10;
+  pl_p.pl1k_T = -2.014008e5;
 
   //!< degradation identifiers: no degradation
   deg_id.SEI_id.add_model(0); //!< no SEI growth, there is 1 SEI model (namely '0')

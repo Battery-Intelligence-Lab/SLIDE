@@ -19,10 +19,10 @@
 
 #include "State_SPM.hpp" //!< class that represents the state of a cell, the state is the collection of all time-varying conditions of the battery
 #include "Model_SPM.hpp" //!< defines a struct with the values for the matrices used in the spatial discretisation of the diffusion PDE
+#include "param/param_SPM.hpp"
 #include "../Cell.hpp"
 #include "../../utility/utility.hpp"   // Do not remove they are required in cpp files.
 #include "../../settings/settings.hpp" // Do not remove they are required in cpp files.
-#include "param/param_SPM.hpp"
 #include "../../types/OCVcurves.hpp"
 
 #include <vector>
@@ -105,11 +105,11 @@ protected: //!< protected such that child classes can access the class variables
   param::LAMparam lam_p{ param::def::LAMparam_Kokam }; //!< structure with the fitting parameters of the different LAM models
 
   //!< Li-plating parameters & constants //!< #TODO if we can make these static and speed gain.
-  double npl{ 1 };        //!< number of electrons involved in the plating reaction [-]
-  double alphapl{ 1 };    //!< charge transfer constant for the plating reaction [-]
-  double OCVpl{ 0 };      //!< OCV of the plating reaction [V]
-  double rhopl{ 10e6 };   //!< density of the plated lithium layer
-  param::PLparam plparam; //!< structure with the fitting parameters of the different plating models
+  double npl{ 1 };      //!< number of electrons involved in the plating reaction [-]
+  double alphapl{ 1 };  //!< charge transfer constant for the plating reaction [-]
+  double OCVpl{ 0 };    //!< OCV of the plating reaction [V]
+  double rhopl{ 10e6 }; //!< density of the plated lithium layer
+  param::PLparam pl_p;  //!< structure with the fitting parameters of the different plating models
 
   //!< Matrices for spatial discretisation of the solid diffusion model
   Model_SPM *M{ Model_SPM::makeModel() };
@@ -162,8 +162,6 @@ public:
   Cell_SPM(Model_SPM *M_ptr) : M(M_ptr) {}
 
   //!< getters
-  //!< double getNominalCap() const noexcept { return nomCapacity; } //!< returns nominal capacity of the cell [Ah]	(e.g. to convert from Crate to Amperes)
-
   double T() noexcept override { return st.T(); }   //!< returns the uniform battery temperature in [K]
   double getTenv() const noexcept { return T_env; } //!< get the environmental temperature [K]
 
@@ -176,6 +174,8 @@ public:
     st = st_new;
     Vcell_valid = false;
   }
+
+  std::array<double, 4> getVariations() const noexcept override { return { var_cap, var_R, var_degSEI, var_degLAM }; } // #TODO : deprecated will be deleted.
 
   void getTemperatures(double *Tenv, double *Tref) noexcept //!< get the environmental and reference temperature
   {
@@ -211,7 +211,7 @@ public:
 
   double getAnodeSurface() noexcept { return st.an() * st.thickn() * geo.elec_surf; } //!< get the anode pure surface area (without cracks) product of the effective surface area (an) with the electrode volume
 
-  double I() override { return st.I(); } //!< get the cell current [A]  positive for discharging
+  double I() const override { return st.I(); } //!< get the cell current [A]  positive for discharging
   double V(bool print = true) override;
 
   bool getCSurf(double &cps, double &cns, bool print);                                                                           //!< get the surface concentrations
@@ -239,7 +239,7 @@ public:
   //!< {
   //!< 	slide::validState(st, s_ini);
   //!< }
-  CellThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
 
   void overwriteCharacterisationStates(double Dpi, double Dni, double ri)
   {

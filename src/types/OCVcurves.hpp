@@ -23,18 +23,20 @@ public:
             const std::string &_nameentropicC, const std::string &_nameentropicCell)
   {
 
-    OCV_neg.setCurve(PathVar::data + _nameneg);           //!< the OCV curve of the anode, the first column gives the lithium fractions (increasing), the 2nd column gives the OCV vs li/li+
-    OCV_pos.setCurve(PathVar::data + _namepos);           //!< the OCV curve of the cathode, the first column gives the lithium fractions (increasing), the 2nd column gives the OCV vs li/li+
-    dOCV_neg.setCurve(PathVar::data + _nameentropicC);    //!< the entropic coefficient of the anode, the first column gives the lithium fractions (increasing), the 2nd column gives the entropic coefficient [V K-1]
-    dOCV_tot.setCurve(PathVar::data + _nameentropicCell); //!< the entropic coefficient of the entire cell, the first column gives the lithium fractions (increasing), the 2nd column gives the entropic coefficient [V K-1]
+    OCV_neg.setCurve(PathVar::data / _nameneg);           //!< the OCV curve of the anode, the first column gives the lithium fractions (increasing), the 2nd column gives the OCV vs li/li+
+    OCV_pos.setCurve(PathVar::data / _namepos);           //!< the OCV curve of the cathode, the first column gives the lithium fractions (increasing), the 2nd column gives the OCV vs li/li+
+    dOCV_neg.setCurve(PathVar::data / _nameentropicC);    //!< the entropic coefficient of the anode, the first column gives the lithium fractions (increasing), the 2nd column gives the entropic coefficient [V K-1]
+    dOCV_tot.setCurve(PathVar::data / _nameentropicCell); //!< the entropic coefficient of the entire cell, the first column gives the lithium fractions (increasing), the 2nd column gives the entropic coefficient [V K-1]
   }
 
   OCVcurves() = default;
 
   static OCVcurves makeOCVcurves(cellType tp)
   {
-    if (tp != cellType::KokamNMC)
+    if (tp != cellType::KokamNMC) {
+      std::cerr << "NOT IMPLEMENTED cellType\n";
       throw "NOT IMPLEMENTED cellType";
+    }
 
     OCVcurves M(settings::path::Kokam::namepos, settings::path::Kokam::nameneg, settings::path::Kokam::nameentropicC, settings::path::Kokam::nameentropicCell);
     return M;

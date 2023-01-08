@@ -26,11 +26,14 @@ constexpr auto operator""_uV(long double d) { return d * 1e-6; } //!< microVolts
 
 
 // Temperature:
-constexpr inline auto C_to_Kelvin(auto Celsius) { return PhyConst::Kelvin + Celsius; } // #TODO check if it better to have auto or double
-constexpr inline auto K_to_Celsius(auto Kelvin) { return Kelvin - PhyConst::Kelvin; }
+constexpr inline double C_to_Kelvin(auto Celsius) { return static_cast<double>(PhyConst::Kelvin + Celsius); } // #TODO check if it better to have auto or double
+constexpr inline double K_to_Celsius(auto Kelvin) { return static_cast<double>(Kelvin - PhyConst::Kelvin); }
 
-constexpr auto operator""_degC(long double d) { return C_to_Kelvin(d); } //!< degrees Celsius
-constexpr auto operator""_K(long double d) { return d; }                 //!< Kelvins
+constexpr double operator""_degC(long double d) { return C_to_Kelvin(d); }      //!< degrees Celsius
+constexpr double operator""_K(long double d) { return static_cast<double>(d); } //!< Kelvins
+
+constexpr double operator""_degC(size_t d) { return C_to_Kelvin(d); }      //!< degrees Celsius
+constexpr double operator""_K(size_t d) { return static_cast<double>(d); } //!< Kelvins
 
 
 } // namespace slide

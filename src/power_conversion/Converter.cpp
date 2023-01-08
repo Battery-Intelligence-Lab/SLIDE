@@ -7,6 +7,7 @@
 
 #include "Converter.hpp"
 #include "../settings/settings.hpp"
+#include "../utility/utility.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -17,12 +18,14 @@
 namespace slide {
 Converter::Converter()
 {
-  Vdc = 1500; //!< should be larger than max battery voltage (15*20*4.2 = 1260)
-  Vac = 1500; //!< random guess, 5 * 380V (line voltage)
-
-  Pnom = 200 * 1e3; //!< 200 kWh from Schimpe etc.
+  Vdc = 1500;   //!< should be larger than max battery voltage (15*20*4.2 = 1260)
+  Vac = 1500;   //!< random guess, 5 * 380V (line voltage)
+  Pnom = 200e3; //!< 200 kWh from Schimpe etc.
 }
-void Converter::setPower(double Pn) { Pnom = Pn; }
+void Converter::setPower(double Pn)
+{
+  Pnom = Pn;
+}
 
 double Converter::getLosses(double Vin, double Iin)
 {
@@ -109,23 +112,20 @@ double Converter::getLosses(double Vin, double Iin)
   //!< double Iac = Idc * Vdc / Vac;		 //!< current on the AC side (ignoring losses)
 
   //!< filter
-  constexpr double R = 13.6e-3;                            //!< Value from Schimpe (for resistance of grid interface)
-  constexpr double Cdc = 3e-3;                             //!< DC link capacitance
-  constexpr double dV = 1;                                 //!< DC ripple voltage, wild guess since I can't find a value #TODO if is correct?
-  constexpr double Rg = 13.6e-3;                           //!< value from Schimpe (resistance to grid)
-  constexpr double Ri = 13.6e-3;                           //!< value from Schimpe (resistance to inverter)
-  double FIL_cdc = R * std::pow(2 * pi * f * Cdc * dV, 2); //!< losses in capacitor on DC bus
-  double FIL_lg = 3 * std::pow(Idc, 2) * Rg;               //!< losses in L at the output of the inverter
-  double FIL_lb = Iin * Iin * Ri;                          //!< losses in L at the input of the rectifier
+  constexpr double R = 13.6e-3;                              //!< Value from Schimpe (for resistance of grid interface)
+  constexpr double Cdc = 3e-3;                               //!< DC link capacitance
+  constexpr double dV = 1;                                   //!< DC ripple voltage, wild guess since I can't find a value #TODO if is correct?
+  constexpr double Rg = 13.6e-3;                             //!< value from Schimpe (resistance to grid)
+  constexpr double Ri = 13.6e-3;                             //!< value from Schimpe (resistance to inverter)
+  constexpr double FIL_cdc = R * sqr(2 * pi * f * Cdc * dV); //!< losses in capacitor on DC bus
+  const double FIL_lg = 3 * Rg * sqr(Idc);                   //!< losses in L at the output of the inverter
+  const double FIL_lb = Ri * sqr(Iin);                       //!< losses in L at the input of the rectifier
 
   //!< total losses
   DC_cond = std::abs(DC_cond); //!< ensure all have same sign (some I^2, others I so if I < 0 they would have opposite sign)
   DC_switch = std::abs(DC_switch);
   AC_cond = std::abs(AC_cond);
   AC_switch = std::abs(AC_switch);
-  FIL_cdc = std::abs(FIL_cdc);
-  FIL_lg = std::abs(FIL_lg);
-  FIL_lb = std::abs(FIL_lb);
   const double loss_per_inverter = DC_cond + DC_switch + AC_cond + AC_switch + FIL_cdc + FIL_lg + FIL_lb;
   const auto loss = loss_per_inverter * nInverters;
 

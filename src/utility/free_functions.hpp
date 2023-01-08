@@ -160,7 +160,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
                 << " centigrade and I = " << su.I() << '\n';
 
     return Status::Vmax_violation;
-  } else if (v < su.VMIN() && su.isDischarging()) //#Check we dont actually look at the is discharging
+  } else if (v < su.VMIN() && su.isDischarging()) // #Check we dont actually look at the is discharging
   {
     if (printCrit)
       std::cout << "The voltage of cell " << su.getFullID() << " is " << v
@@ -218,7 +218,7 @@ auto inline check_current(bool checkV, auto &su) //!< Check voltage.
 
 inline std::ofstream openFile(auto &SU, const auto &folder, const std::string &prefix, const std::string &suffix)
 {
-  const auto name = PathVar::results + (prefix + "_" + SU.getFullID() + "_" + suffix);
+  const auto name = PathVar::results / (prefix + "_" + SU.getFullID() + "_" + suffix);
 
   //  std::string name = getName(cell, prefix); //!< name of the file
   std::ofstream file(name, std::ios_base::app); // #TODO app-> initially open then append.

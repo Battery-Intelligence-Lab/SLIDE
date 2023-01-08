@@ -5,12 +5,8 @@
  *   Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
-#include "../procedures/procedures.hpp"
-#include "../cells/cells.hpp"
-#include "../modules/modules.hpp"
-#include "../system/Battery.hpp"
-
-#include "unit_tests.hpp"
+#include "../tests_util.hpp"
+#include "../../src/slide.hpp"
 
 #include <cmath>
 #include <cassert>
@@ -19,65 +15,65 @@
 #include <memory>
 #include <typeinfo>
 
-namespace slide::unit_tests {
+namespace slide::tests::unit {
 
 //!< ********************************************************** test functions from Module_base *******************************************************************
-void test_BasicGetters()
+bool test_BasicGetters()
 {
   //!< int Module_base::getNcells()
   //!< int Module_base::getNstates()
   //!< double Module_base::getTmod()
 
-  constexpr size_t ncel = 2;
   std::string n = "na";
 
-  std::unique_ptr<StorageUnit> cs[ncel] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
+  std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
 
   auto cp1{ cs[0].get() }, cp2{ cs[1].get() };
 
   double T = settings::T_ENV;
   bool checkCells = false;
 
-  auto mp = std::make_unique<Module_s>(n, T, true, false, ncel, 1, 1);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
 
   mp->setSUs(cs, checkCells, true);
-  assert(mp->getNSUs() == ncel);
-  assert(mp->getNstates() == ncel * cp1->getNstates() + 1);
+  assert(mp->getNSUs() == std::size(cs));
+  assert(mp->getNstates() == std::size(cs) * cp1->getNstates() + 1);
   assert(mp->T() == T);
+
+  return true;
 }
-void test_getCellV()
+bool test_getCellV()
 {
   //!< Module_base::getCellVotages
 
-  constexpr size_t ncel = 2;
-  std::unique_ptr<StorageUnit> cs[ncel];
+  std::unique_ptr<StorageUnit> cs[];
 
   auto cs[0] = std::make_unique<Cell_Bucket>();
   auto cs[1] = std::make_unique<Cell_Bucket>();
   std::string n = "na";
   cs[1]->setSOC(0.6); //!< change cell 2 to verify the order is correct
 
-  double v[ncel] = { cs[0]->V(), cs[1]->V() };
+  double v[] = { cs[0]->V(), cs[1]->V() };
   constexpr double T = settings::T_ENV;
   constexpr bool checkCells = false;
 
-  auto mp = std::make_unique<Module_s>(n, T, true, false, ncel, 1, 1);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   assert(mp->Vi(0) == v[0]);
   assert(mp->Vi(1) == v[1]);
 }
-void test_getStates()
+bool test_getStates()
 {
-  //!< void Module_base::getStates(double s[], int nin, int& nout)
-  constexpr int ncel = 2;
+  //!< bool Module_base::getStates(double s[], int nin, int& nout)
+
   constexpr int nin = settings::STORAGEUNIT_NSTATES_MAX;
   constexpr int nin1 = settings::CELL_NSTATE_MAX;
   double s[nin], s1[nin1], s2[nin1];
   int nout, nout1, nout2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   cp2->setSOC(0.6); //!< change cell 2 to verify the order is correct
   cp1->getStates(s1, nin1, nout1);
@@ -85,8 +81,8 @@ void test_getStates()
   double T = settings::T_ENV;
   bool checkCells = false;
 
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
   mp->getStates(s, nin, nout);
 
   assert(nout == 1 + nout1 + nout2);
@@ -96,19 +92,19 @@ void test_getStates()
     assert(s2[i] == s[nout1 + i]);
   }
 }
-void test_getCells()
+bool test_getCells()
 {
 
-  constexpr int ncel = 2;
+
   int nin1 = settings::CELL_NSTATE_MAX;
   int nn;
   double so1[nin1], so2[nin1]; //!< original states
   double s1[nin1], s2[nin1];   //!< states of returned cells
   double v1, v2;
 
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   cp2->setSOC(0.6); //!< change cell 2 to verify the order is correct
   cp1->getStates(so1, nin1, nn);
@@ -118,10 +114,10 @@ void test_getCells()
   double T = settings::T_ENV;
   bool checkCells = false;
 
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
-  std::unique_ptr<StorageUnit> cs2[ncel];
-  mp->getSUs(cs2, ncel, nn);       //!< returns storage units, not cells. So getStates is the implementation from SU not Cell_Bucket
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
+  std::unique_ptr<StorageUnit> cs2[];
+  mp->getSUs(cs2);                 //!< returns storage units, not cells. So getStates is the implementation from SU not Cell_Bucket
   cs2[0]->getStates(s1, nin1, nn); //!< this is SU::getStates, not Cell_Bucket::getStates
   cs2[1]->getStates(s2, nin1, nn);
 
@@ -168,7 +164,7 @@ void test_getCells()
   //!< Set the current, ensure it has changed in the cells
   double Inew = 1;
   mp->setCurrent(Inew);
-  mp->getSUs(cs2, ncel, nn);
+  mp->getSUs(cs2);
   assert(cs2[0]->I() == Inew);
   assert(cs2[1]->I() == Inew);
   assert(cs2[0]->V() < v1);
@@ -177,43 +173,47 @@ void test_getCells()
   //!< charge
   Inew = -1;
   mp->setCurrent(Inew);
-  mp->getSUs(cs2, ncel, nn);
+  mp->getSUs(cs2);
   assert(cs2[0]->I() == Inew);
   assert(cs2[1]->I() == Inew);
   assert(cs2[0]->V() > v1);
   assert(cs2[1]->V() > v2);
-}
-void test_setT()
-{
-  //!< void Module_base::setT(double Tnew)
 
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  return true;
+}
+bool test_setT()
+{
+  //!< bool Module_base::setT(double Tnew)
+
+
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
 
   double Tnew = 273;
   mp->setT(Tnew);
   assert(mp->T() == Tnew);
+
+  return true;
 }
-void test_setStates(bool testError)
+bool test_setStates(bool testError)
 {
   //!< double Module_base::setStates(double s[], int nin, bool checkStates, bool print)
 
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
 
   //!< Make a new State vector from cells 1 and 3, where 3 has a different SOC
   int nin = settings::STORAGEUNIT_NSTATES_MAX;
@@ -266,95 +266,96 @@ void test_setStates(bool testError)
     };
   }
 }
-void test_setCells(bool testErrors)
+bool test_setCells()
 {
-  //!< void Module_base::setCells(Cell_Bucket c[], int nin, bool checkCells, bool print)
+  //!< bool Module_base::setCells(Cell_Bucket c[], int nin, bool checkCells, bool print)
 
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells);
 
   //!< set cell with new SOC
   double socnew = 0.4;
-  std::unique_ptr<Cell_Bucket> cp22(new Cell_Bucket);
+  auto cp22 = std::make_unique<Cell_Bucket>();
   cp22->setSOC(socnew);
   cs[1] = cp22;
-  mp->setSUs(cs, ncel);
+  mp->setSUs(cs);
   //!< check using getCells
-  std::unique_ptr<StorageUnit> cs2[ncel];
+  std::unique_ptr<StorageUnit> cs2[];
   int nn;
-  mp->getSUs(cs2, ncel, nn);
+  mp->getSUs(cs2);
   Cell_Bucket *cell1 = dynamic_cast<Cell_Bucket *>(cs2[1].get()); //!< Dynamic cast from smart ptr of StorageUnit to regular pointer of Cell_Bucket
   assert(cell1->SOC() == socnew);                                 //!< the new soc should be 0.1
   assert(cp2->SOC() == 0.5);                                      //!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
 
   //!< try updating the number of cells
-  std::unique_ptr<Cell_Bucket> cp3(new Cell_Bucket);
-  ncel++;
-  std::unique_ptr<StorageUnit> cs3[ncel] = { cp1, cp22, cp3 };
-  mp->setSUs(cs3, ncel);
+  auto cp3 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs3[] = { cp1, cp22, cp3 };
+  mp->setSUs(cs3);
 
   //!< check using getCells
-  std::unique_ptr<StorageUnit> cs4[ncel];
-  mp->getSUs(cs4, ncel, nn);
+  std::unique_ptr<StorageUnit> cs4[];
+  mp->getSUs(cs4);
   cell1 = dynamic_cast<Cell_Bucket *>(cs4[1].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC() == socnew);                    //!< cells[1] is cell22 with new soc
   cell1 = dynamic_cast<Cell_Bucket *>(cs4[2].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC() == 0.5);                       //!< cells[2] is cell3 with standard soc
-  assert(mp->getNSUs() == ncel);
+  assert(mp->getNSUs() == std::size(cs3));
 
-  if (testErrors) {
+  if () {
     //!< try setting cells with different currents
     double Inew = 1;
     cp2->setCurrent(Inew);
-    std::unique_ptr<StorageUnit> cs5[ncel] = { cp1, cp2, cp3 };
+    std::unique_ptr<StorageUnit> cs5[] = { cp1, cp2, cp3 };
     try {
-      mp->setSUs(cs5, ncel); //!< this causes some erorror. 10 is thrown, but we don't arrive in the catch-statement
-      assert(false);         //!< so probably one of the smart pointer shits is fucking up
+      mp->setSUs(cs5); //!< this causes some erorror. 10 is thrown, but we don't arrive in the catch-statement
+      assert(false);   //!< so probably one of the smart pointer shits is fucking up
     } catch (...) {
     }
 
     /*	//!< cells which belong to a different module
 * note: that gives errors with the pointers
-    std::unique_ptr<Module_s> mp2 (new Module_s());
+    auto mp2  = std::make_unique<Module_s>();
     try{
-            mp2->setSUs(cs,ncel,false); //this has to throw 10
+            mp2->setSUs(cs,std::size(cs),false); //this has to throw 10
             assert(false);
     }catch(int e){};*/
   }
+
+  return true;
 }
 
 //!< ********************************************************* test functions from Module_base_s *******************************************************************
-void test_Constructor()
+bool test_Constructor()
 {
   //!< Module_base_s::Module_base_s()
   //!< Module_base_s::Module_base_s(int ncellsi, Cell_Bucket ci[], double Ti, bool checkCells, bool print)
 
-  std::unique_ptr<Module_s> mp(new Module_s());
+  auto mp = std::make_unique<Module_s>();
   assert(mp->getNSUs() == 0);
   assert(mp->T() == settings::T_ENV);
 
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "cell"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp2(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp2->setSUs(cs, ncel, checkCells, true);
+  auto mp2 = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp2->setSUs(cs, checkCells, true);
   //!< note: you have to make a new module, else the getParent() fails
   //!< I made an m before, so &m points to the first module_s made
 
-  assert(mp2->getNSUs() == ncel);
+  assert(mp2->getNSUs() == std::size(cs));
   assert(mp2->T() == T);
   assert(mp2->getID() == n);
   assert(cp1->getParent() == mp2);
@@ -362,23 +363,16 @@ void test_Constructor()
   assert(cp1->getID() == "cell");
   assert(cp1->getFullID() == "na_cell");
 }
-void test_BasicGetters_s()
+bool test_BasicGetters_s()
 {
-  //!< double Module_base_s::Cap()
-  //!< double Module_base_s::Vmin(){
-  //!< double Module_base_s::Vmax()
-  //!< double Module_base_s::I()
-  //!< double double Module_base_s::V()
-
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
 
   assert(mp->Cap() == cp1->Cap());
   assert(mp->Vmin() == 2 * cp1->Vmin());
@@ -386,67 +380,62 @@ void test_BasicGetters_s()
   assert(mp->I() == 0);
   assert(mp->V() == 2 * cp1->V());
 }
-void test_setI(bool testErrors)
+bool test_setI()
 {
   //!< double Module_base_s::setCurrent(double Inew, bool checkV, bool print)
 
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   double v1 = cp1->V();
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
   assert(mp->I() == 0);
   assert(mp->V() == 2 * v1);
 
   double Inew = 1;
   double V;
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(mp->I() == Inew);
   assert(V < 2 * v1); //!< voltage must decrease
   //!< do not check individual cells, that is done in getCells
 
   Inew = -1;
-  V = mp->setCurrent(Inew, true);
+  mp->setCurrent(Inew, true);
+  V = mp->V();
   assert(mp->I() == Inew);
   assert(mp->V() > 2 * v1); //!< voltage must increase
 
   //!< test things which should break
-  if (testErrors) {
-    Inew = 10000;                    //!< very large current, should give too low voltage
-    V = mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
-    try {
-      V = mp->setCurrent(Inew); //!< check the voltage, should fail
-      assert(false);
-    } catch (int e) {
-    };
+  Inew = 10000;                         //!< very large current, should give too low voltage
+  Status status = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
+  if (status == Status::Success) return false;
 
-    Inew = -10000;                   //!< very large current, should give too low voltage
-    V = mp->setCurrent(Inew, false); //!< don't check the voltage, so should be ok
-    try {
-      V = mp->setCurrent(Inew); //!< check the voltage, should fail
-      assert(false);
-    } catch (int e) {
-    };
-  }
+
+  Inew = -10000;                        //!< very large current, should give too low voltage
+  Status status = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
+  if (status == Status::Success) return false;
+
+  return true;
 }
-void test_validStates(bool testErrors)
+bool test_validStates()
 {
   //!< bool Module_base_s::validStates(double s[], int nin, bool print)
 
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
 
   //!< valid states (current states)
   int nin = settings::MODULE_NSUs_MAX;
@@ -459,7 +448,7 @@ void test_validStates(bool testErrors)
   s[nout - 1] = 273 + 5;
   assert(mp->validStates(s, nout));
 
-  if (testErrors) {
+  if () {
     //!< wrong length
     int nc = settings::CELL_NSTATE_MAX;
     double sc[nc];
@@ -478,35 +467,35 @@ void test_validStates(bool testErrors)
     assert(!mp->validStates(s, nout, false));
   }
 }
-void test_validCells(bool testErrors)
+bool test_validCells()
 {
   //!< bool Module_base_s::validCells(Cell_Bucket c[], int nin, bool print)
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
 
   //!< valid cells with the current cells
-  std::unique_ptr<StorageUnit> cs2[ncel];
+  std::unique_ptr<StorageUnit> cs2[];
   int nout;
-  mp->getSUs(cs2, ncel, nout);
-  assert(mp->validSUs(cs2, ncel));
+  mp->getSUs(cs2);
+  assert(mp->validSUs(cs2));
 
   //!< valid cells (new cell)
-  std::unique_ptr<Cell_Bucket> cp3(new Cell_Bucket);
+  auto cp3 = std::make_unique<Cell_Bucket>();
   cs2[1] = cp3;
-  assert(mp->validSUs(cs2, ncel));
+  assert(mp->validSUs(cs2));
 
   //!< add an additional cell
-  std::unique_ptr<StorageUnit> cs3[3] = { cp1, cp2, cp3 };
+  std::unique_ptr<StorageUnit> cs3[] = { cp1, cp2, cp3 };
   assert(mp->validSUs(cs3, 3));
 
-  if (testErrors) {
+  if () {
     //!< different currents
     cp3->setCurrent(1);
     assert(cs3[2]->I() == 1); //!< array of pointers, so it should have been changed automatically in the array
@@ -514,22 +503,24 @@ void test_validCells(bool testErrors)
 
     //!< validSU does not check whether cells are outside their voltage range
   }
-}
-void test_timeStep_CC()
-{
-  //!< void Module_base_s::timeStep_CC(double dt)
 
-  constexpr int ncel = 2;
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  return true;
+}
+bool test_timeStep_CC()
+{
+  //!< bool Module_base_s::timeStep_CC(double dt)
+
+
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   std::string n = "na";
   double v1 = cp1->V();
   double soc1 = cp1->SOC();
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
 
   //!< time step with 0 current
   double dt = 5;
@@ -547,11 +538,11 @@ void test_timeStep_CC()
   assert(mp->I() == Inew);
 
   //!< check individual cells
-  std::unique_ptr<StorageUnit> cs2[ncel];
+  std::unique_ptr<StorageUnit> cs2[];
   int nout;
   Cell_Bucket *cell1;
-  mp->getSUs(cs2, ncel, nout);
-  for (int i = 0; i < ncel; i++) {
+  mp->getSUs(cs2, nout);
+  for (int i = 0; i < std::size(cs2); i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() < v1);
     cell1 = dynamic_cast<Cell_Bucket *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
@@ -564,33 +555,35 @@ void test_timeStep_CC()
   Inew = -1;
   mp->setCurrent(Inew);
   mp->timeStep_CC(dt);
-  mp->getSUs(cs2, ncel, nout);
+  mp->getSUs(cs2);
   assert(mp->V() > V);
   assert(mp->I() == Inew);
-  for (int i = 0; i < ncel; i++) {
+  for (int i = 0; i < std::size(cs2); i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() > V / 2.0);
     cell1 = dynamic_cast<Cell_Bucket *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
     err = cell1->SOC() - (0.5);
     assert(err < tol && err > -tol);
   }
+
+  return true;
 }
 
-void test_Modules_s_ECM(bool testErrors)
+bool test_Modules_s_ECM()
 {
   //!< test series modules make out of ECM cells
   //!< this just repeats the other tests but with a different Cell_Bucket type
-  constexpr int ncel = 2;
+
   int nin = settings::STORAGEUNIT_NSTATES_MAX;
   int nin1 = settings::CELL_NSTATE_MAX;
   double s[nin], sout[nin], s1[nin1], s2[nin1];
   int nout, nout1, nout2;
 
-  std::unique_ptr<Cell_ECM> cp1(new Cell_ECM);
-  std::unique_ptr<Cell_ECM> cp2(new Cell_ECM);
-  std::unique_ptr<Cell_ECM> cp3(new Cell_ECM);
-  std::unique_ptr<Cell_ECM> cp22(new Cell_ECM);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  auto cp1 = std::make_unique<Cell_ECM>();
+  auto cp2 = std::make_unique<Cell_ECM>();
+  auto cp3 = std::make_unique<Cell_ECM>();
+  auto cp22 = std::make_unique<Cell_ECM>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   Cell_ECM *cell1;
   std::string n = "na";
 
@@ -600,8 +593,8 @@ void test_Modules_s_ECM(bool testErrors)
   cp2->getStates(s2, nin1, nout2);
   double T = settings::T_ENV;
   bool checkCells = true;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
   mp->getStates(s, nin, nout);
   assert(nout == 1 + nout1 + nout2);
   assert(s[nout - 1] == T);
@@ -630,44 +623,42 @@ void test_Modules_s_ECM(bool testErrors)
   mp->setT(settings::T_ENV); //!< reset the tenperature, else the thermal model in timeStep will freak out
 
   //!< getCells - setCells
-  std::unique_ptr<StorageUnit> cs2[ncel];
+  std::unique_ptr<StorageUnit> cs2[];
   double socnew = 0.4;
   cp22->setSOC(socnew);
   cp1->setSOC(0.5);
   cp2->setSOC(0.5);
   cp3->setSOC(0.5);
   cs[1] = cp22;
-  mp->setSUs(cs, ncel);
+  mp->setSUs(cs);
   //!< check using getCells
   int nn;
-  mp->getSUs(cs2, ncel, nn);
+  mp->getSUs(cs2);
   cell1 = dynamic_cast<Cell_ECM *>(cs2[1].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC() == socnew);                 //!< the new soc should be 0.1
   assert(cp2->SOC() == 0.5);                      //!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
   //!< try updating the number of cells
-  ncel++;
-  std::unique_ptr<StorageUnit> cs3[ncel] = { cp1, cp22, cp3 };
-  mp->setSUs(cs3, ncel);
+  std::unique_ptr<StorageUnit> cs3[] = { cp1, cp22, cp3 };
+  mp->setSUs(cs3);
   //!< check using getCells
-  std::unique_ptr<StorageUnit> cs4[ncel];
-  mp->getSUs(cs4, ncel, nn);
+  std::unique_ptr<StorageUnit> cs4[];
+  mp->getSUs(cs4);
   cell1 = dynamic_cast<Cell_ECM *>(cs4[1].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC() == socnew);                 //!< cells[1] is cell22 with new soc
   cell1 = dynamic_cast<Cell_ECM *>(cs4[2].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC() == 0.5);                    //!< cells[2] is cell3 with standard soc
-  assert(mp->getNSUs() == ncel);
+  assert(mp->getNSUs() == std::size(cs3));
 
   //!< timeStep_CC
-  ncel = 2;
-  std::unique_ptr<Cell_ECM> cp111(new Cell_ECM);
-  std::unique_ptr<Cell_ECM> cp222(new Cell_ECM);
+  auto cp111 = std::make_unique<Cell_ECM>();
+  auto cp222 = std::make_unique<Cell_ECM>();
   cp1 = cp111;
   cp2 = cp222;
   cs[0] = cp1;
   cs[1] = cp2;
   double v1 = cp1->V();
   double soc1 = cp1->SOC();
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
   //!< time step with 0 current
   double dt = 5;
   mp->timeStep_CC(dt);
@@ -682,8 +673,8 @@ void test_Modules_s_ECM(bool testErrors)
   assert(V < 2 * v1);
   assert(mp->I() == Inew);
   //!< check individual cells
-  mp->getSUs(cs2, ncel, nout);
-  for (int i = 0; i < ncel; i++) {
+  mp->getSUs(cs2);
+  for (int i = 0; i < std::size(cs2); i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() < v1);
     cell1 = dynamic_cast<Cell_ECM *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
@@ -695,33 +686,35 @@ void test_Modules_s_ECM(bool testErrors)
   Inew = -1;
   mp->setCurrent(Inew);
   mp->timeStep_CC(dt);
-  mp->getSUs(cs2, ncel, nout);
+  mp->getSUs(cs2);
   assert(mp->V() > V);
   assert(mp->I() == Inew);
-  for (int i = 0; i < ncel; i++) {
+  for (int i = 0; i < std::size(cs2); i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() > V / 2.0);
     cell1 = dynamic_cast<Cell_ECM *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
     err = cell1->SOC() - (0.5);
     assert(err < tol && err > -tol);
   }
+
+  return true;
 }
 
-void test_Modules_s_SPM(bool testErrors)
+bool test_Modules_s_SPM()
 {
   //!< test series modules make out of ECM cells
   //!< this just repeats the other tests but with a different Cell_Bucket type
-  constexpr int ncel = 2;
+
   int nin = settings::STORAGEUNIT_NSTATES_MAX;
   int nin1 = settings::CELL_NSTATE_MAX;
   double s[nin], sout[nin], s1[nin1], s2[nin1];
   int nout, nout1, nout2;
 
-  std::unique_ptr<Cell_SPM> cp1(new Cell_SPM);
-  std::unique_ptr<Cell_SPM> cp2(new Cell_SPM);
-  std::unique_ptr<Cell_SPM> cp3(new Cell_SPM);
-  std::unique_ptr<Cell_SPM> cp22(new Cell_SPM);
-  std::unique_ptr<StorageUnit> cs[ncel] = { cp1, cp2 };
+  auto cp1 = std::make_unique<Cell_SPM>();
+  auto cp2 = std::make_unique<Cell_SPM>();
+  auto cp3 = std::make_unique<Cell_SPM>();
+  auto cp22 = std::make_unique<Cell_SPM>();
+  std::unique_ptr<StorageUnit> cs[] = { cp1, cp2 };
   Cell_SPM *cell1;
   std::string n = "na";
 
@@ -731,8 +724,8 @@ void test_Modules_s_SPM(bool testErrors)
   cp2->getStates(s2, nin1, nout2);
   double T = settings::T_ENV;
   bool checkCells = true;
-  std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-  mp->setSUs(cs, ncel, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  mp->setSUs(cs, checkCells, true);
   mp->getStates(s, nin, nout);
   assert(nout == 1 + nout1 + nout2);
   assert(s[nout - 1] == T);
@@ -760,44 +753,42 @@ void test_Modules_s_SPM(bool testErrors)
   }
 
   //!< getCells - setCells
-  std::unique_ptr<StorageUnit> cs2[ncel];
+  std::unique_ptr<StorageUnit> cs2[];
   /*	double socnew = 0.1;
   cp22->setSOC(socnew);
   cp1->setSOC(0.5);
   cp2->setSOC(0.5);
   cp3->setSOC(0.5);
   cs[1] = cp22;
-  mp->setSUs(cs,ncel);
+  mp->setSUs(cs);
   //!< check using getCells
   int nn;
-  mp->getSUs(cs2, ncel, nn);
+  mp->getSUs(cs2, nn);
   cell1 = dynamic_cast<Cell_SPM*>(cs2[1].get()); 	//!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC()==socnew);			//!< the new soc should be 0.1
   assert(cp2->SOC()==0.5);					//!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
   //!< try updating the number of cells
-  ncel++;
-  std::unique_ptr<StorageUnit> cs3[ncel] = {cp1, cp22, cp3};
-  mp->setSUs(cs3,ncel);
+  std::unique_ptr<StorageUnit> cs3[] = {cp1, cp22, cp3};
+  mp->setSUs(cs3);
   //!< check using getCells
-  std::unique_ptr<StorageUnit> cs4[ncel];
-  mp->getSUs(cs4, ncel, nn);
+  std::unique_ptr<StorageUnit> cs4[];
+  mp->getSUs(cs4, nn);
   cell1 = dynamic_cast<Cell_SPM*>(cs4[1].get()); 	//!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC()==socnew);		//!< cells[1] is cell22 with new soc
   cell1 = dynamic_cast<Cell_SPM*>(cs4[2].get()); 	//!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC()==0.5);			//!< cells[2] is cell3 with standard soc
-  assert(mp->getNSUs()==ncel);
+  assert(mp->getNSUs()==std::size(cs4));
 */
   //!< timeStep_CC
-  ncel = 2;
-  std::unique_ptr<Cell_SPM> cp111(new Cell_SPM);
-  std::unique_ptr<Cell_SPM> cp222(new Cell_SPM);
+  auto cp111 = std::make_unique<Cell_SPM>();
+  auto cp222 = std::make_unique<Cell_SPM>();
   cp1 = cp111;
   cp2 = cp222;
   cs[0] = cp1;
   cs[1] = cp2;
   double v1 = cp1->V();
   double soc1 = cp1->SOC();
-  mp->setSUs(cs, ncel, checkCells, true);
+  mp->setSUs(cs, checkCells, true);
   //!< time step with 0 current
   double dt = 5;
   mp->timeStep_CC(dt);
@@ -812,8 +803,8 @@ void test_Modules_s_SPM(bool testErrors)
   assert(V < 2 * v1);
   assert(mp->I() == Inew);
   //!< check individual cells
-  mp->getSUs(cs2, ncel, nout);
-  for (int i = 0; i < ncel; i++) {
+  mp->getSUs(cs2, nout);
+  for (int i = 0; i < std::size(cs2); i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() < v1);
     cell1 = dynamic_cast<Cell_SPM *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
@@ -825,10 +816,10 @@ void test_Modules_s_SPM(bool testErrors)
   Inew = -1;
   mp->setCurrent(Inew);
   mp->timeStep_CC(dt);
-  mp->getSUs(cs2, ncel, nout);
+  mp->getSUs(cs2, nout);
   assert(mp->V() > V);
   assert(mp->I() == Inew);
-  for (int i = 0; i < ncel; i++) {
+  for (int i = 0; i < std::size(cs2); i++) {
     assert(cs2[i]->I() == Inew);
     assert(cs2[i]->V() > V / 2.0);
     cell1 = dynamic_cast<Cell_SPM *>(cs2[i].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
@@ -837,43 +828,40 @@ void test_Modules_s_SPM(bool testErrors)
   }
 }
 
-void test_Hierarchichal()
+bool test_Hierarchichal()
 {
   //!< test series modules made out of other series modules
 
   double tol = 0.001;
-  constexpr int ncel1 = 2;
-  constexpr int ncel2 = 2;
-  int ncel3 = 3;
   std::string n1 = "H1";
   std::string n2 = "H2";
   std::string n3 = "H3";
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp3(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp4(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp5(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp6(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp7(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> SU1[ncel1] = { cp1, cp2 };
-  std::unique_ptr<StorageUnit> SU2[ncel2] = { cp3, cp4 };
-  std::unique_ptr<StorageUnit> SU3[ncel3] = { cp5, cp6, cp7 };
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  auto cp3 = std::make_unique<Cell_Bucket>();
+  auto cp4 = std::make_unique<Cell_Bucket>();
+  auto cp5 = std::make_unique<Cell_Bucket>();
+  auto cp6 = std::make_unique<Cell_Bucket>();
+  auto cp7 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> SU1[] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> SU2[] = { cp3, cp4 };
+  std::unique_ptr<StorageUnit> SU3[] = { cp5, cp6, cp7 };
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_s> mp1(new Module_s(n1, T, true, false, ncel1, 1, 2)); //!< middle level modules are pass through
-  std::unique_ptr<Module_s> mp2(new Module_s(n2, T, true, false, ncel2, 1, 2));
-  std::unique_ptr<Module_s> mp3(new Module_s(n3, T, true, false, ncel3, 1, 2));
-  mp1->setSUs(SU1, ncel1, checkCells);
-  mp2->setSUs(SU2, ncel2, checkCells);
-  mp3->setSUs(SU3, ncel3, checkCells);
+  auto mp1 = std::make_unique<Module_s>(ids[0], T, true, false, std::size(SU1), 1, 2); //!< middle level modules are pass through
+  auto mp2 = std::make_unique<Module_s>(ids[1], T, true, false, std::size(SU2), 1, 2);
+  auto mp3 = std::make_unique<Module_s>(ids[2], T, true, false, std::size(SU3), 1, 2);
+  mp1->setSUs(SU1, checkCells);
+  mp2->setSUs(SU2, checkCells);
+  mp3->setSUs(SU3, checkCells);
 
   //!< make the hierarichical module
   int nm = 3;
   std::string n4 = "H4";
-  std::unique_ptr<StorageUnit> MU[nm] = { mp1, mp2, mp3 };
+  std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
   checkCells = true;
-  std::unique_ptr<Module_s> mp(new Module_s(n4, T, true, false, 7, 1, 1));
-  mp->setSUs(MU, nm, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1);
+  mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
   assert(Vini == mp1->V() + mp2->V() + mp3->V());
   assert(Vini == 7 * cp1->V());
@@ -898,43 +886,38 @@ void test_Hierarchichal()
   assert(mp->V() > Vini);
 }
 
-void test_Hierarchical_Cross()
+bool test_Hierarchical_Cross()
 {
   //!< test series-modules made out of parallel-modules
 
   double tol = settings::MODULE_P_I_ABSTOL;
-  constexpr int ncel1 = 2;
-  constexpr int ncel2 = 2;
-  int ncel3 = 3;
-  std::string n1 = "1";
-  std::string n2 = "2";
-  std::string n3 = "3";
-  std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp3(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp4(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp5(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp6(new Cell_Bucket);
-  std::unique_ptr<Cell_Bucket> cp7(new Cell_Bucket);
-  std::unique_ptr<StorageUnit> SU1[ncel1] = { cp1, cp2 };
-  std::unique_ptr<StorageUnit> SU2[ncel2] = { cp3, cp4 };
-  std::unique_ptr<StorageUnit> SU3[ncel3] = { cp5, cp6, cp7 };
+  std::string ids[] = { "1", "2", "3" };
+  auto cp1 = std::make_unique<Cell_Bucket>();
+  auto cp2 = std::make_unique<Cell_Bucket>();
+  auto cp3 = std::make_unique<Cell_Bucket>();
+  auto cp4 = std::make_unique<Cell_Bucket>();
+  auto cp5 = std::make_unique<Cell_Bucket>();
+  auto cp6 = std::make_unique<Cell_Bucket>();
+  auto cp7 = std::make_unique<Cell_Bucket>();
+  std::unique_ptr<StorageUnit> SU1[] = { cp1, cp2 };
+  std::unique_ptr<StorageUnit> SU2[] = { cp3, cp4 };
+  std::unique_ptr<StorageUnit> SU3[] = { cp5, cp6, cp7 };
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<Module_p> mp1(new Module_p(n1, T, true, false, ncel1, 1, 2)); //!< middle level modules are pass through
-  std::unique_ptr<Module_p> mp2(new Module_p(n2, T, true, false, ncel2, 1, 2));
-  std::unique_ptr<Module_p> mp3(new Module_p(n3, T, true, false, ncel3, 1, 2));
-  mp1->setSUs(SU1, ncel1, checkCells);
-  mp2->setSUs(SU2, ncel2, checkCells);
-  mp3->setSUs(SU3, ncel3, checkCells);
+  auto mp1 = std::make_unique<Module_p>(ids[0], T, true, false, std::size(SU1), 1, 2); //!< middle level modules are pass through
+  auto mp2 = std::make_unique<Module_p>(ids[1], T, true, false, std::size(SU2), 1, 2);
+  auto mp3 = std::make_unique<Module_p>(ids[2], T, true, false, std::size(SU3), 1, 2);
+  mp1->setSUs(SU1, checkCells);
+  mp2->setSUs(SU2, checkCells);
+  mp3->setSUs(SU3, checkCells);
 
   //!< make the hierarichical series-module
   int nm = 3;
   std::string n4 = "4";
-  std::unique_ptr<StorageUnit> MU[nm] = { mp1, mp2, mp3 };
+  std::unique_ptr<StorageUnit> MU[] = { mp1, mp2, mp3 };
   checkCells = true;
-  std::unique_ptr<Module_s> mp(new Module_s(n4, T, true, false, 7, 1, 1));
-  mp->setSUs(MU, nm, checkCells, true);
+  auto mp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1);
+  mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
   assert(Vini == mp1->V() + mp2->V() + mp3->V());
   assert(Vini == 3 * cp1->V());
@@ -942,9 +925,9 @@ void test_Hierarchical_Cross()
   //!< set a CC current
   double Inew = -5;
   mp->setCurrent(Inew);
-  assert(std::abs(mp->I() - Inew) < tol);                   //!< no longer exact since it involves parallel modules
-  assert(std::abs(cp3->I() - Inew / mp2->getNSUs()) < tol); //!< 2nd module has 2 cells, so current should split in 2
-  assert(std::abs(cp7->I() - Inew / mp3->getNSUs()) < tol); //!< 3rd module has 3 cells, so current should split in 3
+  assert(NEAR(mp->I(), Inew, tol));                   //!< no longer exact since it involves parallel modules
+  assert(NEAR(cp3->I(), Inew / mp2->getNSUs(), tol)); //!< 2nd module has 2 cells, so current should split in 2
+  assert(NEAR(cp7->I(), Inew / mp3->getNSUs(), tol)); //!< 3rd module has 3 cells, so current should split in 3
 
   //!< time a CC time step
   Vini = mp->V();
@@ -952,51 +935,54 @@ void test_Hierarchical_Cross()
   mp->timeStep_CC(dt);
   assert(std::abs(cp1->SOC() - (0.5 - Inew * dt / 3600.0 / cp1->Cap())) < tol); //!< the SOC must have increased (check just 1 cell out of all 7)
   assert(mp->V() > Vini);
+
+  return true;
 }
 
-//!< void test_copy_s()
-//!< {
-//!< 	/*
-//!< 	 * test the copy-function
-//!< 	 */
+bool test_copy_s()
+{
+  //!< 	/*
+  //!< 	 * test the copy-function
+  //!< 	 */
 
-//!< 	//!< make module
-//!< 	constexpr int ncel = 2;
-//!< 	std::unique_ptr<Cell_Bucket> cp1(new Cell_Bucket);
-//!< 	std::unique_ptr<Cell_Bucket> cp2(new Cell_Bucket);
-//!< 	std::unique_ptr<StorageUnit> cs[ncel] = {cp1, cp2};
-//!< 	std::string n = "na";
-//!< 	double v1 = cp1->V();
-//!< 	double T = settings::T_ENV;
-//!< 	bool checkCells = false;
-//!< 	std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, 1, 1));
-//!< 	mp->setSUs(cs, ncel, checkCells, true);
+  //!< 	//!< make module
+  //!<
+  //!< 	auto cp1 = std::make_unique<Cell_Bucket>();
+  //!< 	auto cp2 = std::make_unique<Cell_Bucket>();
+  //!< 	std::unique_ptr<StorageUnit> cs[] = {cp1, cp2};
+  //!< 	std::string n = "na";
+  //!< 	double v1 = cp1->V();
+  //!< 	double T = settings::T_ENV;
+  //!< 	bool checkCells = false;
+  //!< 	auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  //!< 	mp->setSUs(cs, checkCells, true);
 
-//!< 	//!< copy this one and check they are identical
-//!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
-//!< 	Module_s *c22 = dynamic_cast<Module_s *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
-//!< 	assert(mp->V() == c22->V());
-//!< 	std::unique_ptr<StorageUnit> corig[ncel], cnew[ncel];
-//!< 	int nout;
-//!< 	mp->getSUs(corig, ncel, nout);
-//!< 	c22->getSUs(cnew, ncel, nout);
-//!< 	for (int i = 0; i < mp->getNSUs(); i++)
-//!< 		assert(corig[i]->V() == cnew[i]->V());
+  //!< 	//!< copy this one and check they are identical
+  //!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
+  //!< 	Module_s *c22 = dynamic_cast<Module_s *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+  //!< 	assert(mp->V() == c22->V());
+  //!< 	std::unique_ptr<StorageUnit> corig[], cnew[];
+  //!< 	int nout;
+  //!< 	mp->getSUs(corig);
+  //!< 	c22->getSUs(cnew);
+  //!< 	for (int i = 0; i < mp->getNSUs(); i++)
+  //!< 		assert(corig[i]->V() == cnew[i]->V());
 
-//!< 	//!< change the copied version, and ensure the old one is still the same
-//!< 	c22->setCurrent(1 * ncel, false, false); //!< discharge
-//!< 	for (int t = 0; t < 10; t++)
-//!< 		c22->timeStep_CC(2);
-//!< 	mp->getSUs(corig, ncel, nout);
-//!< 	c22->getSUs(cnew, ncel, nout);
-//!< 	for (int i = 0; i < mp->getNSUs(); i++)
-//!< 	{
-//!< 		assert(corig[i]->V() == v1);
-//!< 		assert(cnew[i]->V() < v1);
-//!< 	}
-//!< }
+  //!< 	//!< change the copied version, and ensure the old one is still the same
+  //!< 	c22->setCurrent(1 * std::size(cs), false, false); //!< discharge
+  //!< 	for (int t = 0; t < 10; t++)
+  //!< 		c22->timeStep_CC(2);
+  //!< 	mp->getSUs(corig);
+  //!< 	c22->getSUs(cnew);
+  //!< 	for (int i = 0; i < mp->getNSUs(); i++)
+  //!< 	{
+  //!< 		assert(corig[i]->V() == v1);
+  //!< 		assert(cnew[i]->V() < v1);
+  //!< 	}
+  return true;
+}
 
-void test_CoolSystem_s()
+bool test_CoolSystem_s()
 {
   /*
    * test the cool system design
@@ -1045,12 +1031,11 @@ void test_CoolSystem_s()
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
     //!< cout<<"module_s_test start coolsystem test with a single cell for cool control setting "<<coolControl<<endl;
-    int ncel = 1;
-    std::unique_ptr<Cell_SPM> cp0(new Cell_SPM);
-    std::unique_ptr<StorageUnit> cs[ncel] = { cp0 };
+    auto cp0 = std::make_unique<Cell_SPM>();
+    std::unique_ptr<StorageUnit> cs[] = { cp0 };
     std::string n = "testCoolSystem";
-    std::unique_ptr<Module_s> mp(new Module_s(n, T, true, false, ncel, coolControl, true));
-    mp->setSUs(cs, ncel, checkCells, true);
+    auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), coolControl, true);
+    mp->setSUs(cs, checkCells, true);
     double Tini[1] = { cp0->T() };
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
@@ -1091,15 +1076,14 @@ void test_CoolSystem_s()
     //!< **********************************************************************************************************************************************************
     //!< Make a simple module with SPM cells
     //!< cout<<"module_s_test start coolsystem test with a simple module for cool control setting "<<coolControl<<endl;
-    int ncel2 = 4;
-    std::unique_ptr<Cell_SPM> cp1(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp2(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp3(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp4(new Cell_SPM);
-    std::unique_ptr<StorageUnit> cs2[ncel2] = { cp1, cp2, cp3, cp4 };
+    auto cp1 = std::make_unique<Cell_SPM>();
+    auto cp2 = std::make_unique<Cell_SPM>();
+    auto cp3 = std::make_unique<Cell_SPM>();
+    auto cp4 = std::make_unique<Cell_SPM>();
+    std::unique_ptr<StorageUnit> cs2[] = { cp1, cp2, cp3, cp4 };
     std::string n2 = "testCoolSystem";
-    std::unique_ptr<Module_s> mp2(new Module_s(n2, T, true, false, ncel2, coolControl, true));
-    mp2->setSUs(cs2, ncel2, checkCells, true);
+    auto mp2 = std::make_unique<Module_s>(n2, T, true, false, std::size(cs2), coolControl, true);
+    mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
@@ -1140,33 +1124,30 @@ void test_CoolSystem_s()
     //!< ******************************************************************************************************************************************************
     //!< make the hierarchical module
     //!< cout<<"Module_s_test start coolsystem test with a complex module for cool control setting "<<coolControl<<endl;
-    int ncel11 = 2;
-    int ncel22 = 2;
-    int ncel33 = 3;
     std::string n11 = "H1";
     std::string n22 = "H2";
     std::string n33 = "H3";
-    std::unique_ptr<Cell_SPM> cp11(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp22(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp33(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp44(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp55(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp66(new Cell_SPM);
-    std::unique_ptr<Cell_SPM> cp77(new Cell_SPM);
-    std::unique_ptr<StorageUnit> SU1[ncel11] = { cp11, cp22 };
-    std::unique_ptr<StorageUnit> SU2[ncel22] = { cp33, cp44 };
-    std::unique_ptr<StorageUnit> SU3[ncel33] = { cp55, cp66, cp77 };
-    std::unique_ptr<Module_s> mp11(new Module_s(n11, T, true, false, ncel11, coolControl, 2)); //!< pass through cool system
-    std::unique_ptr<Module_s> mp22(new Module_s(n22, T, true, false, ncel22, coolControl, 2));
-    std::unique_ptr<Module_s> mp33(new Module_s(n33, T, true, false, ncel33, coolControl, 2));
-    mp11->setSUs(SU1, ncel11, checkCells);
-    mp22->setSUs(SU2, ncel22, checkCells);
-    mp33->setSUs(SU3, ncel33, checkCells);
+    auto cp11 = std::make_unique<Cell_SPM>();
+    auto cp22 = std::make_unique<Cell_SPM>();
+    auto cp33 = std::make_unique<Cell_SPM>();
+    auto cp44 = std::make_unique<Cell_SPM>();
+    auto cp55 = std::make_unique<Cell_SPM>();
+    auto cp66 = std::make_unique<Cell_SPM>();
+    auto cp77 = std::make_unique<Cell_SPM>();
+    std::unique_ptr<StorageUnit> SU1[] = { cp11, cp22 };
+    std::unique_ptr<StorageUnit> SU2[] = { cp33, cp44 };
+    std::unique_ptr<StorageUnit> SU3[] = { cp55, cp66, cp77 };
+    auto mp11 = std::make_unique<Module_s>(n11, T, true, false, std::size(SU1), coolControl, 2); //!< pass through cool system
+    auto mp22 = std::make_unique<Module_s>(n22, T, true, false, std::size(SU2), coolControl, 2);
+    auto mp33 = std::make_unique<Module_s>(n33, T, true, false, std::size(SU3), coolControl, 2);
+    mp11->setSUs(SU1, checkCells);
+    mp22->setSUs(SU2, checkCells);
+    mp33->setSUs(SU3, checkCells);
     int nm = 3;
     std::string n44 = "H4";
-    std::unique_ptr<StorageUnit> MU[nm] = { mp11, mp22, mp33 };
-    std::unique_ptr<Module_s> mp44(new Module_s(n44, T, true, true, 7, coolControl, 1));
-    mp44->setSUs(MU, nm, checkCells, true);
+    std::unique_ptr<StorageUnit> MU[] = { mp11, mp22, mp33 };
+    auto mp44 = std::make_unique<Module_s>(n44, T, true, true, 7, coolControl, 1);
+    mp44->setSUs(MU, checkCells, true);
     double Tini22[7] = { cp11->T(), cp22->T(), cp33->T(), cp44->T(), cp55->T(), cp66->T(), cp77->T() };
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
@@ -1232,38 +1213,44 @@ void test_CoolSystem_s()
     //!< 	that is possible because cells are made at T_env (which is 20), but the HVAC coolsystem can cool the SU as cold as controlAC_onoff_Toff, which is 15
     //!< 	so cells can cool down 5 degrees
   }
+
+  return true;
 }
 
 //!< ***************************************************************** test all functions *************************************************************************
-void test_Module_s_testAll(bool testErrors)
+int test_all_Module_s()
 {
   //!< if we test the errors, suppress error messages
   //!< "Pure" unit tests (series modules with Cells)
-  test_Constructor();
-  test_BasicGetters();
-  test_BasicGetters_s();
-  test_setI(testErrors);
+  if (!TEST(test_Constructor, "Cell_test")) return 1;
+  if (!TEST(test_BasicGetters, "Cell_test")) return 2;
+  if (!TEST(test_BasicGetters_s, "Cell_test")) return 3;
+  if (!TEST(test_setI, "Cell_test")) return 4;
 
-  test_getCellV();
-  test_getStates();
-  test_getCells();
-  test_setT();
+  if (!TEST(test_getCellV, "Cell_test")) return 5;
+  if (!TEST(test_getStates, "Cell_test")) return 6;
+  if (!TEST(test_getCells, "Cell_test")) return 7;
+  if (!TEST(test_setT, "Cell_test")) return 8;
 
-  test_setStates(testErrors);
-  test_validCells(testErrors); //!< includes setState
-  test_validStates(testErrors);
-  test_setCells(testErrors); //!< (includes validCells)
+  if (!TEST(test_setStates, "Cell_test")) return 9;
+  if (!TEST(test_validCells, "Cell_test")) return 10; //!< includes setState
+  if (!TEST(test_validStates, "Cell_test")) return 11;
+  if (!TEST(test_setCells, "Cell_test")) return 12; //!< (includes validCells)
 
-  test_timeStep_CC();
-  test_copy_s();
+  if (!TEST(test_timeStep_CC, "Cell_test")) return 13;
+  if (!TEST(test_copy_s, "Cell_test")) return 14;
 
   //!< Combinations
-  test_Modules_s_ECM(testErrors);
-  test_Modules_s_SPM(testErrors);
-  test_Hierarchichal();      //!< series of series
-  test_Hierarchical_Cross(); //!< series of parallel
+  if (!TEST(test_Modules_s_ECM, "Cell_test")) return 15;
+  if (!TEST(test_Modules_s_SPM, "Cell_test")) return 16;
+  if (!TEST(test_Hierarchichal, "Cell_test")) return 17;      //!< series of series
+  if (!TEST(test_Hierarchical_Cross, "Cell_test")) return 18; //!< series of parallel
 
   //!< coolsystem (includes hierarchical modules and uses SPM cells)
-  test_CoolSystem_s();
+  if (!TEST(test_CoolSystem_s, "Cell_test")) return 19;
+
+  return 0;
 }
-} // namespace slide::unit_tests
+} // namespace slide::tests::unit
+
+int main() { return slide::tests::unit::test_all_Module_s(); }

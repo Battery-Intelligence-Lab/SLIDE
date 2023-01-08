@@ -6,11 +6,14 @@ project(SLIDE VERSION "3.0.0"
   HOMEPAGE_URL https://davidhowey.github.io/SLIDE/
   LANGUAGES CXX)
 
-
+ 
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
 
+
+enable_testing()
 add_subdirectory(src bin)
+add_subdirectory(tests)
 
 
 # Link this 'library' to use the warnings specified in CompilerWarnings.cmake

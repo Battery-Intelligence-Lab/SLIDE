@@ -204,8 +204,8 @@ Battery *Battery::copy()
 
   cls->setParent(nullptr);
 
-  copied_ptr->setModule(std::move(cls));
   copied_ptr->setSeriesandParallel(nseries, nparallel);
+  copied_ptr->setModule(std::move(cls));
 
   return copied_ptr;
 }

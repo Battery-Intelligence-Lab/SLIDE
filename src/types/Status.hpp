@@ -39,22 +39,29 @@ enum class Status : int_fast8_t //!< -128 to 127 = 1 byte.
   //!< Auxillary definitions:
   Critical = VMIN_violation, //!< Non-critical status definition.
   NotSafe = VMINsafety_violation
+
 };
 
 const char *getStatusMessage(Status status);
-auto inline isStatusSuccessful(Status status) { return status == Status::Success; }
-auto inline isStatusFailed(Status status) { return !isStatusSuccessful(status); }
-auto inline isStatusOK(Status status) { return (status < Status::Critical); }
-auto inline isStatusBad(Status status) { return !isStatusOK(status); }
-auto inline isStatusWarning(Status status) { return ((status != Status::Success) && isStatusOK(status)); } //!< Not successful but voltage is in limits.
-auto inline isStatusSafe(Status status) { return status < Status::NotSafe; }
-auto inline isLimitsReached(Status status) { return status < Status::ReachedTimeLimit; }
+bool inline isStatusSuccessful(Status status) { return status == Status::Success; }
+bool inline isStatusFailed(Status status) { return !isStatusSuccessful(status); }
+bool inline isStatusOK(Status status) { return (status < Status::Critical); }
+bool inline isStatusBad(Status status) { return !isStatusOK(status); }
+bool inline isStatusWarning(Status status) { return ((status != Status::Success) && isStatusOK(status)); } //!< Not successful but voltage is in limits.
+bool inline isStatusSafe(Status status) { return status < Status::NotSafe; }
+bool inline isLimitsReached(Status status) { return status < Status::ReachedTimeLimit; }
 
-auto inline isStatusVoltageLimitsViolated(Status status)
+bool inline isStatusVoltageLimitsViolated(Status status)
 {
   using enum Status;
   return (Success < status && status <= VMAXsafety_violation);
 }
+
+bool inline isCCLimitReached(Status status) { return status == Status::ReachedVoltageLimit || status == Status::ReachedTimeLimit; }
+bool inline isCVLimitReached(Status status) { return status == Status::ReachedCurrentLimit || status == Status::ReachedTimeLimit; }
+bool inline isCurrentLimitReached(Status status) { return status == Status::ReachedCurrentLimit; }
+bool inline isVoltageLimitReached(Status status) { return status == Status::ReachedVoltageLimit; }
+
 
 inline const char *getStatusMessage(Status status)
 {

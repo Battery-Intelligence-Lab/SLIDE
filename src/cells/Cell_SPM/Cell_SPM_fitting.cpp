@@ -190,8 +190,8 @@ namespace slide {
 //!< 	OCVpl = 0;
 //!< 	rhopl = 10000e3;
 //!< 	//!< fitting parameters
-//!< 	plparam.pl1k = 0;
-//!< 	plparam.pl1k_T = 0;
+//!< 	pl_p.pl1k = 0;
+//!< 	pl_p.pl1k_T = 0;
 
 //!< 	//!< degradation identifiers: no degradation
 //!< deg.SEI_id.add_model(0); //!< no SEI growth, there is 1 SEI model (namely '0')
@@ -220,8 +220,8 @@ void Cell_SPM::setOCVcurve(const std::string &namepos, const std::string &namene
 
   //!< Store the OCV curves
   try {
-    OCV_curves.OCV_neg.setCurve(PathVar::data + nameneg); //!< the OCV curve of the anode, the first column gives the lithium fractions (increasing), the 2nd column gives the OCV vs li/li+
-    OCV_curves.OCV_pos.setCurve(PathVar::data + namepos);
+    OCV_curves.OCV_neg.setCurve(PathVar::data / nameneg); //!< the OCV curve of the anode, the first column gives the lithium fractions (increasing), the 2nd column gives the OCV vs li/li+
+    OCV_curves.OCV_pos.setCurve(PathVar::data / namepos);
   } catch (int e) {
     //!< std::cout << "Throw test: " << 32 << '\n';
     std::cout << "ERROR in Cell_SPM::setOCVcurve when loading the OCV curves from the CSV files: "
