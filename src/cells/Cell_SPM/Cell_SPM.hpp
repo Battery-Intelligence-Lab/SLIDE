@@ -67,11 +67,11 @@ protected: //!< protected such that child classes can access the class variables
   double Dn_T{ 35000.0 / 5.0 }; //!< activation energy for the Arrhenius relation of Dn
 
   //!< Thermal model parameters
-  double Therm_Qgen{};                   //!< total heat generation since the last update [J]
-  double Therm_Qgentot{};                //!< variable for unit testing, total heat generation since the beginning of this cell's life [J]
-  double Therm_time{};                   //!< time since the last update of the thermal model
-  double T_env{ settings::T_ENV };       //!< environment temperature [K]
-  double T_ref{ PhyConst::Kelvin + 25 }; //!< reference temperature [K]
+  double Therm_Qgen{};             //!< total heat generation since the last update [J]
+  double Therm_Qgentot{};          //!< variable for unit testing, total heat generation since the beginning of this cell's life [J]
+  double Therm_time{};             //!< time since the last update of the thermal model
+  double T_env{ settings::T_ENV }; //!< environment temperature [K]
+  double T_ref{ 25.0_degC };       //!< reference temperature [K]
 
   //!< Qch: 90 gives very good cooling, as if there is a fan pointed at the cell. values of 30-60 are representative for a cell on a shelf without forced cooling
   //!< 40 is representative for a cell on a shelf without forced cooling

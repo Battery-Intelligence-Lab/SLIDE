@@ -129,7 +129,6 @@ inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
     validState();
   } catch (int e) {
     std::cout << "Error in State::initialise, one of the states has an illegal value, throwing an error\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 12;
   }
   setC(fp, fn); //!< set the lithium concentration

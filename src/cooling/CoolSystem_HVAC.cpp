@@ -94,7 +94,6 @@ double CoolSystem_HVAC::dstate(double Qtotal, double Qchildren, double t)
               << " and heat exchange from the children is " << Qchildren
               << ". Both must be the same for an HVAC system, difference is "
               << std::abs(Qtotal - Qchildren) << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10;
   }
 
@@ -273,14 +272,12 @@ void CoolSystem_HVAC::storeData(size_t Ncellsi)
       std::cerr << "Error in CoolSystem_HVAC. This system has " << Ncells
                 << " cells connected, but now you are storing data for a system of "
                 << Ncellsi << ". throwing an error\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw 10;
     }
 
     if (Ncells == 0) {
       std::cerr << "Error in CoolSystem_HVAC. This system has " << Ncells
                 << " cells connected, so you cannot store values per cell connected. Throwing an error\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw 10;
     }
   }

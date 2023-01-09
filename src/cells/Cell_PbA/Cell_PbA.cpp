@@ -218,7 +218,6 @@ void Cell_PbA::timeStep_CC(double dt, int nstep)
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Cell_PbA::timeStep_CC, the time step dt must be "
                 << "0 or positive, but has value " << dt << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10;
   }
 

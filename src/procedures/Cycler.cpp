@@ -373,7 +373,6 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
         std::cout << "error in Cycler::CC when advancing in time with nOnce = "
                   << nOnce << ", V = " << vi << " and Vlim " << vlim << ". The error is "
                   << e << "on.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       return Status::timeStep_CC_failed;
     }
 
@@ -524,7 +523,6 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
       std::cerr << "Error in Cycler::CC, stopped time integration for unclear reason after "
                 << ttot << "s and voltage " << vi << "V, we were running with time limit "
                 << tlim << " and voltage limit " << vlim << "V and current " << I << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 100;
   }
 
@@ -637,7 +635,6 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
       if constexpr (settings::printBool::printCrit)
         std::cout << "error in Cycler::CV of module " << su->getFullID() << " in time step "
                   << i << " when advancing in time. Passing the error on, " << e << '\n';
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       return Status::timeStep_CC_failed;
     }
 

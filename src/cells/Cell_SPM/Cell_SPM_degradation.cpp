@@ -103,7 +103,6 @@ void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
     default: //!< unknown degradation model
       std::cerr << "ERROR in Cell_SPM::SEI, unknown SEI degradation model with identifier "
                 << static_cast<int>(sei_id) << ". Only values 0 to 3 are allowed. Throw an error.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw 106;
       break;
     }
@@ -123,7 +122,6 @@ void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
   } else { //!< unknown degradation model
     std::cerr << "ERROR in Cell_SPM::SEI, unknown value for decreasing the volume fraction "
               << deg_id.SEI_porosity << ". Only values 0 or 1 are allowed. Throw an error.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 106;
   }
 }
@@ -433,7 +431,6 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
     default: //!< unknown degradation model
       std::cerr << "ERROR in Cell_SPM::LAM, unknown LAM degradation model with identifier "
                 << lam_id << ". Only values 0 to 4 are allowed. Throw an error.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw 106;
       break;
     }
@@ -669,7 +666,6 @@ void Cell_SPM::getLaresgoitiStress(bool print, double *sigma_n)
       std::cerr << "ERROR in Cell_SPM::getLaresgoitiStress: concentration out of bounds. the positive lithium fraction is " << cps / Cmaxpos
                 << " and the negative lithium fraction is " << cns / Cmaxneg << "they should both be between 0 and 1.\n";
     }
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 101;
   }
 
