@@ -16,7 +16,7 @@ struct Geometry_SPM
 {
   double L{ 1.6850e-4 };          //!< thickness of the cell [m]
   double Acell{ 0.1 * 0.2 };      //!< geometric surface area of the cell [m2] / width * height of the pouch.
-  double elec_surf{ Acell * 31 }; //!< geometric surface area of the electrodes (electrode height * electrode width*layers) [m2]
+  double elec_surf{ Acell * 31 }; //!< geometric surface area of the electrodes (electrode height * electrode width*layers) [m2] Doubly coated so multiply by two when putting into PyBAMM
   double SAV{ 252.9915 };         //!< surface area to volume-ratio of the cell [m2/m3]
 
   double Rp{ 8.5e-6 }, Rn{ 1.25e-5 }; //!< radius of the positive/neg sphere of the Single Particle model [m]

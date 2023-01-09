@@ -136,9 +136,11 @@ int main()
 
   using namespace slide;
 
-  paperCode::paper2022::Vequalisation();
-  // paperCode::paper2022::thermalModel();
-  // paperCode::paper2022::degradation_thermal();
+  slide::benchmarks::run_Cell_SPM_1(1);
+
+  // paperCode::paper2022::Vequalisation();
+  //   paperCode::paper2022::thermalModel();
+  //  paperCode::paper2022::degradation_thermal();
 
   //!< Benchmarks:
 
