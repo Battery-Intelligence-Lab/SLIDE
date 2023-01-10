@@ -34,8 +34,7 @@ start_time = time.time()
 solution = sim.solve([0, 3600])
 end_time = time.time()
 
-elapsed_time = end_time - start_time
-print(f"Elapsed time: {elapsed_time:.3f} seconds")
+print(f"Elapsed time: {(end_time - start_time):.3f} seconds")
 
 
 t = solution["Time [s]"]

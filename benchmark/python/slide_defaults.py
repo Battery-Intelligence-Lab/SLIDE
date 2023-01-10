@@ -16,7 +16,6 @@ def Up_fun(x):
 
 
 def Un_fun(x):
-   # return pybamm.Interpolant(slide_Up[:, 0], slide_Up[:, 1],x)
     return pybamm.Interpolant(slide_Un[:, 0], slide_Un[:, 1], x, 'slide_Un')
 
 
