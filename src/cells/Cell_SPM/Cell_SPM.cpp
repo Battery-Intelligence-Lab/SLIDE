@@ -528,7 +528,6 @@ void Cell_SPM::setTenv(double Tenv)
     std::cerr << "ERROR in Cell_SPM::setTenv, illegal value of environmental temperature " << Tenv
               << "K. The value has to be between The value has to be between " << Tmin()
               << "and " << Tmax() << ".\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 102;
   }
 
@@ -723,7 +722,6 @@ void Cell_SPM::checkModelparam()
                  " These values are also defined in the C++ code. Of course, both values have to be the same."
                  " It turned out this was not the case, so you either have to change the values in the MATLAB script or the ones in the C++ code."
                  " We are throwing an error.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 110;
   }
 }

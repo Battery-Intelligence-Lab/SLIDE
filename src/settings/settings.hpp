@@ -65,8 +65,9 @@ constexpr int DATASTORE_COOL = 0; //!< if 0, no data is stored
 
 constexpr int CELL_NDEG = 10; //!< maximum number of any type of degradation model
 
-constexpr int MODULE_NSUs_MAX = 20; //!< maximum number of cells in a base module
-                                    //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
+constexpr int MODULE_NSUs_MAX = 100; //!< #TODO eliminate but recursive static does not solve the situation since it is recursive.
+                                     //!< maximum number of cells in a base module
+                                     //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
 
 constexpr double T_ENV = 15.0_degC; //!< environmental temperature
 

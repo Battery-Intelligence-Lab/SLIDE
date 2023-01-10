@@ -95,7 +95,6 @@ void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
     if (verb)
       std::cerr << "ERROR in Module::setCells, the cells are "
                    "an illegal combination for this module.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10;
   }
 
@@ -341,7 +340,6 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
       std::cerr << "ERROR in Module::thermalModel of SU " << getFullID() << ", according to the cell's internal timing, "
                 << therm.time << "s have passed since the last thermal model solution."
                 << " The external time provided was " << tim << "s, which is more than 1s difference. Throwing an error.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 98;
   }
 
@@ -392,7 +390,6 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
         if constexpr (settings::printBool::printCrit)
           std::cout << "Error in module " << getFullID() << " when calculating the thermal balance of child SU "
                     << i << ", error " << e << ". throwing it on.\n";
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw e;
       }
     }
@@ -447,7 +444,6 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
         std::cerr << "ERROR in Module::thermalModel of SU " << getFullID() << ", the new temperature of " << Tcool_new << " is outside the allowed range from (273+0) K to (273+75) K";
         std::cerr << ". The time since the last time this function was called is " << tim << '\n';
       }
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw 99;
     }
 

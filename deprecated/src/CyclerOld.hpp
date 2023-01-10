@@ -63,7 +63,6 @@ struct checkUpProcedure
       //!< std::cout << "Throw test: " << 74 << '\n';
       if constexpr (settings::printBool::printCrit)
         std::cout << "Error in checkUpProcedure::set_profileName when reading the pulse profile: " << e << ".\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw e;
     }
   }

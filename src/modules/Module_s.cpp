@@ -206,7 +206,6 @@ void Module_s::timeStep_CC(double dt, int nstep)
   } catch (int e) {
     std::cout << "Error in Module_s::timeStep_CC with module ID " << getFullID()
               << ". error " << e << ", throwing it on.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw e;
   }
 
@@ -232,7 +231,6 @@ void Module_s::timeStep_CC(double dt, int nstep)
       if (typeid(*getCoolSystem()) != typeid(CoolSystem_HVAC)) {
         std::cerr << "ERROR in module_s::timeStep_CC in module " << getFullID() << ". this is a top-level"
                   << " module but does not have an HVAC coolsystem for active cooling with the environment.\n";
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw 14;
       }
 
