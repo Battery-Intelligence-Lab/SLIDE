@@ -115,7 +115,6 @@ void CoolSystem::setT(double Tnew)
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in CoolSystem::setT, the new temperature of "
                 << Tnew << " is outside the allowed range from (273+0) K to (273+75) K.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 99;
   }
 
@@ -299,7 +298,6 @@ void CoolSystem::storeData(size_t Ncellsi)
       std::cerr << "Error in CoolSystem. This system has " << Ncells
                 << " cells connected, but now you are storing data for a system of "
                 << Ncellsi << ". Throwing an error.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw 10;
     }
 
@@ -307,7 +305,6 @@ void CoolSystem::storeData(size_t Ncellsi)
       std::cerr << "Error in CoolSystem. This system has " << Ncells
                 << " cells connected, so you cannot store values per cell connected."
                 << " Throwing an error.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw 10;
     }
   }

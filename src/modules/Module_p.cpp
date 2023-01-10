@@ -366,7 +366,6 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
       if (verb)
         std::cerr << "Error in Module_p::redistributeCurrent(). The voltage of one of the cells is "
                      "outside the allowed limits. allowing it for now.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       return status;
     } else if (isStatusBad(status)) { //!< outside safety limits (< VMIN and discharge || > VMAX and charge)
       //!< safety limits -> restore old states and throw 3
@@ -377,7 +376,6 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
       for (size_t i = 0; i < getNSUs(); i++)
         SUs[i]->setCurrent(Iold[i], false, print); //!< don't check the voltage since we restore the original currents, which should be valid
 
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       return status;
     }
   }
@@ -504,7 +502,6 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
         //!< valid range -> keep old states, but throw 2 to notify something is not as it should be
         if (verb)
           std::cout << "Error in Module_p::setCurrent(). The voltage of one of the cells is outside the allowed limits. allowing it for now.\n";
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         return status;
       } else if (isStatusBad(status)) { //!< outside safety limits (< VMIN and discharge || > VMAX and charge)
         //!< safety limits -> restore old states and throw 3
@@ -514,7 +511,6 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
         for (size_t i = 0; i < getNSUs(); i++)
           SUs[i]->setCurrent(Iold[i], false, print); //!< don't check the voltage since we restore the original currents, which should be valid
 
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         return status;
       }
     }
@@ -542,7 +538,6 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
           std::cout << "error in Module_p::setCurrent. We tried redistributing the current to equalise "
                        "the cell voltages after setting the new current, "
                        " but redistributeCurrent() failed too. Give up and throwing 15";
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw 15; //!< Why 15?
       }
     }
@@ -621,7 +616,6 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
         if (verb)
           std::cout << "Error in Mpodule_p::setCurrent when redistributing the current: " << e
                     << ", Try to recover using the iterative version of setCurrent.\n";
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
         throw e;
       }
     }
@@ -755,7 +749,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
   } catch (int e) {
     std::cout << "Error in Module_p::timeStep_CC with module ID " << getFullID()
               << ". error " << e << ", throwing it on.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw e;
   }
 

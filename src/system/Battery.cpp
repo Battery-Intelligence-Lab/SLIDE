@@ -271,7 +271,6 @@ void Battery::writeData(const std::string &prefix)
 
   if (!file.is_open()) {
     std::cerr << "ERROR in Cell::writeData, could not open file " << name << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 11;
   }
 

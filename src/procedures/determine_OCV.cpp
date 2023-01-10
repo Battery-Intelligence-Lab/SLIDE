@@ -342,7 +342,6 @@ void discharge(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, doubl
   const auto flag = discharge_noexcept(OCVp, OCVn, cap, AMp, AMn, cmaxp, cmaxn, sp, sn, Vend, OCV, OCVanode, OCVcathode, fp, fn);
 
   if (!flag) {
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 1; //!< It can only throw due to IntLin therefore, its error code it 1.
   }
 }
@@ -387,7 +386,6 @@ void readOCVinput(const std::string &namepos, const std::string &nameneg, const 
   } catch (int e) {
     //!< std::cout << "Throw test: " << 80 << '\n';
     std::cerr << "ERROR in determineOCV::readOCVinput, an error " << e << " happened while reading the files. Throwing the error on.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw e;
   }
 
@@ -395,21 +393,18 @@ void readOCVinput(const std::string &namepos, const std::string &nameneg, const 
   const bool valp = validOCV(true, OCVp); //!< check the cathode OCV curve. The first column must go from 0-1
   if (!valp) {
     std::cerr << "ERROR in determineOCV::readOCVinput, the file with the cathode OCV curve " << namepos << " has an illegal format.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10000;
   }
 
   const bool valn = validOCV(true, OCVn); //!< check the anode OCV curve. The first column must go from 0-1
   if (!valn) {
     std::cerr << "ERROR in determineOCV::readOCVinput, the file with the anode OCV curve " << nameneg << " has an illegal format.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10000;
   }
 
   const bool valcell = validOCV(false, OCVcell); //!< check the cell OCV curve. The first column must start at 0 but can end anywhere
   if (!valcell) {
     std::cerr << "ERROR in determineOCV::readOCVinput, the file with the cell OCV curve " << namecell << " has an illegal format.\n";
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10000;
   }
 }
