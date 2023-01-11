@@ -21,6 +21,7 @@ jobs:
         with:
           source: 'docs'
           destination: ./_site
+      - run: sudo rm -rf build
       - run: mkdir build
       - name: Create Doxygen Files
         uses: mattnotmitt/doxygen-action@v1.9.5
