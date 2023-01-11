@@ -190,45 +190,44 @@ inline void drive_cycle_artemis()
 
   auto &st = c->getStateObj();
 
-
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   c->setCurrent(1);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   while (c->V() > 2.9)
     c->timeStep_CC(1, 1);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   c->setCurrent(0.005);
   while (c->V() > 2.7)
     c->timeStep_CC(1, 1);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   c->setCurrent(0.0001);
   while (c->V() > 2.7)
     c->timeStep_CC(1, 1);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   c->setCurrent(0);
   c->timeStep_CC(1, 100);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
 
@@ -265,8 +264,8 @@ inline void drive_cycle_artemis()
 
   c->getCSurf(cps, cns, false);
   std::cout << "V: " << c->V() << " cps, cns : " << cps / Cmaxpos << ", " << cns / Cmaxneg << ',' << st.zp(3) << ',' << st.zn(3) << "\n";
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
 

@@ -28,7 +28,7 @@ public:
   using pointer = value_type *;
   using reference = value_type &;
 
-  FixedDataIter(FixedData<T, extrapolation> *const f_data_ptr, int n) : f_data_ptr{ f_data_ptr }, n{ n } {}
+  FixedDataIter(FixedData<T, extrapolation> *const f_data_ptr_, int n) : f_data_ptr{ f_data_ptr_ }, n{ n } {}
 
   FixedDataIter &operator++() //!< Prefix increment
   {

@@ -72,6 +72,8 @@ public:
 
   inline auto zp() { return std::span<double>(&zp(0), &zn(0)); }
   inline auto zn() { return std::span<double>(&zn(0), &zn(0) + nch); }
+  inline auto z() { return std::span<double>(&zp(0), &zn(0) + nch); }
+
 
   inline auto &T() { return (*this)[i_T]; }               //!< cell temperature [K]
   inline auto &delta() { return (*this)[i_delta]; }       //!< thickness of the SEI layer [m]

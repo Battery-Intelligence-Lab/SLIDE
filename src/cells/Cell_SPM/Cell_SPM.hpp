@@ -154,7 +154,7 @@ protected: //!< protected such that child classes can access the class variables
 
 public:
   //!< Constructor
-  Cell_SPM(OCVcurves OCV_curves) : OCV_curves(OCV_curves) {}
+  Cell_SPM(OCVcurves OCV_curves_) : OCV_curves(OCV_curves_) {}
   Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double resf, double degfsei, double degflam);
 
   Cell_SPM(); //!< Default constructor.

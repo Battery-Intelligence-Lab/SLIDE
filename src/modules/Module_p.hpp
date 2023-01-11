@@ -22,8 +22,8 @@ protected:
 #endif
 public:
   Module_p() : Module("moduleP") {} //!< note this constructor should never be used. It can't determine which coolsystem to use
-  Module_p(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
-    : Module(ID_, Ti, print, pari, Ncells, coolControl, cooltype) {}
+  Module_p(std::string_view ID_, double Ti, bool print, bool pari, int Ncells_, int coolControl, int cooltype)
+    : Module(ID_, Ti, print, pari, Ncells_, coolControl, cooltype) {}
 
   //!< functions from Module_base
   //!< the voltage limits are the most constraining limits of all cells

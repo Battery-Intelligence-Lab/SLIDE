@@ -12,6 +12,8 @@
 
 #include "../settings/settings.hpp"
 
+#include <thread>
+#include <vector>
 
 namespace slide {
 

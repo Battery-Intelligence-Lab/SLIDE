@@ -8,6 +8,7 @@
 #include "cool_data.hpp"
 #include "CoolSystemData.hpp"
 #include "../CoolSystem.hpp"
+#include "../utility/utility.hpp"
 
 #include <string>
 #include <fstream>
