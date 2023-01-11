@@ -1,106 +1,134 @@
-cmake_minimum_required (VERSION 3.6)
+cmake_minimum_required(VERSION 3.17)
 
-project (SLIDE VERSION 2.0)
+# include(cmake/ProjectSettings.cmake)
+project(SLIDE VERSION "3.0.0"
+  DESCRIPTION "A simulator for lithium-ion battery degradation"
+  HOMEPAGE_URL https://davidhowey.github.io/SLIDE/
+  LANGUAGES CXX)
 
-set (CMAKE_DEBUG_POSTFIX d)
+ 
+include(cmake/StandardProjectSettings.cmake)
+include(cmake/PreventInSourceBuilds.cmake)
 
-# ensure C++17
-set (CMAKE_CXX_STANDARD 17)
-set (CMAKE_CXX_STANDARD_REQUIRED ON)
-set (CMAKE_CXX_EXTENSIONS OFF)
-set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-#default build type. 
+enable_testing()
+add_subdirectory(src bin)
+add_subdirectory(tests)
 
-set(default_build_type "Release")
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
-  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
-      STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+# Link this 'library' to use the warnings specified in CompilerWarnings.cmake
+add_library(project_warnings INTERFACE)
+
+# Link this 'library' to set the c++ standard / compile-time options requested
+add_library(project_options INTERFACE)
+target_compile_features(project_options INTERFACE cxx_std_20)
+
+add_executable(slide
+  src/main.cpp
+)
+
+target_link_libraries(slide
+  PRIVATE
+  src
+  project_warnings
+  project_options
+)
+
+target_include_directories(slide
+  PUBLIC
+  data
+)
+
+# message(STATUS "Project: ${PROJECT_NAME} version ${PROJECT_HOMEPAGE_URL}")
+
+# cmake --build ./build/ --parallel $(($(nproc)-1))
+# cmake --build ./build/ --clean-first
+# cmake --install build --strip
+# cmake --install build --config Debug
+# ccmake -G "Unix Makefiles" -S . -B ./build
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" OFF)
+
+  if(ENABLE_BUILD_WITH_TIME_TRACE)
+    add_compile_definitions(project_options INTERFACE -ftime-trace)
+  endif()
 endif()
 
+# # enable cache system
+# include(cmake/Cache.cmake)
 
-#export compiler flags for code completion engines
-set (CMAKE_EXPORT_COMPILE_COMMANDS 1)
+# standard compiler warnings
+include(cmake/CompilerWarnings.cmake)
+set_project_warnings(project_warnings)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/Debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/Release)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_SOURCE_DIR}/RelWithDebInfo)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_CURRENT_SOURCE_DIR}/MinSizeRel)
+# # sanitizer options if supported by compiler
+# include(cmake/Sanitizers.cmake)
+# enable_sanitizers(project_options)
 
+# enable doxygen
+# include(cmake/Doxygen.cmake)
+# enable_doxygen(src doxygen-docs)
 
-# Set global compiler warnings
-if (MSVC)
-    set(common_options /W3 /permissive-) #/WX
-    set(debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
-    set(not_debug_options ${common_options} /D_ITERATOR_DEBUG_LEVEL=0 /D_SCL_SECURE_NO_WARNINGS)
+# # allow for static analysis options
+# include(cmake/StaticAnalyzers.cmake)
 
-    add_compile_options(
-        "$<$<CONFIG:Debug>:${debug_options}>$<$<NOT:$<CONFIG:Debug>>:${not_debug_options}>"
-        )
-else ()
-	add_compile_options ("-Wall" 
-                       "$<$<CONFIG:Release>:-Ofast;-march=native>") #-Ofast -march=native -g -fno-omit-frame-pointer -gdwarf-2 (flto not good)
-endif ()
+# set(CMAKE_INCLUDE_CURRENT_DIR ON)
+# set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 
-message(STATUS "Host system: ${CMAKE_HOST_SYSTEM}")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+# include(GenerateExportHeader)
 
+# generate_export_header(${PROJECT_NAME})
+set(LIB_NAME slide-lib)
 
-set(slide_headers
-  src/cell_KokamNMC.hpp   
-  src/determine_OCV.h
-  src/read_CSVfiles.h   
-  src/basic_cycler.hpp
-  src/cycling.h 
-  src/cell_LGChemNMC.hpp
-  src/interpolation.h 
-  src/state.hpp        
-  src/degradation.h
-  src/cell_fit.hpp
-  src/cell_user.hpp                           
-  src/cell.hpp
-  src/determine_characterisation.h
-  src/model.h
-  src/cycler.hpp
-  src/constants.hpp
-  src/util_error.hpp
-  src/util.hpp
-  src/slide_aux.hpp
-  )
+add_library(${LIB_NAME} INTERFACE)
 
-set (slide_source
-  src/basic_cycler.cpp
-  src/cell_LGChemNMC.cpp
-  src/degradation.cpp
-  src/cell.cpp
-  src/cell_user.cpp
-  src/determine_characterisation.cpp
-  src/model.cpp
-  src/cell_fit.cpp
-  src/cycler.cpp 
-  src/determine_OCV.cpp
-  src/read_CSVfiles.cpp
-  src/cell_KokamNMC.cpp
-  src/cycling.cpp
-  src/interpolation.cpp
-  src/state.cpp
-  src/util_error.cpp
-  src/util.cpp
-  )
+target_link_libraries(${LIB_NAME}
+  INTERFACE
+  src
+)
 
+# # install header
+# install(FILES "src/slide.hpp" DESTINATION include)
+include(GNUInstallDirs)
 
-add_executable (slide src/main.cpp
-    ${slide_source}
-    ${slide_headers}
-    )
+install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
 
-target_include_directories (slide PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-TARGET_LINK_LIBRARIES(slide) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
+# install(EXPORT MyProject-targets DESTINATION lib/cmake/MyProject)
+
+# # # install the library
+# # install(TARGETS MyProject
+# # 	EXPORT MyProject-targets
+# # 	LIBRARY DESTINATION lib
+# # 	ARCHIVE DESTINATION lib
+# # )
+
+# # # install export target and config for find_package
+# # install(EXPORT ${LIB_NAME}Targets DESTINATION lib/cmake/${LIB_NAME})
+# # include(CMakePackageConfigHelpers)
+# # configure_package_config_file(
+# # 	"MyProjectConfig.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/MyProjectConfig.cmake"
+# # 	INSTALL_DESTINATION "lib/cmake/${LIB_NAME}"
+# # )
+# # install(FILES "${CMAKE_CURRENT_BINARY_DIR}/MyProjectConfig.cmake" DESTINATION "lib/cmake/${LIB_NAME}")
+
+# # defines targets and sources CMAKE_BUILD_PARALLEL_LEVEL -> Try this to see if it gets better than -j
+# add_subdirectory(src)
+
+# install(TARGETS slide_v3
+# CONFIGURATIONS Debug
+# RUNTIME DESTINATION Debug/bin)
+# install(TARGETS slide_v3
+# CONFIGURATIONS Release
+# RUNTIME DESTINATION Release/bin)
+
+# target_link_libraries(slide_v3
+# PRIVATE
+# SLIDE
+# ) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
 
 # 1F15CC8FAF2E004105282ADDDC78DC21098DFF10
