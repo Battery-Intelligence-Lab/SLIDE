@@ -7,6 +7,25 @@
 ## TODO: 
 
 
+### Code-review by Martin Robinson: 
+- [ ] It is both a library and application in between. 
+  - [ ] One way: have a config file model file and options. 
+  - [ ] Brady: Julia wrapper? 
+  - [ ] Martin: Lot more Python audience. 
+  - [ ] Class naming inconsistent: standard format. Capital letter Camel case. 
+  - [ ] There are classes with completely capital? Which one? 
+  - [ ] SUNDIALS is pretty quick. 
+  - [ ] Automated tests against PyBAMM 
+  - [ ] Catch2 library for testing. 
+  - [ ] Snapshot testing. 
+  - [ ] Template projects in OxRSE template-project-cpp
+  - [ ] gui_starter_library Jason Turner. 
+  - [ ] clang-tidy 
+  - [ ] codecov. 
+  - [ ] Doxygen. 
+  - [ ] CPack
+
+
 ### Comparing against slide-pack:
 - [ ] 
 - [ ] CC, CV, CCCV functions seem to be working. However CV is not doing the intended thing for both SLIDE and slide-pack.
