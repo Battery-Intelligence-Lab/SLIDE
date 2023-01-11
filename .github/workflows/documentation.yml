@@ -1,5 +1,8 @@
 name: Build, test and generate docs
-on: [push]
+on:
+  push:
+    branches:
+      - master
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
