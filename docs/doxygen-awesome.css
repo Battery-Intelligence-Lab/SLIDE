@@ -532,6 +532,8 @@ a.anchor {
     box-shadow: none;
     display: block;
     margin-top: 0;
+    margin-bottom: 27px;
+
 }
 
 .left #MSearchSelect {
