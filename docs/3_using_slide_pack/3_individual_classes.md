@@ -60,7 +60,7 @@ This class defines a series-connected module. This means that the module voltage
 
 Contact resistances are in series with the cells as indicated below (where `R_i` is contact resistance i, and SU_i is child SU i). Note that each SU has its own resistance (which will be in series with the contact resistance)
 
-![](img/series_module.svg){:width="60%" }
+![](img/series_module.svg){:width="70%" }
 
 Time integration in modules works by calling the time integration functions of the child SUs (which will eventually end up in the time integration functions of Cells or SPM cells). Time integration can take multiple time steps at once, which means we allow every child SU to take this number of time steps _on its own_ before returning to the module code. So if we want to take 10 time steps in a series module, we first take 10 time steps in SU1, then 10 steps in SU2, etc. until we have taken 10 time steps in the last SU.
 
@@ -78,7 +78,7 @@ In reality, there might also be resistances at the other side of the module (i.e
 Note that cell currents are always the _total_ current passing through that cell (i.e. the sum of the current _to the module terminal_ and the current _to the other cells to balance the voltages_).
 
 
-![](img/module_p.png){:width="60%" }
+![](img/parallel_module.svg){:width="70%" }
 
 To ensure that the voltages of the child-SUs are always the same, the code follows a sort of PI-controller behaviour. If the voltage of one SU is too large, the code will increase its current (i.e. charge less or discharge more) and decrease the current of the SU with the smallest voltage with the same amount. This ensures that the total module current remains the same (because current is swapped) and that the voltages converge over time. This implementation was found to be much faster and more robust than explicitly solving the equations to equalise the voltage.
 
