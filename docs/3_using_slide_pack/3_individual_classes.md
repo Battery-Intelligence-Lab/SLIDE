@@ -60,7 +60,7 @@ This class defines a series-connected module. This means that the module voltage
 
 Contact resistances are in series with the cells as indicated below (where `R_i` is contact resistance i, and SU_i is child SU i). Note that each SU has its own resistance (which will be in series with the contact resistance)
 
-![](img/module_s.png){:width="60%" }
+![](img/series_module.svg){:width="60%" }
 
 Time integration in modules works by calling the time integration functions of the child SUs (which will eventually end up in the time integration functions of Cells or SPM cells). Time integration can take multiple time steps at once, which means we allow every child SU to take this number of time steps _on its own_ before returning to the module code. So if we want to take 10 time steps in a series module, we first take 10 time steps in SU1, then 10 steps in SU2, etc. until we have taken 10 time steps in the last SU.
 
