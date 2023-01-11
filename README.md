@@ -2,6 +2,7 @@ About _Slide_
 ===========================
 
 In this `readme.md` a summary is given. You may find the detailed documentation [here](https://davidhowey.github.io/SLIDE/).  
+If you are affected by the sudden change of master branch, please switch to [SLIDE_v2](https://github.com/davidhowey/SLIDE/tree/SLIDE_v2) branch. 
 
 To cite this code, check the lastest release DOI at https://zenodo.org/badge/latestdoi/185216614.
 
