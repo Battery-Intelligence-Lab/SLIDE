@@ -26,15 +26,15 @@ jobs:
           - CC: gcc-12
             CXX: g++-12
             compiler: gcc-12 g++-12
-          - CC: clang-13.0
-            CXX: clang++-13.0
-            compiler: clang-13.0
-          - CC: clang-14.0.6
-            CXX: clang++-14.0.6
-            compiler: clang-14.0.6
-          - CC: clang-15.0.6
-            CXX: clang++-15.0.6
-            compiler: clang-15.0.6
+          - CC: clang-12
+            CXX: clang++-12
+            compiler: clang-12
+          - CC: clang-13
+            CXX: clang++-13
+            compiler: clang-13
+          - CC: clang-14
+            CXX: clang++-14
+            compiler: clang-14
 
     steps:
       - uses: actions/checkout@v3

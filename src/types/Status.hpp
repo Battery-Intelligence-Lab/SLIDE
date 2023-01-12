@@ -51,11 +51,7 @@ bool inline isStatusWarning(Status status) { return ((status != Status::Success)
 bool inline isStatusSafe(Status status) { return status < Status::NotSafe; }
 bool inline isLimitsReached(Status status) { return status < Status::ReachedTimeLimit; }
 
-bool inline isStatusVoltageLimitsViolated(Status status)
-{
-  using enum Status;
-  return (Success < status && status <= VMAXsafety_violation);
-}
+bool inline isStatusVoltageLimitsViolated(Status status) { return (Status::Success < status && status <= Status::VMAXsafety_violation); }
 
 bool inline isCCLimitReached(Status status) { return status == Status::ReachedVoltageLimit || status == Status::ReachedTimeLimit; }
 bool inline isCVLimitReached(Status status) { return status == Status::ReachedCurrentLimit || status == Status::ReachedTimeLimit; }
