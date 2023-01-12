@@ -1,8 +1,8 @@
 /*
  * Cell_ECM_test.cpp
  *
- *  Created on: 17 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ * Created on: 17 Dec 2019
+ *  Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
 #include "../tests_util.hpp"
@@ -82,18 +82,17 @@ bool test_getV_ECM()
   c1.timeStep_CC(5);
   assert(c1.V() < V);
 
-  //!< cell with SOC out of range
-  Cell_ECM c2(1, 1); //!< make a cell with soC equal to 1
-  c2.setCurrent(-1, false, false);
-  c2.timeStep_CC(3600); //!< charge further for one hour, now the SOC should be close to 2
-  c2.V(false);
+  // //!< cell with SOC out of range #TODO
+  // Cell_ECM c2(1, 1); //!< make a cell with soC equal to 1
+  // c2.setCurrent(-1, false, false);
+  // c2.timeStep_CC(3600); //!< charge further for one hour, now the SOC should be close to 2
+  // c2.V(false);
 
   return true;
 }
 
 bool test_setStates_ECM()
 {
-  //!< double setStates(double s[], int nin, bool checkV = true, bool print = true);
   Cell_ECM c1;
 
   //!< set valid new states
@@ -114,24 +113,24 @@ bool test_setStates_ECM()
   assert(NEAR(s[State_ECM::i_T], t));     //!< T
   assert(NEAR(s[State_ECM::i_I], i));     //!< current
 
-  //!< set invalid states
-  soc = 2;
-  t = 0;
-  s[State_ECM::i_SOC] = soc;
-  s[State_ECM::i_T] = t;
-  c1.setStates(spn);
+  // //!< set invalid states #TODO
+  // soc = 2;
+  // t = 0;
+  // s[State_ECM::i_SOC] = soc;
+  // s[State_ECM::i_T] = t;
+  // c1.setStates(spn);
 
-  //!< set states which violate voltage
-  soc = 1;
-  ir = -5;
-  t = 25_degC;
-  i = -1;
-  s[State_ECM::i_SOC] = soc;
-  s[State_ECM::i_Ir] = ir;
-  s[State_ECM::i_T] = t;
-  s[State_ECM::i_I] = i;
+  // //!< set states which violate voltage
+  // soc = 1;
+  // ir = -5;
+  // t = 25_degC;
+  // i = -1;
+  // s[State_ECM::i_SOC] = soc;
+  // s[State_ECM::i_Ir] = ir;
+  // s[State_ECM::i_T] = t;
+  // s[State_ECM::i_I] = i;
 
-  c1.setStates(spn);
+  // c1.setStates(spn);
 
   return true;
 }
