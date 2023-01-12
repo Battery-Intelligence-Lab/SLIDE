@@ -1,12 +1,18 @@
-About _Slide_
+_Slide_
 ===========================
+[![Ubuntu unit](https://github.com/davidhowey/SLIDE/workflows/Ubuntu%20unit/badge.svg)](https://github.com/davidhowey/SLIDE/actions)
+[![macOS unit](https://github.com/davidhowey/SLIDE/workflows/macOS%20unit/badge.svg)](https://github.com/davidhowey/SLIDE/actions)
+[![Windows unit](https://github.com/davidhowey/SLIDE/workflows/Windows%20unit/badge.svg)](https://github.com/davidhowey/SLIDE/actions)
+![Website](https://img.shields.io/website?url=https%3A%2F%2Fdavidhowey.github.io%2FSLIDE%2F)
+
+![GitHub all releases](https://img.shields.io/github/downloads/davidhowey/SLIDE/total) 
 
 In this `readme.md` a summary is given. You may find the detailed documentation [here](https://davidhowey.github.io/SLIDE/).  
 If you are affected by the sudden change of master branch, please switch to [SLIDE_v2](https://github.com/davidhowey/SLIDE/tree/SLIDE_v2) branch. 
 
 To cite this code, check the lastest release DOI at https://zenodo.org/badge/latestdoi/185216614.
 
-![](slide_logo.png)
+![](slide_logo.png){:width="70%"}
 
 _Slide_ (simulator for lithium-ion degradation) is a code project mainly written in C++ to do fast simulations of degradation of lithium-ion batteries.
 Simulating 5000 1C CC cycles should take less than 1 minute; adding a CV phase doubles the calculation time to below 2 minutes. The project uses object oriented programming in C++, see documentation for more details. 
