@@ -34,14 +34,12 @@ double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
    */
 
   //!< If there are no cells connected, return 0
-  if (SUs.empty())
-    return 0;
+  if (SUs.empty()) return 0;
 
   //!< check if there are contact resistances only until SUs size. //!< #TODO why are we checking this?
   const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
 
-  if (noRc) //!< no contact resistance
-  {
+  if (noRc) { //!< no contact resistance
     double rtot = 0;
     for (auto &SU : SUs)
       rtot += 1.0 / SU->getRtot();
