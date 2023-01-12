@@ -115,12 +115,12 @@ bool test_setI_p()
   //!< test things which should break
   Inew = 10000;                         //!< very large current, should give too low voltage
   Status status = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
-  if (status == Status::Success) return false;
+  if (isStatusSuccessful(status)) return false;
 
 
-  Inew = -10000;                        //!< very large current, should give too low voltage
-  Status status = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
-  if (status == Status::Success) return false;
+  Inew = -10000;                 //!< very large current, should give too low voltage
+  status = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
+  if (isStatusSuccessful(status)) return false;
 
   return true;
 }
@@ -142,9 +142,7 @@ bool test_validStates_p()
   mp->setSUs(cs, checkCells, true);
 
   //!< valid states (current states)
-  int nin = settings::STORAGEUNIT_NSTATES_MAX;
-  double s[nin];
-  int nout;
+  std::vector<double> s;
   mp->getStates(s, nin, nout);
   assert(mp->validStates(s, nout));
 

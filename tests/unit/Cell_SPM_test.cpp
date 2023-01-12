@@ -12,18 +12,19 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <span>
 
 namespace slide::tests::unit {
 
 bool test_constructor_SPM()
 {
   Cell_SPM c1;
-  assert(c1.Cap() == 16);
-  assert(c1.Vmin() == 2.7);
-  assert(c1.Vmax() == 4.2);
-  assert(c1.I() == 0);
-  assert(c1.SOC() == 0.5);
-  assert(c1.T() == settings::T_ENV);
+  assert(NEAR(c1.Cap(), 16));
+  assert(NEAR(c1.Vmin(), 2.7));
+  assert(NEAR(c1.Vmax(), 4.2));
+  assert(NEAR(c1.I(), 0));
+  assert(NEAR(c1.SOC(), 0.5));
+  assert(NEAR(c1.T(), settings::T_ENV));
 
   return true;
 }
@@ -69,16 +70,19 @@ bool test_getStates_SPM()
 
   assert(EQ(s.delta_pl(), 0.0));
   assert(EQ(s.SOC(), 0.5));
-  assert(EQ(s.I(), settings::T_ENV));
-  assert(EQ(s.T(), 0.0));
+  assert(EQ(s.T(), settings::T_ENV));
+  assert(EQ(s.I(), 0.0));
 
-  assert(c1.SOC() == 0.5);
-  assert(c1.I() == 0);
-  assert(c1.T() == settings::T_ENV);
+  assert(NEAR(c1.SOC(), 0.5));
+  assert(NEAR(c1.I(), 0));
+  assert(NEAR(c1.T(), settings::T_ENV));
 
 
-  assert(NEAR(c1.getCp_surface(c1.getZp()), 35421.3, 0.1)); //!< allow slightly larger error since we approximated all elements of the initial array and matrix
-  assert(NEAR(c1.getCn_surface(c1.getZn()), 14644.5, 0.1)); //!< concentration ~ 10,000 so 0.1 is still a relative error of e-5
+  double cps{}, cns{};
+  c1.getCSurf(cps, cns, false);
+
+  assert(NEAR(cps, 35421.3, 0.1)); //!< allow slightly larger error since we approximated all elements of the initial array and matrix
+  assert(NEAR(cns, 14644.5, 0.1)); //!< concentration ~ 10,000 so 0.1 is still a relative error of e-5
   assert(NEAR(c1.getRdc(), 0.001253, tol));
 
   return true;
@@ -116,7 +120,7 @@ bool test_setStates_SPM()
   //!< set valid new states
   double zp[settings::nch], zn[settings::nch];
   double T, delta, LLI, thickp, thickn, ep, en, ap, an, CS, Dp, Dn, rp, rn, rcc, delta_pl, SOC, I;
-  T = 273 + 45;
+  T = 45_degC;
   delta = 2e-9;
   LLI = 1;
   thickp = 60e-6;
@@ -135,18 +139,18 @@ bool test_setStates_SPM()
   SOC = 0.4;
   I = -1;
 
-  auto st = c1.getStateObj();
+  auto &st = c1.getStateObj();
 
-  for (int i = 0; i < settings::nch; i++) {
+  for (int i = 0; i < State_SPM::nch; i++) {
     zp[i] = st.zp(i);
     zn[i] = st.zn(i);
   }
 
   std::vector<double> sini(st.size());
 
-  for (int i = 0; i < settings::nch; i++) {
-    sini[i] = zp[i];
-    sini[i + settings::nch] = zn[i];
+  for (int i = 0; i < State_SPM::nch; i++) {
+    sini[i + State_SPM::i_zp] = zp[i];
+    sini[i + State_SPM::i_zn] = zn[i];
   }
 
   sini[State_SPM::i_delta] = delta;
@@ -171,32 +175,32 @@ bool test_setStates_SPM()
   std::span<const double> spn(sini);
   c1.setStates(spn, true, true); //!< this checks states are valid
 
-  assert(st.SOC() == SOC);
-  assert(st.I() == I);
-  assert(st.T() == T);
-  assert(st.delta() == delta);
-  assert(st.CS() == CS);
-  assert(st.delta_pl() == delta_pl);
-  assert(st.LLI() == LLI);
-  assert(st.thickp() == thickp);
-  assert(st.thickn() == thickn);
-  assert(st.ep() == ep);
-  assert(st.en() == en);
-  assert(st.ap() == ap);
-  assert(st.an() == an);
-  assert(st.Dp() == Dp);
-  assert(st.Dn() == Dn);
-  assert(st.rDCp() == rp);
-  assert(st.rDCn() == rn);
-  assert(st.rDCcc() == rcc);
+  assert(NEAR(st.SOC(), SOC));
+  assert(NEAR(st.I(), I));
+  assert(NEAR(st.T(), T));
+  assert(NEAR(st.delta(), delta));
+  assert(NEAR(st.CS(), CS));
+  assert(NEAR(st.delta_pl(), delta_pl));
+  assert(NEAR(st.LLI(), LLI));
+  assert(NEAR(st.thickp(), thickp));
+  assert(NEAR(st.thickn(), thickn));
+  assert(NEAR(st.ep(), ep));
+  assert(NEAR(st.en(), en));
+  assert(NEAR(st.ap(), ap));
+  assert(NEAR(st.an(), an));
+  assert(NEAR(st.Dp(), Dp));
+  assert(NEAR(st.Dn(), Dn));
+  assert(NEAR(st.rDCp(), rp));
+  assert(NEAR(st.rDCn(), rn));
+  assert(NEAR(st.rDCcc(), rcc));
 
   //!< set invalid states
   //!< test with Ap != 3*e/R
-  ap = 3 * ep / 8.5 * pow(10, -6);
+  ap = 3 * ep / 8.5 * 1e-6;
   sini[State_SPM::i_ap] = ap;
   auto status = c1.setStates(spn, true, true); //!< this checks states are valid
 
-  if (Status::Success == status) return false; // Failed the test if it does not throw!
+  if (isStatusSuccessful(status)) return false; // Failed the test if it does not throw!
 
   sini[State_SPM::i_an] = 3 * ep / 8.5e-6;
 
@@ -206,8 +210,8 @@ bool test_setStates_SPM()
     sini[i] = zp[i];
 
 
-  status = c1.setStates(spn, true, true);      //!< this checks states are valid
-  if (Status::Success == status) return false; // Failed the test if it does not throw!
+  status = c1.setStates(spn, true, true);       //!< this checks states are valid
+  if (isStatusSuccessful(status)) return false; // Failed the test if it does not throw!
 
   return true;
 }

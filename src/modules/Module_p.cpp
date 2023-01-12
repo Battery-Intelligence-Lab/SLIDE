@@ -529,7 +529,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
       //!< redistribute the current, if that is successful, we have valid cell voltages
       try {
         auto status = redistributeCurrent(checkV, print); //!< #TODO this is utterly wrong.
-        if (status != Status::Success)
+        if (!isStatusSuccessful(status))
           throw 100000;
       } catch (int) {
         if (verb)

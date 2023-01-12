@@ -73,9 +73,9 @@ public:
 inline Cell_Bucket::Cell_Bucket()
 {
   ID = "Cell_Bucket";
-  //!< OCV curve, dummy linear curve with 11 points from 2.0V to 4.4V
-  OCV.x = slide::linspace_fix(0.0, 1.0, 11);
-  OCV.y = slide::linspace_fix(VMIN(), VMAX(), 11);
+  //!< OCV curve, dummy linear curve with 5 points from 2.0V to 4.4V
+  OCV.x = slide::linspace_fix(0.0, 1.0, 3);
+  OCV.y = slide::linspace_fix(VMIN(), VMAX(), 3);
 
   OCV.check_is_fixed();
 

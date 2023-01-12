@@ -38,6 +38,8 @@
 - [ ] Should capacity check also contain a CV phase? 
 
 ### Current priority: 
+- [ ] Status member functions like  status.good()
+- [ ] It should be decided if we throw an error in interpolation or not for testing invalid states. 
 - [ ] Consider using std::variant for some data types. 
 - [ ] Procedure: 
   - [ ] Markers to incidate end of this section deleted. As well as seperators. 

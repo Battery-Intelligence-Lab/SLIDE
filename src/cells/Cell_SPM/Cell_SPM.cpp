@@ -377,16 +377,19 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
   Clock clk;
 #endif
   auto st_old = st; //!< Back-up values.
+  auto Vcell_valid_prev = Vcell_valid;
 
   std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
   s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
   Vcell_valid = false;
+
   const Status status = free::check_Cell_states(*this, checkV);
 
   if (isStatusBad(status)) {
-    st = st_old;        //!< Restore states here.
-    Vcell_valid = true; //!< #TODO if this is ok.
+    st = st_old; //!< Restore states here.
+    Vcell_valid = Vcell_valid_prev;
   }
+
 #if TIMING
   timeData.setStates += clk.duration(); //!< time in seconds
 #endif
@@ -432,7 +435,7 @@ bool Cell_SPM::validStates(bool print)
   double cps, cns;
   auto flag = getCSurf(cps, cns, false);
 
-  if (flag) {
+  if (!flag) {
     if (verb)
       std::cerr << "ERROR in Cell_SPM::validState: concentration out of bounds. the positive lithium fraction is "
                 << cps / Cmaxpos << " and the negative lithium fraction is " << cns / Cmaxneg
@@ -478,7 +481,7 @@ bool Cell_SPM::validStates(bool print)
   //!< which might grow CS proportional to the existing CS (so a value of 0 gives 0 increase)
   //!< a negative value might lead to a further decrease in CS, so it will keep getting more
   //!< and more negative
-  if (st.CS()) {
+  if (st.CS() < 0) {
     std::cerr << "Error in State::validState. The crack surface area is " << st.CS()
               << ", which is too low. It must be strictly positive.\n";
     range = false;
