@@ -35,10 +35,6 @@ inline auto get_exampleCell()
 
   auto example_cell = std::make_unique<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
 
-  const double Cap_actual = 100;
-  const double Cap_bat = example_cell->Cap();
-  const double Cap_ratio = Cap_bat / Cap_actual;
-
   // Specify the OCV parameters (calculated by determineOCV::estimateOCVparameters)
   OCVparam ocvfit;
   ocvfit.elec_surf = (3.4 / 2.65) * 0.0982; // electrode surface Cap_ratio
@@ -289,8 +285,6 @@ inline void drive_cycle_artemis()
 
 
   // auto cyc = Cycler(c.get(), ID);
-  double dAh{ 0 }, dtime{ 0 }, dWh{ 0 };
-
   auto experiment = [&](std::string name) {
     std::vector<double> voltage;
     std::vector<State_SPM> states;
@@ -350,9 +344,8 @@ inline void drive_cycle_artemis()
 
   // c->writeData("drive_cycle");
   std::cout << "V: " << c->V() << '\n';
-  std::cout << "Wh: " << dWh << '\n';
   std::cout << "SOC: " << 100 * c->SOC() << '\n';
   std::cout << "Finished drive_cycle example in " << clk << ".\n";
-};
+}
 
 } // namespace slide::examples

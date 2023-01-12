@@ -19,7 +19,7 @@ namespace slide {
 Battery::Battery() : StorageUnit("Battery") { conv = std::make_unique<Converter>(); }
 Battery::Battery(std::string IDi) : Battery() { ID = std::move(IDi); }
 
-void Battery::setSeriesandParallel(int ser, int par)
+void Battery::setSeriesandParallel(unsigned int ser, unsigned int par)
 {
   nseries = ser;
   nparallel = par;

@@ -58,4 +58,4 @@ public:
   [[nodiscard]] constexpr auto cend() const noexcept { return data.cbegin() + N; }
 };
 
-}; // namespace slide
+} // namespace slide

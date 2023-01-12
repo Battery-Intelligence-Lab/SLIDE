@@ -21,8 +21,8 @@ template <typename Tfun> // #TODO change with parallel algorithms.
 void run(Tfun task_indv, int i_end, unsigned int numMaxParallelWorkers = settings::numMaxParallelWorkers)
 {
 
-  auto task_par = [&](int i_begin, int i_end, int Nth) {
-    while (i_begin < i_end) {
+  auto task_par = [&](int i_begin, int i_end_, int Nth) {
+    while (i_begin < i_end_) {
       task_indv(i_begin);
       i_begin += Nth;
     }

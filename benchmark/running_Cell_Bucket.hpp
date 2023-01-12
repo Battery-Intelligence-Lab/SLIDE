@@ -35,7 +35,7 @@ inline void run_Cell_Bucket()
   std::cout << "V: " << c.V() << "\n";
 
   std::cout << "Finished run_Cell_Bucket in " << clk << ".\n";
-};
+}
 
 inline void run_Cell_ECM()
 {
@@ -57,7 +57,7 @@ inline void run_Cell_ECM()
   std::cout << "V: " << c.V() << "\n";
 
   std::cout << "Finished run_Cell_ECM in " << clk << ".\n";
-};
+}
 
 inline void run_Cell_SPM()
 {
@@ -87,6 +87,6 @@ inline void run_Cell_SPM()
 
   // std::cout << "Printing timings:\n";
   // c.getTimings().print();
-};
+}
 
 } // namespace slide::benchmarks

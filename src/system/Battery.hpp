@@ -22,10 +22,10 @@ namespace slide {
 class Battery : public StorageUnit
 {
 protected:
-  std::unique_ptr<Module> cells{};         //!< Module with the cells of this battery
-  std::unique_ptr<CoolSystem_HVAC> cool{}; //!< HVAC system of the battery
-  std::unique_ptr<Converter> conv{};       //!< power electronic converter. Dual step DC/DC and DC/AC
-  int nseries{ 1 }, nparallel{ 1 };        //!< number of series/parallel 'copies' of this module
+  std::unique_ptr<Module> cells{};           //!< Module with the cells of this battery
+  std::unique_ptr<CoolSystem_HVAC> cool{};   //!< HVAC system of the battery
+  std::unique_ptr<Converter> conv{};         //!< power electronic converter. Dual step DC/DC and DC/AC
+  unsigned int nseries{ 1 }, nparallel{ 1 }; //!< number of series/parallel 'copies' of this module
 
   double convlosses{};     //!< losses in the converter during a given period (set to 0 by reset_convlosses)
   double convlosses_tot{}; //!< total cumulative losses in the converter during the entire lifetime
@@ -40,7 +40,7 @@ public:
   Battery(std::string IDi);
   void setID(std::string IDi);
   void setModule(std::unique_ptr<Module> &&module);
-  void setSeriesandParallel(int ser, int par);
+  void setSeriesandParallel(unsigned int ser, unsigned int par);
 
   //!< basic getters and setters
   double Cap() const override { return cells->Cap() * nparallel; }

@@ -39,6 +39,6 @@ inline void run_Cell_SPM_1(double Crate)
   std::cout << "Vafter: " << c.V() << '\n';
 
   cyc.writeData();
-};
+}
 
 } // namespace slide::benchmarks

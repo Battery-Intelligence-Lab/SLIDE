@@ -252,8 +252,8 @@ void loadCSV_2col(const Tpath &name, std::span<double> &x, std::span<double> &y,
     x = std::span<double>(XYdataMap[name_str].x_vec);
     y = std::span<double>(XYdataMap[name_str].y_vec);
   } else {
-    x = std::span<double>(XYdataMap[name_str].x_vec.begin(), XYdataMap[name_str].x_vec.begin() + n);
-    y = std::span<double>(XYdataMap[name_str].y_vec.begin(), XYdataMap[name_str].y_vec.begin() + n);
+    x = std::span<double>(&XYdataMap[name_str].x_vec[0], &XYdataMap[name_str].x_vec[0] + n); // #TODO temporary solution using pointers instead of iterators.
+    y = std::span<double>(&XYdataMap[name_str].y_vec[0], &XYdataMap[name_str].y_vec[0] + n);
   }
 }
 

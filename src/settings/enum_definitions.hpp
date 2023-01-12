@@ -49,4 +49,5 @@ enum cellType {
   LGChemNMC = 1,
   UserCell = 2
 };
-};
+
+}

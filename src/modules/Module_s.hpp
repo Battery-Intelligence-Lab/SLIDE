@@ -27,8 +27,8 @@ protected:
 #endif
 public:
   Module_s() : Module("moduleS") {} //!< note this constructor should never be used. It can't determine which coolsystem to use
-  Module_s(std::string_view ID_, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
-    : Module(ID_, Ti, print, pari, Ncells, coolControl, cooltype) {}
+  Module_s(std::string_view ID_, double Ti, bool print, bool pari, int Ncells_, int coolControl, int cooltype)
+    : Module(ID_, Ti, print, pari, Ncells_, coolControl, cooltype) {}
   //!< Module_s(std::string_view IDi, bool pari, int Ncells, std::unique_ptr<CoolSystem> &&cool_); #TODO
 
   //!< functions from Module_base

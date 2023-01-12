@@ -29,7 +29,7 @@ enum class HistogramType {
 template <HistogramType histogramType = HistogramType::equidistant, typename Tdata = double>
 class Histogram
 {
-  std::vector<size_t> bins{};
+  std::vector<size_t> bins;
   Tdata x_min{}, x_max{}, dx{ 1 };
   int Nbins;
 
@@ -51,7 +51,8 @@ public:
      * */
     auto i = static_cast<int>(1 + (x - x_min) / dx);
 
-    i = std::clamp(i, 0, (int)bins.size() - 1); //!< #TODO size_t -> int causes warning.
+    const auto ssize = static_cast<int>(bins.size());
+    i = std::max(0, std::min(i, ssize - 1)); // #TODO what happens if container is empty?
     bins[i]++;
   }
 
@@ -90,4 +91,4 @@ inline std::ostream &operator<<(std::ostream &ofs, const Histogram<> &hist)
 
 static Histogram<> EmptyHistogram{};
 
-}; // namespace slide
+} // namespace slide
