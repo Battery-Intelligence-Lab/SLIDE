@@ -247,15 +247,15 @@ bool Copy_test()
 
 int test_all_Cell_Bucket()
 {
-  if (!TEST(Cell_Bucket_test, "Cell_test")) return 1;
-  if (!TEST(getStates_test, "getStates_test")) return 2;
-  // if (!TEST(getV_test, "getV_test")) return 3;
-  if (!TEST(getParent_test, "getParent_test")) return 4;
-  if (!TEST(setCurrent_test, "setCurrent_test")) return 5;
-  if (!TEST(setStates_test, "setStates_test")) return 6;
-  if (!TEST(timeStep_CC_test, "timeStep_CC_test")) return 7;
-  if (!TEST(data_test, "data_test")) return 8;
-  if (!TEST(Copy_test, "Copy_test")) return 9;
+  if (!TEST(Cell_Bucket_test, "Cell_Bucket_test_Bucket")) return 1;
+  if (!TEST(getStates_test, "getStates_test_Bucket")) return 2;
+  // if (!TEST(getV_test, "getV_test_Bucket")) return 3;
+  if (!TEST(getParent_test, "getParent_test_Bucket")) return 4;
+  if (!TEST(setCurrent_test, "setCurrent_test_Bucket")) return 5;
+  if (!TEST(setStates_test, "setStates_test_Bucket")) return 6;
+  if (!TEST(timeStep_CC_test, "timeStep_CC_test_Bucket")) return 7;
+  if (!TEST(data_test, "data_test_Bucket")) return 8;
+  if (!TEST(Copy_test, "Copy_test_Bucket")) return 9;
 
   return 0;
 }
