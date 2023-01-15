@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - data_storage
   pull_request:
     branches:
       - '**'
@@ -29,5 +30,5 @@ jobs:
         working-directory: build_dir
 
       - name: cmake test
-        run: ctest -j2 -C Debug --verbose --output-on-failure
+        run: ctest -j1 -C Debug --verbose --output-on-failure
         working-directory: build_dir
