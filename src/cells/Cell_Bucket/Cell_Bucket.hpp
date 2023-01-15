@@ -221,6 +221,8 @@ inline Status Cell_Bucket::setStates(setStates_t s, bool checkV, bool print)
 
 
   std::cout << "s_begin: " << &(*s.begin()) << std::endl;
+  std::cout << "s_size: " << s.size() << std::endl;
+
   std::cout << "st_size: " << st.size() << std::endl;
   std::cout << "s_begin: " << &(*(s.begin() + st.size())) << std::endl;
 
