@@ -20,6 +20,7 @@
 #include <vector>
 #include <array>
 #include <span>
+#include <algorithm>
 
 namespace slide {
 class Cell_Bucket : public Cell
