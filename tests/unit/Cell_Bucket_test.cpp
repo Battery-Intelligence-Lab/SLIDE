@@ -147,7 +147,7 @@ bool setStates_test()
   std::cout << "Breakpoint-2" << std::endl;
 
 
-  std::vector<double> s(3);
+  std::vector<double> s(6); // 3 + 3 (cumulative)
   std::cout << "Breakpoint-3" << std::endl;
 
   s[State_Bucket::i_SOC] = soc;

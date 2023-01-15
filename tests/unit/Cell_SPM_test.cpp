@@ -146,7 +146,7 @@ bool test_setStates_SPM()
     zn[i] = st.zn(i);
   }
 
-  std::vector<double> sini(st.size());
+  std::vector<double> sini(st.size()); // Also includes cumulative.
 
   for (int i = 0; i < State_SPM::nch; i++) {
     sini[i + State_SPM::i_zp] = zp[i];

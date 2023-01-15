@@ -97,7 +97,7 @@ bool test_setStates_ECM()
 
   //!< set valid new states
   double soc{ 0.75 }, ir{ 1 }, i{ 2 }, t{ 273 };
-  std::vector<double> s(4);
+  std::vector<double> s(7); // 4 + 3 (cumulative)
   s[State_ECM::i_SOC] = soc;
   s[State_ECM::i_Ir] = ir;
   s[State_ECM::i_T] = t;
@@ -142,7 +142,7 @@ bool test_validStates_ECM()
 
   //!< set valid new states
   double soc{ 1 }, ir{ 1 }, i{ 2 }, t{ 273 };
-  double s[4];
+  double s[4 + 3]; // 4 + 3 (cumulative)
   s[State_ECM::i_SOC] = soc;
   s[State_ECM::i_Ir] = ir;
   s[State_ECM::i_T] = t;
