@@ -17,6 +17,7 @@ namespace slide::tests {
 
 bool TEST(auto &&fun, auto &&fun_name)
 {
+  std::cout << fun_name << " test is started!";
   try {
     return fun();
   } catch (...) {
