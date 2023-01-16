@@ -227,7 +227,14 @@ inline Status Cell_Bucket::setStates(setStates_t s, bool checkV, bool print)
   std::cout << "s_begin: " << &(*(s.begin() + st.size())) << std::endl;
 
 
-  std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
+  for (size_t i{}; i < st.size(); i++) {
+    std::cout << "Breakpoint-loop-" << i << std::endl;
+    std::cout << "Before s[i]= " << s[i] << " st[i]= " << st[i] << std::endl;
+    st[i] = s[i];
+    std::cout << "After s[i]= " << s[i] << " st[i]= " << st[i] << std::endl;
+  }
+
+  // std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
   std::cout << "Breakpoint-setStates-2" << std::endl;
 
   s = s.last(s.size() - st.size()); //!< Remove first Nstates elements from span.
