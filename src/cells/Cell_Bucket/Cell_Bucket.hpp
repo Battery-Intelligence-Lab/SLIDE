@@ -220,19 +220,18 @@ inline Status Cell_Bucket::setStates(setStates_t s, bool checkV, bool print)
   std::cout << "Breakpoint-setStates-1" << std::endl;
 
 
-  std::cout << "s_begin: " << &(*s.begin()) << std::endl;
-  std::cout << "s_size: " << s.size() << std::endl;
-
-  std::cout << "st_size: " << st.size() << std::endl;
-  std::cout << "s_begin: " << &(*(s.begin() + st.size())) << std::endl;
-
-
   for (size_t i{}; i < st.size(); i++) {
     std::cout << "Breakpoint-loop-" << i << std::endl;
     std::cout << "Before s[i]= " << s[i] << " st[i]= " << st[i] << std::endl;
     st[i] = s[i];
     std::cout << "After s[i]= " << s[i] << " st[i]= " << st[i] << std::endl;
   }
+
+  std::cout << "s_begin: " << &(*s.begin()) << std::endl;
+  std::cout << "s_size: " << s.size() << std::endl;
+
+  std::cout << "st_size: " << st.size() << std::endl;
+  std::cout << "s_begin: " << &(*(s.begin() + st.size())) << std::endl;
 
   // std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
   std::cout << "Breakpoint-setStates-2" << std::endl;
