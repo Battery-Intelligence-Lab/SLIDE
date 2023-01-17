@@ -20,6 +20,7 @@
 #include <vector>
 #include <array>
 #include <span>
+#include <algorithm>
 
 namespace slide {
 class Cell_Bucket : public Cell
@@ -60,7 +61,7 @@ public:
   bool validStates(bool print = true) override;
   void timeStep_CC(double dt, int steps = 1) override;
 
-  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() override { return { st.time(), st.Ah(), st.Wh() }; }
 
 
   Cell_Bucket *copy() override { return new Cell_Bucket(*this); }
@@ -215,13 +216,11 @@ inline Status Cell_Bucket::setStates(setStates_t s, bool checkV, bool print)
 {
   /*
    */
-  auto st_old = st; //!< Back-up values.
-
+  auto st_old = st;                                        //!< Back-up values.
   std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
   s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
 
   const Status status = free::check_Cell_states(*this, checkV);
-
   if (isStatusBad(status))
     st = st_old; //!< Restore states here.
 

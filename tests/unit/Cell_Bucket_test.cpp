@@ -144,20 +144,23 @@ bool setStates_test()
   //!< set valid new states
   double soc{ 0.7 }, i{ 2 }, t{ 273 };
 
-  std::vector<double> s(3);
+  std::vector<double> s(6); // 3 + 3 (cumulative)
+
   s[State_Bucket::i_SOC] = soc;
   s[State_Bucket::i_T] = t;
   s[State_Bucket::i_I] = i;
-
 
   std::span<const double> spn{ s };
   c1.setStates(spn, true, true);
 
   s.clear();
+
   c1.getStates(s);
+
   assert(NEAR(s[State_Bucket::i_SOC], soc)); //!< soc
   assert(NEAR(s[State_Bucket::i_T], t));     //!< T
   assert(NEAR(s[State_Bucket::i_I], i));     //!< current
+
 
   //!< set invalid states
   // soc = 2;

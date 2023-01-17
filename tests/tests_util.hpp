@@ -15,9 +15,14 @@
 
 namespace slide::tests {
 
+constexpr bool DEBUG_TESTS = false;
+
 bool TEST(auto &&fun, auto &&fun_name)
 {
-  std::cout << fun_name << " test is started!" << std::endl;
+
+  if (DEBUG_TESTS)
+    std::cout << fun_name << " test is started!" << std::endl;
+
   try {
     return fun();
   } catch (...) {
