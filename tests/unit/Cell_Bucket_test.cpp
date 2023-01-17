@@ -141,42 +141,25 @@ bool setSOC_test()
 bool setStates_test()
 {
   Cell_Bucket c1;
-  std::cout << "Breakpoint-1" << std::endl;
   //!< set valid new states
   double soc{ 0.7 }, i{ 2 }, t{ 273 };
-  std::cout << "Breakpoint-2" << std::endl;
-
 
   std::vector<double> s(6); // 3 + 3 (cumulative)
-  std::cout << "Breakpoint-3" << std::endl;
 
   s[State_Bucket::i_SOC] = soc;
-  std::cout << "Breakpoint-4" << std::endl;
-
   s[State_Bucket::i_T] = t;
-  std::cout << "Breakpoint-5" << std::endl;
-
   s[State_Bucket::i_I] = i;
-  std::cout << "Breakpoint-6" << std::endl;
-
 
   std::span<const double> spn{ s };
-  std::cout << "Breakpoint-7" << std::endl;
-
   c1.setStates(spn, true, true);
-  std::cout << "Breakpoint-8" << std::endl;
-
 
   s.clear();
-  std::cout << "Breakpoint-9" << std::endl;
 
   c1.getStates(s);
-  std::cout << "Breakpoint-10" << std::endl;
 
   assert(NEAR(s[State_Bucket::i_SOC], soc)); //!< soc
   assert(NEAR(s[State_Bucket::i_T], t));     //!< T
   assert(NEAR(s[State_Bucket::i_I], i));     //!< current
-  std::cout << "Breakpoint-11" << std::endl;
 
 
   //!< set invalid states

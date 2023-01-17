@@ -139,12 +139,16 @@ bool test_setStates_SPM()
   SOC = 0.4;
   I = -1;
 
+  std::cout << "BreakpointSPM 1" << std::endl;
+
   auto &st = c1.getStateObj();
 
   for (int i = 0; i < State_SPM::nch; i++) {
     zp[i] = st.zp(i);
     zn[i] = st.zn(i);
   }
+  std::cout << "BreakpointSPM 2" << std::endl;
+
 
   std::vector<double> sini(st.size()); // Also includes cumulative.
 
@@ -152,6 +156,8 @@ bool test_setStates_SPM()
     sini[i + State_SPM::i_zp] = zp[i];
     sini[i + State_SPM::i_zn] = zn[i];
   }
+
+  std::cout << "BreakpointSPM 3" << std::endl;
 
   sini[State_SPM::i_delta] = delta;
   sini[State_SPM::i_LLI] = LLI;
@@ -172,8 +178,14 @@ bool test_setStates_SPM()
   sini[State_SPM::i_T] = T;
   sini[State_SPM::i_I] = I;
 
+  std::cout << "BreakpointSPM 4" << std::endl;
+
+
   std::span<const double> spn(sini);
   c1.setStates(spn, true, true); //!< this checks states are valid
+
+  std::cout << "BreakpointSPM 5" << std::endl;
+
 
   assert(NEAR(st.SOC(), SOC));
   assert(NEAR(st.I(), I));
@@ -194,11 +206,17 @@ bool test_setStates_SPM()
   assert(NEAR(st.rDCn(), rn));
   assert(NEAR(st.rDCcc(), rcc));
 
+  std::cout << "BreakpointSPM 6" << std::endl;
+
+
   //!< set invalid states
   //!< test with Ap != 3*e/R
   ap = 3 * ep / 8.5 * 1e-6;
   sini[State_SPM::i_ap] = ap;
   auto status = c1.setStates(spn, true, true); //!< this checks states are valid
+
+  std::cout << "BreakpointSPM 7" << std::endl;
+
 
   if (isStatusSuccessful(status)) return false; // Failed the test if it does not throw!
 
@@ -209,9 +227,14 @@ bool test_setStates_SPM()
   for (int i = 0; i < settings::nch; i++)
     sini[i] = zp[i];
 
+  std::cout << "BreakpointSPM 8" << std::endl;
+
 
   status = c1.setStates(spn, true, true);       //!< this checks states are valid
   if (isStatusSuccessful(status)) return false; // Failed the test if it does not throw!
+
+  std::cout << "BreakpointSPM 9" << std::endl;
+
 
   return true;
 }
