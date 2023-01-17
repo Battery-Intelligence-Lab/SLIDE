@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - data_storage
+      - develop
   pull_request:
     branches:
       - '**'
