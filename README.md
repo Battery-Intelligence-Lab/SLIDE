@@ -1,14 +1,14 @@
 _Slide_
 ===========================
-[![Ubuntu unit](https://github.com/davidhowey/SLIDE/workflows/Ubuntu%20unit/badge.svg)](https://github.com/davidhowey/SLIDE/actions)
-[![macOS unit](https://github.com/davidhowey/SLIDE/workflows/macOS%20unit/badge.svg)](https://github.com/davidhowey/SLIDE/actions)
-[![Windows unit](https://github.com/davidhowey/SLIDE/workflows/Windows%20unit/badge.svg)](https://github.com/davidhowey/SLIDE/actions)
-![Website](https://img.shields.io/website?url=https%3A%2F%2Fdavidhowey.github.io%2FSLIDE%2F)
+[![Ubuntu unit](https://github.com/davidhowey/SLIDE/workflows/Ubuntu%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
+[![macOS unit](https://github.com/davidhowey/SLIDE/workflows/macOS%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
+[![Windows unit](https://github.com/davidhowey/SLIDE/workflows/Windows%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
+![Website](https://img.shields.io/website?url=https%3A%2F%2FBattery-Intelligence-Lab.github.io%2FSLIDE%2F)
 
-![GitHub all releases](https://img.shields.io/github/downloads/davidhowey/SLIDE/total) 
+![GitHub all releases](https://img.shields.io/github/downloads/Battery-Intelligence-Lab/SLIDE/total) 
 
-In this `readme.md` a summary is given. You may find the detailed documentation [here](https://davidhowey.github.io/SLIDE/).  
-If you are affected by the sudden change of master branch, please switch to [SLIDE_v2](https://github.com/davidhowey/SLIDE/tree/SLIDE_v2) branch. 
+In this `readme.md` a summary is given. You may find the detailed documentation [here](https://Battery-Intelligence-Lab.github.io/SLIDE/).  
+If you are affected by the sudden change of master branch, please switch to [SLIDE_v2](https://github.com/Battery-Intelligence-Lab/SLIDE/tree/SLIDE_v2) branch. 
 
 To cite this code, check the lastest release DOI at https://zenodo.org/badge/latestdoi/185216614.
 
@@ -62,7 +62,7 @@ If you do change the discretisation, please read the license files attached to t
 Installation
 ============
 ### Option 1 - Downloading a .zip file ###
-[Download a .zip file of the code](https://github.com/davidhowey/SLIDE/archive/master.zip)
+[Download a .zip file of the code](https://github.com/Battery-Intelligence-Lab/SLIDE/archive/master.zip)
 
 Then, unzip the folder in a chosen directory on your computer.
 
@@ -71,7 +71,7 @@ To clone the repository, you will first need to have [Git][6] installed on
 your computer. Then, navigate to the directory where you want to clone the 
 repository in a terminal, and type:
 ```
-git clone https://github.com/davidhowey/SLIDE.git
+git clone https://github.com/Battery-Intelligence-Lab/SLIDE.git
 ```
 The folder containing all the files should appear in your chosen directory.
 
