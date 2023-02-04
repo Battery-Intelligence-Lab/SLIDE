@@ -12,7 +12,7 @@
 #include "../modules/Module_p.hpp"
 #include "../procedures/Cycler.hpp"
 #include "../procedures/Procedure.hpp"
-//#include "unit_tests.hpp"
+// #include "unit_tests.hpp"
 #include "../settings/settings.hpp"
 
 #include <cmath>
@@ -38,16 +38,12 @@ std::unique_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool Rcel
   //!< String prefix for the names of the results to indicate the settings of the simulation
   using settings::T_ENV;
   std::string settings_str = "cool" + std::to_string(coolControl);
-  if (capSpread)
-    settings_str += "_capSpread";
-  if (RcellSpread)
-    settings_str += "_RSpread";
-  if (degrateSpread)
-    settings_str += "_degSpread";
-  if (contactR)
-    settings_str += "_contactR";
-  if (balance)
-    settings_str += "_balance";
+  if (capSpread) settings_str += "_capSpread";
+  if (RcellSpread) settings_str += "_RSpread";
+  if (degrateSpread) settings_str += "_degSpread";
+  if (contactR) settings_str += "_contactR";
+  if (balance) settings_str += "_balance";
+
 
   //!< Cell-to-cell variations, numbers based on paper from Trish, Jorge (results of screening over 200 prestine lithium-ion cells
   std::default_random_engine generator;
@@ -188,16 +184,11 @@ std::unique_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool Rce
   //!< String prefix for the names of the results to indicate the settings_str of the simulation
   using settings::T_ENV;
   std::string settings_str = "cool" + std::to_string(coolControl);
-  if (capSpread)
-    settings_str += "_capSpread";
-  if (RcellSpread)
-    settings_str += "_RSpread";
-  if (degrateSpread)
-    settings_str += "_degSpread";
-  if (contactR)
-    settings_str += "_contactR";
-  if (balance)
-    settings_str += "_balance";
+  if (capSpread) settings_str += "_capSpread";
+  if (RcellSpread) settings_str += "_RSpread";
+  if (degrateSpread) settings_str += "_degSpread";
+  if (contactR) settings_str += "_contactR";
+  if (balance) settings_str += "_balance";
 
   //!< Cell-to-cell variations
 

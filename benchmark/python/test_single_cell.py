@@ -40,7 +40,7 @@ print(f"Elapsed time: {(end_time - start_time):.3f} seconds")
 t = solution["Time [s]"]
 V = solution["Terminal voltage [V]"]
 Tc = solution['Cell temperature [C]']
-    
+
 plt.plot(t.data, V.data)
 plt.plot(slide_OCV[1:, 4], slide_OCV[1:, 1], '--')
 

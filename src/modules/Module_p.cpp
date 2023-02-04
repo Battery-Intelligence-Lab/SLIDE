@@ -405,18 +405,17 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
 
   //!< Gains in the PI controllers
   //!< fraction of current changes set in various steps
-  const double f2 = 0.5; //!< allocated 50% of the change in current proportional to the resistance
-  const double f3 = 0.2; //!< allocate 20% of the change in current per cell in each iteration in step 3
-                         //!< note, this is always relative to the error, i.e f* (Inew-I())/N
-                         //!< so it will automatically become smaller, it is more the gain of a P controller
+  constexpr double f2 = 0.5; //!< allocated 50% of the change in current proportional to the resistance
+  constexpr double f3 = 0.2; //!< allocate 20% of the change in current per cell in each iteration in step 3
+                             //!< note, this is always relative to the error, i.e f* (Inew-I())/N
+                             //!< so it will automatically become smaller, it is more the gain of a P controller
 
   //!< check if there are contact resistances #TODO why
   const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-  double dI = Inew - I();                                      //!< total change in current needed
+  const double dI = Inew - I();                                //!< total change in current needed
   double v = 0;                                                //!< end voltage
-  double vn;                                                   //!< voltage of cell n
 
   //!< Change the current if needed
   if (dI != 0) {
@@ -434,9 +433,8 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
     }
 
     for (size_t i = 0; i < getNSUs(); i++) {
-      vn = getVi(i, print);
-      Ri[i] = (Vo[i] - vn) / dIi;
-      Ri[i] = std::max(Ri[i], 1e-5); //!< avoid R=0, which would give a NaN. Instead give very small value
+      const auto vn = getVi(i, print);            //!< voltage of cell n
+      Ri[i] = std::max((Vo[i] - vn) / dIi, 1e-5); //!< avoid R=0, which would give a NaN. Instead give very small value
       Rtot += 1.0 / Ri[i];
     }
 
@@ -466,7 +464,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
       dIi = f3 * (Inew - I()) / SUs.size(); //!< if uniform, each cell should get (Inew-I())/Ncell. Allocate a fraction f of this amount now
 
       //!< if the remaining current is smaller than dI, then allocate all of the remaining current
-      if (almost || std::abs(I() - Inew) < std::abs(dIi)) {
+      if (almost || (std::abs(I() - Inew) < std::abs(dIi))) {
         almost = true;
         dIi = Inew - I();
       }
@@ -487,10 +485,10 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
       //!< check tolerances
       if (almost) //!< we have done the final step where we allocate all the remaining current
         reached = true;
-      if (std::abs(Inew - I()) < settings::MODULE_P_I_ABSTOL) //!< we are very close (absolutely) so next time allocate all remaining current
-        almost = true;
-      if (std::abs(Inew - I()) < settings::MODULE_P_I_RELTOL * Inew) //!< relative
-        almost = true;
+
+      //!< we are very close (absolutely) so next time allocate all remaining current
+      almost = (std::abs(Inew - I()) < settings::MODULE_P_I_ABSTOL)
+               || (std::abs(Inew - I()) < settings::MODULE_P_I_RELTOL * Inew);
     }
 
     //!< check the voltages are valid
@@ -593,7 +591,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
                     << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
       } else {
         if (verb)
-          std::cout << "ERROR " << (int)status << " in Module_p::setCurrent when setting the current of cell "
+          std::cout << "ERROR " << getStatusMessage(status) << " in Module_p::setCurrent when setting the current of cell "
                     << i << " with id " << SUs[i]->getFullID() << " for Inew = " << Inew / getNSUs()
                     << ". Try to recover using the iterative version of setCurrent.\n";
         //!< throw error, the catch statement will use the iterative function

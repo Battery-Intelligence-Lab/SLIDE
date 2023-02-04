@@ -215,8 +215,8 @@ void Module_s::timeStep_CC(double dt, int nstep)
     therm.time += nstep * dt;
 
     //!< Increase the heat from the contact resistances
-    for (size_t i = 0; i < getNSUs(); i++)
-      therm.Qcontact += Rcontact[i] * sqr(I()) * nstep * dt; //!< each resistor sees the total module current
+    for (const auto r : Rcontact)
+      therm.Qcontact += r * sqr(I()) * nstep * dt; //!< each resistor sees the total module current
 
     //!< If this module has a parent module, this parent will call the thermal model with the correct parameters
     //!< which will include heat exchange with the module's neighbours and cooling from the cooling system of the parent module.

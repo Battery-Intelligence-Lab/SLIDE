@@ -74,6 +74,8 @@
 - [ ] Probably there is a bug in slide-pack where time, Ah, Wh values are not resetted after a throw. Try two cell in series config with one has smaller capacity so it reaches its capacity earlier. Then charge with 1C + large time step. Probably first cell will store Ah and second won't. and there will be difference in their Ah. Or even it does not, it will be different than real Ah. Just charge and discharge. 
 - [ ] Cycler should be able to take unique_ptr and convert. 
 - [ ] setSUs and assigning unique pointers then testing individually is very difficult. Clearly a design problem.
+- [ ] getNSUs may slow down time to time. 
+- [ ] std::vector<double> Iolds in Module_p.cpp
 
 
 ### From SLIDE v2: 
