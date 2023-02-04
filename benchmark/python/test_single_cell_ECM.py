@@ -11,8 +11,11 @@ importlib.reload(slide_defaults)
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-model = pybamm.lithium_ion.SPM()
+options = {"number of rc elements": 1}
+model = pybamm.equivalent_circuit.Thevenin(options)
 
+
+# parameter_values=params,
 params = slide_defaults.get_default_param()
 slide_OCV = np.genfromtxt(
     "../../results/PyBAMM_1_CC_Crate_Cell_SPM_cellData.csv", delimiter=",", skip_header=3)
@@ -28,14 +31,16 @@ experiment = pybamm.Experiment([
 #     "Rest for 30 minutes"])
 
 
-sim = pybamm.Simulation(model, parameter_values=params, experiment=experiment)
+sim = pybamm.Simulation(model, experiment=experiment)
 
 start_time = time.time()
-solution = sim.solve([0, 3600])
+solution = sim.solve()
 end_time = time.time()
 
-print(f"Elapsed time: {(end_time - start_time):.3f} seconds")
+solution = sim.plot()
 
+
+print(f"Elapsed time: {(end_time - start_time):.3f} seconds")
 
 t = solution["Time [s]"]
 V = solution["Terminal voltage [V]"]
@@ -43,8 +48,10 @@ Tc = solution['Cell temperature [C]']
 
 plt.plot(t.data, V.data)
 plt.plot(slide_OCV[1:, 4], slide_OCV[1:, 1], '--')
+plt.gca().legend(('PyBAMM', 'SLIDE'))
 
 plt.figure()
 
 plt.plot(t.data, Tc.data[0, :])
 plt.plot(slide_OCV[1:, 4], slide_OCV[1:, 3]-273.15, '--')
+plt.gca().legend(('PyBAMM', 'SLIDE'))
