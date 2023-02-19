@@ -12,10 +12,7 @@ ECM_single_default_pulse.V = squeeze(ECM_single_default_pulse.V);
 
 ECM_single_default_pulse.SLIDE = readmatrix('../../results/Cell_ECM_single_default_pulse_Cell_ECM_cellData.csv','NumHeaderLines',3);
 
-
-%% Plotting:
-
-% ECM_single_default_pulse
+% Plotting:
 
 figure;
 subplot(3,1,1);
@@ -40,6 +37,7 @@ ylabel('Current [A]')
 grid on;
 
 sgtitle('ECM single default pulse')
+
 
 
 

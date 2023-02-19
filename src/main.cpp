@@ -147,6 +147,7 @@ int main()
 
   // ECM benchmarks:
   slide::benchmarks::run_Cell_ECM_single_default_pulse();
+  slide::benchmarks::run_Cell_ECM_single_default_CCCV();
 
 
   //!<*********************************************** END ********************************************************
