@@ -14,7 +14,7 @@ params = slide_defaults.get_default_param()
 
 # Generate the netlist
 netlist = lp.setup_circuit(
-    Np=2, Ns=1, Rb=1e-4, Rc=1e-2, Ri=1e-2, V=3.2, I=80.0)
+    Np=2, Ns=1, Rb=1e-4, Rc=5e-2, Ri=9e-2, V=3.2, I=80.0)
 
 output_variables = [
     'X-averaged total heating [W.m-3]',

@@ -33,7 +33,7 @@ params['Current function [A]'] = 1
 sim = pybamm.Simulation(model, parameter_values=params)
 
 start_time = time.time()
-solution = sim.solve(t_eval=np.linspace(0, 40, 4000))
+solution = sim.solve(t_eval=np.linspace(0, 3600, 4000))
 end_time = time.time()
 
 print(f"Elapsed time: {(end_time - start_time):.3f} seconds")
@@ -47,12 +47,12 @@ Tc = solution['Cell temperature [C]']
 #fig, ax = pybamm.plot_voltage_components(solution)
 plt.figure()
 plt.plot(t.data, V.data)
-plt.plot(slide_OCV[:41, 4], slide_OCV[:41, 1], '--')
+plt.plot(slide_OCV[:, 4], slide_OCV[:, 1], '--')
 plt.gca().legend(('PyBAMM-V', 'SLIDE-V'))
 
 plt.figure()
 plt.plot(t.data, ocv.data)
-plt.plot(slide_OCV[:41, 4], slide_OCV[:41, 7], '--')
+plt.plot(slide_OCV[:, 4], slide_OCV[:, 7], '--')
 plt.gca().legend(('PyBAMM-OCV', 'SLIDE-OCV'))
 
 

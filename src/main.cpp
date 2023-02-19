@@ -140,10 +140,13 @@ int main()
   // slide::benchmarks::run_Cell_Bucket();
   // slide::benchmarks::run_Cell_ECM();
   // slide::benchmarks::run_Cell_SPM_1(1);
-  slide::benchmarks::run_Cell_SPM_2(1);
+  // slide::benchmarks::run_Cell_SPM_2(1);
   // slide::benchmarks::run_LP_case_SmallPack();
   // slide::benchmarks::run_LP_case_MediumPack();
   // slide::benchmarks::run_LP_case_LargePack();
+
+  // ECM benchmarks:
+  slide::benchmarks::run_Cell_ECM_single_default_pulse();
 
 
   //!<*********************************************** END ********************************************************

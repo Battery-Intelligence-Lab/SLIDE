@@ -36,6 +36,7 @@ protected:
 public:
   Cell_ECM();
   Cell_ECM(double capin, double SOCin);
+  Cell_ECM(double capin, double SOCin, double Rdc_, double Rp_, double Cp_);
 
   inline double I() const override { return st.I(); }
   inline double getIr() { return st.Ir(); } //!< current through the parallel resistance
@@ -84,13 +85,26 @@ inline Cell_ECM::Cell_ECM()
 
 inline Cell_ECM::Cell_ECM(double capin, double SOCin) : Cell_ECM()
 {
-
   //!< check that the input argument is valid
   if (!free::check_SOC(SOCin))
     throw 10;
 
   st.SOC() = SOCin;
   setCapacity(capin);
+}
+
+inline Cell_ECM::Cell_ECM(double capin, double SOCin, double Rdc_, double Rp_, double Cp_) : Cell_ECM()
+{
+  //!< check that the input argument is valid
+  if (!free::check_SOC(SOCin))
+    throw 10;
+
+  st.SOC() = SOCin;
+  setCapacity(capin);
+
+  Rdc = Rdc_;
+  Rp = Rp_;
+  Cp = Cp_;
 }
 
 inline double Cell_ECM::getOCV(bool print)
@@ -202,10 +216,8 @@ inline double Cell_ECM::V(bool print)
    */
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-  double ocv;
-
   try {
-    ocv = getOCV(print);
+    const double ocv = getOCV(print);
     return ocv - Rp * st.Ir() - Rdc * st.I();
   } catch (int e) {
     if (verb)
@@ -275,8 +287,8 @@ inline void Cell_ECM::timeStep_CC(double dt, int nstep)
     //!< Using forward Euler time integration.
     const auto dAh = st.I() * dth;
     st.SOC() -= dAh / Cap();
-    st.Ir() -= dt * (st.Ir() + st.I()) / (Rp * Cp);
-    //	dIr/dt =-1/RC Ir - 1/RC I
+    st.Ir() += dt * (st.I() - st.Ir()) / (Rp * Cp);
+    // dIr/dt = (I - Ir)/(RC)
 
     //!< increase the cumulative variables of this cell
     if constexpr (settings::data::storeCumulativeData) {

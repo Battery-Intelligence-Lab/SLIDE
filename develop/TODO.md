@@ -39,6 +39,7 @@
 
 
 ### Current priority: 
+- [ ] Bugfix: ECM had - in the equation, corrected. 
 - [ ] Fixed data function argument should be reconsidered! 
 - [ ] Status member functions like  status.good()
 - [ ] It should be decided if we throw an error in interpolation or not for testing invalid states. 

@@ -1,0 +1,34 @@
+% This file is for simulating ECM cases
+clear variables; close all; clc;
+Tminutes = 10;
+
+Cell_ECM_single_default_pulse = sim('Cell_ECM_single_default_pulse.slx');
+
+Cell_ECM_single_default_pulse.I = squeeze(Cell_ECM_single_default_pulse.I);
+Cell_ECM_single_default_pulse.SOC = squeeze(Cell_ECM_single_default_pulse.SOC);
+Cell_ECM_single_default_pulse.V = squeeze(Cell_ECM_single_default_pulse.V);
+
+
+Cell_ECM_single_default_pulse.SLIDE = readmatrix('../../results/Cell_ECM_single_default_pulse_Cell_ECM_cellData.csv','NumHeaderLines',3);
+
+
+%% Plotting:
+
+% Cell_ECM_single_default_pulse
+
+figure;
+subplot(2,1,1);
+plot(Cell_ECM_single_default_pulse.tout, Cell_ECM_single_default_pulse.V,'--'); hold on;
+plot(Cell_ECM_single_default_pulse.SLIDE(:,5), Cell_ECM_single_default_pulse.SLIDE(:,2));
+legend('MATLAB', 'SLIDE');
+ylabel('Terminal voltage [V]')
+grid on;
+
+subplot(2,1,2);
+plot(Cell_ECM_single_default_pulse.tout, Cell_ECM_single_default_pulse.SOC); hold on;
+plot(Cell_ECM_single_default_pulse.SLIDE(:,5), Cell_ECM_single_default_pulse.SLIDE(:,3),'--');
+ylabel('SOC [%]');
+legend('MATLAB', 'SLIDE');
+
+
+
