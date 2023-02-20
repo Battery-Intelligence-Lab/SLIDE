@@ -36,7 +36,7 @@ legend('MATLAB', 'SLIDE');
 ylabel('Current [A]')
 grid on;
 
-sgtitle('ECM single default pulse')
+sgtitle('ECM single 1 RC pair default pulse')
 
 
 

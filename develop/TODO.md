@@ -39,6 +39,7 @@
 
 
 ### Current priority: 
+- [ ] SOC/Temperature dependent RC pairs for ECM. 
 - [x] Making Cell_ECM template to remove Cell_Bucket.
 - [x] Bugfix: ECM had - in the equation, corrected. 
 - [ ] Fixed data function argument should be reconsidered! 

@@ -93,8 +93,13 @@ inline Cell_ECM<N_RC>::Cell_ECM()
 
   if constexpr (N_RC >= 1) {
     constexpr double Cp0 = 38e3; // first parallel capacitance
-    Rp[0] = 15.8e-3;             // fist parallel resistance default value.
+    Rp[0] = 15.8e-3;             // fist parallel (polarisation) resistance default value.
     inv_tau[0] = 1.0 / (Rp[0] * Cp0);
+  }
+
+  if constexpr (N_RC == 2) {
+    Rp[1] = 2.5e-3; // second parallel (polarisation) resistance default value.
+    inv_tau[1] = 1.0 / 100.0;
   }
 
   OCV.check_is_fixed();

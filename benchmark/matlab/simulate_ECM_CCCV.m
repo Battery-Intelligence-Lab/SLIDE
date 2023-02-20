@@ -37,4 +37,4 @@ legend('MATLAB', 'SLIDE');
 ylabel('Current [A]')
 grid on;
 
-sgtitle('ECM single default CCCV')
+sgtitle('ECM single 1 RC pair default CCCV')

@@ -37,4 +37,4 @@ legend('MATLAB', 'SLIDE');
 ylabel('Current [A]')
 grid on;
 
-sgtitle('Bucket single default CCCV')
+sgtitle('Bucket single 0 RC pair default CCCV')

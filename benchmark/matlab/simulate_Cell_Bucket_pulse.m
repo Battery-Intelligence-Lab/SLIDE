@@ -36,7 +36,7 @@ legend('MATLAB', 'SLIDE');
 ylabel('Current [A]')
 grid on;
 
-sgtitle('Bucket single default pulse')
+sgtitle('Bucket single 0 RC pair default pulse')
 
 
 
