@@ -53,10 +53,10 @@ public:
   Status setStates(setStates_t s, bool checkV = true, bool print = true) override;
 
   //!< thermal model
-  inline double T() override { return st.T(); }
-  inline double getThotSpot() override { return T(); }
+  double T() override { return st.T(); }
+  double getThotSpot() override { return T(); }
   double getThermalSurface() override { return 0; }; //!< Not implemented?
-  inline void setT(double Tnew) override { st.T() = Tnew; }
+  void setT(double Tnew) override { st.T() = Tnew; }
 
   bool validStates(bool print = true) override;
   void timeStep_CC(double dt, int steps = 1) override;

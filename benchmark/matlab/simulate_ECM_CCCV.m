@@ -11,9 +11,9 @@ ECM_single_default_CCCV.SOC = squeeze(ECM_single_default_CCCV.SOC);
 ECM_single_default_CCCV.V = squeeze(ECM_single_default_CCCV.V);
 
 
-ECM_single_default_CCCV.SLIDE = readmatrix('../../results/Cell_ECM_single_default_CCCV_Cell_ECM_cellData.csv','NumHeaderLines',3);
 
-% Plotting:
+%% Plotting:
+ECM_single_default_CCCV.SLIDE = readmatrix('../../results/Cell_ECM_single_default_CCCV_Cell_ECM_cellData.csv','NumHeaderLines',3);
 
 figure;
 subplot(3,1,1);
