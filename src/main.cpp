@@ -145,7 +145,10 @@ int main()
   // slide::benchmarks::run_LP_case_MediumPack();
   // slide::benchmarks::run_LP_case_LargePack();
 
-  // ECM benchmarks:
+  // MATLAB ECM benchmarks:
+  slide::benchmarks::run_Cell_Bucket_single_default_pulse();
+  slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
+
   slide::benchmarks::run_Cell_ECM_single_default_pulse();
   slide::benchmarks::run_Cell_ECM_single_default_CCCV();
 
