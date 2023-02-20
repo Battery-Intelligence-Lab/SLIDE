@@ -19,3 +19,4 @@ cmake-build-relwithdebinfo/*
 build/*
 bin/*
 *.pyc
+*.asv
