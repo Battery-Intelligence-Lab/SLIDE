@@ -42,6 +42,13 @@ public:
   Cell_ECM(double capin, double SOCin);
   Cell_ECM(double capin, double SOCin, double Rdc_, std::array<double, N_RC> Rp_, std::array<double, N_RC> Cp_);
 
+  Cell_ECM(std::string IDi, double capin, double SOCin)
+    : Cell_ECM(capin, SOCin)
+  {
+    ID = std::move(IDi);
+  }
+
+
   inline double I() const override { return st.I(); }
   inline double getIr() { return st.Ir(); } //!< current through the parallel resistance
   inline double SOC() override { return st.SOC(); }
@@ -319,4 +326,7 @@ inline void Cell_ECM<N_RC>::timeStep_CC(double dt, int nstep)
     }
   }
 }
+
+using Cell_Bucket = Cell_ECM<0>;
+
 } // namespace slide

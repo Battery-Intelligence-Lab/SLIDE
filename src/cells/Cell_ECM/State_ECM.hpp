@@ -11,7 +11,7 @@
 
 namespace slide {
 
-template <size_t N_RC>
+template <size_t N_RC = 1>
 struct State_ECM : public State<3 + N_RC>
 {
   enum Index : size_t //!< Index variables for:
@@ -19,6 +19,7 @@ struct State_ECM : public State<3 + N_RC>
     i_T, //!< cell temperature [K]
     i_SOC,
     i_I,
+    i_Ir,
     N_states, // #TODO Do not use N_states for total states, use .size()
   };
 
@@ -31,4 +32,7 @@ struct State_ECM : public State<3 + N_RC>
   inline auto &SOC() { return (*this)[i_SOC]; }                  //!< state of charge [0-1]
   inline auto &T() { return (*this)[i_T]; }                      //!< temperature, [K]
 };
+
+using State_Bucket = State_ECM<0>;
+
 } // namespace slide

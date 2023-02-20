@@ -39,7 +39,7 @@
 
 
 ### Current priority: 
-- [ ] Making Cell_ECM template to remove Cell_Bucket.
+- [x] Making Cell_ECM template to remove Cell_Bucket.
 - [x] Bugfix: ECM had - in the equation, corrected. 
 - [ ] Fixed data function argument should be reconsidered! 
 - [ ] Status member functions like  status.good()

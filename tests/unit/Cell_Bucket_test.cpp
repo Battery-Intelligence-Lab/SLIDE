@@ -45,7 +45,6 @@ bool Cell_Bucket_test()
 
 bool getStates_test()
 {
-
   Cell_Bucket c1;
   std::vector<double> s;
 
