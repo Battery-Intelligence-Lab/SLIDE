@@ -43,6 +43,7 @@ plot(pulse.SLIDE_1(:,5), pulse.SLIDE_1(:,1),'--','LineWidth',1.5);
 legend('MATLAB', 'SLIDE');
 ylabel('Current [A]')
 grid on;
+title('Cell-1')
 
 subplot(5,1,4);
 plot(pulse.tout, pulse.I2,'LineWidth',1.5); hold on;
@@ -50,6 +51,7 @@ plot(pulse.SLIDE_2(:,5), pulse.SLIDE_2(:,1),'--','LineWidth',1.5);
 legend('MATLAB', 'SLIDE');
 ylabel('Current [A]')
 grid on;
+title('Cell-2')
 
 subplot(5,1,5);
 plot(pulse.tout, pulse.I3,'LineWidth',1.5); hold on;
@@ -57,8 +59,9 @@ plot(pulse.SLIDE_3(:,5), pulse.SLIDE_3(:,1),'--','LineWidth',1.5);
 legend('MATLAB', 'SLIDE');
 ylabel('Current [A]')
 grid on;
+title('Cell-3')
 
-sgtitle('ECM parallel Cell-1 pulse')
+sgtitle('ECM parallel 3 cells pulse')
 
 
 

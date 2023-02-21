@@ -110,9 +110,16 @@ inline void run_Cell_ECM_parallel_3_default_pulse()
   // Benchmark with default parameters:
   std::string ID = "Cell_ECM_parallel_3_default_pulse"; // + std::to_string(Crate) + '_'
 
-  std::unique_ptr<StorageUnit> cs[] = { std::unique_ptr<StorageUnit>(new Cell_ECM("1")),
-                                        std::unique_ptr<StorageUnit>(new Cell_ECM("2")),
-                                        std::unique_ptr<StorageUnit>(new Cell_ECM("3")) };
+  double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
+  constexpr double Cp0 = 38e3; // first parallel capacitance
+  constexpr double Rp0 = 15.8e-3;
+  std::array<double, 1> Rp_{ Rp0 }, inv_tau{ 1.0 / (Rp0 * Cp0) };
+
+  std::unique_ptr<StorageUnit> cs[] = {
+    std::unique_ptr<StorageUnit>(new Cell_ECM("1", capin, SOCin, 1e-3, Rp_, inv_tau)),
+    std::unique_ptr<StorageUnit>(new Cell_ECM("2", capin, SOCin, Rdc_, Rp_, inv_tau)),
+    std::unique_ptr<StorageUnit>(new Cell_ECM("3", capin, SOCin, Rdc_, Rp_, inv_tau))
+  };
 
   auto module = Module_p("Par3", settings::T_ENV, true, false, std::size(cs), 1, 1);
   module.setSUs(cs, false);

@@ -40,7 +40,14 @@ protected:
 public:
   Cell_ECM();
   Cell_ECM(double capin, double SOCin);
-  Cell_ECM(double capin, double SOCin, double Rdc_, std::array<double, N_RC> Rp_, std::array<double, N_RC> Cp_);
+  Cell_ECM(double capin, double SOCin, double Rdc_, std::array<double, N_RC> Rp_, std::array<double, N_RC> inv_tau_);
+
+  Cell_ECM(std::string IDi, double capin, double SOCin, double Rdc_, std::array<double, N_RC> Rp_, std::array<double, N_RC> inv_tau_)
+    : Cell_ECM(capin, SOCin, Rdc_, Rp_, inv_tau_)
+  {
+    ID = std::move(IDi);
+  }
+
 
   Cell_ECM(std::string IDi, double capin, double SOCin)
     : Cell_ECM(capin, SOCin)
