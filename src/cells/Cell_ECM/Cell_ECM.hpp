@@ -48,6 +48,7 @@ public:
     ID = std::move(IDi);
   }
 
+  Cell_ECM(std::string IDi) : Cell_ECM() { ID = std::move(IDi); }
 
   inline double I() const override { return st.I(); }
   inline double getIr() { return st.Ir(); } //!< current through the parallel resistance

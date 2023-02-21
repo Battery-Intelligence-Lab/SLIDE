@@ -105,6 +105,67 @@ inline void run_Cell_ECM_2_RC_single_default_CCCV()
 }
 
 
+inline void run_Cell_ECM_parallel_3_default_pulse()
+{
+  // Benchmark with default parameters:
+  std::string ID = "Cell_ECM_parallel_3_default_pulse"; // + std::to_string(Crate) + '_'
+
+  std::unique_ptr<StorageUnit> cs[] = { std::unique_ptr<StorageUnit>(new Cell_ECM("1")),
+                                        std::unique_ptr<StorageUnit>(new Cell_ECM("2")),
+                                        std::unique_ptr<StorageUnit>(new Cell_ECM("3")) };
+
+  auto module = Module_p("Par3", settings::T_ENV, true, false, std::size(cs), 1, 1);
+  module.setSUs(cs, false);
+
+  module.setBlockDegAndTherm(true);
+
+  ThroughputData th{};
+  auto cyc = Cycler(&module, ID);
+
+
+  Clock clk;
+  constexpr size_t Nrepeat = 3;
+  for (size_t i = 0; i < Nrepeat; i++) {
+    cyc.CC(16, 2.7, 5 * 60, 0.1, 5, th);
+    cyc.CC(-16, 4.2, 5 * 60, 0.1, 5, th);
+  }
+
+  std::cout << "Finished " << ID << " in " << clk << ".\n";
+  cyc.writeData();
+}
+
+inline void run_Cell_ECM_parallel_3_default_CCCV()
+{
+  // Benchmark with default parameters:
+  std::string ID = "Cell_ECM_parallel_3_default_CCCV"; // + std::to_string(Crate) + '_'
+  auto c = Cell_ECM();
+  c.setBlockDegAndTherm(true);
+
+  std::unique_ptr<StorageUnit> cs[] = { std::unique_ptr<StorageUnit>(c.copy()),
+                                        std::unique_ptr<StorageUnit>(c.copy()),
+                                        std::unique_ptr<StorageUnit>(c.copy()) };
+
+  auto module = Module_p("Par3", settings::T_ENV, true, false, std::size(cs), 1, 1);
+  module.setSUs(cs, false);
+
+
+  ThroughputData th{};
+  auto cyc = Cycler(&module, ID);
+
+  Clock clk;
+  constexpr size_t Nrepeat = 3;
+  for (size_t i = 0; i < Nrepeat; i++) {
+    cyc.CCCV(16, 2.7, 50e-3, 0.1, 5, th);
+    cyc.rest(10 * 60, 0.1, 10, th);
+    cyc.CCCV(16, 4.2, 50e-3, 0.1, 5, th);
+    cyc.rest(10 * 60, 0.1, 10, th);
+  }
+
+  std::cout << "Finished " << ID << " in " << clk << ".\n";
+  cyc.writeData();
+}
+
+
 inline void run_Cell_ECM_SmallPack()
 {
   std::string ID = "Cell_ECM_SmallPack"; // + std::to_string(Crate) + '_'
