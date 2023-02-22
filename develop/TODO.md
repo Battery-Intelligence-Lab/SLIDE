@@ -39,6 +39,7 @@
 
 
 ### Current priority: 
+- [ ] redistributeCurrent() -> PI Control does not work well causing high error in current. 
 - [ ] Add snapshot tests for 
 - [ ] SOC/Temperature dependent RC pairs for ECM. 
 - [x] Making Cell_ECM template to remove Cell_Bucket.

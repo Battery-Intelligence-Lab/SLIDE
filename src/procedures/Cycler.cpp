@@ -359,6 +359,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
 
   //!< apply current
   while (ttot < tlim) {
+    auto succ = setCurrent(I, vlim); // #TODO this was not here I added to get nice results from
     //!< change length of the time step in the last iteration to get exactly tlim seconds
     if (nOnce * dti > tlim - ttot) //!< we are close to the total time -> set nOnce to 1
       nOnce = 1;

@@ -121,6 +121,76 @@ double Module_p::V(bool print)
   return Vmodule;
 }
 
+Status Module_p::redistributeCurrent_new(bool checkV, bool print)
+{
+  // New redistributeCurrent without PI control:
+  //!< get cell voltages
+  std::array<double, settings::MODULE_NSUs_MAX> Va, Vb, Ia, Ib; //!< #TODO if we should make them vector.
+
+  //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
+
+  const auto nSU = getNSUs();
+  const auto VMAX = SUs[0]->VMAX();
+
+  if (nSU <= 1) return Status::Success;
+
+  double Vmean{ 0 }, error{ 0 }, Itot{ 0 };
+
+  for (size_t i = 0; i < nSU; i++) {
+    Va[i] = getVi(i, print);
+    Ia[i] = SUs[i]->I();
+    Vmean += Va[i];
+    Itot += Ia[i]; // We also need to preserve sum of the currents!
+  }
+
+  Vmean /= nSU;
+
+  for (size_t i = 0; i < nSU; i++) {
+    error += std::abs(Vmean - Va[i]);
+  }
+
+  if (error < 1e-6)
+    return Status::Success;
+
+
+  for (size_t i = 0; i < nSU; i++) {
+    if (Vmean > Va[i]) {
+      Ib[i] = Ia[i] - 0.01 * SUs[i]->Cap();
+      SUs[i]->setCurrent(Ib[i]);
+      Vb[i] = getVi(i, print);
+
+    } else if (Vmean < Va[i]) {
+      Ib[i] = Ia[i] + 0.01 * SUs[i]->Cap();
+      SUs[i]->setCurrent(Ib[i]);
+      Vb[i] = getVi(i, print);
+
+    } else {
+      Ib[i] = Ia[i];
+      Vb[i] = Va[i];
+    }
+  }
+
+  double Itot_error{ Itot };
+
+  for (size_t i = 0; i < nSU; i++) {
+    const double slope = (Ia[i] - Ib[i]) / (Va[i] - Vb[i]);
+    Ia[i] = Ib[i] - (Vb[i] - Vmean) * slope; //!< False-Position method.
+    Itot_error -= Ia[i];
+  }
+
+  Itot_error /= nSU; // Total current error per cell.
+
+  for (size_t i = 0; i < nSU; i++) {
+    Ia[i] += Itot_error;
+    SUs[i]->setCurrent(Ia[i]);
+    Va[i] = getVi(i, print);
+  }
+
+
+  return redistributeCurrent_new(checkV, print);
+}
+
+
 Status Module_p::redistributeCurrent(bool checkV, bool print)
 {
   /*
@@ -526,7 +596,7 @@ Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
 
       //!< redistribute the current, if that is successful, we have valid cell voltages
       try {
-        auto status = redistributeCurrent(checkV, print); //!< #TODO this is utterly wrong.
+        auto status = redistributeCurrent_new(checkV, print); //!< #TODO this is utterly wrong.
         if (!isStatusSuccessful(status))
           throw 100000;
       } catch (int) {
@@ -601,7 +671,8 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
     //!< Redistribute the current to equalise the voltages
     try {
-      redistributeCurrent(checkV, print); //!< this will check the voltage limits if needed
+      redistributeCurrent_new(checkV, print);
+      // redistributeCurrent(checkV, print); //!< this will check the voltage limits if needed
       v = V();
     } catch (int e) {
       if (e == 2) {
@@ -807,7 +878,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
   //!< check if the cell's voltage is valid
   if (!validSUs(SUs, false)) {
     try {
-      auto status = redistributeCurrent(false, true); //!< don't check the currents
+      auto status = redistributeCurrent_new(false, true); //!< don't check the currents
 
       if (status != Status::Success)
         throw 100000; //!< #TODO

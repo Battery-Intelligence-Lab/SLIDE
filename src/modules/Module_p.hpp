@@ -46,6 +46,8 @@ public:
   Status setI_iterative(double Inew, bool checkV = true, bool print = true);      //!< set a module current iteratively
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
   Status redistributeCurrent(bool checkV = true, bool print = true);              //!< redistribute the total module current to the different cells
+  Status redistributeCurrent_new(bool checkV, bool print);
+
 
   bool validSUs(SUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
 
