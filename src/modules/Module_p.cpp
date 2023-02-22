@@ -128,66 +128,71 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
   std::array<double, settings::MODULE_NSUs_MAX> Va, Vb, Ia, Ib; //!< #TODO if we should make them vector.
 
   //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
-
+  constexpr int maxIteration = 10;
   const auto nSU = getNSUs();
-  const auto VMAX = SUs[0]->VMAX();
+
+  auto StatusNow = Status::RedistributeCurrent_failed;
 
   if (nSU <= 1) return Status::Success;
 
-  double Vmean{ 0 }, error{ 0 }, Itot{ 0 };
-
+  double Itot{ 0 };
   for (size_t i = 0; i < nSU; i++) {
     Va[i] = getVi(i, print);
     Ia[i] = SUs[i]->I();
-    Vmean += Va[i];
     Itot += Ia[i]; // We also need to preserve sum of the currents!
   }
 
-  Vmean /= nSU;
+  for (int iter{ 0 }; iter < maxIteration; iter++) {
+    double Vmean{ 0 }, error{ 0 };
 
-  for (size_t i = 0; i < nSU; i++) {
-    error += std::abs(Vmean - Va[i]);
-  }
+    for (size_t i = 0; i < nSU; i++)
+      Vmean += Va[i];
 
-  if (error < 1e-6)
-    return Status::Success;
+    Vmean /= nSU;
+
+    for (size_t i = 0; i < nSU; i++)
+      error += std::abs(Vmean - Va[i]);
 
 
-  for (size_t i = 0; i < nSU; i++) {
-    if (Vmean > Va[i]) {
-      Ib[i] = Ia[i] - 0.01 * SUs[i]->Cap();
-      SUs[i]->setCurrent(Ib[i]);
-      Vb[i] = getVi(i, print);
+    if (error < 1e-6)
+      return Status::Success;
 
-    } else if (Vmean < Va[i]) {
-      Ib[i] = Ia[i] + 0.01 * SUs[i]->Cap();
-      SUs[i]->setCurrent(Ib[i]);
-      Vb[i] = getVi(i, print);
 
-    } else {
-      Ib[i] = Ia[i];
-      Vb[i] = Va[i];
+    for (size_t i = 0; i < nSU; i++) {
+      if (Vmean > Va[i]) {
+        Ib[i] = Ia[i] - 0.01 * SUs[i]->Cap();
+        SUs[i]->setCurrent(Ib[i]);
+        Vb[i] = getVi(i, print);
+
+      } else if (Vmean < Va[i]) {
+        Ib[i] = Ia[i] + 0.01 * SUs[i]->Cap();
+        SUs[i]->setCurrent(Ib[i]);
+        Vb[i] = getVi(i, print);
+
+      } else {
+        Ib[i] = Ia[i];
+        Vb[i] = Va[i];
+      }
+    }
+
+    double Itot_error{ Itot };
+
+    for (size_t i = 0; i < nSU; i++) {
+      const double slope = (Ia[i] - Ib[i]) / (Va[i] - Vb[i]);
+      Ia[i] = Ib[i] - (Vb[i] - Vmean) * slope; //!< False-Position method.
+      Itot_error -= Ia[i];
+    }
+
+    Itot_error /= nSU; // Total current error per cell.
+
+    for (size_t i = 0; i < nSU; i++) {
+      Ia[i] += Itot_error;
+      SUs[i]->setCurrent(Ia[i]);
+      Va[i] = getVi(i, print);
     }
   }
 
-  double Itot_error{ Itot };
-
-  for (size_t i = 0; i < nSU; i++) {
-    const double slope = (Ia[i] - Ib[i]) / (Va[i] - Vb[i]);
-    Ia[i] = Ib[i] - (Vb[i] - Vmean) * slope; //!< False-Position method.
-    Itot_error -= Ia[i];
-  }
-
-  Itot_error /= nSU; // Total current error per cell.
-
-  for (size_t i = 0; i < nSU; i++) {
-    Ia[i] += Itot_error;
-    SUs[i]->setCurrent(Ia[i]);
-    Va[i] = getVi(i, print);
-  }
-
-
-  return redistributeCurrent_new(checkV, print);
+  return StatusNow;
 }
 
 
@@ -454,169 +459,6 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   return Status::Success;
 }
 
-Status Module_p::setI_iterative(double Inew, bool checkV, bool print)
-{
-  /*
-   * Set the current of a parallel module
-   * This function takes small steps adapting the current of each connected cell until the total current is reached
-   * 	 step 1 	change I by a bit  -> measure V_cell -> derive Rtot
-   * 	 step 2 	do 50% of Inew-I() by increasing current proportionally to this resistance
-   * 	 step 3   	iteratively change I of the cell with the smallest V (charge) or biggest V (discharge)
-   *
-   * THROWS
-   * 2 	checkV is true && the voltage is outside the allowed range but still in the safety range
-   * 3 	checkV is true && the voltage is outside the safety limits, old current is restored
-   * 15 	after setting the current, the voltage of the cells are too far apart
-   */
-
-#if TIMING
-  Clock clk;
-#endif
-
-  //!< Gains in the PI controllers
-  //!< fraction of current changes set in various steps
-  constexpr double f2 = 0.5; //!< allocated 50% of the change in current proportional to the resistance
-  constexpr double f3 = 0.2; //!< allocate 20% of the change in current per cell in each iteration in step 3
-                             //!< note, this is always relative to the error, i.e f* (Inew-I())/N
-                             //!< so it will automatically become smaller, it is more the gain of a P controller
-
-  //!< check if there are contact resistances #TODO why
-  const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
-
-  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-  const double dI = Inew - I();                                //!< total change in current needed
-  double v = 0;                                                //!< end voltage
-
-  //!< Change the current if needed
-  if (dI != 0) {
-    double dIi = dI / getNSUs(); //!< initial guess for change in current per cell (uniform if all cells are equal)
-    dIi = dIi / 2.0;             //!< in first step, change half the current
-    Vmodule_valid = false;       //!< we are changing the current, so the stored voltage is no longer valid
-
-    //!< STEP 1: CHANGE ICELL BY dIi/2 AND SEE HOW CELL VOLTAGE CHANGES to estimate resistance
-    std::array<double, settings::MODULE_NSUs_MAX> Vo, Ri, Iold; // #TODO these probably need to be vectors since NSUs will increase.
-    double Rtot = 0;                                            //!< total resistance of the parallel module, 1/Rtot = sum ( 1/R(i) )
-    for (size_t i = 0; i < getNSUs(); i++) {
-      Vo[i] = getVi(i, print); //!< terminal voltage reached from cell i
-      Iold[i] = SUs[i]->I();
-      SUs[i]->setCurrent(SUs[i]->I() + dIi, false, print); //!< don't check the voltage since this is an intermediate step
-    }
-
-    for (size_t i = 0; i < getNSUs(); i++) {
-      const auto vn = getVi(i, print);            //!< voltage of cell n
-      Ri[i] = std::max((Vo[i] - vn) / dIi, 1e-5); //!< avoid R=0, which would give a NaN. Instead give very small value
-      Rtot += 1.0 / Ri[i];
-    }
-
-    Rtot = 1.0 / Rtot;
-
-    //!< STEP 2 FROM INITIAL CELL CURRENTS, INCREASE THEIR VALUE PROPORTIONALLY TO THEIR RESISTANCE
-    //!< at Iold(i), V(i) == V(j)
-    //!< 	if linear, dI(i) will change V(i) by -Ri*dI(i)
-    //!< 	current divider rule: dI(i) = (Rtot / R(i)) dItot
-    for (size_t i = 0; i < SUs.size(); i++) {
-      dIi = f2 * dI * Rtot / Ri[i];
-      SUs[i]->setCurrent(Iold[i] + dIi, false, print); //!< don't check the voltage since this is an intermediate step
-    }
-
-    for (size_t i = 0; i < SUs.size(); i++) //!< only get voltage once all currents are set, since through contactR I[j] affects V[k]
-      Vo[i] = getVi(i, print);
-
-    //!< STEP 3 ITERATE TO INCREASE THE VOLTAGE OF THE MOST-DIFFERENT CELL
-    //!< if dI > 0, we are discharging more (or charging less), so the cell with the highest voltage should get a larger discharge (smaller charge) current
-    //!< if dI < 0, we are charging more (or discharging less), so the cell with the lowest voltage should get a larger charge (smaller discharge) current
-    //!< every iteration, allocate 10% of the remaining current per cell
-    bool reached = false; //!< boolean indicating we are exactly at the correct current
-    bool almost = false;  //!< boolean indicating wether we are almost there (i.e. one more iteration)
-    size_t ind;           //!< index of the cell which should be changed
-                          //		int k=0;//
-    while (!reached) {
-      dIi = f3 * (Inew - I()) / SUs.size(); //!< if uniform, each cell should get (Inew-I())/Ncell. Allocate a fraction f of this amount now
-
-      //!< if the remaining current is smaller than dI, then allocate all of the remaining current
-      if (almost || (std::abs(I() - Inew) < std::abs(dIi))) {
-        almost = true;
-        dIi = Inew - I();
-      }
-
-      if (dI < 0)
-        ind = std::distance(std::begin(Vo), std::min_element(std::begin(Vo), std::begin(Vo) + SUs.size()));
-      else
-        ind = std::distance(std::begin(Vo), std::max_element(std::begin(Vo), std::begin(Vo) + SUs.size()));
-
-      SUs[ind]->setCurrent(SUs[ind]->I() + dIi, false, print); //!< don't check the voltage since this is an intermediate step
-
-      if (noRc) //!< no Rcontact so only voltage of cell ind changes
-        Vo[ind] = getVi(ind, print);
-      else
-        for (size_t i = 0; i < getNSUs(); i++) //!< voltage of all cells changes
-          Vo[i] = getVi(i, print);
-
-      //!< check tolerances
-      if (almost) //!< we have done the final step where we allocate all the remaining current
-        reached = true;
-
-      //!< we are very close (absolutely) so next time allocate all remaining current
-      almost = (std::abs(Inew - I()) < settings::MODULE_P_I_ABSTOL)
-               || (std::abs(Inew - I()) < settings::MODULE_P_I_RELTOL * Inew);
-    }
-
-    //!< check the voltages are valid
-    if (checkV) {
-      const auto status = checkVoltage(v, print);
-      if (isStatusWarning(status)) {
-        //!< valid range -> keep old states, but throw 2 to notify something is not as it should be
-        if (verb)
-          std::cout << "Error in Module_p::setCurrent(). The voltage of one of the cells is outside the allowed limits. allowing it for now.\n";
-        return status;
-      } else if (isStatusBad(status)) { //!< outside safety limits (< VMIN and discharge || > VMAX and charge)
-        //!< safety limits -> restore old states and throw 3
-        if (verb)
-          std::cout << "Error in Module_p::setCurrent(). The voltage of one of the cells is outside the safety limits. Restoring the old currents and throwing 3.\n";
-
-        for (size_t i = 0; i < getNSUs(); i++)
-          SUs[i]->setCurrent(Iold[i], false, print); //!< don't check the voltage since we restore the original currents, which should be valid
-
-        return status;
-      }
-    }
-
-  } //!< if dI != 0
-  else
-    v = V(print); //!< the current does not change, so just return the voltage
-
-  //!< check the voltage difference is between the tolerance
-  if (checkV) {
-    const bool val = validSUs(SUs, print);
-    if (!val) {
-      if (verb)
-        std::cout << "error in Module_p::setCurrent for SU " << getFullID() << ", the cell voltage is not valid "
-                  << "after setting the module voltage to reach a total current of " << Inew
-                  << ". Trying to recover by redistributing the current.\n";
-
-      //!< redistribute the current, if that is successful, we have valid cell voltages
-      try {
-        auto status = redistributeCurrent_new(checkV, print); //!< #TODO this is utterly wrong.
-        if (!isStatusSuccessful(status))
-          throw 100000;
-      } catch (int) {
-        if (verb)
-          std::cout << "error in Module_p::setCurrent. We tried redistributing the current to equalise "
-                       "the cell voltages after setting the new current, "
-                       " but redistributeCurrent() failed too. Give up and throwing 15";
-        throw 15; //!< Why 15?
-      }
-    }
-  }
-
-  //	std::cout<<"setCurrent() for SU "<<getFullID()<<" finishing.\n"; //
-
-#if TIMING
-  timeData.setCurrent += clk.duration(); //!< time in seconds
-#endif
-  return Status::Success;
-}
-
 Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 {
   /*
@@ -693,7 +535,9 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
       SUs[i]->setCurrent(Iolds[i], false, true);
 
     try {
-      setI_iterative(Inew, checkV, print); //!< this will check the voltage limits if needed
+      std::cout << "THERE WAS SET ITERATIVE I, we should not be going here!!!!!!!" << std::endl;
+      throw "THERE WAS SET ITERATIVE I, we should not be going here!!!!!!!\n";
+      // #TODO remove this bit! setI_iterative
       v = V();
       if (verb)
         std::cout << "Module_p::setCurrent, We managed to recover using the iterative version. Continue as normal.\n";
