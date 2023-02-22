@@ -236,10 +236,6 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
    * 14 	failed to redistribute the current. Maximum number of iterations, or minimum change in current reached
    */
 
-#if TIMING
-  Clock clk;
-#endif
-
   //!< variables
   const size_t nIterationsMax = 1000 * getNSUs();                      //!< allow a maximum number of iterations //!< Very big iteration....
   const double dImin = settings::MODULE_P_I_ABSTOL / 10.0 / getNSUs(); //!< allow a minimum change in current
@@ -453,9 +449,6 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
     }
   }
 
-#if TIMING
-  timeData.redistributeCurrent += clk.duration(); //!< time in seconds
-#endif
   return Status::Success;
 }
 
@@ -473,10 +466,6 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
    * 3 	checkV is true && the voltage is outside the safety limits, old current is restored
    * 15 	after setting the current, the voltage of the cells are too far apart
    */
-
-#if TIMING
-  Clock clk;
-#endif
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   double v;
@@ -554,9 +543,6 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     }
   } //!< catch statement of uniform allocation
 
-#if TIMING
-  timeData.setCurrent += clk.duration(); //!< time in seconds
-#endif
   return Status::Success; //!< #TODO problem
 }
 
@@ -568,9 +554,6 @@ bool Module_p::validSUs(SUs_span_t c, bool print)
    *
    * If the number of cells is the same as in this module, use the contact resistances
    */
-#if TIMING
-  Clock clk;
-#endif
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Check the voltage of each cell is valid and within the error tolerance #TODO it is better to supply both module and Rcontact.
@@ -622,9 +605,6 @@ bool Module_p::validSUs(SUs_span_t c, bool print)
     result = false;
   } //!< else the voltage is valid
 
-#if TIMING
-  timeData.validSUs += clk.duration(); //!< time in seconds
-#endif
   return result;
 }
 
@@ -640,10 +620,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
    * The second approach is probably quicker since it only solves the system of equations
    * if the voltage difference becomes too large
    */
-
-#if TIMING
-  Clock clk;
-#endif
 
   if (dt < 0) {
     if constexpr (settings::printBool::printCrit)
@@ -731,26 +707,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
       throw e;
     }
   }
-
-#if TIMING
-  timeData.timeStep += clk.duration(); //!< time in seconds
-#endif
-}
-
-TimingData_Module_p Module_p::getTimings()
-{
-#if TIMING
-  return timeData;
-#else
-  return {};
-#endif
-}
-
-void Module_p::setTimings(TimingData_Module_p td)
-{
-#if TIMING
-  timeData = std::move(td);
-#endif
 }
 
 Module_p *Module_p::copy()
@@ -772,10 +728,6 @@ Module_p *Module_p::copy()
     copied_ptr->SUs.emplace_back(SUs[i]->copy()); // #TODO remove when we have Module<...>
     copied_ptr->SUs.back()->setParent(copied_ptr);
   }
-
-#if TIMING
-  copied_ptr->setTimings(timeData);
-#endif
 
   return copied_ptr;
 }

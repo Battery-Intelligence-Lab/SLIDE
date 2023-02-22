@@ -86,10 +86,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
    * 3 	checkV is true && the voltage is outside the safety limits, old current is restored
    */
 
-//!< the current is the same in all cells
-#if TIMING
-  Clock clk;
-#endif
+  //!< the current is the same in all cells
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Set the current, if checkVi this also gets the cell voltages
@@ -127,10 +124,6 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
 
   //!< #TODO Here we need module specific voltage.
 
-#if TIMING
-  timeData.setCurrent += clk.duration(); //!< time in seconds
-#endif
-
   return Status::Success;
 }
 
@@ -147,9 +140,7 @@ bool Module_s::validSUs(SUs_span_t c, bool print)
 
   // #TODO -> Unnecessary function. Check validity when settings SUs or states.
   // Algorithms should not leave anything in an invalid state.
-#if TIMING
-  Clock clk;
-#endif
+
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   bool result{ true };
   //!< check the currents are the same
@@ -168,9 +159,6 @@ bool Module_s::validSUs(SUs_span_t c, bool print)
     }
   }
 
-#if TIMING
-  timeData.validSUs += clk.duration(); //!< time in seconds
-#endif
   return result; //!< else the cells are valid
 }
 
@@ -186,11 +174,6 @@ void Module_s::timeStep_CC(double dt, int nstep)
    * 			the top level needs an HVAC system for heat exchange with the environment
    * 			lower-level modules (with a parent module) will get cooling from the coolsystems of their parent so they have a regular coolSystem
    */
-
-#if TIMING
-  Clock clk;
-#endif
-
   if (dt < 0) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module_s::timeStep_CC, the time step dt must be 0 or positive, but has value " << dt << '\n';
@@ -255,10 +238,6 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
   }
 
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
-
-#if TIMING
-  timeData.timeStep += clk.duration(); //!< time in seconds
-#endif
 }
 
 Module_s *Module_s::copy()
@@ -282,27 +261,7 @@ Module_s *Module_s::copy()
     copied_ptr->SUs.back()->setParent(copied_ptr);
   }
 
-#if TIMING
-  copied_ptr->setTimings(timeData);
-#endif
-
   return copied_ptr;
-}
-
-TimingData_Module_s Module_s::getTimings()
-{
-#if TIMING
-  return timeData;
-#else
-  return {};
-#endif
-}
-
-void Module_s::setTimings(TimingData_Module_s td)
-{
-#if TIMING
-  timeData = std::move(td);
-#endif
 }
 
 } // namespace slide

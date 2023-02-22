@@ -39,6 +39,8 @@
 
 
 ### Current priority: 
+- [x] "#if TIMING" is removed, profiler should be used if needed. 
+- [x] "setI_iterative" is removed. 
 - [ ] redistributeCurrent() -> PI Control does not work well causing high error in current. 
 - [ ] Add snapshot tests for 
 - [ ] SOC/Temperature dependent RC pairs for ECM. 

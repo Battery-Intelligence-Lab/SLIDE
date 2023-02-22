@@ -90,9 +90,6 @@ constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all typ
 #define DATASTORE_BATT 0 //!< if 0, no module-level data is stored
                          //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
-//!< timing of various functions
-#define TIMING false
-
 //!< temperature
 constexpr int T_MODEL{ 1 }; //!< which thermal model to use
                             //!< 	0 no thermal model

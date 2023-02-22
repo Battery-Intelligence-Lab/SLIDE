@@ -16,10 +16,6 @@
 namespace slide {
 class Module_p : public Module
 {
-protected:
-#if TIMING //!< std::clock_t tstart;
-  TimingData_Module_p timeData{};
-#endif
 public:
   Module_p() : Module("moduleP") {} //!< note this constructor should never be used. It can't determine which coolsystem to use
   Module_p(std::string_view ID_, double Ti, bool print, bool pari, int Ncells_, int coolControl, int cooltype)
@@ -43,7 +39,6 @@ public:
   double V(bool print = true) override;      //!< module voltage (sum of cells), print is an optional argument
   double getVi(size_t i, bool print = true); //!< get the voltage of SU[i] while accounting for the contact resistance
 
-  // Status setI_iterative(double Inew, bool checkV = true, bool print = true);      //!< set a module current iteratively
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
   Status redistributeCurrent(bool checkV = true, bool print = true);              //!< redistribute the total module current to the different cells
   Status redistributeCurrent_new(bool checkV, bool print);

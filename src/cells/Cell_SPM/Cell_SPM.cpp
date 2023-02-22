@@ -213,10 +213,6 @@ double Cell_SPM::getOCV(bool print)
    * 			passed on from linear interpolation
    */
 
-#if TIMING
-  Clock clk;
-#endif
-
   const bool verb = settings::printBool::printCrit && print; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Get the surface concentrations
@@ -232,9 +228,6 @@ double Cell_SPM::getOCV(bool print)
 
   const auto entropic_effect = (st.T() - T_ref) * dOCV;
 
-#if TIMING
-  timeData.getOCV += clk.duration();
-#endif
   return (OCV_p - OCV_n + entropic_effect);
 }
 
@@ -259,10 +252,6 @@ double Cell_SPM::V(bool print)
    *
    * THROWS
    */
-
-#if TIMING
-  Clock clk;
-#endif
 
   //!< If the stored value is the most up to date one, then simply return this value
   if (Vcell_valid)
@@ -311,10 +300,6 @@ double Cell_SPM::V(bool print)
     st.V() = OCV + overpotential - getRdc() * I(); //
     Vcell_valid = true;                            //!< we now have the most up to date value stored
   }
-
-#if TIMING
-  timeData.V += clk.duration(); //!< time in seconds
-#endif
 
   return st.V();
 }
@@ -373,9 +358,6 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
    * Returns Status see Status.hpp for the meaning.
    */
 
-#if TIMING
-  Clock clk;
-#endif
   auto st_old = st; //!< Back-up values.
   auto Vcell_valid_prev = Vcell_valid;
 
@@ -390,9 +372,6 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
     Vcell_valid = Vcell_valid_prev;
   }
 
-#if TIMING
-  timeData.setStates += clk.duration(); //!< time in seconds
-#endif
   return status;
 }
 
@@ -414,9 +393,7 @@ bool Cell_SPM::validStates(bool print)
    * This can't be done here because it requires parameters of the Cell itself.
    * see Cell_SPM::getC or Cell_SPM::getCsurf
    */
-#if TIMING
-  Clock clk;
-#endif
+
   const bool verb = print && settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Check if all fields are present & extract their values
@@ -505,12 +482,7 @@ bool Cell_SPM::validStates(bool print)
     range = false;
   }
 
-
-#if TIMING
-  timeData.validStates += clk.duration(); //!< time in seconds
-#endif
-  //!< there is no range on the current
-  return range;
+  return range; //!< there is no range on the current
 }
 
 void Cell_SPM::setTenv(double Tenv)

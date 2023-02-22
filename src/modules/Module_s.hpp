@@ -21,10 +21,6 @@
 namespace slide {
 class Module_s : public Module
 {
-protected:
-#if TIMING //!< std::clock_t tstart;
-  TimingData_Module_s timeData{};
-#endif
 public:
   Module_s() : Module("moduleS") {} //!< note this constructor should never be used. It can't determine which coolsystem to use
   Module_s(std::string_view ID_, double Ti, bool print, bool pari, int Ncells_, int coolControl, int cooltype)
@@ -53,7 +49,5 @@ public:
   void timeStep_CC(double dt, int steps = 1) override;
 
   Module_s *copy() override;
-  TimingData_Module_s getTimings();
-  void setTimings(TimingData_Module_s td);
 };
 } // namespace slide

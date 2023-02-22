@@ -41,13 +41,7 @@ public:
   DEG_ID deg_id; //!< structure with the identification of which degradation model(s) to use #TODO may be protected.
   using sigma_type = std::array<double, settings::nch + 2>;
 
-protected: //!< protected such that child classes can access the class variables
-#if TIMING
-  TimingData_Cell_SPM timeData{};
-#endif
-
-
-  //!< battery states
+protected:                 //!< protected such that child classes can access the class variables
   State_SPM st{}, s_ini{}; //!< the battery current/initial state, grouping all parameter which change over the battery's lifetime (see State_SPM.hpp)
 
   //!< Battery model constants
@@ -292,14 +286,5 @@ public:
   //!< void setRamping(double Istep, double tstep);																	  //!< sets the ramping parameters
 
   void setCharacterisationParam(double Dp, double Dn, double kp, double kn, double Rdc); //!< sets the parameters related to the characterisation of the cell
-
-  TimingData_Cell_SPM getTimings()
-  {
-#if TIMING
-    return timeData;
-#else
-    return {};
-#endif
-  }
 };
 } // namespace slide
