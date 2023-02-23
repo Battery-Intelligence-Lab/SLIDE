@@ -3,8 +3,11 @@ clear variables; close all; clc;
 
 Tminutes = 5;
 
+Rcontact = [0.5, 1, 0.7]*1e-3; % [Ohm] contact resistance. 
+
+
 tic; 
-CCCV = sim('Cell_ECM_parallel_3_default_CCCV.slx');
+CCCV = sim('Cell_ECM_parallel_3_with_Rcontact_CCCV.slx');
 toc
 
 CCCV.I1 = squeeze(CCCV.I1);
@@ -16,9 +19,9 @@ CCCV.SOC = squeeze(CCCV.SOC);
 CCCV.V = squeeze(CCCV.V);
 
 %%
-CCCV.SLIDE_1 = readmatrix('../../results/Cell_ECM_parallel_3_default_CCCV_Par3_1_cellData.csv','NumHeaderLines',3);
-CCCV.SLIDE_2 = readmatrix('../../results/Cell_ECM_parallel_3_default_CCCV_Par3_2_cellData.csv','NumHeaderLines',3);
-CCCV.SLIDE_3 = readmatrix('../../results/Cell_ECM_parallel_3_default_CCCV_Par3_3_cellData.csv','NumHeaderLines',3);
+CCCV.SLIDE_1 = readmatrix('../../results/Cell_ECM_parallel_3_withRcontact_CCCV_Par3_1_cellData.csv','NumHeaderLines',3);
+CCCV.SLIDE_2 = readmatrix('../../results/Cell_ECM_parallel_3_withRcontact_CCCV_Par3_2_cellData.csv','NumHeaderLines',3);
+CCCV.SLIDE_3 = readmatrix('../../results/Cell_ECM_parallel_3_withRcontact_CCCV_Par3_3_cellData.csv','NumHeaderLines',3);
 
 
 

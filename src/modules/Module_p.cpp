@@ -127,7 +127,7 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
   std::array<double, settings::MODULE_NSUs_MAX> Va, Vb, Ia, Ib; //!< #TODO if we should make them vector.
 
   //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
-  constexpr int maxIteration = 10;
+  constexpr int maxIteration = 150;
   const auto nSU = getNSUs();
 
   auto StatusNow = Status::RedistributeCurrent_failed;
@@ -156,20 +156,20 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
     if (error < 1e-6)
       return Status::Success;
 
+    double Itot_error{ Itot };
+    for (size_t i = 1; i < nSU; i++) {
+      Ib[i] = Ia[i] - 0.5 * (Vmean - Va[i]) / SUs[i]->getRtot();
+      SUs[i]->setCurrent(Ib[i]);
+      Vb[i] = getVi(i, print);
 
-    for (size_t i = 0; i < nSU; i++) {
-      if (Vmean > Va[i]) {
-        Ib[i] = Ia[i] - 0.01 * SUs[i]->Cap();
-        SUs[i]->setCurrent(Ib[i]);
-        Vb[i] = getVi(i, print);
-      } else {
-        Ib[i] = Ia[i] + 0.01 * SUs[i]->Cap();
-        SUs[i]->setCurrent(Ib[i]);
-        Vb[i] = getVi(i, print);
-      }
+      Itot_error -= Ib[i];
     }
 
-    double Itot_error{ Itot };
+    Ib[0] = Itot_error;
+    SUs[0]->setCurrent(Ib[0]);
+    Vb[0] = getVi(0, print);
+
+    Itot_error = Itot;
 
     for (size_t i = 0; i < nSU; i++) {
       const double slope = (Ia[i] - Ib[i]) / (Va[i] - Vb[i]);
@@ -177,10 +177,8 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
       Itot_error -= Ia[i];
     }
 
-    Itot_error /= nSU; // Total current error per cell.
-
+    Ia[0] = Itot_error;
     for (size_t i = 0; i < nSU; i++) {
-      Ia[i] += Itot_error;
       SUs[i]->setCurrent(Ia[i]);
       Va[i] = getVi(i, print);
     }
