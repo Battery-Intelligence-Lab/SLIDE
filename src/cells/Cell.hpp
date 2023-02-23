@@ -58,8 +58,6 @@ public:
 
   virtual double getThotSpot() override { return T(); }
 
-  //!< double getRtot() = 0;
-
   virtual Status checkCurrent(bool checkV, bool print) noexcept
   {
     double v;

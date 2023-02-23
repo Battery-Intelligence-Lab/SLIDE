@@ -415,7 +415,6 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
       MinR[is] = std::move(modulei);
       Rc2[is] = Rc_s;
 
-      //!< cout<<"Total resistance of a module is "<<modulei->getRtot()<<endl;
 
     } //!< loop to make the modules for one rack
 
@@ -426,15 +425,12 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
     RinB[ip] = std::move(racki);
     Rc1[ip] = Rc_p;
 
-    //!< cout<<"Total resistance of a rack is "<<racki->getRtot()<<endl;
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
   auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
-
-  //!< cout<<"Total resistance of the battery is "<<bc->getRtot()<<endl;
 
   //!< make the battery
   auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
@@ -558,8 +554,6 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
       MinR[is] = std::move(modulei);
       Rc2[is] = Rc_s;
 
-      //!< cout<<"Total resistance of a module is "<<modulei->getRtot()<<endl;
-
     } //!< loop to make the modules for one rack
 
     //!< assemble the modules in series for a rack
@@ -569,15 +563,12 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
     RinB[ip] = std::move(racki);
     Rc1[ip] = Rc_p;
 
-    //!< cout<<"Total resistance of a rack is "<<racki->getRtot()<<endl;
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
   auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
-
-  //!< cout<<"Total resistance of the battery is "<<bc->getRtot()<<endl;
 
   //!< make the battery
   auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
@@ -699,8 +690,6 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
       MinR[is] = std::move(modulei);
       Rc2[is] = Rc_s;
 
-      //!< cout<<"Total resistance of a module is "<<modulei->getRtot()<<endl;
-
     } //!< loop to make the modules for one rack
 
     //!< assemble the modules in series for a rack
@@ -710,15 +699,12 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
     RinB[ip] = std::move(racki);
     Rc1[ip] = Rc_p;
 
-    //!< cout<<"Total resistance of a rack is "<<racki->getRtot()<<endl;
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
   auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
-
-  //!< cout<<"Total resistance of the battery is "<<bc->getRtot()<<endl;
 
   //!< make the battery
   auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
@@ -864,8 +850,6 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   //!< 		MinR[is] = std::move(modulei);
   //!< 		Rc2[is] = Rc_s;
 
-  //!< 		//!< cout<<"Total resistance of a module is "<<modulei->getRtot()<<endl;
-
   //!< 	} //!< loop to make the modules for one rack
 
   //!< 	//!< assemble the modules in series for a rack
@@ -875,15 +859,12 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   //!< 	RinB[ip] = std::move(racki);
   //!< 	Rc1[ip] = Rc_p;
 
-  //!< 	//!< cout<<"Total resistance of a rack is "<<racki->getRtot()<<endl;
   //!< } //!< loop to make the racks
 
   //!< //!< Assemble the racks in the battery compartment (bc)
   //!< auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   //!< bc->setSUs(RinB, checkCells, true);
   //!< bc->setRcontact(Rc1);
-
-  //!< cout<<"Total resistance of the battery is "<<bc->getRtot()<<endl;
 
   //!< make the battery
   auto bat = std::make_unique<Battery>(settings_str + "_ParTest"); //!< battery, gets HVAC coolsystem

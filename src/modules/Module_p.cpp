@@ -22,7 +22,6 @@
 
 namespace slide {
 
-
 double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
 {
   /*
