@@ -155,8 +155,8 @@ int main()
   // slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
   // slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
 
-  slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
-  // slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
+  // slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
+  slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
 
   //!<*********************************************** END ********************************************************
   //!< Now all the simulations have finished. Print this message, as well as how long it took to do the simulations

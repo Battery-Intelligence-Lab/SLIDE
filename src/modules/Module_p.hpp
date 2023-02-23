@@ -49,7 +49,5 @@ public:
   void timeStep_CC(double dt, int steps = 1) override;
 
   Module_p *copy() override;
-  TimingData_Module_p getTimings();
-  void setTimings(TimingData_Module_p td);
 };
 } // namespace slide

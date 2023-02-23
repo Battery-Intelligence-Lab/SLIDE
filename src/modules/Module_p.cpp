@@ -486,11 +486,13 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
       //!< voltage of cell i is outside the valid range, but within safety limits
       //!< indicate this happened but continue setting states
       if (isStatusWarning(status)) {
-        if (verb)
-          std::cout << "warning in Module_p::setCurrent, the voltage of cell " << i << " with id "
-                    << SUs[i]->getFullID() << " is outside the allowed range for Inew = " << Inew / getNSUs()
-                    << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
-      } else {
+        {
+          if (verb)
+            std::cout << "warning in Module_p::setCurrent, the voltage of cell " << i << " with id "
+                      << SUs[i]->getFullID() << " is outside the allowed range for Inew = " << Inew / getNSUs()
+                      << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
+        }
+      } else if (isStatusBad(status)) {
         if (verb)
           std::cout << "ERROR " << getStatusMessage(status) << " in Module_p::setCurrent when setting the current of cell "
                     << i << " with id " << SUs[i]->getFullID() << " for Inew = " << Inew / getNSUs()
