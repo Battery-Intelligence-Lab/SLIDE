@@ -152,7 +152,7 @@ inline void run_Cell_ECM_parallel_3_default_CCCV()
 
   std::unique_ptr<StorageUnit> cs[] = {
     std::unique_ptr<StorageUnit>(new Cell_ECM("1", capin, SOCin, 1e-3, Rp_, inv_tau)),
-    std::unique_ptr<StorageUnit>(new Cell_ECM("2", capin, SOCin, Rdc_, Rp_, inv_tau)),
+    std::unique_ptr<StorageUnit>(new Cell_ECM("2", capin, SOCin, 3e-3, Rp_, inv_tau)),
     std::unique_ptr<StorageUnit>(new Cell_ECM("3", capin, SOCin, Rdc_, Rp_, inv_tau))
   };
 

@@ -162,15 +162,10 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
         Ib[i] = Ia[i] - 0.01 * SUs[i]->Cap();
         SUs[i]->setCurrent(Ib[i]);
         Vb[i] = getVi(i, print);
-
-      } else if (Vmean < Va[i]) {
+      } else {
         Ib[i] = Ia[i] + 0.01 * SUs[i]->Cap();
         SUs[i]->setCurrent(Ib[i]);
         Vb[i] = getVi(i, print);
-
-      } else {
-        Ib[i] = Ia[i];
-        Vb[i] = Va[i];
       }
     }
 
