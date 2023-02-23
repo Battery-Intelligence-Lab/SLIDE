@@ -534,6 +534,117 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
   return succ;
 }
 
+Status Cycler::CV_new(double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th)
+{
+  // New CV function using setVoltage.
+  using slide::util::sign; //!< #TODO normally sign is very sensitive function
+  const bool boolStoreData = ndt_data > 0;
+
+  //!< *************************************************************** INITIALISE *************************************************************************
+  //!< store data point
+  if (boolStoreData)
+    storeData();
+
+  //!< check if we are already at the limit
+  double vprev{ su->V() }, Ii{ su->I() }, vi{}; //!< voltage and current in the previous and present time step
+  double dV = std::abs(vprev - Vset);
+  bool Vlimit = (dV < settings::MODULE_P_V_ABSTOL || dV / Vset < settings::MODULE_P_V_RELTOL); // #TODO seems unnecessary.
+
+  if ((std::abs(Ii) < Ilim) && Vlimit)
+    return Status::ReachedCurrentLimit;
+
+
+  //!< *******************************************************  apply voltage  ****************************************************************************
+
+  const auto nt = static_cast<size_t>(std::ceil(tlim / dt)); //!< number of time steps
+
+  double dti = dt;         //!< length of time step i
+  double ttot = 0;         //!< total time done
+  bool Itot = false;       //!< boolean indicating if Ilim has been reached
+  bool Vtolerance = false; //!< boolean indicating if the voltage tolerance was reached
+  double dI, a;            //!< change in current we will apply to keep the voltage constant
+  bool reach;
+
+  for (size_t i = 0; i < nt; i++) {
+    su->setVoltage(Vset);
+
+    //!< change length of the time step in the last iteration to get exactly tlim seconds
+    if (i + 1 == nt)
+      dti = tlim - dt * (nt - 1);
+
+    //!< take a time step
+    try {
+      su->timeStep_CC(dti); // #TODO should return status.
+    } catch (int e) {
+      if constexpr (settings::printBool::printCrit)
+        std::cout << "error in Cycler::CV of module " << su->getFullID() << " in time step "
+                  << i << " when advancing in time. Passing the error on, " << e << '\n';
+      return Status::timeStep_CC_failed;
+    }
+
+    //!< increase the throughput
+    const auto dAh = std::abs(su->I() * dti / 3600.0);
+    vi = su->V();
+    ttot += dti;
+    th.Ah() += dAh;
+    th.Wh() += dAh * vi;
+
+
+    //!< Store a data point if needed
+    if (boolStoreData && ((i + 1) % ndt_data == 0))
+      storeData();
+    const auto safetyStatus = free::check_safety(vi, *this);
+
+    if (safetyStatus != Status::SafeVoltage)
+      return safetyStatus;
+
+    //!< check the current limit
+    Ii = su->I();
+    dV = std::abs(vi - Vset);
+    Vlimit = (dV < settings::MODULE_P_V_ABSTOL || dV / Vset < settings::MODULE_P_V_RELTOL);
+    if (std::abs(Ii) < Ilim && Vlimit) {
+      Itot = true; //!< indicate the current limit was reached
+      Vtolerance = true;
+      break;
+    }
+
+    //!< fail-safe to avoid an eternal loop if the current is extremely small but the voltage still is not correct
+    //!< in this case, stop even though the voltage tolerance has not been achieved
+    if (std::abs(Ii) < Ilim / 10.0 || std::abs(Ii) < 1e-6) {
+      Itot = true;        //!< indicate the current limit was reached
+      Vtolerance = false; //!< but without reaching the voltage tolerance
+      break;
+    }
+  } //!< end time integration
+
+  //!< *********************************************************** TERMINATE ******************************************************************************
+  //!< check why we stopped the time integration
+  Status succ;
+  if (ttot >= tlim)
+    succ = Status::ReachedTimeLimit; //!< time limit
+  else if (Itot)                     //!< #TODO why a bool named Itot? It looks like double.
+  {
+    if (Vtolerance)
+      succ = Status::ReachedCurrentLimit; //!< current limit
+    else
+      succ = Status::ReachedSmallCurrent; //!< #TODO is this ever possible? current became way too small, but voltage limit still not reached
+  } else {
+    if constexpr (settings::printBool::printCrit)
+      std::cerr << "Error in Cycler::CV, stopped time integration for unclear reason after "
+                << ttot << "s and voltage " << vi << "V, we were running with time limit " << tlim
+                << " and current limit " << Ilim << "V and set voltage " << Vset << '\n';
+
+    throw 100;
+  }
+
+  //!< store data point
+  if (boolStoreData)
+    storeData();
+
+  return succ;
+}
+
+
 Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th)
 {
   /*
@@ -834,7 +945,7 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
                 << getStatusMessage(succ) << ". Trying to do a CV phase.\n";
 
   const auto t_remaining = tlim - th1.time();
-  succ = CV(Vset, Ilim, t_remaining, dt, ndt_data, th2); //!< do the CV phase
+  succ = CV_new(Vset, Ilim, t_remaining, dt, ndt_data, th2); //!< do the CV phase #TODO I changed this to CV_new.
   if constexpr (settings::printBool::printNonCrit)
     if (succ != Status::ReachedCurrentLimit)
       std::cout << "Cycler::CCCV could not complete the CV phase, terminated with "

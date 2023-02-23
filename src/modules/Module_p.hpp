@@ -40,7 +40,8 @@ public:
   double getVi(size_t i, bool print = true); //!< get the voltage of SU[i] while accounting for the contact resistance
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
-  Status redistributeCurrent(bool checkV = true, bool print = true);              //!< redistribute the total module current to the different cells
+  Status setVoltage(double Vnew, bool checkI = true, bool print = true) override;
+  Status redistributeCurrent(bool checkV = true, bool print = true); //!< redistribute the total module current to the different cells
   Status redistributeCurrent_new(bool checkV, bool print);
 
 

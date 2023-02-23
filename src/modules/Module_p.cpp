@@ -451,6 +451,25 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   return Status::Success;
 }
 
+Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
+{
+
+  // #TODO check if V is sensible here.
+
+  const double Iold = I();
+
+  for (auto &SU : SUs) {
+    const auto status = SU->setVoltage(Vnew, checkI, print);
+
+    if (!isStatusOK(status)) {
+      setCurrent(Iold, false, false);
+      return status;
+    }
+  }
+
+  return Status::Success; // #TODO status should not be success but worst status given by setVoltages.
+}
+
 Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 {
   /*
