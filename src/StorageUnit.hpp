@@ -58,8 +58,11 @@ public:
   virtual void getStates(getStates_t s) = 0;       //!< returns one long array with the states
   virtual viewStates_t viewStates() { return {}; } //!< Only for cells to see individual states.
   void setBlockDegAndTherm(bool block) { blockDegAndTherm = block; }
-  virtual void setParent(StorageUnit *p) { parent = p; }                                   //!< set the parent
-  virtual Status setCurrent(double Inew, bool checkV = true, bool print = true) = 0;       //
+  virtual void setParent(StorageUnit *p) { parent = p; }                             //!< set the parent
+  virtual Status setCurrent(double Inew, bool checkV = true, bool print = true) = 0; //
+  virtual Status setVoltage(double Vnew, bool checkI = true, bool print = true) { return Status::Success; }
+
+
   virtual Status setStates(setStates_t s, bool checkStates = true, bool print = true) = 0; //!< opposite of getStates, check the states are valid?
 
   virtual void backupStates() {}  //!< Back-up states.

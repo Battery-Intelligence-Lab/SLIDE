@@ -39,6 +39,7 @@
 
 
 ### Current priority: 
+- [ ] setVoltage function is being added for a better CV period. 
 - [x] "#if TIMING" is removed, profiler should be used if needed. 
 - [x] "setI_iterative" is removed. 
 - [ ] redistributeCurrent() -> PI Control does not work well causing high error in current. 

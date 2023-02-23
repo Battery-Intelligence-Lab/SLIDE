@@ -78,6 +78,8 @@ public:
 
   Status setSOC(double SOCnew, bool checkV = true, bool print = true) override;
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override;
+  Status setVoltage(double Vnew, bool checkI = true, bool print = true) override;
+
   inline void setT(double Tnew) override { st.T() = Tnew; }
 
   virtual bool validStates(bool print = true) override;
@@ -153,38 +155,61 @@ inline double Cell_ECM<N_RC>::getOCV(bool print)
   return OCV.interp(st.SOC(), (settings::printBool::printCrit && print));
 }
 
+/**
+ * sets the current
+ *
+ * checkV	true, the voltage is checked after setting the current
+ * 				if it is outside the safety limits of the cell, error 3 is thrown and the old current is restored
+ * 				if it is outside the valid limits of the cell, error 2 is thrown but the new current is kept
+ * 				if inside allowed Vrange, it returns the voltage
+ * 			false, the voltage is not checked (function returns 0, no errors are thrown)
+ *  		if no value of checkV is given, it is set to true
+ * print 	controls the printing of error messages
+ * 			if true, error messages are printed (if the global printing variable is high enough)
+ * 			if false, no messages are printed, but the errors are still thrown
+ * 			if no value, the default is true
+ *
+ * returns the voltage if checkV = true, else it returns 0
+ *
+ * THROWS
+ * 2 	checkV is true && the voltage is outside the allowed range but still in the safety range
+ * 			and current is in the correct direction. I.e. if charging and V > Vmax or discharging and V < Vmin
+ * 3 	checkV is true && the voltage is outside the safety limits, old current is restored
+ * 			and current is in the correct direction. I.e. if charging and V > VMAX or discharging and V < VMAX
+ * 		if currents are in the 'wrong' direction (e.g. charging but V < Vmin or V < VMIN) then don't throw errors
+ * 			since this current is helping to rectify the situation
+ */
 template <size_t N_RC>
 inline Status Cell_ECM<N_RC>::setCurrent(double Inew, bool checkV, bool print)
 {
-  /*
-   * sets the current
-   *
-   * checkV	true, the voltage is checked after setting the current
-   * 				if it is outside the safety limits of the cell, error 3 is thrown and the old current is restored
-   * 				if it is outside the valid limits of the cell, error 2 is thrown but the new current is kept
-   * 				if inside allowed Vrange, it returns the voltage
-   * 			false, the voltage is not checked (function returns 0, no errors are thrown)
-   *  		if no value of checkV is given, it is set to true
-   * print 	controls the printing of error messages
-   * 			if true, error messages are printed (if the global printing variable is high enough)
-   * 			if false, no messages are printed, but the errors are still thrown
-   * 			if no value, the default is true
-   *
-   * returns the voltage if checkV = true, else it returns 0
-   *
-   * THROWS
-   * 2 	checkV is true && the voltage is outside the allowed range but still in the safety range
-   * 			and current is in the correct direction. I.e. if charging and V > Vmax or discharging and V < Vmin
-   * 3 	checkV is true && the voltage is outside the safety limits, old current is restored
-   * 			and current is in the correct direction. I.e. if charging and V > VMAX or discharging and V < VMAX
-   * 		if currents are in the 'wrong' direction (e.g. charging but V < Vmin or V < VMIN) then don't throw errors
-   * 			since this current is helping to rectify the situation
-   */
-
   const double Iold = I();
   st.I() = Inew;
 
   const auto status = checkCurrent(checkV, print);
+
+  if (isStatusBad(status))
+    st.I() = Iold;
+
+  return status;
+}
+
+template <size_t N_RC>
+inline Status Cell_ECM<N_RC>::setVoltage(double Vnew, bool checkI, bool print)
+{
+  const double Iold = st.I();
+  // #TODO check if V is sensible here.
+
+  const double ocv = getOCV(print);
+  double v_now = ocv - Vnew;
+
+  for (size_t i{}; i < N_RC; i++)
+    v_now -= Rp[i] * st.Ir(i);
+
+  const auto Inew = v_now / Rdc;
+
+  st.I() = Inew;
+
+  const auto status = checkCurrent(checkI, print);
 
   if (isStatusBad(status))
     st.I() = Iold;
