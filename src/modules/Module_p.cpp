@@ -153,35 +153,21 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
       error += std::abs(Vmean - Va[i]);
 
 
-    if (error < 1e-6)
+    if (error < 1e-9)
       return Status::Success;
 
     double Itot_error{ Itot };
     for (size_t i = 1; i < nSU; i++) {
-      Ib[i] = Ia[i] - 0.5 * (Vmean - Va[i]) / SUs[i]->getRtot();
-      SUs[i]->setCurrent(Ib[i]);
-      Vb[i] = getVi(i, print);
+      Ia[i] = Ia[i] - 0.7 * (Vmean - Va[i]) / SUs[i]->getRtot();
+      SUs[i]->setCurrent(Ia[i]);
+      Va[i] = getVi(i, print);
 
-      Itot_error -= Ib[i];
-    }
-
-    Ib[0] = Itot_error;
-    SUs[0]->setCurrent(Ib[0]);
-    Vb[0] = getVi(0, print);
-
-    Itot_error = Itot;
-
-    for (size_t i = 0; i < nSU; i++) {
-      const double slope = (Ia[i] - Ib[i]) / (Va[i] - Vb[i]);
-      Ia[i] = Ib[i] - (Vb[i] - Vmean) * slope; //!< False-Position method.
       Itot_error -= Ia[i];
     }
 
     Ia[0] = Itot_error;
-    for (size_t i = 0; i < nSU; i++) {
-      SUs[i]->setCurrent(Ia[i]);
-      Va[i] = getVi(i, print);
-    }
+    SUs[0]->setCurrent(Ia[0]);
+    Va[0] = getVi(0, print);
   }
 
   return StatusNow;
