@@ -114,6 +114,8 @@ double Module_p::V(bool print)
     Vmodule += v; //!< #TODO there is definitely something fishy. getVi already does some calculations.
   }
 
+  // #TODO Vmodule is just first cell's voltage + I*R0. NO need to take mean!
+
   Vmodule /= SUs.size();
   Vmodule_valid = true;
 
@@ -467,71 +469,41 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     Iolds.push_back(SU->I());
 
   //!< allocate the current uniformly
-  try {
-    for (size_t i = 0; i < getNSUs(); i++) {
+  for (size_t i = 0; i < getNSUs(); i++) {
+    auto status = SUs[i]->setCurrent(Inew / getNSUs(), checkV, print);
 
-      auto status = SUs[i]->setCurrent(Inew / getNSUs(), checkV, print);
-
-      //!< voltage of cell i is outside the valid range, but within safety limits
-      //!< indicate this happened but continue setting states
-      if (isStatusWarning(status)) {
-        {
-          if (verb)
-            std::cout << "warning in Module_p::setCurrent, the voltage of cell " << i << " with id "
-                      << SUs[i]->getFullID() << " is outside the allowed range for Inew = " << Inew / getNSUs()
-                      << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
-        }
-      } else if (isStatusBad(status)) {
+    //!< voltage of cell i is outside the valid range, but within safety limits
+    //!< indicate this happened but continue setting states
+    if (isStatusWarning(status)) { // #TODO maybe we should not need to set current equally immediately?
+      {
         if (verb)
-          std::cout << "ERROR " << getStatusMessage(status) << " in Module_p::setCurrent when setting the current of cell "
-                    << i << " with id " << SUs[i]->getFullID() << " for Inew = " << Inew / getNSUs()
-                    << ". Try to recover using the iterative version of setCurrent.\n";
-        //!< throw error, the catch statement will use the iterative function
+          std::cout << "warning in Module_p::setCurrent, the voltage of cell " << i << " with id "
+                    << SUs[i]->getFullID() << " is outside the allowed range for Inew = " << Inew / getNSUs()
+                    << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
       }
-
-    } //!< loop
-
-    //!< Redistribute the current to equalise the voltages
-    try {
-      redistributeCurrent_new(checkV, print);
-      v = V();
-    } catch (int e) {
-      if (e == 2) {
-        if (verb)
-          std::cout << "warning in Module_p::setCurrent, after redistribute, the voltage of one of the cells is "
-                    << "outside the allowed but inside the safe range for Inew = " << Inew << ". Continue for now.\n";
-      } else {
-        if (verb)
-          std::cout << "Error in Mpodule_p::setCurrent when redistributing the current: " << e
-                    << ", Try to recover using the iterative version of setCurrent.\n";
-        throw e;
-      }
+    } else if (isStatusBad(status)) {
+      if (verb)
+        std::cout << "ERROR " << getStatusMessage(status) << " in Module_p::setCurrent when setting the current of cell "
+                  << i << " with id " << SUs[i]->getFullID() << " for Inew = " << Inew / getNSUs()
+                  << ". Try to recover using the iterative version of setCurrent.\n";
+      //!< throw error, the catch statement will use the iterative function
     }
-  } //!< try allocating uniform current
-  catch (int) {
-    //!< revert to the old current
-    for (size_t i = 0; i < getNSUs(); i++)
+
+  } //!< loop
+
+  //!< Redistribute the current to equalise the voltages
+  const auto status = redistributeCurrent_new(checkV, print);
+
+  if (!isStatusOK(status)) {
+    for (size_t i = 0; i < getNSUs(); i++) //!< revert to the old current
       SUs[i]->setCurrent(Iolds[i], false, true);
+    if (verb)
+      std::cout << "warning in Module_p::setCurrent, after redistribute, the voltage of one of the cells is "
+                << "outside the allowed but inside the safe range for Inew = " << Inew << ". Continue for now.\n"
+                << getStatusMessage(status) << '\n';
 
-    try {
-      std::cout << "THERE WAS SET ITERATIVE I, we should not be going here!!!!!!!" << std::endl;
-      throw "THERE WAS SET ITERATIVE I, we should not be going here!!!!!!!\n";
-      // #TODO remove this bit! setI_iterative
-      v = V();
-      if (verb)
-        std::cout << "Module_p::setCurrent, We managed to recover using the iterative version. Continue as normal.\n";
-    } catch (int e) {
-      if (verb)
-        std::cerr << "Module_p::setCurrent, Even the iterative version failed with error " << e
-                  << ". Giving up, restore the original current and throwing the error on.\n";
-
-      for (size_t i = 0; i < getNSUs(); i++)
-        SUs[i]->setCurrent(Iolds[i], false, true);
-
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
-      throw e;
-    }
-  } //!< catch statement of uniform allocation
+    return status;
+  }
 
   return Status::Success; //!< #TODO problem
 }
