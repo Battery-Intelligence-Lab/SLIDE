@@ -156,7 +156,6 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
     if (error < 1e-10)
       return Status::Success;
 
-    double Itot_error{ Itot };
     for (size_t i = 0; i < nSU; i++) {
       Ia[i] = Ia[i] - 0.2 * (Vmean - Va[i]) / 0.001; // SUs[i]->getRtot();
       SUs[i]->setCurrent(Ia[i]);
@@ -166,61 +165,6 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
 
   return StatusNow;
 }
-
-
-// Status Module_p::redistributeCurrent_new(bool checkV, bool print)
-// {
-//   // New redistributeCurrent without PI control:
-//   //!< get cell voltages
-//   std::array<double, settings::MODULE_NSUs_MAX> Va, Vb, Ia, Ib; //!< #TODO if we should make them vector.
-
-//   //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
-//   constexpr int maxIteration = 150;
-//   const auto nSU = getNSUs();
-
-//   auto StatusNow = Status::RedistributeCurrent_failed;
-
-//   if (nSU <= 1) return Status::Success;
-
-//   double Itot{ 0 };
-//   for (size_t i = 0; i < nSU; i++) {
-//     Va[i] = getVi(i, print);
-//     Ia[i] = SUs[i]->I();
-//     Itot += Ia[i]; // We also need to preserve sum of the currents!
-//   }
-
-//   for (int iter{ 0 }; iter < maxIteration; iter++) {
-//     double Vmean{ 0 }, error{ 0 };
-
-//     for (size_t i = 0; i < nSU; i++)
-//       Vmean += Va[i];
-
-//     Vmean /= nSU;
-
-//     for (size_t i = 0; i < nSU; i++)
-//       error += std::abs(Vmean - Va[i]);
-
-
-//     if (error < 1e-9)
-//       return Status::Success;
-
-//     double Itot_error{ Itot };
-//     for (size_t i = 1; i < nSU; i++) {
-//       Ia[i] = Ia[i] - 0.7 * (Vmean - Va[i]) / SUs[i]->getRtot();
-//       SUs[i]->setCurrent(Ia[i]);
-//       Va[i] = getVi(i, print);
-
-//       Itot_error -= Ia[i];
-//     }
-
-//     Ia[0] = Itot_error;
-//     SUs[0]->setCurrent(Ia[0]);
-//     Va[0] = getVi(0, print);
-//   }
-
-//   return StatusNow;
-// }
-
 
 Status Module_p::redistributeCurrent(bool checkV, bool print)
 {
@@ -550,7 +494,6 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     //!< Redistribute the current to equalise the voltages
     try {
       redistributeCurrent_new(checkV, print);
-      // redistributeCurrent(checkV, print); //!< this will check the voltage limits if needed
       v = V();
     } catch (int e) {
       if (e == 2) {

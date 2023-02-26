@@ -376,6 +376,7 @@ Status Procedure::rebalance(StorageUnit *su)
    *
    * Note, this is a very crude balancing algorithm.
    * Normally you would go to the mean of all cells in a module, and use hierarchical balancing between modules
+   *
    */
   constexpr double Cset = 1.0 / 2.0;    //!< use a C/2 current in the CC phase of the rebalance
   constexpr double Clim = 1.0 / 1000.0; //!< crate for CV limit current
@@ -395,13 +396,7 @@ Status Procedure::rebalance(StorageUnit *su)
       }
     }
 
-    //!< if it is a parallel module, redistributeCurrent to ensure we end up with a valid voltage
-    if (auto mp = dynamic_cast<Module_p *>(su)) {
-      const auto status = mp->redistributeCurrent(true, true); //!< check the voltages are valid
-      if (!isStatusSuccessful(status))
-        return status;
-    }
-  } else if (typeid(*su) == typeid(Cell_SPM)) {
+  } else if (typeid(*su) == typeid(Cell_SPM)) { // #TODO why only SPM?
     const double Iset = su->Cap() * Cset;
     const double Ilim = su->Cap() * Clim;
     ThroughputData th{};

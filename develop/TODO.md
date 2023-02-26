@@ -39,6 +39,7 @@
 
 
 ### Current priority: 
+- [x] redistributeCurrent inside rebalance is deleted since it should not be required since all have same voltage. It will be eliminated completely soon. 
 - [ ] setVoltage function is being added for a better CV period. 
 - [x] "#if TIMING" is removed, profiler should be used if needed. 
 - [x] "setI_iterative" is removed. 
