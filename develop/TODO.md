@@ -39,6 +39,9 @@
 
 
 ### Current priority: 
+- [x] dV > settings::MODULE_P_V_ABSTOL && dV > settings::MODULE_P_V_RELTOL * (*V_max_it) ->  && to ||
+- [ ] getVi is calculating the SU voltage seen at the terminal by subtracting voltage drops on resistances. However, since it is called multiple times it recalculates everyting multiple times. Therefore, not very efficient. 
+- [ ] Previously Module_p was calculating the mean voltage; since voltage of all cells were not reliable; however it is not needed 
 - [x] redistributeCurrent inside rebalance is deleted since it should not be required since all have same voltage. It will be eliminated completely soon. 
 - [ ] setVoltage function is being added for a better CV period. 
 - [x] "#if TIMING" is removed, profiler should be used if needed. 
