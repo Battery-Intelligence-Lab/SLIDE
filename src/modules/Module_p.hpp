@@ -18,7 +18,6 @@ namespace slide {
 class Module_p : public Module
 {
 protected:
-  double getVi(size_t i, bool print = true);               //!< get the voltage of SU[i] while accounting for the contact resistance
   void getVall(std::span<double> Vall, bool print = true); //!< get the voltage of all SUs while accounting for the contact resistance
 
 public:
