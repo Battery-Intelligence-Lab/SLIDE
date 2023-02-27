@@ -38,7 +38,7 @@ Cell_PbA::Cell_PbA(std::string IDi, double capin, double SOCin) : Cell_PbA()
   st.SOC() = SOCin;
 }
 
-double Cell_PbA::getOCV(bool print)
+double Cell_PbA::getOCV()
 {
   /*
    * print 	controls the printing of error messages, (default = true)
@@ -52,12 +52,12 @@ double Cell_PbA::getOCV(bool print)
    * 1 	if SOC is outside the allowed range
    * 			passed on from linear interpolation
    */
-  return OCV.interp(st.SOC(), (settings::printBool::printCrit && print));
+  return OCV.interp(st.SOC(), settings::printBool::printCrit);
 }
 
-double Cell_PbA::OCVp(bool print)
+double Cell_PbA::OCVp()
 {
-  return OCV.interp(st.SOC(), (settings::printBool::printCrit && print));
+  return OCV.interp(st.SOC(), settings::printBool::printCrit);
 }
 
 Status Cell_PbA::setCurrent(double Inew, bool checkV, bool print)

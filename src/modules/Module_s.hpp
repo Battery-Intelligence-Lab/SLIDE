@@ -38,7 +38,7 @@ public:
   double Cap() const override { return transform_min(SUs, free::get_Cap<SU_t>); } //!< module capacity is the capacity of the smallest cell
 
 
-  double getOCV(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
+  double getOCV() override; //!< module voltage (sum of cells), print is an optional argument
   double getRtot() override;
   double V() override; //!< module voltage (sum of cells), print is an optional argument
 

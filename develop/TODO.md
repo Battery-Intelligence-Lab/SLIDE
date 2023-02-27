@@ -39,7 +39,7 @@
 
 
 ### Current priority: 
-- [x] V(bool print), print argument is removed. 
+- [x] V(bool print),  getOCV(bool print) print argument is removed. 
 - [ ] therm.Qcontact is not calculated properly it is 6x overestimated! 
 - [x] dV > settings::MODULE_P_V_ABSTOL && dV > settings::MODULE_P_V_RELTOL * (*V_max_it) ->  && to ||
 - [ ] getVi is calculating the SU voltage seen at the terminal by subtracting voltage drops on resistances. However, since it is called multiple times it recalculates everyting multiple times. Therefore, not very efficient. 

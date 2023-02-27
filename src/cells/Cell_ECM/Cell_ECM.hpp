@@ -73,8 +73,8 @@ public:
 
   double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
   double getThotSpot() override { return T(); }
-  double getThermalSurface() override { return 0; }; //!< Not implemented?
-  double getOCV(bool print = true) override;         //
+  double getThermalSurface() override { return 0; };                                        //!< Not implemented?
+  double getOCV() override { return OCV.interp(st.SOC(), settings::printBool::printCrit); } // Linear interpolation #TODO add a OCV model.
 
   Status setSOC(double SOCnew, bool checkV = true, bool print = true) override;
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override;
@@ -137,23 +137,6 @@ inline Cell_ECM<N_RC>::Cell_ECM(double capin, double SOCin, double Rdc_,
   inv_tau = inv_tau_;
 }
 
-template <size_t N_RC>
-inline double Cell_ECM<N_RC>::getOCV(bool print)
-{
-  /*
-   * print 	controls the printing of error messages, (default = true)
-   * 			if the SOC is out of the range, an error is always thrown (1)
-   * 				if crit is true an error message is printed (if verbose is above the critical level)
-   * 				else no error messages are printed
-   * 			this is an optional argument. If no value is given, it is assumed to be true
-   * 				this can be overwritten by giving an argument of false
-   *
-   * THROWS
-   * 1 	if SOC is outside the allowed range
-   * 			passed on from linear interpolation
-   */
-  return OCV.interp(st.SOC(), settings::printBool::printCrit);
-}
 
 /**
  * sets the current
@@ -199,7 +182,7 @@ inline Status Cell_ECM<N_RC>::setVoltage(double Vnew, bool checkI, bool print)
   const double Iold = st.I();
   // #TODO check if V is sensible here.
 
-  const double ocv = getOCV(print);
+  const double ocv = getOCV();
   double v_now = ocv - Vnew;
 
   for (size_t i{}; i < N_RC; i++)
@@ -274,7 +257,7 @@ inline double Cell_ECM<N_RC>::V()
 
   const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
   try {
-    const double ocv = getOCV(verb);
+    const double ocv = getOCV();
     double v_now = ocv - Rdc * st.I();
 
     for (size_t i{}; i < N_RC; i++)

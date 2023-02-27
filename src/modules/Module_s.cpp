@@ -23,12 +23,12 @@
 
 namespace slide {
 
-double Module_s::getOCV(bool print)
+double Module_s::getOCV()
 { //!< sum of the open circuit voltage of all cells
   try {
     return transform_sum(SUs, free::get_OCV<SU_t>);
   } catch (int e) {
-    if (print && (settings::printBool::printCrit)) //!< print if the (global) verbose-setting is above the threshold
+    if constexpr (settings::printBool::printCrit) //!< print if the (global) verbose-setting is above the threshold
       std::cout << "Error in Module_s::getOCV when getting the OCV of a SU in module "
                 << ID << ", throwing it on.\n";
     throw e;

@@ -71,7 +71,7 @@ public:
   //!< virtual int getNstates() = 0;
   //!< virtual double SOC() = 0;
   //!<  voltage
-  virtual double getOCV(bool print = true) = 0;
+  virtual double getOCV() = 0;
   virtual double V() = 0;                                          //!< print is an optional argument
   virtual Status checkVoltage(double &v, bool print) noexcept = 0; //!< get the voltage and check if it is valid
   virtual double getVhigh() = 0;                                   //!< return the voltage of the cell with the highest voltage

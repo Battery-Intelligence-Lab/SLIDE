@@ -38,7 +38,7 @@ public:
   double Cap() const override { return transform_sum(SUs, free::get_Cap<SU_t>); } //!< module capacity (sum of cells)
 
   // #TODO -> getOCV print parameter is inactive here...
-  double getOCV(bool print = true) override { return transform_mean(SUs, free::get_OCV<SU_t>); }
+  double getOCV() override { return transform_mean(SUs, free::get_OCV<SU_t>); }
   double getRtot() override;
   double V() override { return SUs.empty() ? 0 : SUs[0]->V() - I() * Rcontact[0]; }
 

@@ -50,9 +50,6 @@ public:
   constexpr double Tmax() { return limits.Tmax; }
   constexpr double Tmin() { return limits.Tmin; }
 
-  //!< virtual double V(bool print = true) = 0;   //!< crit is an optional argument
-  //!< virtual double getOCV(bool print = true) = 0; //!< crit is an optional argument
-
   double getVhigh() final { return V(); } //!< return the voltage of the cell with the highest voltage
   double getVlow() final { return V(); }  //!< return the voltage of the cell with the lowest voltage
 

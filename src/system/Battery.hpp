@@ -68,7 +68,7 @@ public:
   void resetConvLosses() { convlosses = 0; }
 
   //!< voltage
-  double getOCV(bool print = true) override { return cells->getOCV(print) * nseries; }
+  double getOCV() override { return cells->getOCV() * nseries; }
   double V() override { return cells->V() * nseries; }
   Status checkVoltage(double &v, bool print) noexcept override;      //!< get the voltage and check if it is valid
   double getVhigh() override { return cells->getVhigh() * nseries; } //!< return the voltage of the cell with the highest voltage

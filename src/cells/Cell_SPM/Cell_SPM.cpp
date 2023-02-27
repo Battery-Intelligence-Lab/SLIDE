@@ -198,7 +198,7 @@ void Cell_SPM::getC(double cp[], double cn[]) noexcept
   cn[nch + 1] = (-1.0 / 2.0) * (cnt + jn * geo.Rn / Dnt);
 }
 
-double Cell_SPM::getOCV(bool print)
+double Cell_SPM::getOCV()
 {
   /*
    * print 	controls the printing of error messages, (default = true)
@@ -213,7 +213,7 @@ double Cell_SPM::getOCV(bool print)
    * 			passed on from linear interpolation
    */
 
-  const bool verb = settings::printBool::printCrit && print; //!< print if the (global) verbose-setting is above the threshold
+  const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Get the surface concentrations
   double cps, cns;
@@ -221,10 +221,10 @@ double Cell_SPM::getOCV(bool print)
   //!< Calculate the li-fraction (instead of the li-concentration)
   const double zp_surf = (cps / Cmaxpos);
   const double zn_surf = (cns / Cmaxneg);
-  const bool bound = true;                                               //!< in linear interpolation, throw an error if you are out of the allowed range
-  const double dOCV = OCV_curves.dOCV_tot.interp(zp_surf, print, bound); //!< entropic coefficient of the total cell voltage [V/K]
-  const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound); //!< anode potential [V]
-  const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, print, bound); //!< cathode potential [V]
+  const bool bound = true;                                              //!< in linear interpolation, throw an error if you are out of the allowed range
+  const double dOCV = OCV_curves.dOCV_tot.interp(zp_surf, verb, bound); //!< entropic coefficient of the total cell voltage [V/K]
+  const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, verb, bound); //!< anode potential [V]
+  const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, verb, bound); //!< cathode potential [V]
 
   const auto entropic_effect = (st.T() - T_ref) * dOCV;
 

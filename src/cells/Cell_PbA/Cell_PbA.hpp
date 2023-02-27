@@ -111,7 +111,7 @@ public:
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); } //!< returns the individual states.
   auto &getStateObj() { return st; }
 
-  double getOCV(bool print = true) override; //!< crit is an optional argument
+  double getOCV() override; //!< crit is an optional argument
   //!< virtual int getNstates() { return S.size() + 1; } //!< +1 for current
 
   double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
