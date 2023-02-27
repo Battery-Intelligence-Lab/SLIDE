@@ -187,7 +187,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   //!< get the old currents so we can revert if needed
   for (size_t i{}; i < SUs.size(); i++) {
-    Iolds[i] = SUs[i]->I();
+    Ia[i] = Iolds[i] = SUs[i]->I();
     Itot += Iolds[i];
   }
 
@@ -211,7 +211,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     for (size_t i = 0; i < nSU; i++)
       error += std::abs(Vmean - Va[i]);
 
-    if (error < 1e-10) {
+    if (error < 1e-9) {
       StatusNow = Status::Success;
       break;
     }
