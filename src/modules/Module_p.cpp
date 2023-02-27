@@ -96,45 +96,6 @@ void Module_p::getVall(std::span<double> Vall, bool print)
   }
 }
 
-
-double Module_p::getVi(size_t i, bool print)
-{
-  /*
-   * Return the voltage of SU[i] as seen from the terminal while accounting for the contact resistance
-   *
-   * Contact resistances:
-   * 		we assume the terminals of the parallel module are on either side (i.e. next to SUs[0] and SUs[N-1])
-   * 		the contact resistances are in the 'horizontal' paths, and the current of all subsequent cells goes through it
-   * 			i.e. the current through Rc[0] = i[0] + i[1] + ... + i[N-1}
-   * 		The series-resistance of every cell is already included in the cells themselves (as Rdc), and in the cell voltage v[i]
-   * 		The terminal voltage Vt must be the same for the paths to all cells, i.e.
-   * 			Vt = v[0] - R[0] (I[0] + I[1] + ... + I[N-1]) = v[0] - R[0]*I[0:N-1]
-   * 			   = V[1] - R[1]*I[1:N-1] - R[0]*I[0:N-1]
-   * 			   = v[i] - sum{ R[j]*I[j..N-1], j=0..i }
-   * 			   = v[i] - sum{ R[j]*sum(I[k], k=j..N-1), j=0..i }
-   */
-
-  if (i >= SUs.size()) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Module::getVi, you ask the voltage of cell " << i
-                << " but the size of the cell array is " << getNSUs() << '\n';
-    throw 10;
-  }
-
-  double v = SUs[i]->V(); //!< the voltage of cell i
-  if (v <= 0)
-    return v;
-
-  for (size_t j = 0; j <= i; j++) {
-    double Ij{ 0 };                        //!< the current through parallel resistance j
-    for (size_t k = j; k < getNSUs(); k++) //!< the sum of all currents 'behind' this resistance, i.e. from j to the last one
-      Ij += SUs[k]->I();
-    v -= Rcontact[j] * Ij;
-  }
-
-  return v;
-}
-
 Status Module_p::redistributeCurrent_new(bool checkV, bool print)
 {
   // New redistributeCurrent without PI control:
