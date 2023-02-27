@@ -31,7 +31,6 @@ public:
   //!< ie the highest Vmin of SUs is the Vmin of the module
   double Vmin() const override { return transform_max(SUs, free::get_Vmin<SU_t>); }
   double VMIN() const override { return transform_max(SUs, free::get_VMIN<SU_t>); }
-
   double Vmax() const override { return transform_min(SUs, free::get_Vmax<SU_t>); }
   double VMAX() const override { return transform_min(SUs, free::get_VMAX<SU_t>); }
 
@@ -41,7 +40,7 @@ public:
   // #TODO -> getOCV print parameter is inactive here...
   double getOCV(bool print = true) override { return transform_mean(SUs, free::get_OCV<SU_t>); }
   double getRtot() override;
-  double V(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
+  double V(bool print = true) override { return SUs.empty() ? 0 : SUs[0]->V() - I() * Rcontact[0]; }
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
   Status setVoltage(double Vnew, bool checkI = true, bool print = true) override;

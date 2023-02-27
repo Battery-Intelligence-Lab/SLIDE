@@ -299,7 +299,6 @@ double Module::thermalModel_cell()
       if constexpr (settings::printBool::printCrit)
         std::cout << "Error in module " << getFullID() << " when calculating the thermal balance of child SU "
                   << i << ", error " << e << ". throwing it on.\n";
-      std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
       throw e;
     }
   }

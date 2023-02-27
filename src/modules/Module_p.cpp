@@ -135,32 +135,6 @@ double Module_p::getVi(size_t i, bool print)
   return v;
 }
 
-double Module_p::V(bool print)
-{
-  //!< Return the mean voltage of all cells, since there can be a small difference between the voltages of cells
-
-  //!< if the stored value is up to date, return that one
-  if (Vmodule_valid)
-    return Vmodule;
-
-  //!< Else calculate the new voltage
-  Vmodule = 0;
-  for (size_t i = 0; i < SUs.size(); i++) {
-    const auto v = getVi(i, print);
-    if (v <= 0)
-      return v;
-
-    Vmodule += v; //!< #TODO there is definitely something fishy. getVi already does some calculations.
-  }
-
-  // #TODO Vmodule is just first cell's voltage + I*R0. NO need to take mean!
-
-  Vmodule /= SUs.size();
-  Vmodule_valid = true;
-
-  return Vmodule;
-}
-
 Status Module_p::redistributeCurrent_new(bool checkV, bool print)
 {
   // New redistributeCurrent without PI control:
@@ -362,8 +336,8 @@ void Module_p::timeStep_CC(double dt, int nstep)
     //!< Increase the heat from the contact resistances
     double Ii = 0; //!< current through resistor I
     for (size_t i = 0; i < SUs.size(); i++) {
-      for (size_t j = i; j < SUs.size(); j++)
-        Ii += SUs[j]->I(); //!< resistor i sees the currents through the cells 'behind' them
+      for (size_t j = i; j < SUs.size(); j++) // #TODO very important! Not calculating current for Rcontact properly!!!!!!!!!!
+        Ii += SUs[j]->I();                    //!< resistor i sees the currents through the cells 'behind' them
 
       therm.Qcontact += Rcontact[i] * sqr(Ii) * nstep * dt;
     }
