@@ -103,7 +103,7 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
   std::array<double, settings::MODULE_NSUs_MAX> Va, Vb, Ia, Ib; //!< #TODO if we should make them vector.
 
   //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
-  constexpr int maxIteration = 250;
+  constexpr int maxIteration = 50;
   const auto nSU = getNSUs();
 
   auto StatusNow = Status::RedistributeCurrent_failed;
@@ -132,7 +132,7 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
       return Status::Success;
 
     for (size_t i = 0; i < nSU; i++) {
-      Ia[i] = Ia[i] - 0.2 * (Vmean - Va[i]) / 0.001; // SUs[i]->getRtot();
+      Ia[i] = Ia[i] - 0.2 * (Vmean - Va[i]) / 0.001;
       SUs[i]->setCurrent(Ia[i]);
     }
     getVall(Va, print);
@@ -145,7 +145,6 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
 {
 
   // #TODO check if V is sensible here.
-
   const double Iold = I();
 
   for (auto &SU : SUs) {

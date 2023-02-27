@@ -40,6 +40,7 @@ public:
 
   virtual ~StorageUnit() = default;
   const std::string &getID() { return ID; }
+  void setID(std::string IDi) { ID = std::move(IDi); }
 
   //!< Return the full ID string, including the ID of the parent module
   virtual std::string getFullID() { return (parent != nullptr) ? parent->getFullID() + "_" + getID() : getID(); }

@@ -27,7 +27,6 @@
 
 
 ### Comparing against slide-pack:
-- [ ] 
 - [ ] CC, CV, CCCV functions seem to be working. However CV is not doing the intended thing for both SLIDE and slide-pack.
 - [ ] paperCode::Vequalisation seems to be working. 
 - [ ] paperCode::thermalModel does not work for slide-pack.
@@ -39,6 +38,7 @@
 
 
 ### Current priority: 
+- [ ] Why do we need getRtot? Only for algorithms? Maybe getThevenin would be better. 
 - [x] V(bool print),  getOCV(bool print) print argument is removed. 
 - [ ] therm.Qcontact is not calculated properly it is 6x overestimated! 
 - [x] dV > settings::MODULE_P_V_ABSTOL && dV > settings::MODULE_P_V_RELTOL * (*V_max_it) ->  && to ||

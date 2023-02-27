@@ -38,7 +38,6 @@ protected:
 public:
   Battery();
   Battery(std::string IDi);
-  void setID(std::string IDi);
   void setModule(std::unique_ptr<Module> &&module);
   void setSeriesandParallel(unsigned int ser, unsigned int par);
 
