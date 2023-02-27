@@ -40,7 +40,7 @@ public:
 
   double getOCV(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
   double getRtot() override;
-  double V(bool print = true) override; //!< module voltage (sum of cells), print is an optional argument
+  double V() override; //!< module voltage (sum of cells), print is an optional argument
 
   //!< bool validSUs(bool print = true);
   bool validSUs(SUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module

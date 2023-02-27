@@ -105,7 +105,7 @@ public:
 
   inline double SOC() override { return st.SOC(); }
   inline double I() override { return -st.I(); } //!< Inner representation have charging+ so we multiply with minus
-  double V(bool print = true) override;
+  double V() override;
 
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }         //!< returns the states of the cell collectively.
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); } //!< returns the individual states.

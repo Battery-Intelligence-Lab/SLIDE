@@ -219,7 +219,7 @@ Status Cycler::setCurrent(double I, double vlim)
   bool checkCellV = diagnostic; //!< check individual voltage limits of cells in the connected SU
                                 //!< since violated voltage limits does not cause a fatal error in the code, this is a noncritical error
 
-  const double Vini = su->V(false);
+  const double Vini = su->V();
   const double Iini = su->I();
 
   //!< Try setting the current
@@ -241,7 +241,7 @@ Status Cycler::setCurrent(double I, double vlim)
   }
 
   //!< check the safety limits of the cell
-  const double Vnew = su->V(settings::printBool::printCrit);
+  const double Vnew = su->V();
 
   if (Vnew <= 0) {
     if constexpr (settings::printBool::printCrit)

@@ -87,7 +87,7 @@ void Module_p::getVall(std::span<double> Vall, bool print)
   double I_cumulative{ 0 };
   for (size_t i{}; i < SUs.size(); i++) {
     const auto j = SUs.size() - 1 - i; // Inverse indexing.
-    Vall[j] = SUs[j]->V(print);
+    Vall[j] = SUs[j]->V();
 
     I_cumulative += SUs[j]->I();
 
@@ -121,7 +121,7 @@ double Module_p::getVi(size_t i, bool print)
     throw 10;
   }
 
-  double v = SUs[i]->V(print); //!< the voltage of cell i
+  double v = SUs[i]->V(); //!< the voltage of cell i
   if (v <= 0)
     return v;
 

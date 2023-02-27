@@ -100,7 +100,7 @@ Status Cell_PbA::setCurrent(double Inew, bool checkV, bool print)
   return status;
 }
 
-double Cell_PbA::V(bool print)
+double Cell_PbA::V()
 {
   /*
    * print 	controls the printing of error messages, (default = true)
@@ -114,7 +114,7 @@ double Cell_PbA::V(bool print)
    * 1 	if SOC is outside the allowed range
    * 			passed on from linear interpolation
    */
-  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
+  const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
   try {
     if (isCharging())
       return getOCV() - g_OCV * DOD() + (rho_c / Cap()) * st.I() * (1 + M_c * SOC() / (C_c - st.SOC()));

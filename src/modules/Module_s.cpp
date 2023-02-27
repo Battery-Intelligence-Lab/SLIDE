@@ -50,7 +50,7 @@ double Module_s::getRtot()
   return rtot;
 }
 
-double Module_s::V(bool print)
+double Module_s::V()
 {
   //!< sum of the voltage of all cells
   //!< bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
@@ -62,7 +62,7 @@ double Module_s::V(bool print)
   //!< else calculate the voltage
   Vmodule = 0;
   for (size_t i = 0; i < getNSUs(); i++) {
-    const auto v_i = SUs[i]->V(print);
+    const auto v_i = SUs[i]->V();
 
     if (v_i <= 0) //!< SU has an invalid voltage.
       return 0;   // #TODO check if this is same for getOCV?

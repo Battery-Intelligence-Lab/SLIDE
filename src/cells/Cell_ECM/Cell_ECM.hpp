@@ -68,7 +68,7 @@ public:
 
   auto &getStateObj() { return st; }
 
-  double V(bool print = true) override; //!< crit is an optional argument
+  double V() override; //!< crit is an optional argument
   Status setStates(setStates_t s, bool checkStates = true, bool print = true) override;
 
   double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
@@ -152,7 +152,7 @@ inline double Cell_ECM<N_RC>::getOCV(bool print)
    * 1 	if SOC is outside the allowed range
    * 			passed on from linear interpolation
    */
-  return OCV.interp(st.SOC(), (settings::printBool::printCrit && print));
+  return OCV.interp(st.SOC(), settings::printBool::printCrit);
 }
 
 /**
@@ -257,7 +257,7 @@ inline Status Cell_ECM<N_RC>::setSOC(double SOCnew, bool checkV, bool print) //!
 }
 
 template <size_t N_RC>
-inline double Cell_ECM<N_RC>::V(bool print)
+inline double Cell_ECM<N_RC>::V()
 {
   /*
    * print 	controls the printing of error messages, (default = true)
@@ -272,9 +272,9 @@ inline double Cell_ECM<N_RC>::V(bool print)
    * 			passed on from linear interpolation
    */
 
-  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
+  const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
   try {
-    const double ocv = getOCV(print);
+    const double ocv = getOCV(verb);
     double v_now = ocv - Rdc * st.I();
 
     for (size_t i{}; i < N_RC; i++)

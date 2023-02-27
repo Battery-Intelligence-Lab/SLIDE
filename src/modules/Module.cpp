@@ -129,7 +129,7 @@ Status Module::checkVoltage(double &v, bool print) noexcept
   //!< const bool printNonCrit = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< check the voltage of the module
-  v = V(print); // -> Hey we dont need to calculate this anymore.
+  v = V(); // -> Hey we dont need to calculate this anymore.
   //!< #TODO here was a not useful chuck of code for repeated checking.
   //!< We may have constant limits for module voltage.
 

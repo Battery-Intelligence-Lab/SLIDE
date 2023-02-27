@@ -231,7 +231,7 @@ double Cell_SPM::getOCV(bool print)
   return (OCV_p - OCV_n + entropic_effect);
 }
 
-double Cell_SPM::V(bool print)
+double Cell_SPM::V()
 {
   /*
    * Function to calculate the cell voltage
@@ -257,7 +257,7 @@ double Cell_SPM::V(bool print)
   if (Vcell_valid)
     return st.V();
 
-  const bool verb = settings::printBool::printCrit && print; //!< print if the (global) verbose-setting is above the threshold
+  const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Get the surface concentrations
   double cps, cns;

@@ -126,7 +126,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
   constexpr bool printNonCrit = (settings::printBool::printNonCrit) && Print; //!< print if the (global) verbose-setting is above the threshold
 
   try {
-    v = su.V(Print);
+    v = su.V();
   } catch (int) {
     std::cout << "We could not calculate voltage!!!\n";
     return Status::V_not_calculated;
