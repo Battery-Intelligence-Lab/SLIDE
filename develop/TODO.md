@@ -38,6 +38,7 @@
 
 
 ### Current priority: 
+- [x] Module_p::getRtot() check for contact resistances is removed for simplification. 
 - [ ] Why do we need getRtot? Only for algorithms? Maybe getThevenin would be better. 
 - [x] V(bool print),  getOCV(bool print) print argument is removed. 
 - [ ] therm.Qcontact is not calculated properly it is 6x overestimated! 

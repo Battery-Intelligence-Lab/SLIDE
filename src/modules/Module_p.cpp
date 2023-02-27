@@ -32,32 +32,17 @@ double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
    * parallel: 1/Rtot = sum( 1/R_i )
    */
 
-  //!< If there are no cells connected, return 0
-  if (SUs.empty()) return 0;
+  if (SUs.empty()) return 0; //!< If there are no cells connected, return 0
 
-  //!< check if there are contact resistances only until SUs size. //!< #TODO why are we checking this?
-  const bool noRc = std::all_of(Rcontact.begin(), Rcontact.begin() + SUs.size(), util::is_zero<double>);
-
-  if (noRc) { //!< no contact resistance
-    double rtot = 0;
-    for (auto &SU : SUs)
-      rtot += 1.0 / SU->getRtot();
-
-    return 1.0 / rtot;
-  }
-
-  //!< with contact resistance
-  //!< start from the cell furthest away
-  double rtot = Rcontact.back() + SUs.back()->getRtot();
+  double rtot = Rcontact.back() + SUs.back()->getRtot(); //!< start from the cell furthest away
 
   //!< then iteratively come closer, every time Rcontact[i] + (Rcell[i] \\ Rtot)
   //!< 				= Rc[i] + Rcell[i]*Rtot / (Rcel[i]*Rtot)
-  for (int i = SUs.size() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs.
+  for (int i = SUs.size() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs. Also check if Rcontact.empty() or in future it will be array.
     rtot = Rcontact[i] + (SUs[i]->getRtot() * rtot) / (SUs[i]->getRtot() + rtot);
 
   return rtot;
 }
-
 
 void Module_p::getVall(std::span<double> Vall, bool print)
 {
@@ -143,20 +128,35 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
 
 Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
 {
+  constexpr int maxIteration = 50;
+  const auto nSU = getNSUs();
 
-  // #TODO check if V is sensible here.
-  const double Iold = I();
+  auto StatusNow = Status::RedistributeCurrent_failed;
 
-  for (auto &SU : SUs) {
-    const auto status = SU->setVoltage(Vnew, checkI, print);
+  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Va;
 
-    if (!isStatusOK(status)) {
-      setCurrent(Iold, false, false);
-      return status;
+  //!< get the old currents so we can revert if needed
+  for (size_t i{}; i < SUs.size(); i++)
+    Ia[i] = Iolds[i] = SUs[i]->I();
+
+  for (int iter{ 0 }; iter < maxIteration; iter++) {
+    getVall(Va, print);
+
+    double error{ 0 };
+    for (size_t i = 0; i < nSU; i++)
+      error += std::abs(Vnew - Va[i]);
+
+    if (error < 1e-10) {
+      StatusNow = Status::Success;
+      break;
+    }
+
+    for (size_t i = 0; i < nSU; i++) {
+      Ia[i] += -0.2 * (Vnew - Va[i]) / 0.001;
+      SUs[i]->setCurrent(Ia[i]);
     }
   }
-
-  return Status::Success; // #TODO status should not be success but worst status given by setVoltages.
+  return StatusNow; // #TODO add some voltage/current etc. check
 }
 
 Status Module_p::setCurrent(double Inew, bool checkV, bool print)
@@ -175,53 +175,73 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
    */
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-  double v;
+
+  constexpr int maxIteration = 50;
+  const auto nSU = getNSUs();
+
+  auto StatusNow = Status::Success;
+
+  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Va;
+
+  double Itot{ 0 };
 
   //!< get the old currents so we can revert if needed
-  std::vector<double> Iolds; //!< #TODO we need to remove vector somehow?
-  Iolds.clear();
-
-  for (auto &SU : SUs)
-    Iolds.push_back(SU->I());
-
-  //!< allocate the current uniformly
-  for (size_t i = 0; i < getNSUs(); i++) {
-    auto status = SUs[i]->setCurrent(Inew / getNSUs(), checkV, print);
-
-    //!< voltage of cell i is outside the valid range, but within safety limits
-    //!< indicate this happened but continue setting states
-    if (isStatusWarning(status)) { // #TODO maybe we should not need to set current equally immediately?
-      {
-        if (verb)
-          std::cout << "warning in Module_p::setCurrent, the voltage of cell " << i << " with id "
-                    << SUs[i]->getFullID() << " is outside the allowed range for Inew = " << Inew / getNSUs()
-                    << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
-      }
-    } else if (isStatusBad(status)) {
-      if (verb)
-        std::cout << "ERROR " << getStatusMessage(status) << " in Module_p::setCurrent when setting the current of cell "
-                  << i << " with id " << SUs[i]->getFullID() << " for Inew = " << Inew / getNSUs()
-                  << ". Try to recover using the iterative version of setCurrent.\n";
-      //!< throw error, the catch statement will use the iterative function
-    }
-
-  } //!< loop
-
-  //!< Redistribute the current to equalise the voltages
-  const auto status = redistributeCurrent_new(checkV, print);
-
-  if (!isStatusOK(status)) {
-    for (size_t i = 0; i < getNSUs(); i++) //!< revert to the old current
-      SUs[i]->setCurrent(Iolds[i], false, true);
-    if (verb)
-      std::cout << "warning in Module_p::setCurrent, after redistribute, the voltage of one of the cells is "
-                << "outside the allowed but inside the safe range for Inew = " << Inew << ". Continue for now.\n"
-                << getStatusMessage(status) << '\n';
-
-    return status;
+  for (size_t i{}; i < SUs.size(); i++) {
+    Iolds[i] = SUs[i]->I();
+    Itot += Iolds[i];
   }
 
-  return Status::Success; //!< #TODO problem
+  const auto dI = (Inew - Itot) / nSU; // #TODO must change if charge/discharge.
+
+  for (size_t i{}; i < SUs.size(); i++) {
+    Ia[i] += dI;
+    StatusNow = SUs[i]->setCurrent(Ia[i]); // #TODO worse status should be here.
+  }
+
+  getVall(Va, print);
+
+  for (int iter{ 0 }; iter < maxIteration; iter++) {
+    double Vmean{ 0 }, error{ 0 };
+
+    for (size_t i = 0; i < nSU; i++)
+      Vmean += Va[i];
+
+    Vmean /= nSU;
+
+    for (size_t i = 0; i < nSU; i++)
+      error += std::abs(Vmean - Va[i]);
+
+    if (error < 1e-10) {
+      StatusNow = Status::Success;
+      break;
+    }
+
+    for (size_t i = 0; i < nSU; i++) {
+      Ia[i] = Ia[i] - 0.2 * (Vmean - Va[i]) / 0.001;
+      SUs[i]->setCurrent(Ia[i]);
+    }
+    getVall(Va, print);
+  }
+
+  //!< voltage of cell i is outside the valid range, but within safety limits
+  //!< indicate this happened but continue setting states
+  if (isStatusWarning(StatusNow)) { // #TODO maybe we should not need to set current equally immediately?
+    if (verb)
+      std::cout << "warning in Module_p::setCurrent, the voltage of cell with id "
+                << SUs[0]->getFullID() << " is outside the allowed range for Inew = " << Inew / getNSUs()
+                << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
+
+  } else if (isStatusBad(StatusNow)) {
+    if (verb)
+      std::cout << "ERROR " << getStatusMessage(StatusNow) << " in Module_p::setCurrent when setting the current of cell "
+                << " with id " << SUs[0]->getFullID() << " for Inew = " << Inew / nSU
+                << ". Try to recover using the iterative version of setCurrent.\n";
+    //!< throw error, the catch statement will use the iterative function
+    // #TODO give exact id, temporarily set to SUs[0]
+  }
+
+  // #TODO set old currents back here!
+  return StatusNow; //!< #TODO problem
 }
 
 bool Module_p::validSUs(SUs_span_t c, bool print)
