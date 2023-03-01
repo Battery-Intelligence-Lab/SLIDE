@@ -1,71 +1,58 @@
 % This file is for simulating ECM cases
 clear variables; close all; clc;
 
-Tminutes = 5;
+% Default settings:
+testNow = defaultSettings();
+
+%% Case: Parallel 3 ECM Cell without contact resistances: 
+testNow.Rc = 0*[0.5, 1, 0.7]*1e-3; % % [Ohm] contact resistance. 
 
 tic; 
-CCCV = sim('Cell_ECM_parallel_3_default_CCCV.slx');
+CCCV = sim('Cell_ECM_parallel_3_with_Rcontact_CCCV.slx');
 toc
 
-CCCV.I1 = squeeze(CCCV.I1);
-CCCV.I2 = squeeze(CCCV.I2);
-CCCV.I3 = squeeze(CCCV.I3);
+CCCV = squeeze_variables(CCCV);
 
-CCCV.I = squeeze(CCCV.I);
-CCCV.SOC = squeeze(CCCV.SOC);
-CCCV.V = squeeze(CCCV.V);
-
-%%
+% Loading:
 CCCV.SLIDE_1 = readmatrix('../../results/Cell_ECM_parallel_3_default_CCCV_Par3_1_cellData.csv','NumHeaderLines',3);
 CCCV.SLIDE_2 = readmatrix('../../results/Cell_ECM_parallel_3_default_CCCV_Par3_2_cellData.csv','NumHeaderLines',3);
 CCCV.SLIDE_3 = readmatrix('../../results/Cell_ECM_parallel_3_default_CCCV_Par3_3_cellData.csv','NumHeaderLines',3);
 
+% Plotting:
+plot_variables(CCCV);
 
+%% Case: Parallel 3 ECM Cell with contact resistances: 
+testNow.Rc = [0.5, 1, 0.7]*1e-3; %#ok<NASGU> % [Ohm] contact resistance. 
+testNow.Procedure = 1; % 0-> Pulse, 1-> CCCV
+
+tic; 
+CCCV = sim('Cell_ECM_parallel_3_with_Rcontact_CCCV.slx');
+toc
+
+CCCV = squeeze_variables(CCCV);
+
+% Loading:
+CCCV.SLIDE_1 = readmatrix('../../results/Cell_ECM_parallel_3_withRcontact_CCCV_Par3_1_cellData.csv','NumHeaderLines',3);
+CCCV.SLIDE_2 = readmatrix('../../results/Cell_ECM_parallel_3_withRcontact_CCCV_Par3_2_cellData.csv','NumHeaderLines',3);
+CCCV.SLIDE_3 = readmatrix('../../results/Cell_ECM_parallel_3_withRcontact_CCCV_Par3_3_cellData.csv','NumHeaderLines',3);
 
 % Plotting:
+plot_variables(CCCV);
 
-figure;
-subplot(5,1,1);
-plot(CCCV.tout, CCCV.V,'LineWidth',1.5); hold on;
-plot(CCCV.SLIDE_1(:,5), CCCV.SLIDE_1(:,2),'--','LineWidth',1.5);
-legend('MATLAB', 'SLIDE');
-ylabel('Terminal voltage [V]')
-grid on;
+%%
+testNow = defaultSettings();
+testNow.Rc = 0*testNow.Rc;
+testNow.R0 = [1,2,2]*1e-3; 
+testNow.Procedure = 0;
+testNow.Tend = 10*60*4;
+pulse = sim('Cell_ECM_parallel_3_with_Rcontact_CCCV.slx');
+pulse = squeeze_variables(pulse);
 
-subplot(5,1,2);
-plot(CCCV.tout, CCCV.SOC,'LineWidth',1.5); hold on;
-plot(CCCV.SLIDE_1(:,5), CCCV.SLIDE_1(:,3),'--','LineWidth',1.5);
-ylabel('SOC [%]');
-legend('MATLAB', 'SLIDE');
-grid on;
+% Loading:
+pulse.SLIDE_1 = readmatrix('../../results/Cell_ECM_parallel_3_default_pulse_Par3_1_cellData.csv','NumHeaderLines',3);
+pulse.SLIDE_2 = readmatrix('../../results/Cell_ECM_parallel_3_default_pulse_Par3_2_cellData.csv','NumHeaderLines',3);
+pulse.SLIDE_3 = readmatrix('../../results/Cell_ECM_parallel_3_default_pulse_Par3_3_cellData.csv','NumHeaderLines',3);
 
-subplot(5,1,3);
-plot(CCCV.tout, CCCV.I1,'LineWidth',1.5); hold on;
-plot(CCCV.SLIDE_1(:,5), CCCV.SLIDE_1(:,1),'--','LineWidth',1.5);
-legend('MATLAB', 'SLIDE');
-ylabel('Current [A]')
-grid on;
-title('Cell-1')
-
-subplot(5,1,4);
-plot(CCCV.tout, CCCV.I2,'LineWidth',1.5); hold on;
-plot(CCCV.SLIDE_2(:,5), CCCV.SLIDE_2(:,1),'--','LineWidth',1.5);
-legend('MATLAB', 'SLIDE');
-ylabel('Current [A]')
-grid on;
-title('Cell-2')
-
-subplot(5,1,5);
-plot(CCCV.tout, CCCV.I3,'LineWidth',1.5); hold on;
-plot(CCCV.SLIDE_3(:,5), CCCV.SLIDE_3(:,1),'--','LineWidth',1.5);
-legend('MATLAB', 'SLIDE');
-ylabel('Current [A]')
-grid on;
-title('Cell-3')
-
-sgtitle('ECM parallel 3 cells CCCV')
-
-
-
-
+% Plotting:
+plot_variables(pulse);
 

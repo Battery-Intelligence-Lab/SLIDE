@@ -206,8 +206,8 @@ inline void run_Cell_ECM_parallel_3_withRcontact_CCCV()
   Clock clk;
   constexpr size_t Nrepeat = 3;
   for (size_t i = 0; i < Nrepeat; i++) {
-    cyc.CCCV(16, 2.7, 50e-3, 0.1, 5, th);
-    cyc.rest(10 * 60, 0.1, 10, th);
+    cyc.CCCV(16, 2.7, 50e-3, 0.1, 1, th);
+    cyc.rest(10 * 60, 0.1, 1, th);
     cyc.CCCV(16, 4.2, 50e-3, 0.1, 5, th);
     cyc.rest(10 * 60, 0.1, 10, th);
   }

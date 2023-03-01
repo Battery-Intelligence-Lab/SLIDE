@@ -146,18 +146,18 @@ int main()
   // slide::benchmarks::run_LP_case_LargePack();
 
   // MATLAB ECM benchmarks:
-  // slide::benchmarks::run_Cell_Bucket_single_default_pulse();
-  // slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
+  slide::benchmarks::run_Cell_Bucket_single_default_pulse();
+  slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_single_default_pulse();
-  // slide::benchmarks::run_Cell_ECM_single_default_CCCV();
+  slide::benchmarks::run_Cell_ECM_single_default_pulse();
+  slide::benchmarks::run_Cell_ECM_single_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
-  // slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
+  slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
+  slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
+  slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
 
-  // slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
+  slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
 
   slide::benchmarks::run_Cell_ECM_parallel_3_withRcontact_CCCV();
 
