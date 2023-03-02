@@ -1,4 +1,7 @@
 % This file is for simulating ECM cases
+%
+% Author(s): Volkan Kumtepeli
+%      Date: 2023.03.01
 clear variables; close all; clc;
 
 % Default settings:
@@ -52,6 +55,7 @@ pulse = run_test(testNow);
 pulse.SLIDE_1 = readmatrix('../../results/Cell_ECM_parallel_3_default_pulse_Par3_1_cellData.csv','NumHeaderLines',3);
 pulse.SLIDE_2 = readmatrix('../../results/Cell_ECM_parallel_3_default_pulse_Par3_2_cellData.csv','NumHeaderLines',3);
 pulse.SLIDE_3 = readmatrix('../../results/Cell_ECM_parallel_3_default_pulse_Par3_3_cellData.csv','NumHeaderLines',3);
+
 
 % Plotting:
 plot_variables(pulse, testNow);
