@@ -10,7 +10,7 @@ end
 
 results_matrix = [simOut.tout, simOut.I, simOut.V, simOut.I1, simOut.I2, simOut.I3, simOut.v1, simOut.v2, simOut.v3];
 
-path = fullfile(folder, "deneme.csv");
+path = fullfile(folder, "test.csv");
 
 if(strcmpi(test.type,'module_p'))
     writematrix(results_matrix(1:40:end,:), path);
