@@ -12,6 +12,7 @@
 
 #include "settings/settings.hpp"
 #include "types/Status.hpp"
+#include "utility/free_functions.hpp"
 
 #include <string>
 #include <cstdlib>
@@ -61,7 +62,10 @@ public:
   void setBlockDegAndTherm(bool block) { blockDegAndTherm = block; }
   virtual void setParent(StorageUnit *p) { parent = p; }                             //!< set the parent
   virtual Status setCurrent(double Inew, bool checkV = true, bool print = true) = 0; //
-  virtual Status setVoltage(double Vnew, bool checkI = true, bool print = true) { return Status::Success; }
+  virtual Status setVoltage(double Vnew, bool checkI = true, bool print = true)
+  {
+    return free::setVoltage_iterative(this, Vnew);
+  }
 
 
   virtual Status setStates(setStates_t s, bool checkStates = true, bool print = true) = 0; //!< opposite of getStates, check the states are valid?

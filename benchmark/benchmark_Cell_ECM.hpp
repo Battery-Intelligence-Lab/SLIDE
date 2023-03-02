@@ -217,6 +217,48 @@ inline void run_Cell_ECM_parallel_3_withRcontact_CCCV()
 }
 
 
+inline void run_Cell_ECM_series_3_withRcontact_CCCV()
+{
+  // Benchmark with default parameters:
+  std::string ID = "Cell_ECM_series_3_withRcontact_CCCV"; // + std::to_string(Crate) + '_'
+  double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
+  constexpr double Cp0 = 38e3; // first parallel capacitance
+  constexpr double Rp0 = 15.8e-3;
+  std::array<double, 1> Rp_{ Rp0 }, inv_tau{ 1.0 / (Rp0 * Cp0) };
+
+  std::vector<double> Rcontact{ 0.5e-3, 1e-3, 0.7e-3 };
+
+
+  std::unique_ptr<StorageUnit> cs[] = {
+    std::unique_ptr<StorageUnit>(new Cell_ECM("1", capin, SOCin, 1e-3, Rp_, inv_tau)),
+    std::unique_ptr<StorageUnit>(new Cell_ECM("2", capin, SOCin, 3e-3, Rp_, inv_tau)),
+    std::unique_ptr<StorageUnit>(new Cell_ECM("3", capin, SOCin, Rdc_, Rp_, inv_tau))
+  };
+
+  auto module = Module_s("Ser3", settings::T_ENV, true, false, std::size(cs), 1, 1);
+  module.setSUs(cs, false);
+  module.setRcontact(Rcontact);
+
+  module.setBlockDegAndTherm(true);
+
+  ThroughputData th{};
+  auto cyc = Cycler(&module, ID);
+
+
+  Clock clk;
+  constexpr size_t Nrepeat = 3;
+  for (size_t i = 0; i < Nrepeat; i++) {
+    cyc.CCCV(16, module.Vmin(), 50e-3, 0.1, 1, th);
+    cyc.rest(10 * 60, 0.1, 1, th);
+    cyc.CCCV(16, module.Vmax(), 50e-3, 0.1, 5, th);
+    cyc.rest(10 * 60, 0.1, 10, th);
+  }
+
+  std::cout << "Finished " << ID << " in " << clk << ".\n";
+  cyc.writeData();
+}
+
+
 inline void run_Cell_ECM_SmallPack()
 {
   std::string ID = "Cell_ECM_SmallPack"; // + std::to_string(Crate) + '_'
