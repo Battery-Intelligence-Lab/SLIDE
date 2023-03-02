@@ -491,10 +491,10 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
   double Rc_p = 0;       //!< contact R for parallel connection of racks
   double Rc_s = 0;       //!< contact R for series connection of modules
   if (contactR) {
-    Rc_p_cells = 0.0075 * 1e-3 * RM; //!< use a 0.1 mOhm resistance. Value from paper Schimpe
-    Rc_s_cells = 0.0075 * 1e-3 * RM; //!< use a 0.1 mOhm resistance. Value from paper Schimpe
-    Rc_p = 0.25 * 1e-3 * RM;         //!< this must be a much smaller resistance
-    Rc_s = 0.25 * 1e-3 * RM;         //!< this must be a much smaller resistance
+    Rc_p_cells = 0.0075e-3 * RM; //!< use a 0.1 mOhm resistance. Value from paper Schimpe
+    Rc_s_cells = 0.0075e-3 * RM; //!< use a 0.1 mOhm resistance. Value from paper Schimpe
+    Rc_p = 0.25e-3 * RM;         //!< this must be a much smaller resistance
+    Rc_s = 0.25e-3 * RM;         //!< this must be a much smaller resistance
   }
 
   //!< Degradation settings
