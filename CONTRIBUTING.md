@@ -5,7 +5,9 @@ SLIDE. If you have a bug-fix/feature/refactor/other that you wish to contribute,
 please open an issue and discuss with the active SLIDE developers, listed below.
 
 You may find list of all contributors in [develop/contributors.md](develop/contributors.md).
+
 Code convention is given in [develop/conventions.md](develop/conventions.md).
+
 An itemised TODO list is given in [develop/TODO.md](develop/TODO.md).
 
 ## Pull Requests Process

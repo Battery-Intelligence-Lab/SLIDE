@@ -14,7 +14,7 @@ To cite this code, check the lastest release DOI at https://zenodo.org/badge/lat
 
 <p align="center">
   <img width="70%" 
-  src="slide_logo.png">
+  src="docs/slide_logo.png">
 </p>
 
 
