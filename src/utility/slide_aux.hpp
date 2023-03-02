@@ -74,7 +74,7 @@ struct GammaDensityFunctor
 {
   double a, inv_b, scale;
   GammaDensityFunctor() = delete; //!< Even it is delete, it constructs with default values.
-  GammaDensityFunctor(double a, double b) : a(a), inv_b(1 / b), scale(1 / std::tgamma(a) / std::pow(b, a)) {}
+  GammaDensityFunctor(double a_, double b_) : a(a_), inv_b(1 / b_), scale(1 / std::tgamma(a_) / std::pow(b_, a_)) {}
   double operator()(double x) { return scale * std::exp(-inv_b * x) * std::pow(x, a - 1); }
 };
 

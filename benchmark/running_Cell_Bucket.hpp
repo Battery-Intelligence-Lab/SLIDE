@@ -14,6 +14,52 @@
 #include <string>
 
 namespace slide::benchmarks {
+
+inline void run_Cell_Bucket_single_default_pulse()
+{
+  // Benchmark with default parameters:
+  std::string ID = "Cell_Bucket_single_default_pulse"; // + std::to_string(Crate) + '_'
+  auto c = Cell_Bucket();
+  c.setBlockDegAndTherm(true);
+
+  ThroughputData th{};
+  auto cyc = Cycler(&c, ID);
+
+  Clock clk;
+  constexpr size_t Nrepeat = 3;
+  for (size_t i = 0; i < Nrepeat; i++) {
+    cyc.CC(16, 2.7, 5 * 60, 0.1, 5, th);
+    cyc.CC(-16, 4.2, 5 * 60, 0.1, 5, th);
+  }
+
+  std::cout << "Finished " << ID << " in " << clk << ".\n";
+  cyc.writeData();
+}
+
+inline void run_Cell_Bucket_single_default_CCCV()
+{
+  // Benchmark with default parameters:
+  std::string ID = "Cell_Bucket_single_default_CCCV"; // + std::to_string(Crate) + '_'
+  auto c = Cell_Bucket();
+  c.setBlockDegAndTherm(true);
+
+  ThroughputData th{};
+  auto cyc = Cycler(&c, ID);
+
+  Clock clk;
+  constexpr size_t Nrepeat = 3;
+  for (size_t i = 0; i < Nrepeat; i++) {
+    cyc.CCCV(16, 2.7, 50e-3, 0.1, 5, th);
+    cyc.rest(10 * 60, 0.1, 10, th);
+    cyc.CCCV(16, 4.2, 50e-3, 0.1, 5, th);
+    cyc.rest(10 * 60, 0.1, 10, th);
+  }
+
+  std::cout << "Finished " << ID << " in " << clk << ".\n";
+  cyc.writeData();
+}
+
+
 inline void run_Cell_Bucket()
 {
   std::string ID = "temp";
@@ -35,7 +81,7 @@ inline void run_Cell_Bucket()
   std::cout << "V: " << c.V() << "\n";
 
   std::cout << "Finished run_Cell_Bucket in " << clk << ".\n";
-};
+}
 
 inline void run_Cell_ECM()
 {
@@ -57,7 +103,7 @@ inline void run_Cell_ECM()
   std::cout << "V: " << c.V() << "\n";
 
   std::cout << "Finished run_Cell_ECM in " << clk << ".\n";
-};
+}
 
 inline void run_Cell_SPM()
 {
@@ -83,10 +129,6 @@ inline void run_Cell_SPM()
   // std::cout << "V: " << c.V() << '\n';
   // std::cout << "Wh: " << Wh << '\n';
   // std::cout << "Finished run_Cell_SPM in " << clk << ".\n";
-
-
-  // std::cout << "Printing timings:\n";
-  // c.getTimings().print();
-};
+}
 
 } // namespace slide::benchmarks

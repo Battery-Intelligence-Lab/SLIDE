@@ -249,21 +249,12 @@ void loadCSV_2col(const Tpath &name, std::span<double> &x, std::span<double> &y,
   }
 
   if (n == 0) {
-    x = std::span<double>{ XYdataMap[name_str].x_vec };
-    y = std::span<double>{ XYdataMap[name_str].y_vec };
+    x = std::span<double>(XYdataMap[name_str].x_vec);
+    y = std::span<double>(XYdataMap[name_str].y_vec);
   } else {
-    x = std::span<double>{ XYdataMap[name_str].x_vec.begin(), XYdataMap[name_str].x_vec.begin() + n };
-    y = std::span<double>{ XYdataMap[name_str].y_vec.begin(), XYdataMap[name_str].y_vec.begin() + n };
+    x = std::span<double>(&XYdataMap[name_str].x_vec[0], &XYdataMap[name_str].x_vec[0] + n); // #TODO temporary solution using pointers instead of iterators.
+    y = std::span<double>(&XYdataMap[name_str].y_vec[0], &XYdataMap[name_str].y_vec[0] + n);
   }
 }
-
-//!< template <typename Tpath>
-//!< auto loadCSV_2col(const Tpath &name, int n = 0)
-//!< {
-//!< 	//!< slide::XYdata_vv returning overload.
-//!< 	slide::XYdata_vv data;
-//!< 	loadCSV_2col(name, data.x, data.y, n);
-//!< 	return data;
-//!< }
 
 } // namespace slide

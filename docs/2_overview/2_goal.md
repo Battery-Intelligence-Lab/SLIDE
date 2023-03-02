@@ -18,8 +18,8 @@ The user can program his/her own degradation procedures similarly to the way a b
 The code has functions implemented to do a CC or CV (dis)charge (or a combination of both) where the parameters such as the current, or the set voltage can be determined by the user. By calling these functions with different parameters, the user can specify his/her own degradation experiments. 
 Similarly, functions have been implemented to measure the (remaining) cell capacity, the OCV curves, do a pulse discharge test, etc., which the user can call do to regular check-ups during the degradation simulation.
 
-The C++ code writes its results in ```*.csv``` files. The results of the check-ups during the degradation experiments (e.g. capacity measurements) are written in separate files. When a cell is being cycled, the user can choose to record the cell current, voltage and temperature at a constant time interval (e.g. 5 seconds) in which case this data is also stored in csv files. MATLAB functions to read these results have been implemented as well. E.g. to read the results of the pre-defined ```calendar ageing``` function, 
-the user can run ```readCalendarAgeing.m```, which will plot the outcomes. 
+The C++ code writes its results in *.csv files. The results of the check-ups during the degradation experiments (e.g. capacity measurements) are written in separate files. When a cell is being cycled, the user can choose to record the cell current, voltage and temperature at a constant time interval (e.g. 5 seconds) in which case this data is also stored in csv files. MATLAB functions to read these results have been implemented as well. E.g. to read the results of the pre-defined calendar ageing function, 
+the user can run readCalendarAgeing.m, which will plot the outcomes. 
 </p>
 
 ## Speed of calculation & data

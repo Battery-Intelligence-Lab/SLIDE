@@ -414,12 +414,12 @@ bool test_setI()
   //!< test things which should break
   Inew = 10000;                         //!< very large current, should give too low voltage
   Status status = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
-  if (status == Status::Success) return false;
+  if (isStatusSuccessful(status)) return false;
 
 
   Inew = -10000;                        //!< very large current, should give too low voltage
   Status status = mp->setCurrent(Inew); //!< should fail because the current equation cannot be solved
-  if (status == Status::Success) return false;
+  if (isStatusSuccessful(status)) return false;
 
   return true;
 }

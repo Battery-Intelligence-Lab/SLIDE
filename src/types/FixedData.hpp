@@ -28,7 +28,7 @@ public:
   using pointer = value_type *;
   using reference = value_type &;
 
-  FixedDataIter(FixedData<T, extrapolation> *const f_data_ptr, int n) : f_data_ptr{ f_data_ptr }, n{ n } {}
+  FixedDataIter(FixedData<T, extrapolation> *const f_data_ptr_, int n_) : f_data_ptr{ f_data_ptr_ }, n{ n_ } {}
 
   FixedDataIter &operator++() //!< Prefix increment
   {
@@ -94,12 +94,12 @@ class FixedData
   T x_min{};
   T dx{};
   size_type n{};
-  std::function<T(T, T, int)> F = [](T x_min, T dx, size_type i) { return x_min + i * dx; };
+  std::function<T(T, T, int)> F = [](T x_min_, T dx_, size_type i) { return x_min_ + i * dx_; }; // #TODO important problem here!
 
 public:
   FixedData() = default;
-  FixedData(T x_min, T dx, int n) : x_min(x_min), dx(dx), n(n) {}
-  FixedData(T x_min, T dx, int n, std::function<T(T, T, int)> F) : x_min(x_min), dx(dx), n(n), F(F) {}
+  FixedData(T x_min_, T dx_, int n_) : x_min(x_min_), dx(dx_), n(n_) {}
+  FixedData(T x_min_, T dx_, int n_, std::function<T(T, T, int)> F_) : x_min(x_min_), dx(dx_), n(n_), F(F_) {}
 
   T operator[](int i) const
   {
@@ -147,7 +147,7 @@ public:
     return temp_data(+1);
   }
 
-  constexpr void reserve(int n) noexcept {}
+  constexpr void reserve(int n_) noexcept {}
   constexpr void clear() noexcept
   {
     x_min = 0;

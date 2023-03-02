@@ -207,7 +207,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
     sparam.s_lares = sparam.s_lares || cs_id == 1;
 }
 
-inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *M, DEG_ID &deg_id, int verbosei) : Cell_KokamNMC(M, verbosei)
+inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *M, DEG_ID &deg_id_, int verbosei) : Cell_KokamNMC(M, verbosei)
 {
   /*
    * constructor to initialise the degradation parameters
@@ -217,6 +217,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *M, DEG_ID &deg_id, int verbosei) 
    * degid 	structure of the type DEG_ID, with the identifications of which degradation model(s) to use
    */
 
+  deg_id = deg_id_; // #TODO deg_id_ was not being assigned. I assigned now check if it is correct behaviour.
   //!< Check if we will have to calculate the stress according to Dai's stress model
   for (auto cs_id : deg_id.CS_id)
     sparam.s_dai = sparam.s_dai || cs_id == 2;

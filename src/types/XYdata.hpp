@@ -52,7 +52,7 @@ public:
 
   XYdata() = default;
   explicit XYdata(size_t N) : x(N), y(N) {}
-  XYdata(Tx &x, Ty &y) : x(x), y(y) { check_is_fixed(); }
+  XYdata(Tx &x_, Ty &y_) : x(x_), y(y_) { check_is_fixed(); }
 
   //!< XYdata(FixedData x, Ty y) : is_fixed(true), x(x), y(y) {} #TODO this should be on but error in GCC
 

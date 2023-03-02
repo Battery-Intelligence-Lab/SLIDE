@@ -34,6 +34,7 @@ enum class Status : int_fast8_t //!< -128 to 127 = 1 byte.
   ParallelUnit_failed, //!< throw 14.
   RedistributeCurrent_failed,
   timeStep_CC_failed,
+  setVoltage_not_defined,
   Unknown_problem = 127,
 
   //!< Auxillary definitions:
@@ -51,11 +52,7 @@ bool inline isStatusWarning(Status status) { return ((status != Status::Success)
 bool inline isStatusSafe(Status status) { return status < Status::NotSafe; }
 bool inline isLimitsReached(Status status) { return status < Status::ReachedTimeLimit; }
 
-bool inline isStatusVoltageLimitsViolated(Status status)
-{
-  using enum Status;
-  return (Success < status && status <= VMAXsafety_violation);
-}
+bool inline isStatusVoltageLimitsViolated(Status status) { return (Status::Success < status && status <= Status::VMAXsafety_violation); }
 
 bool inline isCCLimitReached(Status status) { return status == Status::ReachedVoltageLimit || status == Status::ReachedTimeLimit; }
 bool inline isCVLimitReached(Status status) { return status == Status::ReachedCurrentLimit || status == Status::ReachedTimeLimit; }
@@ -68,61 +65,44 @@ inline const char *getStatusMessage(Status status)
   switch (status) {
   case Status::VMIN_violation:
     return "VMIN is violated!";
-    break;
   case Status::Vmin_violation:
     return "Vmin is violated!";
-    break;
   case Status::Success:
     return "Success! Yay!";
-    break;
   case Status::Vmax_violation:
     return "Vmax is violated!";
-    break;
   case Status::VMAX_violation:
     return "VMAX is violated!";
-    break;
   case Status::V_not_calculated:
     return "V could not be calculated at all!";
-    break;
   case Status::SOC_limits_violation:
     return "SOC_limits_violation!";
-    break;
   case Status::Invalid_states:
     return "Invalid_states!";
-    break;
   case Status::Invalid_SUs:
     return "Invalid_SUs!";
-    break;
   case Status::ReachedCurrentLimit:
     return "ReachedCurrentLimit!";
-    break;
   case Status::ReachedVoltageLimit:
     return "ReachedVoltageLimit!";
-    break;
   case Status::ReachedTimeLimit:
     return "ReachedTimeLimit!";
-    break;
   case Status::ReachedSmallCurrent:
     return "ReachedSmallCurrent!";
-    break;
   case Status::Invalid_Vset:
     return "Invalid_Vset!";
-    break;
   case Status::SafeVoltage:
     return "SafeVoltage!";
-    break;
   case Status::ParallelUnit_failed:
     return "ParallelUnit_failed!";
-    break;
   case Status::RedistributeCurrent_failed:
     return "RedistributeCurrent_failed!";
-    break;
   case Status::timeStep_CC_failed:
     return "timeStep_CC_failed!";
-    break;
+  case Status::setVoltage_not_defined:
+    return "setVoltage is not defined for this class!";
   case Status::Unknown_problem:
     return "Unknown problem!";
-    break;
   default:
     return "Unkown status?!";
   }

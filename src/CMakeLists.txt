@@ -24,5 +24,5 @@ target_link_libraries(src
   procedures
   factories
   settings
-  # pthread -> For WSL.
+ # pthread #-> For WSL.
 )

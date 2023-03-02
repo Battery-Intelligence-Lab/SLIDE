@@ -1,0 +1,15 @@
+html {
+    /* override light-mode variables here */
+   
+    --side-nav-background:#002147;
+    --header-background:#002147;
+    --searchbar-background:#002147;
+    --toc-background:#002147;
+    --side-nav-foreground:#fff;
+    --header-foreground:#fff;
+    --searchbar-foreground:#fff;
+
+#titlearea {
+    color: #fff;
+}
+

@@ -1,0 +1,34 @@
+name: macOS unit
+# adapted from: https://github.com/trase-cpp/trase/tree/master/.github/workflows
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+
+  build-and-test:
+    name: macOS unit
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: make build directory
+        run: mkdir build_dir
+
+      - name: cmake configure
+        run: cmake .. -DCMAKE_BUILD_TYPE=Debug
+        working-directory: build_dir
+
+      - name: cmake build
+        run: cmake --build . --parallel 2
+        working-directory: build_dir
+
+      - name: cmake test
+        run: ctest -j2 -C Debug --output-on-failure
+        working-directory: build_dir

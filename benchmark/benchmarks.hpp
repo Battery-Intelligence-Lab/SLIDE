@@ -13,3 +13,4 @@
 #include "running_Cell_Bucket.hpp"
 #include "running_Cell_SPM.hpp"
 #include "running_LP_cases.hpp"
+#include "benchmark_Cell_ECM.hpp"

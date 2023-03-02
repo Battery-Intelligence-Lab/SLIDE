@@ -12,7 +12,7 @@
 #include "../modules/Module_p.hpp"
 #include "../procedures/Cycler.hpp"
 #include "../procedures/Procedure.hpp"
-//#include "unit_tests.hpp"
+// #include "unit_tests.hpp"
 #include "../settings/settings.hpp"
 
 #include <cmath>
@@ -38,16 +38,12 @@ std::unique_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool Rcel
   //!< String prefix for the names of the results to indicate the settings of the simulation
   using settings::T_ENV;
   std::string settings_str = "cool" + std::to_string(coolControl);
-  if (capSpread)
-    settings_str += "_capSpread";
-  if (RcellSpread)
-    settings_str += "_RSpread";
-  if (degrateSpread)
-    settings_str += "_degSpread";
-  if (contactR)
-    settings_str += "_contactR";
-  if (balance)
-    settings_str += "_balance";
+  if (capSpread) settings_str += "_capSpread";
+  if (RcellSpread) settings_str += "_RSpread";
+  if (degrateSpread) settings_str += "_degSpread";
+  if (contactR) settings_str += "_contactR";
+  if (balance) settings_str += "_balance";
+
 
   //!< Cell-to-cell variations, numbers based on paper from Trish, Jorge (results of screening over 200 prestine lithium-ion cells
   std::default_random_engine generator;
@@ -188,16 +184,11 @@ std::unique_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool Rce
   //!< String prefix for the names of the results to indicate the settings_str of the simulation
   using settings::T_ENV;
   std::string settings_str = "cool" + std::to_string(coolControl);
-  if (capSpread)
-    settings_str += "_capSpread";
-  if (RcellSpread)
-    settings_str += "_RSpread";
-  if (degrateSpread)
-    settings_str += "_degSpread";
-  if (contactR)
-    settings_str += "_contactR";
-  if (balance)
-    settings_str += "_balance";
+  if (capSpread) settings_str += "_capSpread";
+  if (RcellSpread) settings_str += "_RSpread";
+  if (degrateSpread) settings_str += "_degSpread";
+  if (contactR) settings_str += "_contactR";
+  if (balance) settings_str += "_balance";
 
   //!< Cell-to-cell variations
 
@@ -424,7 +415,6 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
       MinR[is] = std::move(modulei);
       Rc2[is] = Rc_s;
 
-      //!< cout<<"Total resistance of a module is "<<modulei->getRtot()<<endl;
 
     } //!< loop to make the modules for one rack
 
@@ -435,15 +425,12 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
     RinB[ip] = std::move(racki);
     Rc1[ip] = Rc_p;
 
-    //!< cout<<"Total resistance of a rack is "<<racki->getRtot()<<endl;
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
   auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
-
-  //!< cout<<"Total resistance of the battery is "<<bc->getRtot()<<endl;
 
   //!< make the battery
   auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
@@ -504,10 +491,10 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
   double Rc_p = 0;       //!< contact R for parallel connection of racks
   double Rc_s = 0;       //!< contact R for series connection of modules
   if (contactR) {
-    Rc_p_cells = 0.0075 * 1e-3 * RM; //!< use a 0.1 mOhm resistance. Value from paper Schimpe
-    Rc_s_cells = 0.0075 * 1e-3 * RM; //!< use a 0.1 mOhm resistance. Value from paper Schimpe
-    Rc_p = 0.25 * 1e-3 * RM;         //!< this must be a much smaller resistance
-    Rc_s = 0.25 * 1e-3 * RM;         //!< this must be a much smaller resistance
+    Rc_p_cells = 0.0075e-3 * RM; //!< use a 0.1 mOhm resistance. Value from paper Schimpe
+    Rc_s_cells = 0.0075e-3 * RM; //!< use a 0.1 mOhm resistance. Value from paper Schimpe
+    Rc_p = 0.25e-3 * RM;         //!< this must be a much smaller resistance
+    Rc_s = 0.25e-3 * RM;         //!< this must be a much smaller resistance
   }
 
   //!< Degradation settings
@@ -567,8 +554,6 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
       MinR[is] = std::move(modulei);
       Rc2[is] = Rc_s;
 
-      //!< cout<<"Total resistance of a module is "<<modulei->getRtot()<<endl;
-
     } //!< loop to make the modules for one rack
 
     //!< assemble the modules in series for a rack
@@ -578,15 +563,12 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
     RinB[ip] = std::move(racki);
     Rc1[ip] = Rc_p;
 
-    //!< cout<<"Total resistance of a rack is "<<racki->getRtot()<<endl;
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
   auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
-
-  //!< cout<<"Total resistance of the battery is "<<bc->getRtot()<<endl;
 
   //!< make the battery
   auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
@@ -708,8 +690,6 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
       MinR[is] = std::move(modulei);
       Rc2[is] = Rc_s;
 
-      //!< cout<<"Total resistance of a module is "<<modulei->getRtot()<<endl;
-
     } //!< loop to make the modules for one rack
 
     //!< assemble the modules in series for a rack
@@ -719,15 +699,12 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
     RinB[ip] = std::move(racki);
     Rc1[ip] = Rc_p;
 
-    //!< cout<<"Total resistance of a rack is "<<racki->getRtot()<<endl;
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
   auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
-
-  //!< cout<<"Total resistance of the battery is "<<bc->getRtot()<<endl;
 
   //!< make the battery
   auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
@@ -873,8 +850,6 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   //!< 		MinR[is] = std::move(modulei);
   //!< 		Rc2[is] = Rc_s;
 
-  //!< 		//!< cout<<"Total resistance of a module is "<<modulei->getRtot()<<endl;
-
   //!< 	} //!< loop to make the modules for one rack
 
   //!< 	//!< assemble the modules in series for a rack
@@ -884,15 +859,12 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   //!< 	RinB[ip] = std::move(racki);
   //!< 	Rc1[ip] = Rc_p;
 
-  //!< 	//!< cout<<"Total resistance of a rack is "<<racki->getRtot()<<endl;
   //!< } //!< loop to make the racks
 
   //!< //!< Assemble the racks in the battery compartment (bc)
   //!< auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   //!< bc->setSUs(RinB, checkCells, true);
   //!< bc->setRcontact(Rc1);
-
-  //!< cout<<"Total resistance of the battery is "<<bc->getRtot()<<endl;
 
   //!< make the battery
   auto bat = std::make_unique<Battery>(settings_str + "_ParTest"); //!< battery, gets HVAC coolsystem

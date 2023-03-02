@@ -38,7 +38,7 @@ inline void run_LP_case_SmallPack()
   cyc.CC(2, 2.7, 5 * 60, 1, 10, th);
   std::cout << "Finished " << ID << " in " << clk << ".\n";
   cyc.writeData();
-};
+}
 
 inline void run_LP_case_MediumPack()
 {
@@ -88,7 +88,7 @@ inline void run_LP_case_MediumPack()
   cyc.CC(32, 2.7, 5 * 60, 1, 10, th);
   std::cout << "Finished " << ID << " in " << clk << ".\n";
   cyc.writeData();
-};
+}
 
 inline void run_LP_case_LargePack()
 {
@@ -138,7 +138,7 @@ inline void run_LP_case_LargePack()
   cyc.CC(64, 2.7, 5 * 60, 1, 10, th);
   std::cout << "Finished " << ID << " in " << clk << ".\n";
   cyc.writeData();
-};
+}
 
 inline void run_LP_case_LargePackLong()
 {
@@ -194,7 +194,7 @@ inline void run_LP_case_LargePackLong()
 
   std::cout << "Finished " << ID << " in " << clk << ".\n";
   cyc.writeData();
-};
+}
 
 
 } // namespace slide::benchmarks

@@ -23,12 +23,12 @@
 
 namespace slide {
 
-double Module_s::getOCV(bool print)
+double Module_s::getOCV()
 { //!< sum of the open circuit voltage of all cells
   try {
     return transform_sum(SUs, free::get_OCV<SU_t>);
   } catch (int e) {
-    if (print && (settings::printBool::printCrit)) //!< print if the (global) verbose-setting is above the threshold
+    if constexpr (settings::printBool::printCrit) //!< print if the (global) verbose-setting is above the threshold
       std::cout << "Error in Module_s::getOCV when getting the OCV of a SU in module "
                 << ID << ", throwing it on.\n";
     throw e;
@@ -50,7 +50,7 @@ double Module_s::getRtot()
   return rtot;
 }
 
-double Module_s::V(bool print)
+double Module_s::V()
 {
   //!< sum of the voltage of all cells
   //!< bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
@@ -62,7 +62,7 @@ double Module_s::V(bool print)
   //!< else calculate the voltage
   Vmodule = 0;
   for (size_t i = 0; i < getNSUs(); i++) {
-    const auto v_i = SUs[i]->V(print);
+    const auto v_i = SUs[i]->V();
 
     if (v_i <= 0) //!< SU has an invalid voltage.
       return 0;   // #TODO check if this is same for getOCV?
@@ -86,10 +86,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
    * 3 	checkV is true && the voltage is outside the safety limits, old current is restored
    */
 
-//!< the current is the same in all cells
-#if TIMING
-  Clock clk;
-#endif
+  //!< the current is the same in all cells
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Set the current, if checkVi this also gets the cell voltages
@@ -127,10 +124,6 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
 
   //!< #TODO Here we need module specific voltage.
 
-#if TIMING
-  timeData.setCurrent += clk.duration(); //!< time in seconds
-#endif
-
   return Status::Success;
 }
 
@@ -147,9 +140,7 @@ bool Module_s::validSUs(SUs_span_t c, bool print)
 
   // #TODO -> Unnecessary function. Check validity when settings SUs or states.
   // Algorithms should not leave anything in an invalid state.
-#if TIMING
-  Clock clk;
-#endif
+
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
   bool result{ true };
   //!< check the currents are the same
@@ -168,9 +159,6 @@ bool Module_s::validSUs(SUs_span_t c, bool print)
     }
   }
 
-#if TIMING
-  timeData.validSUs += clk.duration(); //!< time in seconds
-#endif
   return result; //!< else the cells are valid
 }
 
@@ -186,15 +174,9 @@ void Module_s::timeStep_CC(double dt, int nstep)
    * 			the top level needs an HVAC system for heat exchange with the environment
    * 			lower-level modules (with a parent module) will get cooling from the coolsystems of their parent so they have a regular coolSystem
    */
-
-#if TIMING
-  Clock clk;
-#endif
-
   if (dt < 0) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module_s::timeStep_CC, the time step dt must be 0 or positive, but has value " << dt << '\n';
-    std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 10;
   }
 
@@ -216,8 +198,8 @@ void Module_s::timeStep_CC(double dt, int nstep)
     therm.time += nstep * dt;
 
     //!< Increase the heat from the contact resistances
-    for (size_t i = 0; i < getNSUs(); i++)
-      therm.Qcontact += Rcontact[i] * sqr(I()) * nstep * dt; //!< each resistor sees the total module current
+    for (const auto r : Rcontact)                  // #TODO calculating I() many times.
+      therm.Qcontact += r * sqr(I()) * nstep * dt; //!< each resistor sees the total module current
 
     //!< If this module has a parent module, this parent will call the thermal model with the correct parameters
     //!< which will include heat exchange with the module's neighbours and cooling from the cooling system of the parent module.
@@ -256,10 +238,6 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
   }
 
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
-
-#if TIMING
-  timeData.timeStep += clk.duration(); //!< time in seconds
-#endif
 }
 
 Module_s *Module_s::copy()
@@ -283,27 +261,7 @@ Module_s *Module_s::copy()
     copied_ptr->SUs.back()->setParent(copied_ptr);
   }
 
-#if TIMING
-  copied_ptr->setTimings(timeData);
-#endif
-
   return copied_ptr;
-}
-
-TimingData_Module_s Module_s::getTimings()
-{
-#if TIMING
-  return timeData;
-#else
-  return {};
-#endif
-}
-
-void Module_s::setTimings(TimingData_Module_s td)
-{
-#if TIMING
-  timeData = std::move(td);
-#endif
 }
 
 } // namespace slide

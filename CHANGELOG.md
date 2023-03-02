@@ -26,6 +26,8 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * `slide.hpp` for including the library is added. 
 * `NULL` -> `nullptr`
 * `shared_ptr` classes are turned to `unique_ptr`. Copying `shared_ptr` is eliminated. 
+* print arguments for some functions are removed (e.g., `V(bool print), getOCV(bool print)`)
+
 
 ### C++20 upgrades
 * `std::span` for state assignments. `XYdata_ss` for span. 

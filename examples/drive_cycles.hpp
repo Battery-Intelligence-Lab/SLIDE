@@ -35,10 +35,6 @@ inline auto get_exampleCell()
 
   auto example_cell = std::make_unique<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
 
-  const double Cap_actual = 100;
-  const double Cap_bat = example_cell->Cap();
-  const double Cap_ratio = Cap_bat / Cap_actual;
-
   // Specify the OCV parameters (calculated by determineOCV::estimateOCVparameters)
   OCVparam ocvfit;
   ocvfit.elec_surf = (3.4 / 2.65) * 0.0982; // electrode surface Cap_ratio
@@ -190,45 +186,44 @@ inline void drive_cycle_artemis()
 
   auto &st = c->getStateObj();
 
-
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   c->setCurrent(1);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   while (c->V() > 2.9)
     c->timeStep_CC(1, 1);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   c->setCurrent(0.005);
   while (c->V() > 2.7)
     c->timeStep_CC(1, 1);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   c->setCurrent(0.0001);
   while (c->V() > 2.7)
     c->timeStep_CC(1, 1);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
   c->setCurrent(0);
   c->timeStep_CC(1, 100);
 
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
 
@@ -265,8 +260,8 @@ inline void drive_cycle_artemis()
 
   c->getCSurf(cps, cns, false);
   std::cout << "V: " << c->V() << " cps, cns : " << cps / Cmaxpos << ", " << cns / Cmaxneg << ',' << st.zp(3) << ',' << st.zn(3) << "\n";
-  for (int i = 0; i < 10; i++)
-    std::cout << st.z(i) << ' ';
+  for (auto z_i : st.z())
+    std::cout << z_i << ' ';
   std::cout << '\n';
 
 
@@ -290,8 +285,6 @@ inline void drive_cycle_artemis()
 
 
   // auto cyc = Cycler(c.get(), ID);
-  double dAh{ 0 }, dtime{ 0 }, dWh{ 0 };
-
   auto experiment = [&](std::string name) {
     std::vector<double> voltage;
     std::vector<State_SPM> states;
@@ -351,9 +344,8 @@ inline void drive_cycle_artemis()
 
   // c->writeData("drive_cycle");
   std::cout << "V: " << c->V() << '\n';
-  std::cout << "Wh: " << dWh << '\n';
   std::cout << "SOC: " << 100 * c->SOC() << '\n';
   std::cout << "Finished drive_cycle example in " << clk << ".\n";
-};
+}
 
 } // namespace slide::examples

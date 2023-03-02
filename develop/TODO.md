@@ -7,8 +7,26 @@
 ## TODO: 
 
 
+### Code-review by Martin Robinson: 
+- [ ] It is both a library and application in between. 
+  - [ ] One way: have a config file model file and options. 
+  - [ ] Brady: Julia wrapper? 
+  - [ ] Martin: Lot more Python audience. 
+  - [ ] Class naming inconsistent: standard format. Capital letter Camel case. 
+  - [ ] There are classes with completely capital? Which one? 
+  - [ ] SUNDIALS is pretty quick. 
+  - [ ] Automated tests against PyBAMM 
+  - [ ] Catch2 library for testing. 
+  - [ ] Snapshot testing. 
+  - [ ] Template projects in OxRSE template-project-cpp
+  - [ ] gui_starter_library Jason Turner. 
+  - [ ] clang-tidy 
+  - [ ] codecov. 
+  - [ ] Doxygen. 
+  - [ ] CPack
+
+
 ### Comparing against slide-pack:
-- [ ] 
 - [ ] CC, CV, CCCV functions seem to be working. However CV is not doing the intended thing for both SLIDE and slide-pack.
 - [ ] paperCode::Vequalisation seems to be working. 
 - [ ] paperCode::thermalModel does not work for slide-pack.
@@ -18,7 +36,27 @@
 - [x] cps - cns question: dOCV_neg and dOCV_tot are taking zp_surf as input due to our data. Very important. 
 - [ ] Should capacity check also contain a CV phase? 
 
+
 ### Current priority: 
+- [x] Module_p::getRtot() check for contact resistances is removed for simplification. 
+- [ ] Why do we need getRtot? Only for algorithms? Maybe getThevenin would be better. 
+- [x] V(bool print),  getOCV(bool print) print argument is removed. 
+- [ ] therm.Qcontact is not calculated properly it is 6x overestimated! 
+- [x] dV > settings::MODULE_P_V_ABSTOL && dV > settings::MODULE_P_V_RELTOL * (*V_max_it) ->  && to ||
+- [x] getVi is calculating the SU voltage seen at the terminal by subtracting voltage drops on resistances. However, since it is called multiple times it recalculates everyting multiple times. Therefore, not very efficient. It is removed and getVall added. 
+- [x] Previously Module_p was calculating the mean voltage; since voltage of all cells were not reliable; however it is not needed. Also it was wrong causing 3.6 to 3.58 voltage difference! Now, it is SUs[0]->V() - I() * Rcontact[0];
+- [x] redistributeCurrent inside rebalance is deleted since it should not be required since all have same voltage. It will be eliminated completely soon. 
+- [ ] setVoltage function is being added for a better CV period. 
+- [x] "#if TIMING" is removed, profiler should be used if needed. 
+- [x] "setI_iterative" is removed. 
+- [ ] redistributeCurrent() -> PI Control does not work well causing high error in current. 
+- [ ] Add snapshot tests for 
+- [ ] SOC/Temperature dependent RC pairs for ECM. 
+- [x] Making Cell_ECM template to remove Cell_Bucket.
+- [x] Bugfix: ECM had - in the equation, corrected. 
+- [ ] Fixed data function argument should be reconsidered! 
+- [ ] Status member functions like  status.good()
+- [ ] It should be decided if we throw an error in interpolation or not for testing invalid states. 
 - [ ] Consider using std::variant for some data types. 
 - [ ] Procedure: 
   - [ ] Markers to incidate end of this section deleted. As well as seperators. 
@@ -51,6 +89,8 @@
 - [ ] Probably there is a bug in slide-pack where time, Ah, Wh values are not resetted after a throw. Try two cell in series config with one has smaller capacity so it reaches its capacity earlier. Then charge with 1C + large time step. Probably first cell will store Ah and second won't. and there will be difference in their Ah. Or even it does not, it will be different than real Ah. Just charge and discharge. 
 - [ ] Cycler should be able to take unique_ptr and convert. 
 - [ ] setSUs and assigning unique pointers then testing individually is very difficult. Clearly a design problem.
+- [ ] getNSUs may slow down time to time. 
+- [ ] std::vector<double> Iolds in Module_p.cpp
 
 
 ### From SLIDE v2: 

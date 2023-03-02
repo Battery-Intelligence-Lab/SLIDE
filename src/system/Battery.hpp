@@ -22,10 +22,10 @@ namespace slide {
 class Battery : public StorageUnit
 {
 protected:
-  std::unique_ptr<Module> cells{};         //!< Module with the cells of this battery
-  std::unique_ptr<CoolSystem_HVAC> cool{}; //!< HVAC system of the battery
-  std::unique_ptr<Converter> conv{};       //!< power electronic converter. Dual step DC/DC and DC/AC
-  int nseries{ 1 }, nparallel{ 1 };        //!< number of series/parallel 'copies' of this module
+  std::unique_ptr<Module> cells{};           //!< Module with the cells of this battery
+  std::unique_ptr<CoolSystem_HVAC> cool{};   //!< HVAC system of the battery
+  std::unique_ptr<Converter> conv{};         //!< power electronic converter. Dual step DC/DC and DC/AC
+  unsigned int nseries{ 1 }, nparallel{ 1 }; //!< number of series/parallel 'copies' of this module
 
   double convlosses{};     //!< losses in the converter during a given period (set to 0 by reset_convlosses)
   double convlosses_tot{}; //!< total cumulative losses in the converter during the entire lifetime
@@ -38,9 +38,8 @@ protected:
 public:
   Battery();
   Battery(std::string IDi);
-  void setID(std::string IDi);
   void setModule(std::unique_ptr<Module> &&module);
-  void setSeriesandParallel(int ser, int par);
+  void setSeriesandParallel(unsigned int ser, unsigned int par);
 
   //!< basic getters and setters
   double Cap() const override { return cells->Cap() * nparallel; }
@@ -68,8 +67,8 @@ public:
   void resetConvLosses() { convlosses = 0; }
 
   //!< voltage
-  double getOCV(bool print = true) override { return cells->getOCV(print) * nseries; }
-  double V(bool print = true) override { return cells->V(print) * nseries; }
+  double getOCV() override { return cells->getOCV() * nseries; }
+  double V() override { return cells->V() * nseries; }
   Status checkVoltage(double &v, bool print) noexcept override;      //!< get the voltage and check if it is valid
   double getVhigh() override { return cells->getVhigh() * nseries; } //!< return the voltage of the cell with the highest voltage
   double getVlow() override { return cells->getVlow() * nseries; }   //!< return the voltage of the cell with the lowest voltage
