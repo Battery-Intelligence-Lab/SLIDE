@@ -61,9 +61,9 @@ bool getV_test()
   std::string n = "na";
 
   //!< normal cell, should give no errors
-  assert(NEAR(c1.V(false), 3.15));
-  assert(NEAR(c1.V(false), 3.15));
-  assert(NEAR(c1.V(true), 3.15));
+  assert(NEAR(c1.V(), 3.15));
+  assert(NEAR(c1.V(), 3.15));
+  assert(NEAR(c1.V(), 3.15));
   assert(NEAR(c1.V(), 3.15));
   double v;
   auto val = c1.checkVoltage(v, false);
@@ -75,7 +75,7 @@ bool getV_test()
   c2.setCurrent(-1, false, false);
   c2.timeStep_CC(3600); //!< charge further for one hour, now the SOC should be close to 2
   try {
-    c2.V(true); // Should throw #TODO in future may not thow.
+    c2.V(); // Should throw #TODO in future may not thow.
   } catch (...) {
     return true;
   }

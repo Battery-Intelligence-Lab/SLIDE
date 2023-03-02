@@ -9,7 +9,7 @@ project(SLIDE VERSION "3.0.0"
  
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
-include(cmake/Coverage.cmake)
+
 
 enable_testing()
 add_subdirectory(src bin)
@@ -38,6 +38,8 @@ target_include_directories(slide
   PUBLIC
   data
 )
+
+include(cmake/Coverage.cmake)
 
 # message(STATUS "Project: ${PROJECT_NAME} version ${PROJECT_HOMEPAGE_URL}")
 

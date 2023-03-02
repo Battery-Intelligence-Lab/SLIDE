@@ -95,8 +95,8 @@ bool test_getV_SPM()
 
   //!< normal cell, should give no errors
   double Vini = 3.68136;
-  assert(NEAR(c1.V(false), Vini, tol));
-  assert(NEAR(c1.V(true), Vini, tol));
+  assert(NEAR(c1.V(), Vini, tol));
+  assert(NEAR(c1.V(), Vini, tol));
   assert(NEAR(c1.V(), Vini, tol));
 
   //!< set to charging and check the voltage has increased
