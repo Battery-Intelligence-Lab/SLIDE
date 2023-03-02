@@ -9,7 +9,7 @@ project(SLIDE VERSION "3.0.0"
  
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
-
+include(cmake/Coverage.cmake)
 
 enable_testing()
 add_subdirectory(src bin)

@@ -1,0 +1,46 @@
+name: coverage
+
+on:
+  push:
+    branches:
+      - data_storage
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+
+  build-and-test:
+    name: coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: install dependencies
+        run: sudo apt install lcov
+
+      - name: make build directory
+        run: mkdir build_dir
+
+      - name: cmake configure
+        run: cmake .. -DCMAKE_BUILD_TYPE=Debug -DSLIDE_ENABLE_COVERAGE:BOOL=TRUE
+        working-directory: build_dir
+
+      - name: cmake build
+        run: cmake --build . --parallel 2
+        working-directory: build_dir
+
+      - name: cmake test
+        run: ctest -j2 --output-on-failure
+        working-directory: build_dir
+
+      - name: upload coverage results
+        run: |
+          lcov --directory . --capture --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' '*/tests/*' --output-file coverage.info
+          lcov --list coverage.info
+          bash <(curl https://codecov.io/bash) -f coverage.info
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        working-directory: build_dir
