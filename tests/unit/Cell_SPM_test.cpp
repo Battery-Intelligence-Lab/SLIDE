@@ -173,7 +173,7 @@ bool test_setStates_SPM()
   sini[State_SPM::i_I] = I;
 
 
-  std::span<const double> spn(sini);
+  std::span<const double> spn(sini.begin(), sini.end());
   c1.setStates(spn, true, true); //!< this checks states are valid
 
   assert(NEAR(st.SOC(), SOC));

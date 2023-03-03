@@ -39,7 +39,7 @@ target_include_directories(slide
   data
 )
 
-include(cmake/Coverage.cmake)
+# include(cmake/Coverage.cmake)
 
 # message(STATUS "Project: ${PROJECT_NAME} version ${PROJECT_HOMEPAGE_URL}")
 
