@@ -70,7 +70,8 @@ jobs:
 
       - name: generate html report for website
         run: genhtml coverage.info -o Coverage
-      - run: sudo mv ./build/Coverage ./_site/Coverage
+        working-directory: build_dir
+      - run: sudo mv ./build_dir/Coverage ./_site/Coverage
         
       # Upload the website:
       - name: Upload artifact
