@@ -2,9 +2,10 @@ name: Build, test and generate docs
 on:
   push:
     branches:
-      - data_storage
+      - master
     paths:
       - 'src/**'
+      - 'docs/**'
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
