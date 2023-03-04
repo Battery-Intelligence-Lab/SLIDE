@@ -63,8 +63,8 @@ bool test_getV_ECM()
   Cell_ECM c1;
 
   //!< normal cell, should give no errors
-  assert(NEAR(c1.V(false), 3.15));
-  assert(NEAR(c1.V(true), 3.15));
+  assert(NEAR(c1.V(), 3.15));
+  assert(NEAR(c1.V(), 3.15));
   assert(NEAR(c1.V(), 3.15));
 
   //!< set to charging and check the voltage has increased
