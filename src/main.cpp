@@ -128,7 +128,7 @@ int main()
   //!< In the code below, uncomment the line which calls the function you want to execute (uncommenting means removing the //!<in front of the line)
   //!< and comment all the other lines (commenting means putting //!<in front of the line)
 
-  auto numThreads = std::thread::hardware_concurrency(); //!<
+  auto numThreads = std::thread::hardware_concurrency(); //! <
   std::cout << "Available number of threads : " << numThreads << '\n';
 
 
