@@ -46,10 +46,10 @@ bool test_getStates_ECM()
   std::vector<double> s;
 
   c1.getStates(s);
-  assert(NEAR(s[State_ECM::i_SOC], 0.5));           //!< soc
-  assert(NEAR(s[State_ECM::i_Ir], 0));              //!< Ir
-  assert(NEAR(s[State_ECM::i_T], settings::T_ENV)); //!< T
-  assert(NEAR(s[State_ECM::i_I], 0));               //!< current
+  assert(NEAR(s[State_ECM<1>::i_SOC], 0.5));           //!< soc
+  assert(NEAR(s[State_ECM<1>::i_Ir], 0));              //!< Ir
+  assert(NEAR(s[State_ECM<1>::i_T], settings::T_ENV)); //!< T
+  assert(NEAR(s[State_ECM<1>::i_I], 0));               //!< current
 
   std::span<const double> spn{ s };
   c1.setStates(spn); //!< #TODO this must throw an error
@@ -63,8 +63,8 @@ bool test_getV_ECM()
   Cell_ECM c1;
 
   //!< normal cell, should give no errors
-  assert(NEAR(c1.V(false), 3.15));
-  assert(NEAR(c1.V(true), 3.15));
+  assert(NEAR(c1.V(), 3.15));
+  assert(NEAR(c1.V(), 3.15));
   assert(NEAR(c1.V(), 3.15));
 
   //!< set to charging and check the voltage has increased
@@ -98,20 +98,20 @@ bool test_setStates_ECM()
   //!< set valid new states
   double soc{ 0.75 }, ir{ 1 }, i{ 2 }, t{ 273 };
   std::vector<double> s(7); // 4 + 3 (cumulative)
-  s[State_ECM::i_SOC] = soc;
-  s[State_ECM::i_Ir] = ir;
-  s[State_ECM::i_T] = t;
-  s[State_ECM::i_I] = i;
+  s[State_ECM<1>::i_SOC] = soc;
+  s[State_ECM<1>::i_Ir] = ir;
+  s[State_ECM<1>::i_T] = t;
+  s[State_ECM<1>::i_I] = i;
 
   std::span<const double> spn{ s };
   c1.setStates(spn, true, true);
 
   s.clear();
   c1.getStates(s);
-  assert(NEAR(s[State_ECM::i_SOC], soc)); //!< soc
-  assert(NEAR(s[State_ECM::i_Ir], ir));   //!< Ir
-  assert(NEAR(s[State_ECM::i_T], t));     //!< T
-  assert(NEAR(s[State_ECM::i_I], i));     //!< current
+  assert(NEAR(s[State_ECM<1>::i_SOC], soc)); //!< soc
+  assert(NEAR(s[State_ECM<1>::i_Ir], ir));   //!< Ir
+  assert(NEAR(s[State_ECM<1>::i_T], t));     //!< T
+  assert(NEAR(s[State_ECM<1>::i_I], i));     //!< current
 
   // //!< set invalid states #TODO
   // soc = 2;
@@ -143,10 +143,10 @@ bool test_validStates_ECM()
   //!< set valid new states
   double soc{ 1 }, ir{ 1 }, i{ 2 }, t{ 273 };
   double s[4 + 3]; // 4 + 3 (cumulative)
-  s[State_ECM::i_SOC] = soc;
-  s[State_ECM::i_Ir] = ir;
-  s[State_ECM::i_T] = t;
-  s[State_ECM::i_I] = i;
+  s[State_ECM<1>::i_SOC] = soc;
+  s[State_ECM<1>::i_Ir] = ir;
+  s[State_ECM<1>::i_T] = t;
+  s[State_ECM<1>::i_I] = i;
   std::span<const double> spn{ s };
   c1.setStates(spn);
   assert(c1.validStates());

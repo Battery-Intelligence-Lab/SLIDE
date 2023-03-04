@@ -706,17 +706,6 @@ bool test_Hierarchical_cross_p()
   assert(std::abs(mp3->I() + 2) < tol);  //!< m3 has two cells
   assert(NEAR(mp1->V(), mp3->V(), tol)); //!< check voltage is equal
 
-  /* the iterative function is now private
-          Inew = 5;
-          mp->setI_iterative(Inew);
-          assert(mp->I() == Inew);
-          Inew = -5;
-          mp->setI_iterative(Inew);
-          assert(mp->I() == Inew);
-          Inew = -6; //!< should give about 2A per cell
-          mp->setCurrent(Inew);
-  */
-
   //!< time a CC time step
   Vini = mp->V();
   double dt = 5;

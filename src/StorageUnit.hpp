@@ -12,6 +12,7 @@
 
 #include "settings/settings.hpp"
 #include "types/Status.hpp"
+#include "utility/free_functions.hpp"
 
 #include <string>
 #include <cstdlib>
@@ -40,6 +41,7 @@ public:
 
   virtual ~StorageUnit() = default;
   const std::string &getID() { return ID; }
+  void setID(std::string IDi) { ID = std::move(IDi); }
 
   //!< Return the full ID string, including the ID of the parent module
   virtual std::string getFullID() { return (parent != nullptr) ? parent->getFullID() + "_" + getID() : getID(); }
@@ -58,8 +60,14 @@ public:
   virtual void getStates(getStates_t s) = 0;       //!< returns one long array with the states
   virtual viewStates_t viewStates() { return {}; } //!< Only for cells to see individual states.
   void setBlockDegAndTherm(bool block) { blockDegAndTherm = block; }
-  virtual void setParent(StorageUnit *p) { parent = p; }                                   //!< set the parent
-  virtual Status setCurrent(double Inew, bool checkV = true, bool print = true) = 0;       //
+  virtual void setParent(StorageUnit *p) { parent = p; }                             //!< set the parent
+  virtual Status setCurrent(double Inew, bool checkV = true, bool print = true) = 0; //
+  virtual Status setVoltage(double Vnew, bool checkI = true, bool print = true)
+  {
+    return free::setVoltage_iterative(this, Vnew);
+  }
+
+
   virtual Status setStates(setStates_t s, bool checkStates = true, bool print = true) = 0; //!< opposite of getStates, check the states are valid?
 
   virtual void backupStates() {}  //!< Back-up states.
@@ -68,8 +76,8 @@ public:
   //!< virtual int getNstates() = 0;
   //!< virtual double SOC() = 0;
   //!<  voltage
-  virtual double getOCV(bool print = true) = 0;
-  virtual double V(bool print = true) = 0;                         //!< print is an optional argument
+  virtual double getOCV() = 0;
+  virtual double V() = 0;                                          //!< print is an optional argument
   virtual Status checkVoltage(double &v, bool print) noexcept = 0; //!< get the voltage and check if it is valid
   virtual double getVhigh() = 0;                                   //!< return the voltage of the cell with the highest voltage
   virtual double getVlow() = 0;                                    //!< return the voltage of the cell with the lowest voltage

@@ -41,13 +41,7 @@ public:
   DEG_ID deg_id; //!< structure with the identification of which degradation model(s) to use #TODO may be protected.
   using sigma_type = std::array<double, settings::nch + 2>;
 
-protected: //!< protected such that child classes can access the class variables
-#if TIMING
-  TimingData_Cell_SPM timeData{};
-#endif
-
-
-  //!< battery states
+protected:                 //!< protected such that child classes can access the class variables
   State_SPM st{}, s_ini{}; //!< the battery current/initial state, grouping all parameter which change over the battery's lifetime (see State_SPM.hpp)
 
   //!< Battery model constants
@@ -212,7 +206,7 @@ public:
   double getAnodeSurface() noexcept { return st.an() * st.thickn() * geo.elec_surf; } //!< get the anode pure surface area (without cracks) product of the effective surface area (an) with the electrode volume
 
   double I() const override { return st.I(); } //!< get the cell current [A]  positive for discharging
-  double V(bool print = true) override;
+  double V() override;
 
   bool getCSurf(double &cps, double &cns, bool print);                                                                           //!< get the surface concentrations
   void getC(double cp[], double cn[]) noexcept;                                                                                  //!< get the concentrations at all nodes
@@ -239,7 +233,7 @@ public:
   //!< {
   //!< 	slide::validState(st, s_ini);
   //!< }
-  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() override { return { st.time(), st.Ah(), st.Wh() }; }
 
   void overwriteCharacterisationStates(double Dpi, double Dni, double ri)
   {
@@ -275,7 +269,7 @@ public:
 
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); } //!< returns the states of the cell collectively.
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
-  double getOCV(bool print = true) override;
+  double getOCV() override;
   Status setStates(setStates_t sSpan, bool checkV, bool print) override;
   bool validStates(bool print = true) override;
   inline double SOC() override { return st.SOC(); }
@@ -292,14 +286,5 @@ public:
   //!< void setRamping(double Istep, double tstep);																	  //!< sets the ramping parameters
 
   void setCharacterisationParam(double Dp, double Dn, double kp, double kn, double Rdc); //!< sets the parameters related to the characterisation of the cell
-
-  TimingData_Cell_SPM getTimings()
-  {
-#if TIMING
-    return timeData;
-#else
-    return {};
-#endif
-  }
 };
 } // namespace slide

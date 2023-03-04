@@ -38,10 +38,6 @@ void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
    *
    */
 
-#if TIMING
-  Clock clk;
-#endif
-
   const auto nch = st.nch;
 
   auto [Dpt, Dnt] = calcDiffConstant();
@@ -56,29 +52,22 @@ void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
     d_st.zn(j) = (Dnt * M->An[j] * st.zn(j) + M->Bn[j] * jn); //!< dz/dt = D * A * z + B * j
 
   d_st.SOC() += -I() / (Cap() * 3600); //!< dSOC state of charge
-
-#if TIMING
-  timeData.dstate += clk.duration(); //!< time in seconds
-#endif
 }
 
 void Cell_SPM::dState_thermal(bool print, double &dQgen)
 {
-/*
- * Calculate the internal heat generation
- * IN
- * print 	boolean indicating if we want to print error messages or not
- * 				if true, error messages are printed
- * 				if false no error messages are printed (but the error will still be thrown)
- * 			we need this input from higher level functions because at this point we cannot know if this will be a critical error or not
- * blockDegAndTherm 	if true, battery degradation is ignored (i.e. the time derivatives of those states are 0)
- *
- * OUT
- * dQgen 	change in generated heat
- */
-#if TIMING
-  Clock clk;
-#endif
+  /*
+   * Calculate the internal heat generation
+   * IN
+   * print 	boolean indicating if we want to print error messages or not
+   * 				if true, error messages are printed
+   * 				if false no error messages are printed (but the error will still be thrown)
+   * 			we need this input from higher level functions because at this point we cannot know if this will be a critical error or not
+   * blockDegAndTherm 	if true, battery degradation is ignored (i.e. the time derivatives of those states are 0)
+   *
+   * OUT
+   * dQgen 	change in generated heat
+   */
 
   //!< Calculcate the lithium fractions at the surface of the particles
   auto [Dpt, Dnt] = calcDiffConstant();
@@ -132,10 +121,6 @@ void Cell_SPM::dState_thermal(bool print, double &dQgen)
   //!< dQcool = (Qc) * (L*elec_surf);
 
   //!< dT = 1/(rho*Cp)*(Qrev+Qrea+Qohm+Qc);					//!< dT		cell temperature
-
-#if TIMING
-  timeData.dstate += clk.duration(); //!< time in seconds
-#endif
 }
 
 void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
@@ -172,9 +157,6 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
    * 		dT			time derivative of the battery temperature [K s-1] (dT/dt)
    * 		dI
    */
-#if TIMING
-  Clock clk;
-#endif
   using namespace PhyConst;
   using settings::nch;
 
@@ -265,10 +247,6 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   d_state.rDCn() = 0;                                                             //!< drdc_n 	anode resistance
   d_state.rDCcc() = 0;                                                            //!< drdc_cc 	current collector resistance
   d_state.delta_pl() = ipl / (npl * F * rhopl);                                   //!< ddelta_pl thickness of the plated lithium
-
-#if TIMING
-  timeData.dstate += clk.duration(); //!< time in seconds
-#endif
 }
 
 void Cell_SPM::timeStep_CC(double dt, int nstep)

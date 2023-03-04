@@ -143,8 +143,7 @@ public:
 
   void writeData(const std::string &prefix) override
   {
-    //!< Tell all connected cells to write their data
-    for (const auto &SU : SUs)
+    for (const auto &SU : SUs) //!< Tell all connected cells to write their data
       SU->writeData(prefix);
 
 
@@ -179,30 +178,25 @@ public:
     blockDegAndTherm = block;
   }
 
-  void setT(double Tnew) override //!< set a module temperature
-  {
-    /*
-     * Set the temperature of the coolant in this module.
-     * Note that it does NOT immediately change the temperatures of the child-SUs.
-     * That is done by the thermal model over time
-     */
-    cool->setT(Tnew);
-  }
+  /*****************************************************************
+   * Set the temperature of the coolant in this module.
+   * Note that it does NOT immediately change the temperatures of the child-SUs.
+   * That is done by the thermal model over time
+   *****************************************************************/
+  void setT(double Tnew) override { cool->setT(Tnew); } //!< set a module temperature
 
-  size_t getNcells() override
-  {
-    /*  return the number of cells connected to this module
-     * 	e.g. if this module has 3 child-modules, each with 2 cells.
-     * 	then getNSUs = 3 but getNcells = 6
-     */
-    return Ncells;
-  }
+  /*****************************************************************
+   * return the number of cells connected to this module
+   * e.g. if this module has 3 child-modules, each with 2 cells.
+   * then getNSUs = 3 but getNcells = 6
+   *****************************************************************/
+  size_t getNcells() override { return Ncells; }
 
+  //!< Return the temperature of the hottest element of the module.
+  //!< Note that this will be the T of a cell, since child-modules will pass on
+  //!< this function to their cells
   double getThotSpot() override //!< get the maximum temperature of the cells or the module
   {
-    //!< Return the temperature of the hottest element of the module.
-    //!< Note that this will be the T of a cell, since child-modules will pass on
-    //!< this function to their cells
     double Thot = cool->T();
     for (const auto &SU : SUs)
       Thot = std::max(Thot, SU->getThotSpot());

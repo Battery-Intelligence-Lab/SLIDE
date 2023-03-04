@@ -17,8 +17,34 @@
 #include <numeric>
 #include <vector>
 #include <fstream>
+#include <iostream>
 
 namespace slide::free {
+
+template <typename Tsu>
+inline Status setVoltage_iterative(Tsu *su, double Vset)
+{
+  // New redistributeCurrent without PI control:
+  //!< get cell voltages
+  constexpr int maxIteration = 50;
+  double Ia{ su->I() };
+
+  for (int iter{ 0 }; iter < maxIteration; iter++) {
+    const auto Va = su->V();
+    if (std::abs(Vset - Va) < 1e-6)
+      return Status::Success;
+
+    const auto Ib = (Vset > Va) ? Ia - 0.01 * su->Cap() : Ia + 0.01 * su->Cap();
+    su->setCurrent(Ib);
+    const auto Vb = su->V();
+
+    const double slope = (Ia - Ib) / (Va - Vb);
+    Ia = Ib - (Vb - Vset) * slope; //!< False-Position method.
+    su->setCurrent(Ia);
+  }
+
+  return Status::RedistributeCurrent_failed; // #TODO change to setVoltage failed.
+}
 
 inline void write_data(std::ofstream &file, std::vector<double> &data, size_t N = 1)
 {
@@ -126,7 +152,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
   constexpr bool printNonCrit = (settings::printBool::printNonCrit) && Print; //!< print if the (global) verbose-setting is above the threshold
 
   try {
-    v = su.V(Print);
+    v = su.V();
   } catch (int) {
     std::cout << "We could not calculate voltage!!!\n";
     return Status::V_not_calculated;

@@ -48,27 +48,4 @@ struct BatteryData
   double convloss; //!< losses in the power electronic converter [W]
 };
 
-struct TimingData_Cell_SPM
-{
-  double dstate{}, V{}, getOCV{}, validStates{}, setStates{};
-
-  void print()
-  {
-    std::cout << "Time dstate: " << dstate << '\n'
-              << "Time getOCV " << getOCV << '\n'
-              << "Time setStates: " << setStates << '\n'
-              << "Time V: " << V << '\n'
-              << "Time validStates: " << validStates << '\n';
-  }
-};
-
-struct TimingData_Module_s
-{
-  double setCurrent{}, timeStep{}, timeStepi{}, validSUs{};
-};
-
-struct TimingData_Module_p
-{
-  double redistributeCurrent{}, setCurrent{}, timeStep{}, timeStepi{}, validSUs{};
-};
 } // namespace slide

@@ -198,7 +198,7 @@ void Cell_SPM::getC(double cp[], double cn[]) noexcept
   cn[nch + 1] = (-1.0 / 2.0) * (cnt + jn * geo.Rn / Dnt);
 }
 
-double Cell_SPM::getOCV(bool print)
+double Cell_SPM::getOCV()
 {
   /*
    * print 	controls the printing of error messages, (default = true)
@@ -213,11 +213,7 @@ double Cell_SPM::getOCV(bool print)
    * 			passed on from linear interpolation
    */
 
-#if TIMING
-  Clock clk;
-#endif
-
-  const bool verb = settings::printBool::printCrit && print; //!< print if the (global) verbose-setting is above the threshold
+  const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Get the surface concentrations
   double cps, cns;
@@ -225,20 +221,17 @@ double Cell_SPM::getOCV(bool print)
   //!< Calculate the li-fraction (instead of the li-concentration)
   const double zp_surf = (cps / Cmaxpos);
   const double zn_surf = (cns / Cmaxneg);
-  const bool bound = true;                                               //!< in linear interpolation, throw an error if you are out of the allowed range
-  const double dOCV = OCV_curves.dOCV_tot.interp(zp_surf, print, bound); //!< entropic coefficient of the total cell voltage [V/K]
-  const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound); //!< anode potential [V]
-  const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, print, bound); //!< cathode potential [V]
+  const bool bound = true;                                              //!< in linear interpolation, throw an error if you are out of the allowed range
+  const double dOCV = OCV_curves.dOCV_tot.interp(zp_surf, verb, bound); //!< entropic coefficient of the total cell voltage [V/K]
+  const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, verb, bound); //!< anode potential [V]
+  const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, verb, bound); //!< cathode potential [V]
 
   const auto entropic_effect = (st.T() - T_ref) * dOCV;
 
-#if TIMING
-  timeData.getOCV += clk.duration();
-#endif
   return (OCV_p - OCV_n + entropic_effect);
 }
 
-double Cell_SPM::V(bool print)
+double Cell_SPM::V()
 {
   /*
    * Function to calculate the cell voltage
@@ -260,15 +253,11 @@ double Cell_SPM::V(bool print)
    * THROWS
    */
 
-#if TIMING
-  Clock clk;
-#endif
-
   //!< If the stored value is the most up to date one, then simply return this value
   if (Vcell_valid)
     return st.V();
 
-  const bool verb = settings::printBool::printCrit && print; //!< print if the (global) verbose-setting is above the threshold
+  const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Get the surface concentrations
   double cps, cns;
@@ -311,10 +300,6 @@ double Cell_SPM::V(bool print)
     st.V() = OCV + overpotential - getRdc() * I(); //
     Vcell_valid = true;                            //!< we now have the most up to date value stored
   }
-
-#if TIMING
-  timeData.V += clk.duration(); //!< time in seconds
-#endif
 
   return st.V();
 }
@@ -373,9 +358,6 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
    * Returns Status see Status.hpp for the meaning.
    */
 
-#if TIMING
-  Clock clk;
-#endif
   auto st_old = st; //!< Back-up values.
   auto Vcell_valid_prev = Vcell_valid;
 
@@ -390,9 +372,6 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
     Vcell_valid = Vcell_valid_prev;
   }
 
-#if TIMING
-  timeData.setStates += clk.duration(); //!< time in seconds
-#endif
   return status;
 }
 
@@ -414,9 +393,7 @@ bool Cell_SPM::validStates(bool print)
    * This can't be done here because it requires parameters of the Cell itself.
    * see Cell_SPM::getC or Cell_SPM::getCsurf
    */
-#if TIMING
-  Clock clk;
-#endif
+
   const bool verb = print && settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Check if all fields are present & extract their values
@@ -505,12 +482,7 @@ bool Cell_SPM::validStates(bool print)
     range = false;
   }
 
-
-#if TIMING
-  timeData.validStates += clk.duration(); //!< time in seconds
-#endif
-  //!< there is no range on the current
-  return range;
+  return range; //!< there is no range on the current
 }
 
 void Cell_SPM::setTenv(double Tenv)

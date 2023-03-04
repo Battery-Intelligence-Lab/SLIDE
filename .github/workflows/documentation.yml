@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - 'src/**'
+      - 'docs/**'
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
@@ -33,6 +34,47 @@ jobs:
           doxyfile-path: 'docs/Doxyfile'
       - run: sudo sed -ri 's/<div id="projectname">(.*)/<div id="projectname"><a href="..\/index.html">\1 <\/a>/g' ./build/Doxygen/html/index.html
       - run: sudo mv ./build/Doxygen/html ./_site/Doxygen
+      # Create a coverage report and upload to the website! 
+      - name: update
+        run: sudo apt update
+
+      - name: install compiler and dependencies
+        run: sudo apt install gcc-11 g++-11 lcov
+
+      - name: make build directory
+        run: mkdir build_dir
+
+      - name: cmake configure
+        run: cmake .. -DCMAKE_BUILD_TYPE=Debug -DSLIDE_ENABLE_COVERAGE:BOOL=TRUE
+        working-directory: build_dir
+        env:
+          CC: gcc-11
+          CXX: g++-11
+
+      - name: cmake build
+        run: cmake --build . --parallel 2
+        working-directory: build_dir
+
+      - name: cmake test
+        run: ctest -j2 -C Debug --output-on-failure
+        working-directory: build_dir
+      
+      - name: upload coverage results
+        run: |
+          lcov --directory . --capture --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' '*/tests/*' --output-file coverage.info
+          lcov --list coverage.info
+          bash <(curl https://codecov.io/bash) -f coverage.info
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        working-directory: build_dir
+
+      - name: generate html report for website
+        run: genhtml coverage.info -o Coverage
+        working-directory: build_dir
+      - run: sudo mv ./build_dir/Coverage ./_site/Coverage
+        
+      # Upload the website:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
 

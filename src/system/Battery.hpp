@@ -38,7 +38,6 @@ protected:
 public:
   Battery();
   Battery(std::string IDi);
-  void setID(std::string IDi);
   void setModule(std::unique_ptr<Module> &&module);
   void setSeriesandParallel(unsigned int ser, unsigned int par);
 
@@ -68,8 +67,8 @@ public:
   void resetConvLosses() { convlosses = 0; }
 
   //!< voltage
-  double getOCV(bool print = true) override { return cells->getOCV(print) * nseries; }
-  double V(bool print = true) override { return cells->V(print) * nseries; }
+  double getOCV() override { return cells->getOCV() * nseries; }
+  double V() override { return cells->V() * nseries; }
   Status checkVoltage(double &v, bool print) noexcept override;      //!< get the voltage and check if it is valid
   double getVhigh() override { return cells->getVhigh() * nseries; } //!< return the voltage of the cell with the highest voltage
   double getVlow() override { return cells->getVlow() * nseries; }   //!< return the voltage of the cell with the lowest voltage

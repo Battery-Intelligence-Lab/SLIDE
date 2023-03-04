@@ -207,7 +207,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
     sparam.s_lares = sparam.s_lares || cs_id == 1;
 }
 
-inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *M, DEG_ID &deg_id_, int verbosei) : Cell_KokamNMC(M, verbosei)
+inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *M_, DEG_ID &deg_id_, int verbosei) : Cell_KokamNMC(M_, verbosei)
 {
   /*
    * constructor to initialise the degradation parameters

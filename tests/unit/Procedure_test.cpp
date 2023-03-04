@@ -21,14 +21,6 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
    * Test the ageing procedure with a few different SUs
    */
 
-#if TIMING
-  std::clock_t tstart;
-  double duration;
-  tstart = std::clock();
-  double tocv, tv, tdstate, tvalidstates, tsetstates;           //!< variables to measure the amount of time spent in selected functions
-  double tsetI, tvalidSU, ttimestep, ttimestepi, tredistribute; //!< variables for timing in modules
-#endif
-
   //!< Settings
   std::default_random_engine gen;
   double std1{}, std2{}, std3{};
@@ -67,13 +59,6 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
 
   p.cycleAge(cp1.get(), true); //!< WITH CV -> 1C CCCV cycling
                                //!< just check this runs without producing an error warning
-#if TIMING
-  cp1->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
-  duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);
-  std::cout << "Timings for a singe SPM cell in seconds: total " << duration << ", OCV " << tocv << ", V " << tv << ", dstate " << tdstate << ", validStates " << tvalidstates << ", and setStates " << tsetstates << '\n';
-
-  tstart = std::clock();
-#endif
 
   std::cout << "Procedure_test start series module\n";
 
@@ -97,18 +82,8 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
   mp->setRcontact(Rcs);
   auto p2 = Procedure(balance, Vbal, ndata, unittest);
   p2.cycleAge(mp.get(), false); //!< this should write a file called s_module_capacities.csv
-//!< 	check that all cells age more or less the same
-//!< 	the capacity of the string should be the capacity of the smallest cell
-#if TIMING
-  cp2->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
-  mp->getTimings(tsetI, tvalidSU, ttimestep, ttimestepi);
-  duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);
-  std::cout << "Timings for a SPM cell in a series module in seconds: total " << duration << ", OCV " << tocv * ncel << ", V " << tv * ncel << ", dstate " << tdstate * ncel << ", validStates " << tvalidstates * ncel << ", and setStates " << tsetstates * ncel << '\n';
-  std::cout << "Timings for the series module, total was " << duration << ", setCurrent " << tsetI << ", validSUs " << tvalidSU << ", timestep " << ttimestep << ", timestepi " << ttimestepi << '\n';
-
-  tstart = std::clock();
-#endif
-
+                                //!< 	check that all cells age more or less the same
+                                //!< 	the capacity of the string should be the capacity of the smallest cell
   std::cout << "Procedure_test start battery of parallel module\n";
 
   //!< test with Battery from parallel module
@@ -138,17 +113,10 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
   auto p3 = Procedure(balance, Vbal, ndata, unittest);
 
   p3.cycleAge(bat.get(), false); //!< this should write a file called p_module_capacities.csv
-//!< check the document with the capacities
-//!< 	if contact resistance is not zero, then cells with higher numbers (right columns)
-//!< 		should have more remaining capacities than cells with low numbers (left columns)
-//!< 	if Rc == 0, all cells should have more or less the same capacity
-#if TIMING
-  cp7->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
-  mpp->getTimings(tredistribute, tsetI, tvalidSU, ttimestep, ttimestepi);
-  duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);
-  std::cout << "Timings for a SPM cell in a parallel module in seconds: total " << duration << ", OCV " << tocv * ncel2 << ", V " << tv * ncel2 << ", dstate " << tdstate * ncel2 << ", validStates " << tvalidstates * ncel2 << ", and setStates " << tsetstates * ncel2 << '\n';
-  std::cout << "Timings for the parallel module, total was " << duration << ", redistributeI " << tredistribute << ", setCurrent " << tsetI << ", validSUs " << tvalidSU << ", timestep " << ttimestep << ", timestepi " << ttimestepi << '\n';
-#endif
+  //!< check the document with the capacities
+  //!< 	if contact resistance is not zero, then cells with higher numbers (right columns)
+  //!< 		should have more remaining capacities than cells with low numbers (left columns)
+  //!< 	if Rc == 0, all cells should have more or less the same capacity
 }
 
 bool test_Prcedure_CoolSystem()
@@ -497,17 +465,8 @@ bool test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
   } catch (...) {
     std::cout << "Something happened.\n";
   }
-//!< 	check that all cells age more or less the same
-//!< 	the capacity of the string should be the capacity of the smallest cell
-#if TIMING //!< #TODO we are using unique pointers.
-  cp2->getTimings(tocv, tv, tdstate, tvalidstates, tsetstates);
-  mp->getTimings(tsetI, tvalidSU, ttimestep, ttimestepi);
-  duration = (std::clock() - tstart) / static_cast<double>(CLOCKS_PER_SEC);
-  std::cout << "Timings for a SPM cell in a series module in seconds: total " << duration << ", OCV " << tocv * ncel << ", V " << tv * ncel << ", dstate " << tdstate * ncel << ", validStates " << tvalidstates * ncel << ", and setStates " << tsetstates * ncel << '\n';
-  std::cout << "Timings for the series module, total was " << duration << ", setCurrent " << tsetI << ", validSUs " << tvalidSU << ", timestep " << ttimestep << ", timestepi " << ttimestepi << '\n';
-
-  tstart = std::clock();
-#endif
+  //!< 	check that all cells age more or less the same
+  //!< 	the capacity of the string should be the capacity of the smallest cell
 
   std::cout << "Procedure_test start parallel module\n";
 

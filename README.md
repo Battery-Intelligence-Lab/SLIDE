@@ -1,9 +1,11 @@
 _Slide_
 ===========================
-[![Ubuntu unit](https://github.com/davidhowey/SLIDE/workflows/Ubuntu%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
-[![macOS unit](https://github.com/davidhowey/SLIDE/workflows/macOS%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
-[![Windows unit](https://github.com/davidhowey/SLIDE/workflows/Windows%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
+[![Ubuntu unit](https://github.com/Battery-Intelligence-Lab/SLIDE/workflows/Ubuntu%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
+[![macOS unit](https://github.com/Battery-Intelligence-Lab/SLIDE/workflows/macOS%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
+[![Windows unit](https://github.com/Battery-Intelligence-Lab/SLIDE/workflows/Windows%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
 ![Website](https://img.shields.io/website?url=https%3A%2F%2FBattery-Intelligence-Lab.github.io%2FSLIDE%2F)
+[![codecov](https://codecov.io/gh/Battery-Intelligence-Lab/SLIDE/branch/master/graph/badge.svg?token=K739SRV4QG)](https://codecov.io/gh/Battery-Intelligence-Lab/SLIDE)
+
 
 ![GitHub all releases](https://img.shields.io/github/downloads/Battery-Intelligence-Lab/SLIDE/total) 
 
@@ -14,7 +16,7 @@ To cite this code, check the lastest release DOI at https://zenodo.org/badge/lat
 
 <p align="center">
   <img width="70%" 
-  src="slide_logo.png">
+  src="docs/slide_logo.png">
 </p>
 
 
