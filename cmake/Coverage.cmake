@@ -1,4 +1,4 @@
-option (SLIDE_ENABLE_COVERAGE "Enable coverage reporting for GCC or Clang" ON)
+option (SLIDE_ENABLE_COVERAGE "Enable coverage reporting for GCC or Clang" OFF)
 
 # Setup coverage testing for GCC or Clang
 if (SLIDE_ENABLE_COVERAGE)
