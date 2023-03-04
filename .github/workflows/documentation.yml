@@ -37,8 +37,11 @@ jobs:
       - name: update
         run: sudo apt update
 
-      - name: install compiler
+      - name: install compiler and dependencies
         run: sudo apt install gcc-12 g++-12 lcov
+
+      - name: make build directory
+        run: mkdir build_dir
 
       - name: cmake configure
         run: cmake .. -DCMAKE_BUILD_TYPE=Debug -DSLIDE_ENABLE_COVERAGE:BOOL=TRUE

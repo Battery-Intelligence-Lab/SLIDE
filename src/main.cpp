@@ -122,7 +122,7 @@ int main()
 
   // deg.pl_id = 1; //!< Yang lithium plating
 
-  // std::cout << "Used ageing model: " << deg.print() <<  '\n';
+  // std::cout << "Used ageing model: " << deg.print() << '\n';
 
   //!< Then the user has to choose what is simulated.
   //!< In the code below, uncomment the line which calls the function you want to execute (uncommenting means removing the //!<in front of the line)
