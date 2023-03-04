@@ -5,6 +5,9 @@ _Slide_
 [![Windows unit](https://github.com/davidhowey/SLIDE/workflows/Windows%20unit/badge.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/actions)
 ![Website](https://img.shields.io/website?url=https%3A%2F%2FBattery-Intelligence-Lab.github.io%2FSLIDE%2F)
 
+![Code Coverage](https://img.shields.io/badge/Coverage-79.6%25-brightgreen.svg)
+
+
 ![GitHub all releases](https://img.shields.io/github/downloads/Battery-Intelligence-Lab/SLIDE/total) 
 
 In this `readme.md` a summary is given. You may find the detailed documentation [here](https://Battery-Intelligence-Lab.github.io/SLIDE/).  
