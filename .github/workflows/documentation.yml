@@ -2,7 +2,7 @@ name: Build, test and generate docs
 on:
   push:
     branches:
-      - master
+      - data_storage
     paths:
       - 'src/**'
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -64,6 +64,10 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         working-directory: build_dir
+
+      - name: generate html report for website
+        run: genhtml coverage.info -o Coverage
+      - run: sudo mv ./build/Coverage ./_site/Coverage
         
       # Upload the website:
       - name: Upload artifact
