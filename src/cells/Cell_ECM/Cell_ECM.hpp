@@ -95,7 +95,7 @@ public:
 template <size_t N_RC>
 inline Cell_ECM<N_RC>::Cell_ECM()
 {
-  ID = "Cell_ECM";
+  ID = "Cell_ECM<" + std::to_string(N_RC) + ">";
   capNom = 16;
   //!< OCV curve, dummy linear curve with 3 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 3);

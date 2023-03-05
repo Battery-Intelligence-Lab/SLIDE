@@ -38,6 +38,9 @@
 
 
 ### Current priority: 
+- [ ] Some tests were hard-coded for Cell_type which has been changed to template.
+- [ ] operator[] is added to Module class to reach SUs. 
+- [ ] getNSUs() -> size() so module size should be number of SUs.
 - [x] Module_p::getRtot() check for contact resistances is removed for simplification. 
 - [ ] Why do we need getRtot? Only for algorithms? Maybe getThevenin would be better. 
 - [x] V(bool print),  getOCV(bool print) print argument is removed. 
