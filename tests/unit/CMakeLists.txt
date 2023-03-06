@@ -23,9 +23,9 @@ add_test(NAME unit_test_Converter COMMAND unit_test_Converter WORKING_DIRECTORY 
 # target_link_libraries(unit_test_Module_s PRIVATE src)
 # add_test(NAME unit_test_Module_s COMMAND unit_test_Module_s WORKING_DIRECTORY bin)
 
-# add_executable(unit_test_Cycler Cycler_test.cpp)
-# target_link_libraries(unit_test_Cycler PRIVATE src)
-# add_test(NAME unit_test_Cycler COMMAND unit_test_Cycler WORKING_DIRECTORY bin)
+add_executable(unit_test_Cycler Cycler_test.cpp)
+target_link_libraries(unit_test_Cycler PRIVATE src)
+add_test(NAME unit_test_Cycler COMMAND unit_test_Cycler WORKING_DIRECTORY bin)
 
 # add_executable(unit_test_Procedure Procedure_test.cpp)
 # target_link_libraries(unit_test_Procedure PRIVATE src)

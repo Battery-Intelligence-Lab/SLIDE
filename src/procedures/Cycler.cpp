@@ -176,9 +176,11 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, ThroughputData &th)
   } //!< end time integration
 
   //!< check why we stopped the time integration
-  if (ttot >= tlim && std::abs(ttot - tlim) < 1)
+  if (ttot >= tlim && std::abs(ttot - tlim) < 1) {
+    succ = su->setCurrent(0, false, true); // #TODO do it one last time otherwise after timeStep_CC currents change!
     succ = Status::ReachedTimeLimit;
-  else {
+
+  } else {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "Error in Cycler::rest, stopped time integration for unclear reason after "
                 << ttot << "s, we were running with time limit " << tlim << '\n';
@@ -344,7 +346,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
   int idat = 0;                    //!< consecutive number of time steps done without storing data
   int nOnce = 1;                   //!< number of time steps we take at once, will change dynamically
   constexpr double sfactor = 10.0; //!< increase nOnce if the voltage headroom is bigger than sfactor*dV (dV = change in this iteration)
-  int nOnceMax = 10;               //!< allow maximum this number of steps to be taken at once
+  int nOnceMax = 2;                //!< allow maximum this number of steps to be taken at once
   if (boolStoreData)               //!< if we store data, never take more than the interval at which you want to store the voltage
     nOnceMax = std::min(nOnceMax, ndt_data);
   bool vtot = false;            //!< boolean indicating if vlim has been reached
@@ -363,6 +365,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
     //!< change length of the time step in the last iteration to get exactly tlim seconds
     if (nOnce * dti > tlim - ttot) //!< we are close to the total time -> set nOnce to 1
       nOnce = 1;
+
     if (dti > tlim - ttot) //!< the last time step, ensure we end up exactly at the right time
       dti = tlim - ttot;
 

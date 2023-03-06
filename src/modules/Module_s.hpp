@@ -43,6 +43,7 @@ public:
   double V() override; //!< module voltage (sum of cells), print is an optional argument
 
   //!< bool validSUs(bool print = true);
+  using Module::validSUs;
   bool validSUs(SUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current

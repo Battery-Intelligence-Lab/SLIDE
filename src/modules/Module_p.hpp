@@ -42,6 +42,7 @@ public:
   Status setVoltage(double Vnew, bool checkI = true, bool print = true) override;
   Status redistributeCurrent_new(bool checkV = true, bool print = true);
 
+  using Module::validSUs;
   bool validSUs(SUs_span_t c, bool print = true) override; //!< check if the cells in this array are valid for this module
   void timeStep_CC(double dt, int steps = 1) override;
 

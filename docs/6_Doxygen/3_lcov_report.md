@@ -1,7 +1,7 @@
 ---
 layout: default
-title: Code coverage (LCOV)
-nav_order: 5
+title: Code coverage report (LCOV)
+nav_order: 3
 ---
 <html>
 <body>

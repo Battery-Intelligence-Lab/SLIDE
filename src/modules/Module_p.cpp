@@ -88,7 +88,7 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
   std::array<double, settings::MODULE_NSUs_MAX> Va, Vb, Ia, Ib; //!< #TODO if we should make them vector.
 
   //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
-  constexpr int maxIteration = 50;
+  constexpr int maxIteration = 2500;
   const auto nSU = getNSUs();
 
   auto StatusNow = Status::RedistributeCurrent_failed;
@@ -117,7 +117,7 @@ Status Module_p::redistributeCurrent_new(bool checkV, bool print)
       return Status::Success;
 
     for (size_t i = 0; i < nSU; i++) {
-      Ia[i] = Ia[i] - 0.2 * (Vmean - Va[i]) / 0.001;
+      Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
       SUs[i]->setCurrent(Ia[i]);
     }
     getVall(Va, print);
@@ -176,7 +176,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  constexpr int maxIteration = 50;
+  constexpr int maxIteration = 2550;
   const auto nSU = getNSUs();
 
   auto StatusNow = Status::Success;
@@ -217,8 +217,9 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     }
 
     for (size_t i = 0; i < nSU; i++) {
-      Ia[i] = Ia[i] - 0.2 * (Vmean - Va[i]) / 0.001;
-      SUs[i]->setCurrent(Ia[i]);
+      Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
+      if (SUs[i]->setCurrent(Ia[i]) != Status::Success)
+        std::cout << "This should not happen!!" << std::endl; // #TODO
     }
     getVall(Va, print);
   }
@@ -363,17 +364,11 @@ void Module_p::timeStep_CC(double dt, int nstep)
 
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
-  //!< check if the cell's voltage is valid
-  if (!validSUs(SUs, false)) {
-    try {
-      auto status = redistributeCurrent_new(false, true); //!< don't check the currents
-
-      if (status != Status::Success)
-        throw 100000; //!< #TODO
-    } catch (int e) {
-      std::cerr << "error in Module_p::timeStep_CC when redistributing the current. Throwing the error on " << e << '\n';
-      throw e;
-    }
+  //!< check if the cell's voltage is valid #TODO I changed this to make redistribute everytime!
+  auto status = redistributeCurrent_new(false, true); //!< don't check the currents
+  if (status != Status::Success) {
+    auto status = redistributeCurrent_new(false, true); //!< don't check the currents
+    throw 100000;                                       //!< #TODO
   }
 }
 

@@ -81,6 +81,9 @@ public:
   size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
   SUs_t &getSUs() { return SUs; }
 
+  const auto &operator[](size_t i) const { return SUs[i]; }
+  auto &operator[](size_t i) { return SUs[i]; }
+
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid
   double getVhigh() override;                                           //!< return the voltage of the cell with the highest voltage
   double getVlow() override;                                            //!< return the voltage of the cell with the lowest voltage

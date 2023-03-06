@@ -70,6 +70,7 @@ double Cell_SPM::thermalModel_cell()
   //!< 		e.g. exchange from cell 2 to this cell will not be same as from this cell to cell 2 since T of this cell would have changed.
 
   //!< Reset the cumulative thermal variables
+  Therm_Qgentot += Therm_Qgen;
   Therm_Qgen = 0;
   Therm_time = 0;
 
@@ -206,6 +207,7 @@ double Cell_SPM::thermalModel(int Nneighbours, double Tneighbours[], double Knei
   } catch (int e) {
 
     //!< indicate we have ran the thermal model
+    Therm_Qgentot += Therm_Qgen;
     Therm_Qgen = 0;
     Therm_time = 0;
     throw e;
@@ -216,6 +218,7 @@ double Cell_SPM::thermalModel(int Nneighbours, double Tneighbours[], double Knei
   //!< cell 2 since T of this cell would have changed.
 
   //!< Reset the cumulative thermal variables
+  Therm_Qgentot += Therm_Qgen;
   Therm_Qgen = 0;
   Therm_time = 0;
 

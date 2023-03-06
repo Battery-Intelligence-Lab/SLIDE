@@ -206,7 +206,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
     return Status::VMAX_violation;
   }
 
-  return Status::Unknown_problem; //!< We don't know what happened...
+  return Status::Success; //!< #TODO should we also send Vmin/Vmax violations even we are not charging/discharging?
 }
 
 template <bool Print = settings::printBool::printCrit>
