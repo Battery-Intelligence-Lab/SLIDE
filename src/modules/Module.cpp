@@ -91,12 +91,7 @@ void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
   }
 
   //!< check the cells are valid according to this module layout
-  if (checkCells && !validSUs(c, print)) {
-    if (verb)
-      std::cerr << "ERROR in Module::setCells, the cells are "
-                   "an illegal combination for this module.\n";
-    throw 10;
-  }
+  // #TODO checkCells & setSUs removed from here
 
   //!< connect the cells to this module
   Vmodule_valid = false; //!< we are changing the SUs, so the stored voltage is no longer valid
@@ -192,10 +187,7 @@ bool Module::validStates(bool print)
 
   const bool verb = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  //!< check the resulting state is valid
-  bool val = validSUs(verb); // #TODO validSUs does not take vector.
-
-  return val;
+  return true; // #TODO here we probably need to check if all submodule states valid!
 }
 
 Status Module::setStates(setStates_t s, bool checkV, bool print)
@@ -261,15 +253,15 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
    * So we must have a way of restoring the state without checking anything.
    * OR alternatively, at the beginning we check that the initial state is valid.
    */
-  if (checkV) {
-    bool valCells = validSUs(SUs, print);
-    if (!valCells) {
-      if (verb)
-        std::cerr << "ERROR in Module:setStates for SU = " << getFullID() << ", the state is illegal "
-                  << "according to validCells(), returning the old states and throwing 10.\n";
+  if (checkV) { // #TODO
+    // bool valCells = validSUs(SUs, print);
+    // if (!valCells) {
+    //   if (verb)
+    //     std::cerr << "ERROR in Module:setStates for SU = " << getFullID() << ", the state is illegal "
+    //               << "according to validCells(), returning the old states and throwing 10.\n";
 
-      return Status::Invalid_states;
-    }
+    //   return Status::Invalid_states;
+    // }
   }
 
   return Status::Success; //!< return success.

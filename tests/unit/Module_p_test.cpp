@@ -172,47 +172,6 @@ bool test_validStates_p()
   return true;
 }
 
-bool test_validCells_p()
-{
-  //!< bool Module_base_s::validCells(Cell c[], int nin, bool print)
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::unique_ptr<StorageUnit>(new Cell_Bucket()),
-    std::unique_ptr<StorageUnit>(new Cell_Bucket())
-  };
-
-
-  std::string n = "na";
-  double T = settings::T_ENV;
-  bool checkCells = false;
-  auto mp = std::make_unique<Module_p>(n, T, true, false, std::size(cs), 1, 1);
-  mp->setSUs(cs, checkCells, true);
-
-  //!< valid cells with the current cells
-  assert(mp->validSUs());
-  auto &cs2 = mp->getSUs();
-
-  //!< valid cells (new cell)
-  cs2[1] = std::unique_ptr<StorageUnit>(new Cell_Bucket());
-  assert(mp->validSUs());
-
-  //!< add an additional cell
-  std::unique_ptr<StorageUnit> cs3[] = {
-    std::unique_ptr<StorageUnit>(new Cell_Bucket()),
-    std::unique_ptr<StorageUnit>(new Cell_Bucket()),
-    std::unique_ptr<StorageUnit>(new Cell_Bucket())
-  };
-
-  mp->setSUs(cs3);
-  assert(mp->validSUs());
-
-  // if () { #TODO test to fail.
-  //   //!< different SOC values -> different voltages
-  //   cp3->setSOC(0.4);
-  //   assert(!mp->validSUs(cs3, 3, false));
-  // }
-
-  return true;
-}
 bool test_timeStep_CC_p()
 {
   //!< bool Module_base_s::timeStep_CC(double dt)
@@ -281,13 +240,6 @@ bool test_timeStep_CC_p()
     assert(err < tol && err > -tol);
   }
 
-  //!< loop to charge and check cell voltages
-  cp2->setSOC(0.49); //!< start off with a slightly different soC
-  for (int t = 0; t < 100; t++) {
-    mp->timeStep_CC(dt);
-    assert(mp->validSUs());
-  }
-
   return true;
 }
 
@@ -349,12 +301,6 @@ bool test_Modules_p_ECM()
     std::unique_ptr<StorageUnit>(new Cell_ECM<1>()),
     std::unique_ptr<StorageUnit>(new Cell_ECM<1>())
   };
-
-
-  mp->setSUs(cs2);
-  auto &SUs2 = mp->getSUs();
-  assert(mp->validSUs());
-  //!< valid cells (new cell)
 
   //!< CC timestep
   cs[0] = std::unique_ptr<StorageUnit>(new Cell_ECM<1>());
@@ -456,12 +402,6 @@ bool test_Modules_p_SPM()
   };
   mp->setSUs(cs2);
   //!< valid cells with the current cells
-  auto &cs22 = mp->getSUs();
-
-  //!< if this is cs2 and you reuse it in CC time step, for some reason, the code fails
-  //!< similarly, if you comment out the creation of cs22, the code also fails
-  assert(mp->validSUs()); //!< that seems to suggest there is a data-overflow somewhere
-  //!< valid cells (new cell)
 
   //!< CC timestep
   std::unique_ptr<StorageUnit> cs3[] = {
@@ -515,6 +455,8 @@ bool test_Modules_p_SPM()
     err = cell1->SOC() - (0.5);
     assert(err < tol && err > -tol);
   }
+
+  return true;
 }
 
 bool test_contactR()
@@ -574,7 +516,6 @@ bool test_contactR()
   double V23 = (Rcs[2] + Rcell) * I3; //!< voltage at node of 2nc cell going right
   assert(NEAR(V11, V12, settings::MODULE_P_V_ABSTOL));
   assert(NEAR(V22, V23, settings::MODULE_P_V_ABSTOL));
-  assert(mp->validSUs()); //!< ensure the SUs have valid voltages
 
   //!< check the total voltage
   double V1 = cp1->V() - Rcs[0] * (I1 + I2 + I3);
@@ -604,7 +545,7 @@ bool test_contactR()
   V23 = (Rcs[2] + Rcell) * I3;           //!< voltage at node of 2nc cell going right
   assert(NEAR(V11, V12, settings::MODULE_P_V_ABSTOL));
   assert(NEAR(V22, V23, settings::MODULE_P_V_ABSTOL));
-  assert(mp->validSUs()); //!< ensure the SUs have valid voltages
+
   V1 = cp1->V() - Rcs[0] * (I1 + I2 + I3);
   V2 = cp2->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3);
   V3 = cp3->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3) - Rcs[2] * I3;
@@ -960,7 +901,6 @@ int test_all_Module_p()
   if (!TEST(test_Constructor_p, "test_Constructor_p")) return 1;
   if (!TEST(test_BasicGetters_p, "test_BasicGetters_p")) return 2;
   if (!TEST(test_setI_p, "test_setI_p")) return 3;
-  if (!TEST(test_validCells_p, "test_validCells_p")) return 4;
   if (!TEST(test_validStates_p, "test_validStates_p")) return 5;
   if (!TEST(test_timeStep_CC_p, "test_timeStep_CC_p")) return 6;
   if (!TEST(test_contactR, "test_contactR")) return 7;

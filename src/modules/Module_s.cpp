@@ -127,41 +127,6 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   return Status::Success;
 }
 
-bool Module_s::validSUs(SUs_span_t c, bool print)
-{
-  /*
-   * Checks the cells are a valid combination for a series-connected module
-   * the current is the same in each cell
-   *
-   * Note that nothing else is checked. This function should not be relied on on its own to check validity
-   * For that, you shoud use setStates
-   *
-   */
-
-  // #TODO -> Unnecessary function. Check validity when settings SUs or states.
-  // Algorithms should not leave anything in an invalid state.
-
-  bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-  bool result{ true };
-  //!< check the currents are the same
-  const double Imod = c[0]->I();
-  for (size_t i = 1; i < c.size(); i++) {
-    const double err = std::abs(Imod - c[i]->I());
-    bool val = err < settings::MODULE_P_I_ABSTOL || err < Imod * settings::MODULE_P_I_RELTOL; //!< #TODO should not be || here. Ok got it due to 0 current.
-    //!< in complex modules, an s can be made out of p modules, and p modules are allowed to have a small error in their current
-    if (!val) {
-      if (verb)
-        std::cout << "error in Module_s::validCells, the current of cell " << i << " is "
-                  << c[i]->I() << "A while the current in the 0th cell is " << Imod << "A.\n";
-
-      result = false;
-      break;
-    }
-  }
-
-  return result; //!< else the cells are valid
-}
-
 void Module_s::timeStep_CC(double dt, int nstep)
 {
   /*

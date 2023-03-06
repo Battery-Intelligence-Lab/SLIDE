@@ -38,6 +38,7 @@
 
 
 ### Current priority: 
+- [ ] validSUs actually not necessary! Removing. Write free functions to check voltage/current equality!
 - [ ] T_MODEL == 2 causes thermal runaway in test_CyclerVariations_high
 - [ ] redistributeCurrent_new and other iterative algorithms require many iterations (up to 2500)!
 - [ ] test_Cycler_CoolSystem passes only when T_MODEL==2
@@ -204,7 +205,7 @@ slide_pack integration:
 - [ ] setStates to support r-values. 
 - [ ] do not copy shared pointers in for loops.
 - [ ] Why there are so many ifs instead of else-ifs
-- [ ] validSUs functions are combined. 
+- [x] validSUs functions are combined. 
 - [ ] Cycler was checking if storeData is full but storeData itself should check and call writeData. Or better, Cycler should collect everything and write. 
 - [ ] su->getIndex() should not be used  in cycler because it is removed. 
 - [ ] timeStep_CC_i -> seems to be used only for binding; therefore, not needed anymore. 
@@ -272,7 +273,7 @@ slide_pack integration:
 - [ ] Remember that in copy(), usage stats are not copied across to the new module.
 		 * So this function will write all zeros if called with a copy of the SU   -> is this a bug or feature? 
 
-- [ ] for setSUs and validSUs span is used. 
+- [x] for setSUs and validSUs span is used. 
 - [ ] We are reading file lots of times when individually creating cells! In release mode it takes 30 seconds. 
   - [x] slide::Model_SPM -> slide::Model_SPM*  and makeModel();  from 34 seconds to 12 seconds.  18900x326 double = 47 MB RAM is also saved.
   - [ ] OCVcurves -> OCVcurves*   12 seconds to 0.22 seconds. Do not forget things otherwise than NMC. 
