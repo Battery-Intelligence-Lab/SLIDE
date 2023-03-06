@@ -123,23 +123,23 @@ bool test_getCells()
 
   auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
-  std::unique_ptr<StorageUnit> cs2[];
-  mp->getSUs(cs2);       //!< returns storage units, not cells. So getStates is the implementation from SU not Cell_Bucket
-  cs2[0]->getStates(s1); //!< this is SU::getStates, not Cell_Bucket::getStates
+
+  auto &cs2 = mp->getSUs(); //!< returns storage units, not cells. So getStates is the implementation from SU not Cell_Bucket
+  cs2[0]->getStates(s1);    //!< this is SU::getStates, not Cell_Bucket::getStates
   cs2[1]->getStates(s2);
 
   //!< validate cell states
-  for (int i = 0; i < cp1->getNstates(); i++) {
+  for (int i = 0; i < cp1->s1.size(); i++) {
     assert(s1[i] == so1[i]);
     assert(s2[i] == so2[i]);
   }
+
   assert(cs2[0]->V() == cp1->V());
   assert(cs2[1]->V() == cp2->V());
 
   //!< Set the current, ensure it has changed in the cells
   double Inew = 1;
   mp->setCurrent(Inew);
-  mp->getSUs(cs2);
   assert(cs2[0]->I() == Inew);
   assert(cs2[1]->I() == Inew);
   assert(cs2[0]->V() < v1);
@@ -148,7 +148,6 @@ bool test_getCells()
   //!< charge
   Inew = -1;
   mp->setCurrent(Inew);
-  mp->getSUs(cs2);
   assert(cs2[0]->I() == Inew);
   assert(cs2[1]->I() == Inew);
   assert(cs2[0]->V() > v1);
@@ -184,8 +183,8 @@ bool test_setStates(bool testError)
     std::make_unique<Cell_Bucket>()
   };
 
-  auto cp0 = dynamic_cast<Cell_Bucket *>(cs[0].get());
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
+  auto cp2 = dynamic_cast<Cell_Bucket *>(cs[0].get());
 
   std::string n = "na";
   double T = settings::T_ENV;
@@ -194,7 +193,7 @@ bool test_setStates(bool testError)
   mp->setSUs(cs, checkCells, true);
 
   //!< Make a new State vector from cells 1 and 3, where 3 has a different SOC
-  std::vector<double> s, sout[nin], s1[nin1], s2[nin1];
+  std::vector<double> s, sout, s1, s2;
   Cell_Bucket c3;
   c3.setSOC(0.4);         //!< change SOC of a cell
   double Tnew = 1.0_degC; //!< change T
@@ -205,7 +204,7 @@ bool test_setStates(bool testError)
     s[s1.size() + i] = s2[i];
   }
   s[s1.size() * 2] = Tnew;
-  mp->setStates(s, 1 + 2 * s1.size()); //!< this changes the states of m, and should therefore change the states of cell 2 too
+  mp->setStates(s); //!< this changes the states of m, and should therefore change the states of cell 2 too
 
   //!< Check cell 2 and the states have changed
   assert(cp2->SOC() == 0.4); //!< mp->setStates invoked cp2->setStates, so also c2 should have changed
@@ -245,8 +244,6 @@ bool test_setStates(bool testError)
 
 bool test_setCells()
 {
-  //!< bool Module_base::setCells(Cell_Bucket c[], int nin, bool checkCells, bool print)
-
   std::unique_ptr<StorageUnit> cs[] = {
     std::make_unique<Cell_Bucket>(),
     std::make_unique<Cell_Bucket>()
@@ -265,23 +262,25 @@ bool test_setCells()
   double socnew = 0.4;
   auto cp22 = std::make_unique<Cell_Bucket>();
   cp22->setSOC(socnew);
-  cs[1] = cp22;
+  cs[1] = std::move(cp22);
   mp->setSUs(cs);
   //!< check using getCells
-  std::unique_ptr<StorageUnit> cs2[];
-  mp->getSUs(cs2);
+  auto &cs2 = mp->getSUs();
   Cell_Bucket *cell1 = dynamic_cast<Cell_Bucket *>(cs2[1].get()); //!< Dynamic cast from smart ptr of StorageUnit to regular pointer of Cell_Bucket
   assert(cell1->SOC() == socnew);                                 //!< the new soc should be 0.1
   assert(cp2->SOC() == 0.5);                                      //!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
 
   //!< try updating the number of cells
-  auto cp3 = std::make_unique<Cell_Bucket>();
-  std::unique_ptr<StorageUnit> cs3[] = { cp1, cp22, cp3 };
+  std::unique_ptr<StorageUnit> cs3[] = {
+    std::make_unique<Cell_Bucket>(),
+    std::make_unique<Cell_Bucket>(),
+    std::make_unique<Cell_Bucket>()
+  };
+
   mp->setSUs(cs3);
 
   //!< check using getCells
-  std::unique_ptr<StorageUnit> cs4[];
-  mp->getSUs(cs4);
+  auto &cs4 = mp->getSUs();
   cell1 = dynamic_cast<Cell_Bucket *>(cs4[1].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
   assert(cell1->SOC() == socnew);                    //!< cells[1] is cell22 with new soc
   cell1 = dynamic_cast<Cell_Bucket *>(cs4[2].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
@@ -327,11 +326,11 @@ bool test_Constructor()
     std::make_unique<Cell_Bucket>()
   };
 
-  auto cp0 = dynamic_cast<Cell_Bucket *>(cs[0].get());
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
+  auto cp2 = dynamic_cast<Cell_Bucket *>(cs[0].get());
 
-  assert(cp1->getID() == "cell");
-  assert(cp1->getFullID() == "cell"); //!< has no parent yet
+  assert(cp1->getID() == "Cell_ECM<0>");
+  assert(cp1->getFullID() == "Cell_ECM<0>"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
@@ -343,10 +342,10 @@ bool test_Constructor()
   assert(mp2->getNSUs() == std::size(cs));
   assert(mp2->T() == T);
   assert(mp2->getID() == n);
-  assert(cp1->getParent() == mp2);
-  assert(cp2->getParent() == mp2);
-  assert(cp1->getID() == "cell");
-  assert(cp1->getFullID() == "na_cell");
+  assert(cp1->getParent() == mp2.get());
+  assert(cp2->getParent() == mp2.get());
+  assert(cp1->getID() == "Cell_ECM<0>");
+  assert(cp1->getFullID() == "Cell_ECM<0>");
 
   return true;
 }
@@ -562,7 +561,7 @@ bool test_Modules_s_ECM()
   //!< this just repeats the other tests but with a different Cell_Bucket type
 
   int nin1 = settings::CELL_NSTATE_MAX;
-  std::vector<double> s, sout[nin], s1[nin1], s2[nin1];
+  std::vector<double> s, sout, s1, s2;
 
 
   auto cp1 = std::make_unique<Cell_ECM>();
@@ -693,7 +692,7 @@ bool test_Modules_s_SPM()
 
   int nin = settings::STORAGEUNIT_NSTATES_MAX;
   int nin1 = settings::CELL_NSTATE_MAX;
-  std::vector<double> s, sout[nin], s1[nin1], s2[nin1];
+  std::vector<double> s, sout, s1, s2;
 
 
   auto cp1 = std::make_unique<Cell_SPM>();

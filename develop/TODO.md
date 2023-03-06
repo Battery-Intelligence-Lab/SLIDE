@@ -38,6 +38,7 @@
 
 
 ### Current priority: 
+- [ ] copy functions are commented out. 
 - [ ] validSUs actually not necessary! Removing. Write free functions to check voltage/current equality!
 - [ ] T_MODEL == 2 causes thermal runaway in test_CyclerVariations_high
 - [ ] redistributeCurrent_new and other iterative algorithms require many iterations (up to 2500)!

@@ -216,7 +216,7 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
   std::vector<double> sorig;
   getStates(sorig);
 
-  std::span<const double> spn_orig{ sorig };
+  std::span<double> spn_orig{ sorig };
 
   Vmodule_valid = false; //!< we are changing the states, so the stored voltage is no longer valid
 

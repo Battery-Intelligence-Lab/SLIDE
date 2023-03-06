@@ -40,7 +40,7 @@ public:
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
   Status setVoltage(double Vnew, bool checkI = true, bool print = true) override;
-  Status redistributeCurrent_new(bool checkV = true, bool print = true);
+  Status redistributeCurrent(bool checkV = true, bool print = true);
 
   void timeStep_CC(double dt, int steps = 1) override;
 

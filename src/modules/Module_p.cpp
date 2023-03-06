@@ -81,7 +81,7 @@ void Module_p::getVall(std::span<double> Vall, bool print)
   }
 }
 
-Status Module_p::redistributeCurrent_new(bool checkV, bool print)
+Status Module_p::redistributeCurrent(bool checkV, bool print)
 {
   // New redistributeCurrent without PI control:
   //!< get cell voltages
@@ -333,10 +333,10 @@ void Module_p::timeStep_CC(double dt, int nstep)
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
   //!< check if the cell's voltage is valid #TODO I changed this to make redistribute everytime!
-  auto status = redistributeCurrent_new(false, true); //!< don't check the currents
+  auto status = redistributeCurrent(false, true); //!< don't check the currents
   if (status != Status::Success) {
-    auto status = redistributeCurrent_new(false, true); //!< don't check the currents
-    throw 100000;                                       //!< #TODO
+    auto status = redistributeCurrent(false, true); //!< don't check the currents
+    throw 100000;                                   //!< #TODO
   }
 }
 
