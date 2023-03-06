@@ -38,6 +38,9 @@
 
 
 ### Current priority: 
+- [ ] T_MODEL == 2 causes thermal runaway in test_CyclerVariations_high
+- [ ] redistributeCurrent_new and other iterative algorithms require many iterations (up to 2500)!
+- [ ] test_Cycler_CoolSystem passes only when T_MODEL==2
 - [ ] Some tests were hard-coded for Cell_type which has been changed to template.
 - [ ] operator[] is added to Module class to reach SUs. 
 - [ ] getNSUs() -> size() so module size should be number of SUs.
