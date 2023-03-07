@@ -149,7 +149,7 @@ bool setStates_test()
   s[State_Bucket::i_T] = t;
   s[State_Bucket::i_I] = i;
 
-  std::span<const double> spn{ s };
+  std::span<double> spn{ s };
   c1.setStates(spn, true, true);
 
   s.clear();

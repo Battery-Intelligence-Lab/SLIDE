@@ -168,24 +168,7 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
 
   //!< lower limits
   if (v > (su.Vmin() - settings::MODULE_P_V_ABSTOL) && v < (su.Vmax() + settings::MODULE_P_V_ABSTOL)) {
-    return Status::Success; //!< Just to put this here, probably first if will be executed most of the time.
-  } else if (v < (su.Vmin() - settings::MODULE_P_V_ABSTOL) && su.isDischarging()) {
-    if (printNonCrit)
-      std::cout << "The voltage of cell " << su.getFullID() << " is " << v
-                << "V which is below its minimum voltage of "
-                << su.Vmin() << ", cell temperature = " << K_to_Celsius(su.T())
-                << " centigrade and I = " << su.I() << '\n';
-
-    return Status::Vmin_violation;
-  } else if (v > (su.Vmax() + settings::MODULE_P_V_ABSTOL) && su.isCharging()) //!< #TODO
-  {
-    if (printNonCrit)
-      std::cout << "The voltage of cell " << su.getFullID() << " is " << v
-                << "V which is above its maximum voltage of "
-                << su.Vmax() << ", cell temperature = " << K_to_Celsius(su.T())
-                << " centigrade and I = " << su.I() << '\n';
-
-    return Status::Vmax_violation;
+    return Status::Success;                       //!< Just to put this here, probably first if will be executed most of the time.
   } else if (v < su.VMIN() && su.isDischarging()) // #Check we dont actually look at the is discharging
   {
     if (printCrit)
@@ -204,6 +187,23 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
                 << " centigrade and I = " << su.I() << '\n';
 
     return Status::VMAX_violation;
+  } else if (v < (su.Vmin() - settings::MODULE_P_V_ABSTOL) && su.isDischarging()) {
+    if (printNonCrit)
+      std::cout << "The voltage of cell " << su.getFullID() << " is " << v
+                << "V which is below its minimum voltage of "
+                << su.Vmin() << ", cell temperature = " << K_to_Celsius(su.T())
+                << " centigrade and I = " << su.I() << '\n';
+
+    return Status::Vmin_violation;
+  } else if (v > (su.Vmax() + settings::MODULE_P_V_ABSTOL) && su.isCharging()) //!< #TODO
+  {
+    if (printNonCrit)
+      std::cout << "The voltage of cell " << su.getFullID() << " is " << v
+                << "V which is above its maximum voltage of "
+                << su.Vmax() << ", cell temperature = " << K_to_Celsius(su.T())
+                << " centigrade and I = " << su.I() << '\n';
+
+    return Status::Vmax_violation;
   }
 
   return Status::Success; //!< #TODO should we also send Vmin/Vmax violations even we are not charging/discharging?

@@ -24,11 +24,11 @@ namespace slide {
 class StorageUnit
 {
 protected:
-  std::string ID{ "StorageUnit" };               //!< identification string
-  StorageUnit *parent{ nullptr };                //!< pointer to the SU 'above' this one [e.g. the module to which a cell is connected]
-  bool blockDegAndTherm{ false };                //!< if true, degradation and the thermal ODE are ignored
-  using setStates_t = std::span<const double> &; //!< To pass states to read, non-expandable container.
-  using getStates_t = std::vector<double> &;     //!< To pass states to save, expandable container.
+  std::string ID{ "StorageUnit" };           //!< identification string
+  StorageUnit *parent{ nullptr };            //!< pointer to the SU 'above' this one [e.g. the module to which a cell is connected]
+  bool blockDegAndTherm{ false };            //!< if true, degradation and the thermal ODE are ignored
+  using setStates_t = std::span<double>;     //!< To pass states to read, non-expandable container.
+  using getStates_t = std::vector<double> &; //!< To pass states to save, expandable container.
   using viewStates_t = std::span<double>;
   virtual size_t calculateNcells() { return 0; }
 

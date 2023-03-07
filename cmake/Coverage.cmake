@@ -16,6 +16,12 @@ if (SLIDE_ENABLE_COVERAGE)
         target_compile_options (unit_test_Converter PUBLIC --coverage -O0)
         target_link_libraries (unit_test_Converter PUBLIC --coverage)
 
+        target_compile_options (unit_test_Module_p PUBLIC --coverage -O0)
+        target_link_libraries (unit_test_Module_p PUBLIC --coverage)
+
+        # target_compile_options (unit_test_Module_s PUBLIC --coverage -O0)
+        # target_link_libraries (unit_test_Module_s PUBLIC --coverage)
+
         target_compile_options (unit_test_Cycler PUBLIC --coverage -O0)
         target_link_libraries (unit_test_Cycler PUBLIC --coverage)
 

@@ -81,7 +81,7 @@ void Module_p::getVall(std::span<double> Vall, bool print)
   }
 }
 
-Status Module_p::redistributeCurrent_new(bool checkV, bool print)
+Status Module_p::redistributeCurrent(bool checkV, bool print)
 {
   // New redistributeCurrent without PI control:
   //!< get cell voltages
@@ -176,7 +176,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  constexpr int maxIteration = 2550;
+  constexpr int maxIteration = 10550;
   const auto nSU = getNSUs();
 
   auto StatusNow = Status::Success;
@@ -196,6 +196,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   for (size_t i{}; i < SUs.size(); i++) {
     Ia[i] += dI;
     StatusNow = SUs[i]->setCurrent(Ia[i]); // #TODO worse status should be here.
+    if (!isStatusOK(StatusNow)) return StatusNow;
   }
 
   getVall(Va, print);
@@ -243,38 +244,6 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   // #TODO set old currents back here!
   return StatusNow; //!< #TODO problem
-}
-
-bool Module_p::validSUs(SUs_span_t c, bool print)
-{
-  /*
-   * Checks the cells are a valid combination for a parallel-connected module
-   * the voltage differences are within the tolerance
-   *
-   * If the number of cells is the same as in this module, use the contact resistances
-   */
-  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-
-  //!< Check the voltage of each cell is valid and within the error tolerance #TODO it is better to supply both module and Rcontact.
-  std::array<double, settings::MODULE_NSUs_MAX> Vall;
-  getVall(Vall, print);
-
-  auto [V_min_it, V_max_it] = std::minmax_element(Vall.begin(), Vall.begin() + SUs.size());
-
-  const double dV = *V_max_it - *V_min_it; //!< Check that this limit is below the absolute or relative threshold
-  if (dV > settings::MODULE_P_V_ABSTOL || dV > settings::MODULE_P_V_RELTOL * (*V_max_it)) {
-    if (verb)
-      std::cout << "error in Module_p::validSUs for SU = " << getFullID() << ", the maximum voltage is in cell"
-                << std::distance(Vall.begin(), V_max_it) << " and is " << *V_max_it
-                << " while the minimum voltage is in cell" << std::distance(Vall.begin(), V_min_it) << " and is "
-                << *V_min_it << " which is an error of " << dV << " and the allowed absolute tolerance is "
-                << settings::MODULE_P_V_ABSTOL << ", the allowed relative tolerance gives an error of "
-                << settings::MODULE_P_V_RELTOL * (*V_max_it) << '\n';
-
-    return false;
-  } //!< else the voltage is valid
-
-  return true;
 }
 
 void Module_p::timeStep_CC(double dt, int nstep)
@@ -365,10 +334,10 @@ void Module_p::timeStep_CC(double dt, int nstep)
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
   //!< check if the cell's voltage is valid #TODO I changed this to make redistribute everytime!
-  auto status = redistributeCurrent_new(false, true); //!< don't check the currents
+  auto status = redistributeCurrent(false, true); //!< don't check the currents
   if (status != Status::Success) {
-    auto status = redistributeCurrent_new(false, true); //!< don't check the currents
-    throw 100000;                                       //!< #TODO
+    auto status = redistributeCurrent(false, true); //!< don't check the currents
+    throw 100000;                                   //!< #TODO
   }
 }
 

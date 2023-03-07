@@ -106,10 +106,6 @@ public:
   double getCoolingLoad(); //!< return the energy required to run the entire coolingsystem of this module and all its children
   double thermalModel(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim) override;
 
-  //!< different implementation for series vs parallel modules
-  virtual bool validSUs(SUs_span_t c, bool print = true) = 0;               //!< check if the cells in this array are valid for this module
-  virtual bool validSUs(bool print = true) { return validSUs(SUs, print); } //!< check if the cells in valid for this module
-
   virtual void setSUs(SUs_span_t c, bool checkCells = true, bool print = true);
   //!< Sets the cells of this module. Checks module-constraints
   //!< does not check if the states of cells are valid, nor the voltages of the cells and module

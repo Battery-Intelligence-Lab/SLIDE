@@ -38,6 +38,9 @@
 
 
 ### Current priority: 
+- [ ] Cannot set current for Module_p<Module_p>. See `test_Hierarchichal_p`. Very important.
+- [ ] copy functions are commented out. 
+- [ ] validSUs actually not necessary! Removing. Write free functions to check voltage/current equality!
 - [ ] T_MODEL == 2 causes thermal runaway in test_CyclerVariations_high
 - [ ] redistributeCurrent_new and other iterative algorithms require many iterations (up to 2500)!
 - [ ] test_Cycler_CoolSystem passes only when T_MODEL==2
@@ -69,12 +72,12 @@
   - [x] checkUp_getCells and checkUp_getModules are deleted and replaced with visitors. 
   - [ ] Reduce dynamic pointer cast in Procedure and let Polymorphism work. 
   - [ ] Capacity checking protocol in Procedure::CheckUp is removed.  
-- [ ] TIME_INF is created for a large time value. 
-- [ ] getDaiStress is simplified by removing unnecessary R multiplication and division. 
+- [x] TIME_INF is created for a large time value. 
+- [x] getDaiStress is simplified by removing unnecessary R multiplication and division. 
 - [ ] State classes should have const members. 
 - [ ] Make more methods const : Vmin(), Vmax(), VMIN(), VMAX(), Cap()
 - [ ] Stressparam vs. classes may encapsulate calculating some things. 
-- [ ] cube and sqr functions added for utility. 
+- [x] cube and sqr functions added for utility. 
 - [ ] Module requires number of cells to construct which is unnecessary. 
 - [ ] Cycler CV is not working???? CCCV works if it does not have current beforehand it does not work... 
 - [ ] Create a small class config for limits reached. It should have CheckLimits.
@@ -86,7 +89,7 @@
 - [ ] Doxygen integration - adapting commenting style. 
 - [ ] CPack and installation improvements. 
 - [ ] Figure out why OBJECT libraries cause linker error. We converted everything to STATIC
-- [ ] Check #CHECK tags in the code.  
+- [ ] Check #CHECK and #TODO tags in the code.  
 - [ ] Add variable data storage (Vk is working on)
   - [ ] Create enum for storable data. 
   - [ ] Why are we using different vector<struct> anyway? We can use just a big vector + deserializer? 
@@ -204,7 +207,7 @@ slide_pack integration:
 - [ ] setStates to support r-values. 
 - [ ] do not copy shared pointers in for loops.
 - [ ] Why there are so many ifs instead of else-ifs
-- [ ] validSUs functions are combined. 
+- [x] validSUs functions are combined. 
 - [ ] Cycler was checking if storeData is full but storeData itself should check and call writeData. Or better, Cycler should collect everything and write. 
 - [ ] su->getIndex() should not be used  in cycler because it is removed. 
 - [ ] timeStep_CC_i -> seems to be used only for binding; therefore, not needed anymore. 
@@ -272,7 +275,7 @@ slide_pack integration:
 - [ ] Remember that in copy(), usage stats are not copied across to the new module.
 		 * So this function will write all zeros if called with a copy of the SU   -> is this a bug or feature? 
 
-- [ ] for setSUs and validSUs span is used. 
+- [x] for setSUs and validSUs span is used. 
 - [ ] We are reading file lots of times when individually creating cells! In release mode it takes 30 seconds. 
   - [x] slide::Model_SPM -> slide::Model_SPM*  and makeModel();  from 34 seconds to 12 seconds.  18900x326 double = 47 MB RAM is also saved.
   - [ ] OCVcurves -> OCVcurves*   12 seconds to 0.22 seconds. Do not forget things otherwise than NMC. 
