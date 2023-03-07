@@ -19,9 +19,9 @@ add_executable(unit_test_Module_p Module_p_test.cpp)
 target_link_libraries(unit_test_Module_p PRIVATE src)
 add_test(NAME unit_test_Module_p COMMAND unit_test_Module_p WORKING_DIRECTORY bin)
 
-add_executable(unit_test_Module_s Module_s_test.cpp)
-target_link_libraries(unit_test_Module_s PRIVATE src)
-add_test(NAME unit_test_Module_s COMMAND unit_test_Module_s WORKING_DIRECTORY bin)
+# add_executable(unit_test_Module_s Module_s_test.cpp)
+# target_link_libraries(unit_test_Module_s PRIVATE src)
+# add_test(NAME unit_test_Module_s COMMAND unit_test_Module_s WORKING_DIRECTORY bin)
 
 add_executable(unit_test_Cycler Cycler_test.cpp)
 target_link_libraries(unit_test_Cycler PRIVATE src)

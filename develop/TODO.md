@@ -38,6 +38,7 @@
 
 
 ### Current priority: 
+- [ ] Cannot set current for Module_p<Module_p>. See `test_Hierarchichal_p`. Very important.
 - [ ] copy functions are commented out. 
 - [ ] validSUs actually not necessary! Removing. Write free functions to check voltage/current equality!
 - [ ] T_MODEL == 2 causes thermal runaway in test_CyclerVariations_high
@@ -71,12 +72,12 @@
   - [x] checkUp_getCells and checkUp_getModules are deleted and replaced with visitors. 
   - [ ] Reduce dynamic pointer cast in Procedure and let Polymorphism work. 
   - [ ] Capacity checking protocol in Procedure::CheckUp is removed.  
-- [ ] TIME_INF is created for a large time value. 
-- [ ] getDaiStress is simplified by removing unnecessary R multiplication and division. 
+- [x] TIME_INF is created for a large time value. 
+- [x] getDaiStress is simplified by removing unnecessary R multiplication and division. 
 - [ ] State classes should have const members. 
 - [ ] Make more methods const : Vmin(), Vmax(), VMIN(), VMAX(), Cap()
 - [ ] Stressparam vs. classes may encapsulate calculating some things. 
-- [ ] cube and sqr functions added for utility. 
+- [x] cube and sqr functions added for utility. 
 - [ ] Module requires number of cells to construct which is unnecessary. 
 - [ ] Cycler CV is not working???? CCCV works if it does not have current beforehand it does not work... 
 - [ ] Create a small class config for limits reached. It should have CheckLimits.
@@ -88,7 +89,7 @@
 - [ ] Doxygen integration - adapting commenting style. 
 - [ ] CPack and installation improvements. 
 - [ ] Figure out why OBJECT libraries cause linker error. We converted everything to STATIC
-- [ ] Check #CHECK tags in the code.  
+- [ ] Check #CHECK and #TODO tags in the code.  
 - [ ] Add variable data storage (Vk is working on)
   - [ ] Create enum for storable data. 
   - [ ] Why are we using different vector<struct> anyway? We can use just a big vector + deserializer? 

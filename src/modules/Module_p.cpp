@@ -176,7 +176,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  constexpr int maxIteration = 2550;
+  constexpr int maxIteration = 10550;
   const auto nSU = getNSUs();
 
   auto StatusNow = Status::Success;
@@ -196,6 +196,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   for (size_t i{}; i < SUs.size(); i++) {
     Ia[i] += dI;
     StatusNow = SUs[i]->setCurrent(Ia[i]); // #TODO worse status should be here.
+    if (!isStatusOK(StatusNow)) return StatusNow;
   }
 
   getVall(Va, print);
