@@ -38,6 +38,8 @@
 
 
 ### Current priority: 
+- [ ] Test cases testing shared_ptr logic (i.e., testing if the pointer points to another thing when Cell is changed.) should be removed because when you change cells the previous cell is removed due to unique_ptr logic. 
+- [ ] std::span<double> & for set states do not work when a vector given. Need a better idea to set and get. Maybe another class. 
 - [ ] Cannot set current for Module_p<Module_p>. See `test_Hierarchichal_p`. Very important.
 - [ ] copy functions are commented out. 
 - [ ] validSUs actually not necessary! Removing. Write free functions to check voltage/current equality!
