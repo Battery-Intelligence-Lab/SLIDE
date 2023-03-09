@@ -91,10 +91,12 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
 
   //!< Set the current, if checkVi this also gets the cell voltages
   Vmodule_valid = false; //!< we are changing the current, so the stored voltage is no longer valid
-  double Iold = I();
 
-  for (size_t i = 0; i < getNSUs(); i++) {
-    const auto status = SUs[i]->setCurrent(Inew, checkV, print); //!< note: this will throw 2 or 3 if the voltage of a cell is illegal
+  std::array<double, settings::MODULE_NSUs_MAX> Iolds;
+
+  for (int i = 0; i < getNSUs(); i++) {
+    Iolds[i] = SUs[i]->I();
+    const auto status = SUs[i]->setCurrent(Inew, checkV, print);
 
     if (isStatusBad(status)) {
       if (verb)
@@ -102,7 +104,10 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
                   << " with id " << SUs[i]->getFullID() << " for Inew = "
                   << Inew << ". Restoring the old currents and throwing on error "
                   << getStatusMessage(status) << '\n';
-      setCurrent(Iold, false, print); //!< restore the original current without checking validity (they should be valid)
+
+
+      for (int j{ i }; j > 0; j--)
+        SUs[j]->setCurrent(Iolds[j], false, false); // #TODO this can start from j{i-1} since probably SUs[i] failed to assign any currents.
 
       return status; // #TODO setCurrent here may be costly.
     }

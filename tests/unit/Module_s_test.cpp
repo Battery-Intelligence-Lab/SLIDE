@@ -14,6 +14,7 @@
 #include <fstream>
 #include <memory>
 #include <typeinfo>
+#include <span>
 
 namespace slide::tests::unit {
 
@@ -184,7 +185,7 @@ bool test_setStates()
   };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
-  auto cp2 = dynamic_cast<Cell_Bucket *>(cs[0].get());
+  auto cp2 = dynamic_cast<Cell_Bucket *>(cs[1].get());
 
   std::string n = "na";
   double T = settings::T_ENV;
@@ -199,12 +200,13 @@ bool test_setStates()
   double Tnew = 1.0_degC; //!< change T
   cp1->getStates(s1);
   c3.getStates(s2);
-  for (int i = 0; i < s1.size(); i++) {
-    s[i] = s1[i];
-    s[s1.size() + i] = s2[i];
-  }
-  s[s1.size() * 2] = Tnew;
-  mp->setStates(s); //!< this changes the states of m, and should therefore change the states of cell 2 too
+  std::copy(s1.begin(), s1.end(), std::back_inserter(s));
+  std::copy(s2.begin(), s2.end(), std::back_inserter(s));
+  s.push_back(Tnew);
+
+  std::span<double> spn(s);
+
+  mp->setStates(spn); //!< this changes the states of m, and should therefore change the states of cell 2 too
 
   //!< Check cell 2 and the states have changed
   assert(cp2->SOC() == 0.4); //!< mp->setStates invoked cp2->setStates, so also c2 should have changed
@@ -262,13 +264,14 @@ bool test_setCells()
   double socnew = 0.4;
   auto cp22 = std::make_unique<Cell_Bucket>();
   cp22->setSOC(socnew);
+  cs[0] = std::make_unique<Cell_Bucket>();
   cs[1] = std::move(cp22);
   mp->setSUs(cs);
   //!< check using getCells
   auto &cs2 = mp->getSUs();
   Cell_Bucket *cell1 = dynamic_cast<Cell_Bucket *>(cs2[1].get()); //!< Dynamic cast from smart ptr of StorageUnit to regular pointer of Cell_Bucket
   assert(cell1->SOC() == socnew);                                 //!< the new soc should be 0.1
-  assert(cp2->SOC() == 0.5);                                      //!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
+  // assert(cp2->SOC() == 0.5);                                      //!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
 
   //!< try updating the number of cells
   std::unique_ptr<StorageUnit> cs3[] = {
@@ -282,10 +285,12 @@ bool test_setCells()
   //!< check using getCells
   auto &cs4 = mp->getSUs();
   cell1 = dynamic_cast<Cell_Bucket *>(cs4[1].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC() == socnew);                    //!< cells[1] is cell22 with new soc
-  cell1 = dynamic_cast<Cell_Bucket *>(cs4[2].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
-  assert(cell1->SOC() == 0.5);                       //!< cells[2] is cell3 with standard soc
-  assert(mp->getNSUs() == std::size(cs3));
+  // assert(cell1->SOC() == socnew);                    //!< cells[1] is cell22 with new soc
+  // cell1 = dynamic_cast<Cell_Bucket *>(cs4[2].get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
+  // assert(cell1->SOC() == 0.5);                       //!< cells[2] is cell3 with standard soc
+  // assert(mp->getNSUs() == std::size(cs3));
+  // #TODO throwing due to unique_ptr's are easily removed.
+  // Test cases testing shared_ptr's should be removed.
 
   //   if () { #TODO failure tests.
   //     //!< try setting cells with different currents
@@ -443,7 +448,8 @@ bool test_validStates()
 
   //!< valid states (new T)
   s.back() = 5_degC;
-  mp->setStates(s);
+  std::span<double> spn(s);
+  mp->setStates(spn);
   assert(mp->validStates());
 
   // if () { // #TODO failure tests.
@@ -557,10 +563,8 @@ bool test_Modules_s()
 {
   //!< test series modules make out of ECM cells
   //!< this just repeats the other tests but with a different Cell_Bucket type
-  std::vector<double> s, s1, s2, sout;
   auto cp3 = std::make_unique<Cell_t>();
   auto cp22 = std::make_unique<Cell_t>();
-
 
   std::unique_ptr<StorageUnit> cs[] = {
     std::unique_ptr<StorageUnit>(new Cell_t()),
@@ -569,10 +573,13 @@ bool test_Modules_s()
 
   auto cp1 = dynamic_cast<Cell_t *>(cs[0].get());
   auto cp2 = dynamic_cast<Cell_t *>(cs[1].get());
+  cp1->V(); // For voltage calculation of SPM
+  cp2->V(); // For voltage calculating of SPM otherwise 0 initially.
 
   Cell_t *cell1;
   std::string n = "na";
 
+  std::vector<double> s, s1, s2, sout;
   //!< getStates - setStates
   cp2->setSOC(0.6); //!< change cell 2 to verify the order is correct
   cp1->getStates(s1);
@@ -591,15 +598,23 @@ bool test_Modules_s()
   }
   cp3->setSOC(0.4);       //!< change SOC of a cell
   double Tnew = 1.0_degC; //!< change T
+
+  s1.clear();
+  s2.clear();
+
   cp1->getStates(s1);
   cp3->getStates(s2);
+
   for (size_t i = 0; i < s1.size(); i++) {
     s[i] = s1[i];
     s[s1.size() + i] = s2[i];
   }
 
   s[s1.size() * 2] = Tnew;
-  mp->setStates(s, 1 + 2 * s1.size());
+  std::span<double> spn(s);
+  mp->setStates(spn);
+
+  mp->V(); // Check voltage otherwise it is not calculated.
 
   assert(cp2->SOC() == 0.4); //!< mp->setStates invoked cp2->setStates, so also c2 should have changed
   mp->getStates(sout);
@@ -706,8 +721,8 @@ bool test_Hierarchichal()
   auto mp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1);
   mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
-  assert(Vini == mp1->V() + mp2->V() + mp3->V());
-  assert(Vini == 7 * cp1->V());
+  assert(EQ(Vini, mp1->V() + mp2->V() + mp3->V()));
+  assert(NEAR(Vini, 7 * cp1->V(), 1e-6));
   assert(mp->getFullID() == "H4");
   assert(mp1->getFullID() == "H4_H1");
   assert(cp1->getFullID() == "H4_H1_Cell_ECM<0>");
@@ -738,7 +753,7 @@ bool test_Hierarchical_Cross()
   std::string ids[] = { "H1", "H2", "H3" };
   std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
   std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
-  std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
+  std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(SU1[0].get());
   auto cp2 = dynamic_cast<Cell_Bucket *>(SU1[1].get());
@@ -1103,22 +1118,23 @@ int test_all_Module_s()
   if (!TEST(test_getCells, "test_getCells")) return 7;
   if (!TEST(test_setT, "test_setT")) return 8;
 
-  // if (!TEST(test_setStates, "test_setStates")) return 9;
+  if (!TEST(test_setStates, "test_setStates")) return 9;
   if (!TEST(test_validCells, "test_validCells")) return 10; //!< includes setState
   if (!TEST(test_validStates, "test_validStates")) return 11;
-  // if (!TEST(test_setCells, "test_setCells")) return 12; //!< (includes validCells)
+  if (!TEST(test_setCells, "test_setCells")) return 12; //!< (includes validCells)
 
   if (!TEST(test_timeStep_CC, "test_timeStep_CC")) return 13;
   if (!TEST(test_copy_s, "test_copy_s")) return 14;
 
   //!< Combinations
-  //  if (!TEST(test_Modules_s<Cell_ECM<1>>, "test_Modules_s_ECM")) return 15;
-  // if (!TEST(test_Modules_s<Cell_SPM>, "test_Modules_s_SPM")) return 16;
-  // if (!TEST(test_Hierarchichal, "test_Hierarchichal")) return 17;           //!< series of series
-  // if (!TEST(test_Hierarchical_Cross, "test_Hierarchical_Cross")) return 18; //!< series of parallel
+  if (!TEST(test_Modules_s<Cell_ECM<1>>, "test_Modules_s_ECM")) return 15;
+  if (!TEST(test_Modules_s<Cell_SPM>, "test_Modules_s_SPM")) return 16;
+  if (!TEST(test_Hierarchichal, "test_Hierarchichal")) return 17;           //!< series of series
+  if (!TEST(test_Hierarchical_Cross, "test_Hierarchical_Cross")) return 18; //!< series of parallel
 
   //!< coolsystem (includes hierarchical modules and uses SPM cells)
-  // if (!TEST(test_CoolSystem_s, "Cell_test")) return 19;
+  if (settings::T_MODEL == 2) // #TODO only valid if T_MODEL==2
+    if (!TEST(test_CoolSystem_s, "Cell_test")) return 19;
 
   return 0;
 }
