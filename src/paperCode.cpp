@@ -6,7 +6,6 @@
  */
 
 #include "slide.hpp"
-// #include "unit_tests.hpp"
 #include "paperCode.hpp"
 
 #include <cmath>
