@@ -1,4 +1,3 @@
-# Cell_Bucket unit tests:
 add_executable(unit_test_Cell_Bucket Cell_Bucket_test.cpp)
 target_link_libraries(unit_test_Cell_Bucket PRIVATE src)
 add_test(NAME unit_test_Cell_Bucket COMMAND unit_test_Cell_Bucket WORKING_DIRECTORY bin)
@@ -27,6 +26,6 @@ add_executable(unit_test_Cycler Cycler_test.cpp)
 target_link_libraries(unit_test_Cycler PRIVATE src)
 add_test(NAME unit_test_Cycler COMMAND unit_test_Cycler WORKING_DIRECTORY bin)
 
-# add_executable(unit_test_Procedure Procedure_test.cpp)
-# target_link_libraries(unit_test_Procedure PRIVATE src)
-# add_test(NAME unit_test_Procedure COMMAND unit_test_Procedure WORKING_DIRECTORY bin)
+add_executable(unit_test_Procedure Procedure_test.cpp)
+target_link_libraries(unit_test_Procedure PRIVATE src)
+add_test(NAME unit_test_Procedure COMMAND unit_test_Procedure WORKING_DIRECTORY bin)

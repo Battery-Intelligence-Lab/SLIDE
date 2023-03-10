@@ -19,11 +19,14 @@ if (SLIDE_ENABLE_COVERAGE)
         target_compile_options (unit_test_Module_p PUBLIC --coverage -O0)
         target_link_libraries (unit_test_Module_p PUBLIC --coverage)
 
-        # target_compile_options (unit_test_Module_s PUBLIC --coverage -O0)
-        # target_link_libraries (unit_test_Module_s PUBLIC --coverage)
+        target_compile_options (unit_test_Module_s PUBLIC --coverage -O0)
+        target_link_libraries (unit_test_Module_s PUBLIC --coverage)
 
         target_compile_options (unit_test_Cycler PUBLIC --coverage -O0)
         target_link_libraries (unit_test_Cycler PUBLIC --coverage)
+
+        target_compile_options (unit_test_Procedure PUBLIC --coverage -O0)
+        target_link_libraries (unit_test_Procedure PUBLIC --coverage)
 
     else ()
         message (FATAL_ERROR "GCC or Clang required with SLIDE_ENABLE_COVERAGE: found ${CMAKE_CXX_COMPILER_ID}")

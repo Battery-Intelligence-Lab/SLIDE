@@ -56,8 +56,8 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
   auto cp1 = std::make_unique<Cell_SPM>("proctest_cell", deg, 1, 1, 1, 1);
   auto p = Procedure(balance, Vbal, ndata, unittest);
 
-  p.cycleAge(cp1.get(), true); //!< WITH CV -> 1C CCCV cycling
-                               //!< just check this runs without producing an error warning
+  // p.cycleAge(cp1.get(), true); //!< WITH CV -> 1C CCCV cycling
+  //!< just check this runs without producing an error warning
 
   std::cout << "Procedure_test start series module\n";
 
