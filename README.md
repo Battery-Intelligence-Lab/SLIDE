@@ -8,7 +8,7 @@ _Slide_
 
 
 ![GitHub all releases](https://img.shields.io/github/downloads/Battery-Intelligence-Lab/SLIDE/total) 
-[![](https://img.shields.io/badge/license-BSD--3--like-5AC451.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/LICENSE)
+[![](https://img.shields.io/badge/license-BSD--3--like-5AC451.svg)](https://github.com/Battery-Intelligence-Lab/SLIDE/blob/master/LICENSE)
 
 In this `readme.md` a summary is given. You may find the detailed documentation [here](https://Battery-Intelligence-Lab.github.io/SLIDE/).  
 If you are affected by the sudden change of master branch, please switch to [SLIDE_v2](https://github.com/Battery-Intelligence-Lab/SLIDE/tree/SLIDE_v2) branch. 
