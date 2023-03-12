@@ -35,18 +35,18 @@ The time-integration function of every SU has a test to check if this SU has a p
 
 The thermal ODE is separated from the diffusion PDE. The latter (diffusion) is resolved at every dt-time step. Once per nstep*dt (where nstep = nOnce from Cyler), we accumulate the heat generated over the past nstep*dt seconds in Therm_Qgen.
 
-The thermal ODE is in a separate function, thermalModel (defined in StorageUnit). The function has as inputs arrays with the temperature and heat transfer coefficient (h or k) for each neighbour. The total energy balance is then the sum of the the internal heat generation (Therm_Qgen), and the heat exchanged with all neighbours ( `K[i]*A*(T[i] – get()`). This energy is than translated to a change in temperature over the time since the last update of the temperature.
+The thermal ODE is in a separate function, thermalModel (defined in StorageUnit). The function has as inputs arrays with the temperature and heat transfer coefficient (h or k) for each neighbour. The total energy balance is then the sum of the the internal heat generation (`Therm_Qgen`), and the heat exchanged with all neighbours ( $$K[i]*A*(T[i] – get()$$). This energy is than translated to a change in temperature over the time since the last update of the temperature.
 
 Note that the ‘A’ in the equation is the smaller of the A of this cell, and the A of the element with which this cell is exchanging heat. This is not really needed of all cells have the same A (and modules will have a bigger A), in that case you could just use the ‘A’ of this cell. However, it is needed when there are elements with surface areas smaller than the A of the cell (e.g. the neighbouring cells has a different geometry). In that case, A must be the overlapping surface area, which is the smaller of the surface areas of both cells.
 
-If a cell has no parent, we are doing a ‘stand alone’ simulation where the cell is cooled by convective cooling with the environment (with a constant cooling constant and environmental temperature) as if the cell were in a thermal chamber. The thermal model is called in the timestep function (timestep_CC). If a cell has a parent, it is up to this parent to call the thermal model with the correct parameters for heat exchange with the cell’s neighbours and cooling from the module.
+If a cell has no parent, we are doing a ‘stand alone’ simulation where the cell is cooled by convective cooling with the environment (with a constant cooling constant and environmental temperature) as if the cell were in a thermal chamber. The thermal model is called in the timestep function (`timestep_CC`). If a cell has a parent, it is up to this parent to call the thermal model with the correct parameters for heat exchange with the cell’s neighbours and cooling from the module.
 
 ## Modules
 
 Modules cool their child SUs (and let the child SUs compute their thermal model with the appropriate neighbours), and as a result heat up themselves.
 
 In Module.cpp, the function thermalModle_coupled will figure out who the neighbours are of every child SUs. It then passes on this information as well as the info about their own temperature and convective cooling constant to the child SUs, such that every child SU can compute its own thermal balance. Note that all cells get the same module temperature, so the cooling circuit is ‘in parallel’ as indicated on the schematic below. The light blue ‘heat exchangers’ are the ‘thermal resistances’ from the equivalent circuit and simply represent air blowing over cells or air being sucked into the module. So you can imagine this as a big fan blowing air perpendicular to the stack of cells.
-Note that heat transfer is perfect, and is simply calculated as `hA(Tcool – Tchild)`.
+Note that heat transfer is perfect, and is simply calculated as $$hA(Tcool – Tchild)$$.
 
 ![](img/modules.png){:width="60%" }
 
@@ -79,5 +79,5 @@ The cooling power is controlled similarly to the convective cooling constant to 
 
 ## Thermal coupling between neighbouring SUs
 
-Cells next to each other (in one module), or modules next to each other (in a parent module) exchange heat as well, according to the conventional `kA(T – T_{\rm neighbour})`. Note that the first and last cell in a module have only one cell as neighbour. On their _other side_ is the module edge, which is supposed to be at the same temperature as the coolant
+Cells next to each other (in one module), or modules next to each other (in a parent module) exchange heat as well, according to the conventional $$kA(T – T_{\rm neighbour})$$. Note that the first and last cell in a module have only one cell as neighbour. On their _other side_ is the module edge, which is supposed to be at the same temperature as the coolant
 
