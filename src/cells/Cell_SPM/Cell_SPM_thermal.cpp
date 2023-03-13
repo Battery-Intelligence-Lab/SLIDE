@@ -167,36 +167,32 @@ double Cell_SPM::thermalModel_coupled(int Nneighbours, double Tneighbours[], dou
   return Tnew;
 }
 
-double Cell_SPM::thermal_getTotalHeat()
-{
-  return Therm_Qgentot; //!< total heat generation [J] since start of cell's life
-}
+//!< total heat generation [J] since start of cell's life
+double Cell_SPM::thermal_getTotalHeat() { return Therm_Qgentot; }
 
+/**
+ * Calculate the thermal model for this cell and update its cell temperature.
+ * The heat exchange in [W] with element i is given by
+ * 		Qc = Kneighbours[i]*A*(Tneighbours[i] - getT());
+ * We assume all temperatures were constant for the past period, such that the thermal energy in [J] is given by
+ * 		Ec = Qc * Therm_time
+ * This is added up with the internal heath generated, and the cell's temperature is returned
+ *
+ * IN
+ * Nneigtbours 		the number of neighbouring cells / cooling systems etc.
+ * Tneighbours  	array with the temperature of the neighbouring  elements [K]
+ * Kneighbours		array with the heat transfer constants of the neighbouring elements, k or h
+ * Aneighb 			array with the surface area of the neigbouring cell
+ * 						the heat transfer happens over the smaller one of Aneighb[i] and the area of this cell
+ * tim 				the time since the last thermal model calculation [for verification]
+ *
+ * throws
+ * 8 	invalid time keeping
+ * 9 	invalid module temperature
+ **/
 double Cell_SPM::thermalModel(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim)
 {
-  /*
-   * Calculate the thermal model for this cell and update its cell temperature.
-   * The heat exchange in [W] with element i is given by
-   * 		Qc = Kneighbours[i]*A*(Tneighbours[i] - getT());
-   * We assume all temperatures were constant for the past period, such that the thermal energy in [J] is given by
-   * 		Ec = Qc * Therm_time
-   * This is added up with the internal heath generated, and the cell's temperature is returned
-   *
-   * IN
-   * Nneigtbours 		the number of neighbouring cells / cooling systems etc.
-   * Tneighbours  	array with the temperature of the neighbouring  elements [K]
-   * Kneighbours		array with the heat transfer constants of the neighbouring elements, k or h
-   * Aneighb 			array with the surface area of the neigbouring cell
-   * 						the heat transfer happens over the smaller one of Aneighb[i] and the area of this cell
-   * tim 				the time since the last thermal model calculation [for verification]
-   *
-   * throws
-   * 8 	invalid time keeping
-   * 9 	invalid module temperature
-   */
-
   double Tnew;
-
   try {
     if constexpr (settings::T_MODEL == 0) //!< #TODO thermal model implementation should be outside.
       Tnew = T();
@@ -212,11 +208,9 @@ double Cell_SPM::thermalModel(int Nneighbours, double Tneighbours[], double Knei
     Therm_time = 0;
     throw e;
   }
-
   //!< setting the temperature is done by the parent module. else some cells will update their T before others,
   //!< and we get inconsistencies e.g. exchange from cell 2 to this cell will not be same as from this cell to
   //!< cell 2 since T of this cell would have changed.
-
   //!< Reset the cumulative thermal variables
   Therm_Qgentot += Therm_Qgen;
   Therm_Qgen = 0;

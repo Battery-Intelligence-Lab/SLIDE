@@ -14,7 +14,7 @@ namespace slide::param {
 //!< Define a structure with the fitting parameters of the SEI growth models (SEI)
 struct Geometry_SPM
 {
-  double L{ 1.6850e-4 };          //!< thickness of the cell [m]
+  double L{ 1.6850e-4 };          //!< thickness of one layer of the cell [m]
   double Acell{ 0.1 * 0.2 };      //!< geometric surface area of the cell [m2] / width * height of the pouch.
   double elec_surf{ Acell * 31 }; //!< geometric surface area of the electrodes (electrode height * electrode width*layers) [m2] Doubly coated so multiply by two when putting into PyBAMM
   double SAV{ 252.9915 };         //!< surface area to volume-ratio of the cell [m2/m3]
