@@ -107,7 +107,13 @@ public:
 };
 
 // Free functions:
+// template <typename T, typename... Args>
+// auto make_SU(Args &&...args) { return Deep_ptr<StorageUnit>(new T(std::forward<Args>(args)...)); }
+
 template <typename T, typename... Args>
-auto make_SU(Args &&...args) { return Deep_ptr<StorageUnit>(new T(std::forward<Args>(args)...)); }
+auto make_SU(Args &&...args)
+{
+  return Deep_ptr<StorageUnit>(std::unique_ptr<T>(new T(std::forward<Args>(args)...)));
+}
 
 } // namespace slide

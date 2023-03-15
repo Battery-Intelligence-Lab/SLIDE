@@ -21,7 +21,7 @@ namespace slide {
 template <typename T>
 class Deep_ptr
 {
-  std::unique_ptr<T> ptr;
+  std::unique_ptr<T> ptr{};
 
 public:
   Deep_ptr() = default;               //!< Default constructor
@@ -43,42 +43,22 @@ public:
   /// Move constructor
   Deep_ptr(Deep_ptr &&other) noexcept : ptr(std::move(other.ptr)) {}
 
-
   // Templated move constructor for implicit conversion
   template <typename U, typename = std::enable_if_t<std::is_base_of<T, U>::value>>
   Deep_ptr(Deep_ptr<U> &&other) noexcept : ptr(std::move(other.ptr)) {}
 
-  // Copy assignment operator
-  Deep_ptr &operator=(const Deep_ptr &other)
-  {
-    if (this != &other)
-      ptr = other ? other->copy() : nullptr;
+  // // Templated constructor for implicit conversion from raw pointers
+  // template <typename U, typename = std::enable_if_t<std::is_base_of<T, U>::value>>
+  // explicit Deep_ptr(U *raw_ptr) : ptr(raw_ptr) {}
 
-    return *this;
-  }
-
-  // Move assignment operator
-  Deep_ptr &operator=(Deep_ptr &&other) noexcept
-  {
-    if (this != &other)
-      ptr = std::move(other.ptr);
-
-    return *this;
-  }
-
-  // Templated constructor for implicit conversion from raw pointers
-  template <typename U, typename = std::enable_if_t<std::is_base_of<T, U>::value>>
-  explicit Deep_ptr(U *raw_ptr) : ptr(raw_ptr) {}
-
+  // Declare the templated Deep_ptr class as a friend
+  template <typename U>
+  friend class Deep_ptr;
 
   /// Copy assignment operator
   Deep_ptr &operator=(const Deep_ptr &other)
   {
-    if (this != &other)
-      if (other.ptr)
-        ptr = std::unique_ptr<T>(other.ptr->copy());
-      else
-        ptr.reset();
+    if (this != &other) ptr = other ? other->copy() : nullptr;
 
     return *this;
   }
@@ -95,14 +75,14 @@ public:
   T &operator*() const { return *ptr; }              //!< Dereference operator
   T *get() const { return ptr.get(); }               //!< Get the raw pointer
 
-  // Check if the Deep_ptr is not empty
+  /// Check if the Deep_ptr is not empty
   explicit operator bool() const { return static_cast<bool>(ptr); }
   void reset(T *p = nullptr) { ptr.reset(p); } //!< Reset the Deep_ptr
 
   // Swap the Deep_ptr with another Deep_ptr
   void swap(Deep_ptr &other) { ptr.swap(other.ptr); }
 
-  // Comparison operator
+  // Comparison operators
   [[nodiscard]] friend bool operator==(const Deep_ptr<T> &lhs, std::nullptr_t) noexcept
   {
     return lhs.ptr == nullptr;
