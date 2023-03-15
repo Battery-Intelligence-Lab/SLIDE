@@ -1,10 +1,8 @@
-/*
- * tests_util.hpp
- *
- * Utility functions for tests. (Not really replacing GTest but enough functionality)
- *
- *  Created on: 12 Nov 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file tests_util.hpp
+ * @brief Utility functions for tests. (Not really replacing GTest but enough functionality)
+ * @author Jorn Reniers, Volkan Kumtepeli
+ * @date 12 Nov 2022
  */
 
 #pragma once
