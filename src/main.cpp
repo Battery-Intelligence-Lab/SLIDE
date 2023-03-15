@@ -1,5 +1,5 @@
 /*
- * main.cpp 
+ * main.cpp
  *
  * This file implements the main-function.
  * Here, the user has to choose what to simulate by commenting things in (by placing \\ at the start of the line) and out (by removing the \\)

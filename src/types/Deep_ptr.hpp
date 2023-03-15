@@ -24,21 +24,49 @@ class Deep_ptr
   std::unique_ptr<T> ptr;
 
 public:
-  explicit Deep_ptr(T *t) : ptr(t) {}
+  Deep_ptr() = default;               //!< Default constructor
+  explicit Deep_ptr(T *p) : ptr(p) {} //!< Constructor taking a raw pointer
 
-  Deep_ptr(Deep_ptr const &other) : ptr(new T(*other.ptr)) {}
-  Deep_ptr(Deep_ptr &&other) : ptr(std::move(other.ptr)) {}
-  Deep_ptr &operator=(Deep_ptr const &other) { ptr.reset(new T(*other.ptr)); }
-  Deep_ptr &operator=(Deep_ptr &&other) { ptr = std::move(other.ptr); }
+  /// Copy constructor
+  Deep_ptr(const Deep_ptr &other)
+  {
+    if (other.ptr)
+      ptr = std::unique_ptr<T>(other.ptr->copy());
+  }
 
-  T *release() noexcept { return ptr.release(); }
-  void reset(T *t = nullptr) noexcept { ptr.reset(t); }
-  void swap(Deep_ptr &other) noexcept { this->ptr.swap(other.ptr); }
+  /// Move constructor
+  Deep_ptr(Deep_ptr &&other) noexcept : ptr(std::move(other.ptr)) {}
 
-  explicit operator bool() const noexcept { return bool(ptr); }
+  /// Copy assignment operator
+  Deep_ptr &operator=(const Deep_ptr &other)
+  {
+    if (this != &other)
+      if (other.ptr)
+        ptr = std::unique_ptr<T>(other.ptr->copy());
+      else
+        ptr.reset();
 
-  T *get() const noexcept { return ptr.get(); }
-  T &operator*() const { return *ptr.get(); }
-  T *operator->() const noexcept { return ptr.get(); }
+    return *this;
+  }
+
+  /// Move assignment operator
+  Deep_ptr &operator=(Deep_ptr &&other) noexcept
+  {
+    if (this != &other) ptr = std::move(other.ptr);
+
+    return *this;
+  }
+
+  T *operator->() const { return ptr.operator->(); } //!< Accessor operator
+  T &operator*() const { return *ptr; }              //!< Dereference operator
+  T *get() const { return ptr.get(); }               //!< Get the raw pointer
+
+  // Check if the Deep_ptr is not empty
+  explicit operator bool() const { return static_cast<bool>(ptr); }
+  void reset(T *p = nullptr) { ptr.reset(p); } //!< Reset the Deep_ptr
+
+  // Swap the Deep_ptr with another Deep_ptr
+  void swap(Deep_ptr &other) { ptr.swap(other.ptr); }
 };
+
 } // namespace slide
