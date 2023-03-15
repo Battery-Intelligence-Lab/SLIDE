@@ -4,7 +4,7 @@ remote_theme: Battery-Intelligence-Lab/bil-jekyll-rtd-theme
 
 # Theme settings:
 site_author: SLIDE authors
-repo_url: "https://github.com/davidhowey/SLIDE/"
+repo_url: "https://github.com/Battery-Intelligence-Lab/SLIDE/"
 edit_on_github: true
 github_docs_folder: true
 sticky_navigation: true
