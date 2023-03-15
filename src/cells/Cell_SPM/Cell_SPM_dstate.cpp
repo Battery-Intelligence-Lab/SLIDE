@@ -324,7 +324,7 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
     //!< if there is no parent, this cell is a stand-alone cell.
     //!< We assume convective cooling with an environment
     //!< If there is no parent, assume we update T every nstep*dt. So update the temperature now
-    if (parent == nullptr) //!< else it is the responsibility of the parent to call the thermal model function with the correct settings
+    if (!parent) //!< else it is the responsibility of the parent to call the thermal model function with the correct settings
     {
       double Tneigh[1] = { settings::T_ENV };
       double Kneigh[1] = { Qch };                 //!< so cooling Qc = Qch * SAV * dT / (rho*cp) = Qch * A * dT / (rho*cp)

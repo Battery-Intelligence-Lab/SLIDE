@@ -446,15 +446,15 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
     return T();
 }
 
+/*
+ * Calculate the thermal model of this SU and its children
+ *
+ * throws
+ * 98 	invalid time keeping
+ * 99 	invalid module temperature
+ */
 double Module::thermalModel(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim)
 {
-  /*
-   * Calculate the thermal model of this SU and its children
-   *
-   * throws
-   * 98 	invalid time keeping
-   * 99 	invalid module temperature
-   */
   double Tout;
   try {
     if constexpr (settings::T_MODEL == 0)

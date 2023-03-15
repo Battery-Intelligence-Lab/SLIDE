@@ -25,8 +25,6 @@ bool test_BasicGetters()
 
   std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
 
-  auto cp1{ cs[0].get() }, cp2{ cs[1].get() };
-
   double T = settings::T_ENV;
   bool checkCells = false;
 
