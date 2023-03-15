@@ -123,7 +123,7 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   for (int iter{ 0 }; iter < maxIteration; iter++) {
     double error{ 0 };
 
-    const auto Vmean = std::accumulate(Va.begin(), Va.end(), 0.0) / nSU; // Compute the mean voltage
+    const auto Vmean = std::accumulate(Va.begin(), Va.begin() + nSU, 0.0) / nSU; // Compute the mean voltage
 
     for (size_t i = 0; i < nSU; i++) // Compute the error between mean voltage and individual cell voltages
       error += std::abs(Vmean - Va[i]);

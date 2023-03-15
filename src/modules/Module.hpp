@@ -13,6 +13,7 @@
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
 
+
 #include <vector>
 #include <cstdlib>
 #include <memory>
@@ -34,17 +35,17 @@ class Module : public StorageUnit
 
 public:
   //!< connected child SUs
-  using SU_t = std::unique_ptr<StorageUnit>; // #TODO in future it should store directly storage unit itself.
+  using SU_t = Deep_ptr<StorageUnit>; // #TODO in future it should store directly storage unit itself.
   using SUs_t = std::vector<SU_t>;
   using SUs_span_t = std::span<SU_t>;
-  using CoolSystem_t = std::unique_ptr<CoolSystem>;
+  using CoolSystem_t = Deep_ptr<CoolSystem>;
 
 protected:
   SUs_t SUs;
   std::vector<double> Rcontact; //!< array with the contact resistance for cell i
 
   //!< thermal model
-  std::unique_ptr<CoolSystem> cool{ nullptr }; //!< cooling system of this module //!< std::make_unique<CoolSystem>(settings::MODULE_NSUs_MAX, 1);
+  CoolSystem_t cool{ nullptr }; //!< cooling system of this module //!< make<CoolSystem>(settings::MODULE_NSUs_MAX, 1);
   ModuleThermalParam therm;
 
   //!< voltage

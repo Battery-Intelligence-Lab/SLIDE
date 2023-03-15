@@ -12,6 +12,7 @@
 
 #include "settings/settings.hpp"
 #include "types/Status.hpp"
+#include "types/Deep_ptr.hpp"
 #include "utility/free_functions.hpp"
 
 #include <string>
@@ -19,6 +20,7 @@
 #include <vector>
 #include <span>
 #include <string_view>
+#include <utility>
 
 namespace slide {
 class StorageUnit
@@ -103,5 +105,9 @@ public:
   virtual void storeData() = 0;
   virtual void writeData(const std::string &prefix) = 0;
 };
+
+// Free functions:
+template <typename T, typename... Args>
+auto make_SU(Args &&...args) { return Deep_ptr<StorageUnit>(new T(std::forward<Args>(args)...)); }
 
 } // namespace slide

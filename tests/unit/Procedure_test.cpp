@@ -53,7 +53,7 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-  auto cp1 = std::make_unique<Cell_SPM>("proctest_cell", deg, 1, 1, 1, 1);
+  auto cp1 = make<Cell_SPM>("proctest_cell", deg, 1, 1, 1, 1);
   auto p = Procedure(balance, Vbal, ndata, unittest);
 
   // p.cycleAge(cp1.get(), true); //!< WITH CV -> 1C CCCV cycling
@@ -63,19 +63,19 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
 
   //!< test with series module
   std::string n = "proctest_s_module_" + std::to_string(Rc);
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
   };
 
   double Rcs[] = { Rc, Rc, Rc, Rc, Rc };
   constexpr double T = 25_degC;
   constexpr bool checkCells = false;
 
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), cool, 1); //!< no multithreading
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), cool, 1); //!< no multithreading
 
   mp->setSUs(cs, checkCells, true);
   mp->setRcontact(Rcs);
@@ -90,23 +90,23 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
   std::string n22 = "proctest_p_module_" + std::to_string(Rc) + "_batt";
   std::string n2 = "mp1";
 
-  std::unique_ptr<StorageUnit> cs2[ncel2];
+  Deep_ptr<StorageUnit> cs2[ncel2];
 
   for (size_t i = 0; i < ncel2; i++) {
     std::string name = "cell" + std::to_string(i);
-    cs2[i] = std::make_unique<Cell_SPM>(name, deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+    cs2[i] = make<Cell_SPM>(name, deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
   }
 
   double Rcs2[] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
   constexpr double T2 = 273 + 25;
   constexpr bool checkCells2 = false;
 
-  auto mpp = std::make_unique<Module_p>(n2, T2, true, false, std::size(cs2), cool, 2); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp = make<Module_p>(n2, T2, true, false, std::size(cs2), cool, 2); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
 
   mpp->setSUs(cs2, checkCells2, true);
   mpp->setRcontact(Rcs2);
 
-  auto bat = std::make_unique<Battery>(n22);
+  auto bat = make<Battery>(n22);
   bat->setModule(std::move(mpp));
 
   auto p3 = Procedure(balance, Vbal, ndata, unittest);
@@ -162,12 +162,12 @@ bool test_Prcedure_CoolSystem()
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
     constexpr size_t ncel = 1;
-    std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>() };
+    Deep_ptr<StorageUnit> cs[] = { make<Cell_SPM>() };
 
     auto cp0 = dynamic_cast<Cell_SPM *>(cs[0].get());
 
     std::string n = "testCoolSystem_cell";
-    auto mp = std::make_unique<Module_s>(n, T, true, false, ncel, coolControl, 1);
+    auto mp = make<Module_s>(n, T, true, false, ncel, coolControl, 1);
 
     double Tini[1] = { cs[0]->T() };
     mp->setSUs(cs, checkCells, true);
@@ -188,16 +188,16 @@ bool test_Prcedure_CoolSystem()
     //!< **********************************************************************************************************************************************************
     //!< Make a simple module with SPM cells
     constexpr size_t ncel2 = 4;
-    std::unique_ptr<StorageUnit> cs2[ncel2];
+    Deep_ptr<StorageUnit> cs2[ncel2];
     Cell_SPM *cs2_ptr[ncel2];
     for (size_t i = 0; i < ncel2; i++) {
-      auto temp = std::make_unique<Cell_SPM>();
+      auto temp = make<Cell_SPM>();
       cs2_ptr[i] = temp.get();
       cs2[i] = std::move(temp);
     }
 
     std::string n2 = "testCoolSystem_module";
-    auto mp2 = std::make_unique<Module_s>(n2, T, true, false, std::size(cs2), coolControl, 1);
+    auto mp2 = make<Module_s>(n2, T, true, false, std::size(cs2), coolControl, 1);
     mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cs2_ptr[0]->T(), cs2_ptr[1]->T(), cs2_ptr[2]->T(), cs2_ptr[3]->T() };
 
@@ -225,9 +225,9 @@ bool test_Prcedure_CoolSystem()
     std::string n22 = "H2";
     std::string n33 = "H3";
 
-    std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
-    std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
-    std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
+    Deep_ptr<StorageUnit> SU1[] = { make<Cell_SPM>(), make<Cell_SPM>() };
+    Deep_ptr<StorageUnit> SU2[] = { make<Cell_SPM>(), make<Cell_SPM>() };
+    Deep_ptr<StorageUnit> SU3[] = { make<Cell_SPM>(), make<Cell_SPM>() };
 
     auto cp11 = dynamic_cast<Cell_SPM *>(SU1[0].get());
     auto cp22 = dynamic_cast<Cell_SPM *>(SU1[1].get());
@@ -236,9 +236,9 @@ bool test_Prcedure_CoolSystem()
     auto cp55 = dynamic_cast<Cell_SPM *>(SU3[0].get());
     auto cp66 = dynamic_cast<Cell_SPM *>(SU3[1].get());
 
-    auto mp11 = std::make_unique<Module_s>(n11, T, true, false, ncel11, coolControl, 2);
-    auto mp22 = std::make_unique<Module_s>(n22, T, true, false, ncel22, coolControl, 2);
-    auto mp33 = std::make_unique<Module_s>(n33, T, true, false, ncel33, coolControl, 2);
+    auto mp11 = make<Module_s>(n11, T, true, false, ncel11, coolControl, 2);
+    auto mp22 = make<Module_s>(n22, T, true, false, ncel22, coolControl, 2);
+    auto mp33 = make<Module_s>(n33, T, true, false, ncel33, coolControl, 2);
 
     mp11->setSUs(SU1, checkCells);
     mp22->setSUs(SU2, checkCells);
@@ -246,9 +246,9 @@ bool test_Prcedure_CoolSystem()
 
     constexpr size_t nm = 3;
     std::string n44 = "testCoolSystem_complexModule";
-    std::unique_ptr<StorageUnit> MU[] = { std::move(mp11), std::move(mp22), std::move(mp33) };
+    Deep_ptr<StorageUnit> MU[] = { std::move(mp11), std::move(mp22), std::move(mp33) };
 
-    auto mp44 = std::make_unique<Module_s>(n44, T, true, true, 6, coolControl, 1);
+    auto mp44 = make<Module_s>(n44, T, true, true, 6, coolControl, 1);
     mp44->setSUs(MU, checkCells, true);
     double Tini22[6] = { cp11->T(), cp22->T(), cp33->T(), cp44->T(), cp55->T(), cp66->T() };
 
@@ -338,15 +338,15 @@ bool test_Procedure_cycleAge_stress()
   std::normal_distribution<double> distr_d2(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
   std::string n3 = "proctest_mp_largeVariation";
 
-  std::unique_ptr<StorageUnit> cs3[ncel1];
+  Deep_ptr<StorageUnit> cs3[ncel1];
 
-  cs3[0] = std::make_unique<Cell_SPM>("cell5", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
-  cs3[1] = std::make_unique<Cell_SPM>("cell6", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
-  cs3[2] = std::make_unique<Cell_SPM>("cell7", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
-  cs3[3] = std::make_unique<Cell_SPM>("cell8", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
-  cs3[4] = std::make_unique<Cell_SPM>("cell9", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
+  cs3[0] = make<Cell_SPM>("cell5", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
+  cs3[1] = make<Cell_SPM>("cell6", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
+  cs3[2] = make<Cell_SPM>("cell7", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
+  cs3[3] = make<Cell_SPM>("cell8", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
+  cs3[4] = make<Cell_SPM>("cell9", deg, distr_c2(gen), distr_r2(gen), distr_d2(gen), distr_d2(gen));
 
-  auto mpp3 = std::make_unique<Module_p>(n3, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp3 = make<Module_p>(n3, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
 
   mpp3->setSUs(cs3, checkCells2, true);
   auto p1 = Procedure(balance, Vbal, ndata, unittest);
@@ -361,14 +361,14 @@ bool test_Procedure_cycleAge_stress()
   std::normal_distribution<double> distr_r(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
   std::normal_distribution<double> distr_d(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
 
-  std::unique_ptr<StorageUnit> cs4[ncel1];
-  cs4[0] = std::make_unique<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[1] = std::make_unique<Cell_SPM>("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[2] = std::make_unique<Cell_SPM>("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[3] = std::make_unique<Cell_SPM>("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[4] = std::make_unique<Cell_SPM>("cell9", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance and 10% more degradation
+  Deep_ptr<StorageUnit> cs4[ncel1];
+  cs4[0] = make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[1] = make<Cell_SPM>("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[2] = make<Cell_SPM>("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[3] = make<Cell_SPM>("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[4] = make<Cell_SPM>("cell9", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance and 10% more degradation
 
-  auto mpp4 = std::make_unique<Module_p>(n4, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp4 = make<Module_p>(n4, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
   mpp4->setSUs(cs4, checkCells2, true);
   auto p2 = Procedure(balance, Vbal, ndata, unittest);
   p2.cycleAge(mpp4.get(), false); //!< this should write a file called s_module_capacities.csv
@@ -436,18 +436,18 @@ bool test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
   constexpr size_t ncel = 5;
   std::string n = pref + "_proctest_sMod";
 
-  std::unique_ptr<StorageUnit> cs[ncel];
+  Deep_ptr<StorageUnit> cs[ncel];
 
-  cs[0] = std::make_unique<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs[1] = std::make_unique<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs[2] = std::make_unique<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs[3] = std::make_unique<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs[4] = std::make_unique<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs[0] = make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs[1] = make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs[2] = make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs[3] = make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs[4] = make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
 
   double T = 25_degC;
   bool checkCells = false;
 
-  auto mp = std::make_unique<Module_s>(n, T, true, false, ncel, cool, true); //!< no multithreading
+  auto mp = make<Module_s>(n, T, true, false, ncel, cool, true); //!< no multithreading
 
   mp->setSUs(cs, checkCells, true);
   Vmax = mp->Vmax();
@@ -466,22 +466,22 @@ bool test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
   //!< test with parallel module
   std::string n2 = pref + "_proctest_pMod";
 
-  std::unique_ptr<StorageUnit> cs2[] = {
-    std::make_unique<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    std::make_unique<Cell_SPM>("cell9", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
+  Deep_ptr<StorageUnit> cs2[] = {
+    make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell9", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
   };
 
   double T2 = 25_degC;
   bool checkCells2 = false;
 
-  auto mpp = std::make_unique<Module_p>(n2, T2, true, false, std::size(cs2), cool, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp = make<Module_p>(n2, T2, true, false, std::size(cs2), cool, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
 
   mpp->setSUs(cs2, checkCells2, true);
   Vmax = mpp->Vmax();

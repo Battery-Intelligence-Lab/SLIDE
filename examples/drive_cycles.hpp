@@ -33,7 +33,7 @@ inline auto get_exampleCell()
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-  auto example_cell = std::make_unique<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
+  auto example_cell = make<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
 
   // Specify the OCV parameters (calculated by determineOCV::estimateOCVparameters)
   OCVparam ocvfit;
@@ -176,7 +176,7 @@ inline void drive_cycle_artemis()
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-  auto c = std::make_unique<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
+  auto c = make<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
   c->setBlockDegAndTherm(true);
 
   double Cmaxpos{ 51385 };

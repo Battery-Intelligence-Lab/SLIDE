@@ -25,8 +25,8 @@ inline void run_LP_case_SmallPack()
   c.getStateObj().rDCcc() = 0;
   c.setBlockDegAndTherm(true);
 
-  std::unique_ptr<StorageUnit> cs[] = { std::unique_ptr<StorageUnit>(c.copy()),
-                                        std::unique_ptr<StorageUnit>(c.copy()) };
+  Deep_ptr<StorageUnit> cs[] = { Deep_ptr<StorageUnit>(c.copy()),
+                                 Deep_ptr<StorageUnit>(c.copy()) };
 
   auto module = Module_p("SmallPack", settings::T_ENV, true, false, std::size(cs), 1, 1);
   module.setSUs(cs, false);
@@ -60,16 +60,16 @@ inline void run_LP_case_MediumPack()
   const double Rc_p = 2e-4;
 
   using settings::T_ENV;
-  std::unique_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
-  std::unique_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
+  Deep_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
+  Deep_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
 
   double Rc2[np], Rc3[ns];               //!< arrays with the contact resistances for the different levels (3 = lowest level)
   for (size_t is = 0; is < np; is++) {   //!< loop for modules in string
     for (size_t ic = 0; ic < ns; ic++) { //!< loop for cells in modules
-      CinM[ic] = std::unique_ptr<StorageUnit>(c.copy());
+      CinM[ic] = Deep_ptr<StorageUnit>(c.copy());
       Rc3[ic] = Rc_s; //!< in series module, so every cell has a resistance of Rc
     }
-    auto mi = std::make_unique<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
+    auto mi = make<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
 
     mi->setSUs(CinM, checkCells, true);
     mi->setRcontact(Rc3);
@@ -110,16 +110,16 @@ inline void run_LP_case_LargePack()
   const double Rc_p = 2e-4;
 
   using settings::T_ENV;
-  std::unique_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
-  std::unique_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
+  Deep_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
+  Deep_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
 
   double Rc2[np], Rc3[ns];               //!< arrays with the contact resistances for the different levels (3 = lowest level)
   for (size_t is = 0; is < np; is++) {   //!< loop for modules in string
     for (size_t ic = 0; ic < ns; ic++) { //!< loop for cells in modules
-      CinM[ic] = std::unique_ptr<StorageUnit>(c.copy());
+      CinM[ic] = Deep_ptr<StorageUnit>(c.copy());
       Rc3[ic] = Rc_s; //!< in series module, so every cell has a resistance of Rc
     }
-    auto mi = std::make_unique<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
+    auto mi = make<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
 
     mi->setSUs(CinM, checkCells, true);
     mi->setRcontact(Rc3);
@@ -160,16 +160,16 @@ inline void run_LP_case_LargePackLong()
   const double Rc_p = 2e-4;
 
   using settings::T_ENV;
-  std::unique_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
-  std::unique_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
+  Deep_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
+  Deep_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
 
   double Rc2[np], Rc3[ns];               //!< arrays with the contact resistances for the different levels (3 = lowest level)
   for (size_t is = 0; is < np; is++) {   //!< loop for modules in string
     for (size_t ic = 0; ic < ns; ic++) { //!< loop for cells in modules
-      CinM[ic] = std::unique_ptr<StorageUnit>(c.copy());
+      CinM[ic] = Deep_ptr<StorageUnit>(c.copy());
       Rc3[ic] = Rc_s; //!< in series module, so every cell has a resistance of Rc
     }
-    auto mi = std::make_unique<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
+    auto mi = make<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
 
     mi->setSUs(CinM, checkCells, true);
     mi->setRcontact(Rc3);

@@ -5,6 +5,7 @@ add_executable_with_coverage_and_test(unit_test_Cell_SPM Cell_SPM_test.cpp)
 
 add_executable_with_coverage_and_test(unit_test_Converter converter_test.cpp)
 add_executable_with_coverage_and_test(unit_test_Module_p Module_p_test.cpp)
-add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
-#add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
-#add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)
+
+# add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
+# add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
+# add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

@@ -46,11 +46,11 @@ Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncell
   double Q0 = 0;                  //!< constant ancillary losses. There are none since a module only has cells
 
   if (cooltype == 1)
-    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0);
+    cool = make<CoolSystem_HVAC>(Ncells, coolControl, Q0);
   else if (cooltype == 2)
-    cool = std::make_unique<CoolSystem_open>(Ncells, coolControl);
+    cool = make<CoolSystem_open>(Ncells, coolControl);
   else
-    cool = std::make_unique<CoolSystem>(Ncells, coolControl);
+    cool = make<CoolSystem>(Ncells, coolControl);
 
   cool->setT(Ti);
 }

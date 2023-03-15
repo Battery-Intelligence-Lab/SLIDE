@@ -27,15 +27,49 @@ public:
   Deep_ptr() = default;               //!< Default constructor
   explicit Deep_ptr(T *p) : ptr(p) {} //!< Constructor taking a raw pointer
 
+  Deep_ptr(std::unique_ptr<T> &&uptr) : ptr(std::move(uptr)) {} // Constructor taking a unique_ptr
+
   /// Copy constructor
-  Deep_ptr(const Deep_ptr &other)
-  {
-    if (other.ptr)
-      ptr = std::unique_ptr<T>(other.ptr->copy());
-  }
+  Deep_ptr(const Deep_ptr &other) : ptr(other ? other->copy() : nullptr) {}
+
+  // Templated copy constructor for implicit conversion from derived class.
+  template <typename U, typename = std::enable_if_t<std::is_base_of<T, U>::value>>
+  Deep_ptr(const Deep_ptr<U> &other) : ptr(other ? other->copy() : nullptr) {}
+
+  // Templated constructor for implicit conversion from derived class for unique_ptr.
+  template <typename U, typename = std::enable_if_t<std::is_base_of<T, U>::value>>
+  Deep_ptr(const std::unique_ptr<U> &other) : ptr(other ? other->copy() : nullptr) {}
 
   /// Move constructor
   Deep_ptr(Deep_ptr &&other) noexcept : ptr(std::move(other.ptr)) {}
+
+
+  // Templated move constructor for implicit conversion
+  template <typename U, typename = std::enable_if_t<std::is_base_of<T, U>::value>>
+  Deep_ptr(Deep_ptr<U> &&other) noexcept : ptr(std::move(other.ptr)) {}
+
+  // Copy assignment operator
+  Deep_ptr &operator=(const Deep_ptr &other)
+  {
+    if (this != &other)
+      ptr = other ? other->copy() : nullptr;
+
+    return *this;
+  }
+
+  // Move assignment operator
+  Deep_ptr &operator=(Deep_ptr &&other) noexcept
+  {
+    if (this != &other)
+      ptr = std::move(other.ptr);
+
+    return *this;
+  }
+
+  // Templated constructor for implicit conversion from raw pointers
+  template <typename U, typename = std::enable_if_t<std::is_base_of<T, U>::value>>
+  explicit Deep_ptr(U *raw_ptr) : ptr(raw_ptr) {}
+
 
   /// Copy assignment operator
   Deep_ptr &operator=(const Deep_ptr &other)
@@ -67,6 +101,42 @@ public:
 
   // Swap the Deep_ptr with another Deep_ptr
   void swap(Deep_ptr &other) { ptr.swap(other.ptr); }
+
+  // Comparison operator
+  [[nodiscard]] friend bool operator==(const Deep_ptr<T> &lhs, std::nullptr_t) noexcept
+  {
+    return lhs.ptr == nullptr;
+  }
+
+  [[nodiscard]] friend bool operator==(std::nullptr_t, const Deep_ptr<T> &rhs) noexcept
+  {
+    return rhs == nullptr;
+  }
+
+  [[nodiscard]] friend bool operator!=(const Deep_ptr<T> &lhs, std::nullptr_t) noexcept
+  {
+    return !(lhs == nullptr);
+  }
+
+  [[nodiscard]] friend bool operator!=(std::nullptr_t, const Deep_ptr<T> &rhs) noexcept
+  {
+    return rhs != nullptr;
+  }
 };
+
+// Free functions:
+template <typename T, typename... Args>
+Deep_ptr<T> make_Deep_ptr(Args &&...args)
+{
+  return Deep_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
+/// @brief  Makes storage units.
+/// @tparam T
+/// @tparam ...Args
+/// @param ...args
+/// @return
+template <typename T, typename... Args>
+Deep_ptr<T> make(Args &&...args) { return Deep_ptr<T>(new T(std::forward<Args>(args)...)); }
 
 } // namespace slide

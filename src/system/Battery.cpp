@@ -16,7 +16,7 @@
 
 namespace slide {
 
-Battery::Battery() : StorageUnit("Battery") { conv = std::make_unique<Converter>(); }
+Battery::Battery() : StorageUnit("Battery") { conv = make<Converter>(); }
 Battery::Battery(std::string IDi) : Battery() { ID = std::move(IDi); }
 
 void Battery::setSeriesandParallel(unsigned int ser, unsigned int par)
@@ -25,7 +25,7 @@ void Battery::setSeriesandParallel(unsigned int ser, unsigned int par)
   nparallel = par;
 }
 
-void Battery::setModule(std::unique_ptr<Module> &&module)
+void Battery::setModule(Deep_ptr<Module> &&module)
 {
   /*
    * Connect the given module to this battery.
@@ -77,7 +77,7 @@ void Battery::setModule(std::unique_ptr<Module> &&module)
    * and then do * 2
    */
   double Q0 = conv->getLosses(Vmax(), Cap()) * 2; //!< idle losses of the converter (due to switching and others)
-  cool = std::make_unique<CoolSystem_HVAC>(getNcells(), cells->getCoolSystem()->getControl(), Q0);
+  cool = make<CoolSystem_HVAC>(getNcells(), cells->getCoolSystem()->getControl(), Q0);
 
   //!< Scale the power electronic converter correspondingly
   conv->setPower(Cap() * Vmax());
@@ -200,7 +200,7 @@ double Battery::getCoolingLoad()
 Battery *Battery::copy()
 {
   Battery *copied_ptr = new Battery(getID());
-  std::unique_ptr<Module> cls{ cells->copy() };
+  Deep_ptr<Module> cls{ cells->copy() };
 
   cls->setParent(nullptr);
 

@@ -24,7 +24,7 @@
 #include <typeinfo>
 
 namespace slide {
-std::unique_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl)
+Deep_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl)
 {
   /*
    * Function to make a large battery pack.
@@ -115,9 +115,9 @@ std::unique_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool Rcel
   constexpr bool checkCells = true;
 
   std::cout << "Total number of cells: " << nc * ns * np << '\n';
-  std::unique_ptr<StorageUnit> SinP[np]; //!< array with strings in one battery
-  std::unique_ptr<StorageUnit> MinS[ns]; //!< array with modules in one string
-  std::unique_ptr<StorageUnit> CinM[nc]; //!< array with cells in one module
+  Deep_ptr<StorageUnit> SinP[np]; //!< array with strings in one battery
+  Deep_ptr<StorageUnit> MinS[ns]; //!< array with modules in one string
+  Deep_ptr<StorageUnit> CinM[nc]; //!< array with cells in one module
 
   double Rc1[np], Rc2[ns], Rc3[nc];        //!< arrays with the contact resistances for the different levels (3 = lowest level)
   for (size_t ip = 0; ip < np; ip++) {     //!< loop for strings in battery
@@ -131,29 +131,29 @@ std::unique_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool Rcel
           degf = distribution_d(generator);
           degflam = distribution_d(generator);
         }
-        CinM[ic] = std::make_unique<Cell_SPM>("cell" + std::to_string(ic), deg, capf, Rf, degf, degflam);
+        CinM[ic] = make_Deep_ptr<Cell_SPM>("cell" + std::to_string(ic), deg, capf, Rf, degf, degflam);
         Rc3[ic] = Rc_s; //!< in series module, so every cell has a resistance of Rc
       }
-      auto mi = std::make_unique<Module_s>("s" + std::to_string(is), T_ENV, true, false, nc, coolControl, 0); //!< print warning messages, single-threaded
+      auto mi = make_Deep_ptr<Module_s>("s" + std::to_string(is), T_ENV, true, false, nc, coolControl, 0); //!< print warning messages, single-threaded
 
       mi->setSUs(CinM, checkCells, true);
       mi->setRcontact(Rc3);
       MinS[is] = std::move(mi);
       Rc2[is] = Rc_s; //!< in series module, so every cell has a resistance of Rc
     }
-    auto mj = std::make_unique<Module_s>("s" + std::to_string(ip), T_ENV, true, false, nc * ns, coolControl, 2);
+    auto mj = make<Module_s>("s" + std::to_string(ip), T_ENV, true, false, nc * ns, coolControl, 2);
     mj->setSUs(MinS, checkCells, true);
     mj->setRcontact(Rc2);
     SinP[ip] = std::move(mj);
     Rc1[ip] = Rc_p; //!< in parallel module, every horizontal branch has the same value of Rc
   }
 
-  auto mp = std::make_unique<Module_p>("p", T_ENV, true, true, nc * ns * np, coolControl, 2); //!< multithreaded parallel module
+  auto mp = make<Module_p>("p", T_ENV, true, true, nc * ns * np, coolControl, 2); //!< multithreaded parallel module
   mp->setSUs(SinP, checkCells, true);
   mp->setRcontact(Rc1);
 
   //!< make the battery
-  auto bat = std::make_unique<Battery>(settings_str + "_pss");
+  auto bat = make<Battery>(settings_str + "_pss");
   bat->setModule(std::move(mp));
 
   std::cout << "The voltage of the battery is " << bat->V() << " and it has a capacity of " << bat->Cap() << '\n';
@@ -166,12 +166,12 @@ std::unique_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool Rcel
   bool CV = false;
   double Vbal = 3.5;							//!< rebalance to 3.1V
   int ndata = 100;							//!< how often to store data (if 0, nothing is stored, not even usage stats)
-  std::unique_ptr<Procedure> p(new Procedure(balance, Vbal, ndata, false));
+  Deep_ptr<Procedure> p(new Procedure(balance, Vbal, ndata, false));
   //p->useCaseAge(bat, coolControl);
   p->cycleAge(bat, CV);*/
 }
 
-std::unique_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl)
+Deep_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl)
 {
   /*
    * Function to make a large battery pack.
@@ -257,10 +257,10 @@ std::unique_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool Rce
   constexpr bool checkCells = true;
   std::cout << "Total number of cells: " << nc * ns * np << '\n';
 
-  std::unique_ptr<StorageUnit> SinP[np]; //!< array with strings in one battery
-  std::unique_ptr<StorageUnit> MinS[ns]; //!< array with modules in one string
-  std::unique_ptr<StorageUnit> CinM[nc]; //!< array with cells in one module
-  double Rc1[np], Rc2[ns], Rc3[nc];      //!< arrays with the contact resistances for the different levels (3 = lowest level)
+  Deep_ptr<StorageUnit> SinP[np];   //!< array with strings in one battery
+  Deep_ptr<StorageUnit> MinS[ns];   //!< array with modules in one string
+  Deep_ptr<StorageUnit> CinM[nc];   //!< array with cells in one module
+  double Rc1[np], Rc2[ns], Rc3[nc]; //!< arrays with the contact resistances for the different levels (3 = lowest level)
 
   for (size_t ip = 0; ip < np; ip++) //!< loop for strings in battery
   {
@@ -275,29 +275,29 @@ std::unique_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool Rce
           degf = distribution_d(generator);
           degflam = distribution_d(generator);
         }
-        CinM[ic] = std::make_unique<Cell_SPM>("cell" + std::to_string(ic), deg, capf, Rf, degf, degflam);
+        CinM[ic] = make<Cell_SPM>("cell" + std::to_string(ic), deg, capf, Rf, degf, degflam);
         Rc3[ic] = Rc_p; //!< in parallel module, all branches have same R
       }
-      auto mi = std::make_unique<Module_p>("p" + std::to_string(is), T_ENV, true, false, nc, coolControl, 0); //!< print warning messages, single-threaded
+      auto mi = make<Module_p>("p" + std::to_string(is), T_ENV, true, false, nc, coolControl, 0); //!< print warning messages, single-threaded
       mi->setSUs(CinM, checkCells, true);
       mi->setRcontact(Rc3);
 
       MinS[is] = std::move(mi);
       Rc2[is] = Rc_s; //!< in series module, so every cell has a resistance of Rc
     }
-    auto mj = std::make_unique<Module_s>("s" + std::to_string(ip), T_ENV, true, false, nc * ns, coolControl, 2); //!< single-threaded
+    auto mj = make<Module_s>("s" + std::to_string(ip), T_ENV, true, false, nc * ns, coolControl, 2); //!< single-threaded
     mj->setSUs(MinS, checkCells, true);
     mj->setRcontact(Rc2);
 
     SinP[ip] = std::move(mj);
     Rc1[ip] = Rc_s; //!< in parallel module, every horizontal branch has the same value of Rc
   }
-  auto ms = std::make_unique<Module_s>("s", T_ENV, true, true, nc * ns * np, coolControl, 2); //!< multithreaded series module
+  auto ms = make<Module_s>("s", T_ENV, true, true, nc * ns * np, coolControl, 2); //!< multithreaded series module
   ms->setSUs(SinP, checkCells, true);
   ms->setRcontact(Rc1);
 
   //!< make the battery
-  auto bat = std::make_unique<Battery>(settings_str + "_ssp");
+  auto bat = make<Battery>(settings_str + "_ssp");
   bat->setModule(std::move(ms));
 
   std::cout << "The voltage of the battery is " << bat->V() << " and it has a capacity of " << bat->Cap() << '\n';
@@ -307,7 +307,7 @@ std::unique_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool Rce
   return bat;
 }
 
-std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM)
+Deep_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM)
 {
   /*
    * Function to make a large battery pack.
@@ -377,10 +377,10 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
   constexpr size_t nracks = 2;   //!< number of strings in (p) battery
 
   constexpr bool checkCells = true;
-  std::unique_ptr<StorageUnit> RinB[nracks];   //!< array with racks in one battery
-  std::unique_ptr<StorageUnit> MinR[nmodules]; //!< array with modules in one rack
-  std::unique_ptr<StorageUnit> CinsM[ncs];     //!< array with cells in series in one module
-  std::unique_ptr<StorageUnit> CinpM[ncp];     //!< array with cells in parallel in one module
+  Deep_ptr<StorageUnit> RinB[nracks];   //!< array with racks in one battery
+  Deep_ptr<StorageUnit> MinR[nmodules]; //!< array with modules in one rack
+  Deep_ptr<StorageUnit> CinsM[ncs];     //!< array with cells in series in one module
+  Deep_ptr<StorageUnit> CinpM[ncp];     //!< array with cells in parallel in one module
 
   double Rc1[nracks], Rc2[nmodules], Rc3[ncs], Rc4[ncp]; //!< arrays with the contact resistances for the different levels (3 = lowest level)
   for (size_t ip = 0; ip < nracks; ip++) {               //!< loop for strings in battery
@@ -395,12 +395,12 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
             degf = distribution_d(generator);
             degflam = distribution_d(generator);
           }
-          CinpM[icp] = std::make_unique<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
+          CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
           Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
         }                        //!< loop to make cells connected in parallel in modules
 
         //!< put the cells in parallel to the lowest-level module
-        auto mip = std::make_unique<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
+        auto mip = make<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
 
         mip->setSUs(CinpM, checkCells, true);
         mip->setRcontact(Rc4);
@@ -409,7 +409,7 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
       }                        //!< loop to make the parallel-connected cells which goes in series to make one module
 
       //!< assemble the cells in series for the
-      auto modulei = std::make_unique<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
+      auto modulei = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
       modulei->setSUs(CinsM, checkCells, true);
       modulei->setRcontact(Rc3);
       MinR[is] = std::move(modulei);
@@ -419,7 +419,7 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
     } //!< loop to make the modules for one rack
 
     //!< assemble the modules in series for a rack
-    auto racki = std::make_unique<Module_s>("s" + std::to_string(ip), T_ENV, true, false, ncp * ncs * nmodules, coolControl, 2); //!< single-threaded, pass through coolsystem
+    auto racki = make<Module_s>("s" + std::to_string(ip), T_ENV, true, false, ncp * ncs * nmodules, coolControl, 2); //!< single-threaded, pass through coolsystem
     racki->setSUs(MinR, checkCells, true);
     racki->setRcontact(Rc2);
     RinB[ip] = std::move(racki);
@@ -428,12 +428,12 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
-  auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
+  auto bc = make<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
 
   //!< make the battery
-  auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
+  auto bat = make<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
   bat->setModule(std::move(bc));
 
   std::cout << "Total number of cells: " << bat->getNcells() << '\n';
@@ -446,7 +446,7 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool Rcell
   return bat;
 }
 
-std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM)
+Deep_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM)
 {
   /*
    * Function to make a large battery pack.
@@ -516,10 +516,10 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
   constexpr size_t nracks = 9;    //!< number of strings in (p) battery
 
   constexpr bool checkCells = true;
-  std::unique_ptr<StorageUnit> RinB[nracks];   //!< array with racks in one battery
-  std::unique_ptr<StorageUnit> MinR[nmodules]; //!< array with modules in one rack
-  std::unique_ptr<StorageUnit> CinsM[ncs];     //!< array with cells in series in one module
-  std::unique_ptr<StorageUnit> CinpM[ncp];     //!< array with cells in parallel in one module
+  Deep_ptr<StorageUnit> RinB[nracks];   //!< array with racks in one battery
+  Deep_ptr<StorageUnit> MinR[nmodules]; //!< array with modules in one rack
+  Deep_ptr<StorageUnit> CinsM[ncs];     //!< array with cells in series in one module
+  Deep_ptr<StorageUnit> CinpM[ncp];     //!< array with cells in parallel in one module
 
   double Rc1[nracks], Rc2[nmodules], Rc3[ncs], Rc4[ncp]; //!< arrays with the contact resistances for the different levels (3 = lowest level)
   for (size_t ip = 0; ip < nracks; ip++) {               //!< loop for strings in battery
@@ -534,12 +534,12 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
             degf = distribution_d(generator);
             degflam = distribution_d(generator);
           }
-          CinpM[icp] = std::make_unique<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
+          CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
           Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
         }                        //!< loop to make cells connected in parallel in modules
 
         //!< put the cells in parallel to the lowest-level module
-        auto mip = std::make_unique<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
+        auto mip = make<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
 
         mip->setSUs(CinpM, checkCells, true);
         mip->setRcontact(Rc4);
@@ -548,7 +548,7 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
       }                        //!< loop to make the parallel-connected cells which goes in series to make one module
 
       //!< assemble the cells in series for the
-      auto modulei = std::make_unique<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
+      auto modulei = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
       modulei->setSUs(CinsM, checkCells, true);
       modulei->setRcontact(Rc3);
       MinR[is] = std::move(modulei);
@@ -557,7 +557,7 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
     } //!< loop to make the modules for one rack
 
     //!< assemble the modules in series for a rack
-    auto racki = std::make_unique<Module_s>("s" + std::to_string(ip), T_ENV, true, false, ncp * ncs * nmodules, coolControl, 2); //!< single-threaded, pass through coolsystem
+    auto racki = make<Module_s>("s" + std::to_string(ip), T_ENV, true, false, ncp * ncs * nmodules, coolControl, 2); //!< single-threaded, pass through coolsystem
     racki->setSUs(MinR, checkCells, true);
     racki->setRcontact(Rc2);
     RinB[ip] = std::move(racki);
@@ -566,12 +566,12 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
-  auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
+  auto bc = make<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
 
   //!< make the battery
-  auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
+  auto bat = make<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
   bat->setModule(std::move(bc));
 
   std::cout << "Total number of cells: " << bat->getNcells() << '\n';
@@ -581,7 +581,7 @@ std::unique_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, 
   return bat;
 }
 
-std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM)
+Deep_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM)
 {
   /*
    * Function to make a large battery pack.
@@ -652,10 +652,10 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
   std::cout << "Total number of cells: " << ncp * ncs * nmodules * nracks << '\n';
 
   constexpr bool checkCells = true;
-  std::unique_ptr<StorageUnit> RinB[nracks];   //!< array with racks in one battery
-  std::unique_ptr<StorageUnit> MinR[nmodules]; //!< array with modules in one rack
-  std::unique_ptr<StorageUnit> CinsM[ncs];     //!< array with cells in series in one module
-  std::unique_ptr<StorageUnit> CinpM[ncp];     //!< array with cells in parallel in one module
+  Deep_ptr<StorageUnit> RinB[nracks];   //!< array with racks in one battery
+  Deep_ptr<StorageUnit> MinR[nmodules]; //!< array with modules in one rack
+  Deep_ptr<StorageUnit> CinsM[ncs];     //!< array with cells in series in one module
+  Deep_ptr<StorageUnit> CinpM[ncp];     //!< array with cells in parallel in one module
 
   double Rc1[nracks], Rc2[nmodules], Rc3[ncs], Rc4[ncp]; //!< arrays with the contact resistances for the different levels (3 = lowest level)
   for (size_t ip = 0; ip < nracks; ip++) {               //!< loop for strings in battery
@@ -670,12 +670,12 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
             degf = distribution_d(generator);
             degflam = distribution_d(generator);
           }
-          CinpM[icp] = std::make_unique<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
+          CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
           Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
         }                        //!< loop to make cells connected in parallel in modules
 
         //!< put the cells in parallel to the lowest-level module
-        auto mip = std::make_unique<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
+        auto mip = make<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
 
         mip->setSUs(CinpM, checkCells, true);
         mip->setRcontact(Rc4);
@@ -684,7 +684,7 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
       }                        //!< loop to make the parallel-connected cells which goes in series to make one module
 
       //!< assemble the cells in series for the
-      auto modulei = std::make_unique<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
+      auto modulei = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
       modulei->setSUs(CinsM, checkCells, true);
       modulei->setRcontact(Rc3);
       MinR[is] = std::move(modulei);
@@ -693,7 +693,7 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
     } //!< loop to make the modules for one rack
 
     //!< assemble the modules in series for a rack
-    auto racki = std::make_unique<Module_s>("s" + std::to_string(ip), T_ENV, true, false, ncp * ncs * nmodules, coolControl, 2); //!< single-threaded, pass through coolsystem
+    auto racki = make<Module_s>("s" + std::to_string(ip), T_ENV, true, false, ncp * ncs * nmodules, coolControl, 2); //!< single-threaded, pass through coolsystem
     racki->setSUs(MinR, checkCells, true);
     racki->setRcontact(Rc2);
     RinB[ip] = std::move(racki);
@@ -702,12 +702,12 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
   } //!< loop to make the racks
 
   //!< Assemble the racks in the battery compartment (bc)
-  auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
+  auto bc = make<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   bc->setSUs(RinB, checkCells, true);
   bc->setRcontact(Rc1);
 
   //!< make the battery
-  auto bat = std::make_unique<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
+  auto bat = make<Battery>(settings_str + "_EPFL"); //!< battery, gets HVAC coolsystem
   bat->setModule(std::move(bc));
 
   std::cout << "The voltage of the battery is " << bat->V() << " and it has a capacity of " << bat->Cap() << '\n';
@@ -716,7 +716,7 @@ std::unique_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, 
   return bat;
 }
 
-std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM)
+Deep_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl, std::string IDadditions, double RM)
 {
   /*
    * Function to make a large battery pack.
@@ -787,10 +787,10 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   std::cout << "Total number of cells: " << ncp * ncs * nmodules * nracks << '\n';
 
   constexpr bool checkCells = true;
-  std::unique_ptr<StorageUnit> RinB[nracks];   //!< array with racks in one battery
-  std::unique_ptr<StorageUnit> MinR[nmodules]; //!< array with modules in one rack
-  std::unique_ptr<StorageUnit> CinsM[ncs];     //!< array with cells in series in one module
-  std::unique_ptr<StorageUnit> CinpM[ncp];     //!< array with cells in parallel in one module
+  Deep_ptr<StorageUnit> RinB[nracks];   //!< array with racks in one battery
+  Deep_ptr<StorageUnit> MinR[nmodules]; //!< array with modules in one rack
+  Deep_ptr<StorageUnit> CinsM[ncs];     //!< array with cells in series in one module
+  Deep_ptr<StorageUnit> CinpM[ncp];     //!< array with cells in parallel in one module
 
   double Rc1[nracks], Rc2[nmodules], Rc3[ncs], Rc4[ncp]; //!< arrays with the contact resistances for the different levels (3 = lowest level)
 
@@ -803,12 +803,12 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
       degf = distribution_d(generator);
       degflam = distribution_d(generator);
     }
-    CinpM[icp] = std::make_unique<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
+    CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
     Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
   }                        //!< loop to make cells connected in parallel in modules
 
   //!< put the cells in parallel to the lowest-level module
-  auto mip = std::make_unique<Module_p>("p" + std::to_string(0), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
+  auto mip = make<Module_p>("p" + std::to_string(0), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
 
   mip->setSUs(CinpM, checkCells, true);
   mip->setRcontact(Rc4);
@@ -830,12 +830,12 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   //!< 					degf = distribution_d(generator);
   //!< 					degflam = distribution_d(generator);
   //!< 				}
-  //!< 				CinpM[icp] = std::make_unique<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
+  //!< 				CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
   //!< 				Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
   //!< 			}						   //!< loop to make cells connected in parallel in modules
 
   //!< 			//!< put the cells in parallel to the lowest-level module
-  //!< 			auto mip = std::make_unique<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
+  //!< 			auto mip = make<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
 
   //!< 			mip->setSUs(CinpM, checkCells, true);
   //!< 			mip->setRcontact(Rc4);
@@ -844,7 +844,7 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   //!< 		}						   //!< loop to make the parallel-connected cells which goes in series to make one module
 
   //!< 		//!< assemble the cells in series for the
-  //!< 		auto modulei = std::make_unique<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
+  //!< 		auto modulei = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
   //!< 		modulei->setSUs(CinsM, checkCells, true);
   //!< 		modulei->setRcontact(Rc3);
   //!< 		MinR[is] = std::move(modulei);
@@ -853,7 +853,7 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   //!< 	} //!< loop to make the modules for one rack
 
   //!< 	//!< assemble the modules in series for a rack
-  //!< 	auto racki = std::make_unique<Module_s>("s" + std::to_string(ip), T_ENV, true, false, ncp * ncs * nmodules, coolControl, 2); //!< single-threaded, pass through coolsystem
+  //!< 	auto racki = make<Module_s>("s" + std::to_string(ip), T_ENV, true, false, ncp * ncs * nmodules, coolControl, 2); //!< single-threaded, pass through coolsystem
   //!< 	racki->setSUs(MinR, checkCells, true);
   //!< 	racki->setRcontact(Rc2);
   //!< 	RinB[ip] = std::move(racki);
@@ -862,12 +862,12 @@ std::unique_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool Rcell
   //!< } //!< loop to make the racks
 
   //!< //!< Assemble the racks in the battery compartment (bc)
-  //!< auto bc = std::make_unique<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
+  //!< auto bc = make<Module_p>("p", T_ENV, true, true, ncp * ncs * nmodules * nracks, coolControl, 2); //!< multithreaded parallel module, pass through coolsystem
   //!< bc->setSUs(RinB, checkCells, true);
   //!< bc->setRcontact(Rc1);
 
   //!< make the battery
-  auto bat = std::make_unique<Battery>(settings_str + "_ParTest"); //!< battery, gets HVAC coolsystem
+  auto bat = make<Battery>(settings_str + "_ParTest"); //!< battery, gets HVAC coolsystem
   bat->setModule(std::move(mip));
 
   std::cout << "The voltage of the battery is " << bat->V() << " and it has a capacity of " << bat->Cap() << '\n';

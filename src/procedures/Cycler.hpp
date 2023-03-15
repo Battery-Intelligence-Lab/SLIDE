@@ -31,10 +31,10 @@ public:
   Cycler() = default;
   Cycler(StorageUnit *sui) : su(sui) {}
   Cycler(StorageUnit *sui, const std::string &IDi) : ID(IDi), su(sui) {}
-  Cycler(std::unique_ptr<StorageUnit> &sui, const std::string &IDi) : Cycler(sui.get(), IDi) {}
+  Cycler(Deep_ptr<StorageUnit> &sui, const std::string &IDi) : Cycler(sui.get(), IDi) {}
 
   Cycler &initialise(StorageUnit *sui, const std::string &IDi);
-  Cycler &initialise(std::unique_ptr<StorageUnit> &sui, const std::string &IDi) { return initialise(sui.get(), IDi); }
+  Cycler &initialise(Deep_ptr<StorageUnit> &sui, const std::string &IDi) { return initialise(sui.get(), IDi); }
 
   Cycler &setDiagnostic(bool newDia);
   double getSafetyVmin() { return su->VMIN() * 0.99; } //!< #TODO probably causing many calculations.
