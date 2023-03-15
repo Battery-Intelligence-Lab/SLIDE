@@ -197,19 +197,6 @@ double Battery::getCoolingLoad()
   return Etot;
 }
 
-Battery *Battery::copy()
-{
-  Battery *copied_ptr = new Battery(getID());
-  Deep_ptr<Module> cls{ cells->copy() };
-
-  cls->setParent(nullptr);
-
-  copied_ptr->setSeriesandParallel(nseries, nparallel);
-  copied_ptr->setModule(std::move(cls));
-
-  return copied_ptr;
-}
-
 void Battery::timeStep_CC(double dt, int steps)
 {
 

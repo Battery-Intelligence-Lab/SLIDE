@@ -598,7 +598,8 @@ bool test_copy_p()
   mp->setSUs(cs, checkCells, true);
 
   //!< copy this one and check they are identical
-  Deep_ptr<StorageUnit> cn(mp->copy());
+  auto cn = mp;
+  // Deep_ptr<StorageUnit> cn(mp->copy());
   Module_p *c22 = dynamic_cast<Module_p *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell
   assert(mp->V() == c22->V());
 

@@ -44,6 +44,6 @@ public:
 
   void timeStep_CC(double dt, int steps = 1) override;
 
-  Module_p *copy() override;
+  Module_p *copy() override { return new Module_p(*this); }
 };
 } // namespace slide

@@ -358,26 +358,4 @@ void Module_p::timeStep_CC(double dt, int nstep)
   }
 }
 
-Module_p *Module_p::copy()
-{
-  //!< check the type of coolsystem we have #TODO for a better way.
-  int cooltype = 0;
-  if (typeid(*getCoolSystem()) == typeid(CoolSystem_HVAC))
-    cooltype = 1;
-  else if (typeid(*getCoolSystem()) == typeid(CoolSystem_open))
-    cooltype = 2;
-
-  Module_p *copied_ptr = new Module_p(getID(), cool->T(), true, par, getNcells(), cool->getControl(), cooltype);
-
-  copied_ptr->Rcontact = Rcontact;
-  copied_ptr->setT(T());
-
-  copied_ptr->SUs.clear();
-  for (size_t i{ 0 }; i < getNSUs(); i++) {
-    copied_ptr->SUs.emplace_back(SUs[i]->copy()); // #TODO remove when we have Module<...>
-    copied_ptr->SUs.back()->setParent(copied_ptr);
-  }
-
-  return copied_ptr;
-}
 } // namespace slide

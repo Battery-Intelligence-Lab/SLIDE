@@ -195,28 +195,4 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 }
 
-Module_s *Module_s::copy()
-{
-  //!< check the type of coolsystem we have #TODO for a better way. Also same for both modules.
-
-  int cooltype = 0;
-
-  if (typeid(*getCoolSystem()) == typeid(CoolSystem_HVAC))
-    cooltype = 1;
-  else if (typeid(*getCoolSystem()) == typeid(CoolSystem_open))
-    cooltype = 2;
-
-  Module_s *copied_ptr = new Module_s(getID(), cool->T(), true, par, getNcells(), cool->getControl(), cooltype);
-
-  copied_ptr->Rcontact = Rcontact;
-  copied_ptr->setT(T());
-
-  for (size_t i{ 0 }; i < getNSUs(); i++) {
-    copied_ptr->SUs.emplace_back(SUs[i]->copy());
-    copied_ptr->SUs.back()->setParent(copied_ptr);
-  }
-
-  return copied_ptr;
-}
-
 } // namespace slide

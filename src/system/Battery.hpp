@@ -92,7 +92,7 @@ public:
   void storeData() override;
   void writeData(const std::string &prefix) override;
 
-  Battery *copy() override;
+  Battery *copy() override { return new Battery(*this); }
 };
 
 } // namespace slide
