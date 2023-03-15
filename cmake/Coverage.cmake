@@ -1,34 +1,16 @@
 option (SLIDE_ENABLE_COVERAGE "Enable coverage reporting for GCC or Clang" OFF)
-
-# Setup coverage testing for GCC or Clang
-if (SLIDE_ENABLE_COVERAGE)
-    if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-        message (STATUS "Configuring with coverage")
-        target_compile_options (unit_test_Cell_Bucket PUBLIC --coverage -O0)
-        target_link_libraries (unit_test_Cell_Bucket PUBLIC --coverage)
-
-        target_compile_options (unit_test_Cell_ECM PUBLIC --coverage -O0)
-        target_link_libraries (unit_test_Cell_ECM PUBLIC --coverage)
-
-        target_compile_options (unit_test_Cell_SPM PUBLIC --coverage -O0)
-        target_link_libraries (unit_test_Cell_SPM PUBLIC --coverage)
-
-        target_compile_options (unit_test_Converter PUBLIC --coverage -O0)
-        target_link_libraries (unit_test_Converter PUBLIC --coverage)
-
-        target_compile_options (unit_test_Module_p PUBLIC --coverage -O0)
-        target_link_libraries (unit_test_Module_p PUBLIC --coverage)
-
-        target_compile_options (unit_test_Module_s PUBLIC --coverage -O0)
-        target_link_libraries (unit_test_Module_s PUBLIC --coverage)
-
-        target_compile_options (unit_test_Cycler PUBLIC --coverage -O0)
-        target_link_libraries (unit_test_Cycler PUBLIC --coverage)
-
-        target_compile_options (unit_test_Procedure PUBLIC --coverage -O0)
-        target_link_libraries (unit_test_Procedure PUBLIC --coverage)
-
-    else ()
-        message (FATAL_ERROR "GCC or Clang required with SLIDE_ENABLE_COVERAGE: found ${CMAKE_CXX_COMPILER_ID}")
+# Setup macro for coverage testing for GCC or Clang
+macro(add_executable_with_coverage_and_test TARGET_NAME CPP_FILE_NAME)
+    add_executable(${TARGET_NAME} ${CPP_FILE_NAME})
+    target_link_libraries(${TARGET_NAME} PRIVATE src)
+    add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} WORKING_DIRECTORY bin)
+    if (SLIDE_ENABLE_COVERAGE)
+        if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+            message (STATUS "Configuring with coverage")
+            target_compile_options(${TARGET_NAME} PUBLIC --coverage -O0)
+            target_link_libraries(${TARGET_NAME} PUBLIC --coverage)
+        else ()
+            message (FATAL_ERROR "GCC or Clang required with SLIDE_ENABLE_COVERAGE: found ${CMAKE_CXX_COMPILER_ID}")
+        endif ()
     endif ()
-endif ()
+endmacro()
