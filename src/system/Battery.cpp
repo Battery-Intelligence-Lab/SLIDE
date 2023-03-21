@@ -16,7 +16,7 @@
 
 namespace slide {
 
-Battery::Battery() : StorageUnit("Battery") { conv = make<Converter>(); }
+Battery::Battery() : StorageUnit("Battery") {}
 Battery::Battery(std::string IDi) : Battery() { ID = std::move(IDi); }
 
 void Battery::setSeriesandParallel(unsigned int ser, unsigned int par)
@@ -76,11 +76,11 @@ void Battery::setModule(Deep_ptr<Module> &&module)
    * simply estimate based on losses at max voltage and 1C current
    * and then do * 2
    */
-  double Q0 = conv->getLosses(Vmax(), Cap()) * 2; //!< idle losses of the converter (due to switching and others)
+  double Q0 = conv.getLosses(Vmax(), Cap()) * 2; //!< idle losses of the converter (due to switching and others)
   cool = make<CoolSystem_HVAC>(getNcells(), cells->getCoolSystem()->getControl(), Q0);
 
   //!< Scale the power electronic converter correspondingly
-  conv->setPower(Cap() * Vmax());
+  conv.setPower(Cap() * Vmax());
 }
 
 Status Battery::checkVoltage(double &v, bool print) noexcept
@@ -141,7 +141,7 @@ double Battery::thermalModel(int Nneighb, double Tneighb[], double Kneighb[], do
     //!< double Qcells = Echildren;
 
     //!< and from the losses in the converter
-    Echildren += conv->getLosses(V(), I()) * tim;
+    Echildren += conv.getLosses(V(), I()) * tim;
 
     //!< there are no neighbours or parents, so ignore inputs
     if (Nneighb != 0) {
@@ -204,7 +204,7 @@ void Battery::timeStep_CC(double dt, int steps)
   cells->timeStep_CC(dt, steps);
 
   //!< increase the losses from the converter
-  double l = conv->getLosses(V(), I()) * dt * steps; //!< losses [J] during this period
+  double l = conv.getLosses(V(), I()) * dt * steps; //!< losses [J] during this period
   convlosses += l;
   convlosses_tot += l;
 

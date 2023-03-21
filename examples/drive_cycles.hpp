@@ -158,7 +158,7 @@ inline void drive_cycle_artemis()
 
 
   double Tref = PhyConst::Kelvin + 20; // Temperature at which the characterisation should be done [K]
-                                       // Pivot power data is between 23.5 and 25.9 with mean 24.2 C temperature. 26.44 for test data.
+                                       // Our data is between 23.5 and 25.9 with mean 24.2 C temperature. 26.44 for test data.
 
 
   std::string profile_path{ "profiles/drive_cycles/ArtemisM_scaled.csv" };
