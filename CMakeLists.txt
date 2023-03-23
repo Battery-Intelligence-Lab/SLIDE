@@ -128,10 +128,3 @@ install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
 # install(TARGETS slide_v3
 # CONFIGURATIONS Release
 # RUNTIME DESTINATION Release/bin)
-
-# target_link_libraries(slide_v3
-# PRIVATE
-# SLIDE
-# ) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
-
-# 1F15CC8FAF2E004105282ADDDC78DC21098DFF10
