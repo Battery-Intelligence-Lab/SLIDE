@@ -38,6 +38,8 @@
 
 
 ### Current priority: 
+- [ ] T_MODEL and T_ENV etc. should not be constants!!!!
+- [ ] Add a GITT function. 
 - [ ] Instead of Battery class holding converter pointer, it is now holding a converter object. 
 - [ ] Test cases testing shared_ptr logic (i.e., testing if the pointer points to another thing when Cell is changed.) should be removed because when you change cells the previous cell is removed due to unique_ptr logic. 
 - [ ] std::span<double> & for set states do not work when a vector given. Need a better idea to set and get. Maybe another class. 

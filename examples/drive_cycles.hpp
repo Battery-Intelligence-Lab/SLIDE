@@ -153,12 +153,25 @@ auto inline init_cell_manual(auto &su, double I_0, double V_0, double &Ah, doubl
 
 inline void drive_cycle_artemis()
 {
+
+  // Note: Entropic effect must be added!
+
   std::string ID = "temp";
   Clock clk;
 
 
-  double Tref = PhyConst::Kelvin + 20; // Temperature at which the characterisation should be done [K]
-                                       // Our data is between 23.5 and 25.9 with mean 24.2 C temperature. 26.44 for test data.
+  // double Tref = 21.0_degC; // Temperature at which the characterisation should be done [K]
+  // Our data is between 23.5 and 25.9 with mean 24.2 C temperature. 26.44 for test data.
+
+  if (settings::T_MODEL != 0) {
+    std::cerr << "drive_cycle_artemis works with T_MODEL=0 but it is not!\n";
+    throw 1234;
+  }
+
+  if (std::abs(settings::T_ENV - 21.0_degC) > 0.01) {
+    std::cerr << "drive_cycle_artemis works with T_ENV=21 degC but it is not!\n";
+    throw 1234;
+  }
 
 
   std::string profile_path{ "profiles/drive_cycles/ArtemisM_scaled.csv" };

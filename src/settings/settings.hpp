@@ -69,7 +69,7 @@ constexpr int MODULE_NSUs_MAX = 100; //!< #TODO eliminate but recursive static d
                                      //!< maximum number of cells in a base module
                                      //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
 
-constexpr double T_ENV = 15.0_degC; //!< environmental temperature
+constexpr double T_ENV = 21.0_degC; //!< environmental temperature
 
 constexpr size_t CYCLER_NDATA_MAX{ 10000 }; //!< length of the arrays which hold the cycling data (if 2)
                                             //!< Large battery ~ 3000 SPM cells * (7+4) arrays * 8 Byte per double * N doubles
@@ -91,7 +91,7 @@ constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all typ
                          //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
 //!< temperature
-constexpr int T_MODEL{ 2 }; //!< which thermal model to use
+constexpr int T_MODEL{ 0 }; //!< which thermal model to use
                             //!< 	0 no thermal model
                             //!< 	1 individual cell bulk thermal model
                             //!< 	2 coupled cell thermal model with cooling from modules
