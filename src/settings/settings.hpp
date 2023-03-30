@@ -63,13 +63,11 @@ constexpr int DATASTORE_COOL = 0; //!< if 0, no data is stored
                                   //!< if 1, statistics about the cooling system is stored
                                   //!< if 2, operating power etc is stored every time step
 
-constexpr int CELL_NDEG = 10; //!< maximum number of any type of degradation model
-
 constexpr int MODULE_NSUs_MAX = 100; //!< #TODO eliminate but recursive static does not solve the situation since it is recursive.
                                      //!< maximum number of cells in a base module
                                      //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
 
-constexpr double T_ENV = 21.0_degC; //!< environmental temperature
+constexpr double T_ENV = 15.0_degC; //!< environmental temperature
 
 constexpr size_t CYCLER_NDATA_MAX{ 10000 }; //!< length of the arrays which hold the cycling data (if 2)
                                             //!< Large battery ~ 3000 SPM cells * (7+4) arrays * 8 Byte per double * N doubles

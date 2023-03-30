@@ -19,7 +19,7 @@ namespace slide {
 struct DEG_ID
 {
   using data_t = uint_fast8_t;
-  constexpr static data_t len = settings::CELL_NDEG; //!< length of the arrays with identifications of which models to use
+  constexpr static data_t len = 10; //!< length of the arrays with identifications of which models to use
 
   struct DegArray : public SmallVector<data_t, len>
   {

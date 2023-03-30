@@ -168,11 +168,10 @@ inline void drive_cycle_artemis()
     throw 1234;
   }
 
-  if (std::abs(settings::T_ENV - 21.0_degC) > 0.01) {
-    std::cerr << "drive_cycle_artemis works with T_ENV=21 degC but it is not!\n";
-    throw 1234;
-  }
-
+  // if (std::abs(settings::T_ENV - 21.0_degC) > 0.01) {
+  //   std::cerr << "drive_cycle_artemis works with T_ENV=21 degC but it is not!\n";
+  //   throw 1234;
+  // }
 
   std::string profile_path{ "profiles/drive_cycles/ArtemisM_scaled.csv" };
 
@@ -191,6 +190,7 @@ inline void drive_cycle_artemis()
 
   auto c = make<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
   c->setBlockDegAndTherm(true);
+  c->setT(21.0_degC);
 
   double Cmaxpos{ 51385 };
   double Cmaxneg{ 30555 };

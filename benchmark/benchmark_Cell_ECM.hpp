@@ -107,6 +107,7 @@ inline void run_Cell_ECM_2_RC_single_default_CCCV()
 
 inline void run_Cell_ECM_parallel_3_default_pulse()
 {
+  constexpr double T_ENV = 15.0_degC;
   // Benchmark with default parameters:
   std::string ID = "Cell_ECM_parallel_3_default_pulse"; // + std::to_string(Crate) + '_'
 
@@ -121,7 +122,7 @@ inline void run_Cell_ECM_parallel_3_default_pulse()
     make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, Rp_, inv_tau)
   };
 
-  auto module = Module_p("Par3", settings::T_ENV, true, false, std::size(cs), 1, 1);
+  auto module = Module_p("Par3", T_ENV, true, false, std::size(cs), 1, 1);
   module.setSUs(cs, false);
 
   module.setBlockDegAndTherm(true);
@@ -143,6 +144,8 @@ inline void run_Cell_ECM_parallel_3_default_pulse()
 
 inline void run_Cell_ECM_parallel_3_default_CCCV()
 {
+  constexpr double T_ENV = 15.0_degC;
+
   // Benchmark with default parameters:
   std::string ID = "Cell_ECM_parallel_3_default_CCCV"; // + std::to_string(Crate) + '_'
   double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
@@ -156,7 +159,7 @@ inline void run_Cell_ECM_parallel_3_default_CCCV()
     make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, Rp_, inv_tau)
   };
 
-  auto module = Module_p("Par3", settings::T_ENV, true, false, std::size(cs), 1, 1);
+  auto module = Module_p("Par3", T_ENV, true, false, std::size(cs), 1, 1);
   module.setSUs(cs, false);
 
   module.setBlockDegAndTherm(true);
@@ -179,6 +182,7 @@ inline void run_Cell_ECM_parallel_3_default_CCCV()
 
 inline void run_Cell_ECM_parallel_3_withRcontact_CCCV()
 {
+  constexpr double T_ENV = 15.0_degC;
   // Benchmark with default parameters:
   std::string ID = "Cell_ECM_parallel_3_withRcontact_CCCV"; // + std::to_string(Crate) + '_'
   double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
@@ -194,7 +198,7 @@ inline void run_Cell_ECM_parallel_3_withRcontact_CCCV()
     make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, Rp_, inv_tau)
   };
 
-  auto module = Module_p("Par3", settings::T_ENV, true, false, std::size(cs), 1, 1);
+  auto module = Module_p("Par3", T_ENV, true, false, std::size(cs), 1, 1);
   module.setSUs(cs, false);
   module.setRcontact(Rcontact);
 
@@ -219,6 +223,7 @@ inline void run_Cell_ECM_parallel_3_withRcontact_CCCV()
 
 inline void run_Cell_ECM_series_3_withRcontact_CCCV()
 {
+  constexpr double T_ENV = 15.0_degC;
   // Benchmark with default parameters:
   std::string ID = "Cell_ECM_series_3_withRcontact_CCCV"; // + std::to_string(Crate) + '_'
   double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
@@ -235,7 +240,7 @@ inline void run_Cell_ECM_series_3_withRcontact_CCCV()
     make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, Rp_, inv_tau)
   };
 
-  auto module = Module_s("Ser3", settings::T_ENV, true, false, std::size(cs), 1, 1);
+  auto module = Module_s("Ser3", T_ENV, true, false, std::size(cs), 1, 1);
   module.setSUs(cs, false);
   module.setRcontact(Rcontact);
 
@@ -261,6 +266,7 @@ inline void run_Cell_ECM_series_3_withRcontact_CCCV()
 
 inline void run_Cell_ECM_SmallPack()
 {
+  constexpr double T_ENV = 15.0_degC;
   std::string ID = "Cell_ECM_SmallPack"; // + std::to_string(Crate) + '_'
 
   auto c = Cell_ECM();
@@ -270,7 +276,7 @@ inline void run_Cell_ECM_SmallPack()
   Deep_ptr<StorageUnit> cs[] = { Deep_ptr<StorageUnit>(c.copy()),
                                  Deep_ptr<StorageUnit>(c.copy()) };
 
-  auto module = Module_p("SmallPack", settings::T_ENV, true, false, std::size(cs), 1, 1);
+  auto module = Module_p("SmallPack", T_ENV, true, false, std::size(cs), 1, 1);
   module.setSUs(cs, false);
 
   ThroughputData th{};
@@ -284,6 +290,7 @@ inline void run_Cell_ECM_SmallPack()
 
 inline void run_Cell_ECM_MediumPack()
 {
+  constexpr double T_ENV = 15.0_degC;
   std::string ID = "Cell_ECM_MediumPack"; // + std::to_string(Crate) + '_'
 
   auto c = Cell_ECM();
@@ -298,7 +305,6 @@ inline void run_Cell_ECM_MediumPack()
   const double Rc_s = 1e-4;
   const double Rc_p = 2e-4;
 
-  using settings::T_ENV;
   Deep_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
   Deep_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
 
@@ -308,7 +314,7 @@ inline void run_Cell_ECM_MediumPack()
       CinM[ic] = Deep_ptr<StorageUnit>(c.copy());
       Rc3[ic] = Rc_s; //!< in series module, so every cell has a resistance of Rc
     }
-    auto mi = make<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
+    auto mi = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
 
     mi->setSUs(CinM, checkCells, true);
     mi->setRcontact(Rc3);
@@ -316,7 +322,7 @@ inline void run_Cell_ECM_MediumPack()
     Rc2[is] = Rc_p; //!< in series module, so every cell has a resistance of Rc
   }
 
-  auto module = Module_p("MediumPack", settings::T_ENV, true, false, ns * np, 1, 1);
+  auto module = Module_p("MediumPack", T_ENV, true, false, ns * np, 1, 1);
   module.setSUs(MinS, false);
   module.setRcontact(Rc2);
 
@@ -331,6 +337,7 @@ inline void run_Cell_ECM_MediumPack()
 
 inline void run_Cell_ECM_LargePack()
 {
+  constexpr double T_ENV = 15.0_degC;
   std::string ID = "Cell_ECM_LargePack"; // + std::to_string(Crate) + '_'
 
   auto c = Cell_ECM();
@@ -345,7 +352,6 @@ inline void run_Cell_ECM_LargePack()
   const double Rc_s = 1e-4;
   const double Rc_p = 2e-4;
 
-  using settings::T_ENV;
   Deep_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
   Deep_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
 
@@ -355,7 +361,7 @@ inline void run_Cell_ECM_LargePack()
       CinM[ic] = Deep_ptr<StorageUnit>(c.copy());
       Rc3[ic] = Rc_s; //!< in series module, so every cell has a resistance of Rc
     }
-    auto mi = make<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
+    auto mi = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
 
     mi->setSUs(CinM, checkCells, true);
     mi->setRcontact(Rc3);
@@ -363,7 +369,7 @@ inline void run_Cell_ECM_LargePack()
     Rc2[is] = Rc_p; //!< in series module, so every cell has a resistance of Rc
   }
 
-  auto module = Module_p("LargePack", settings::T_ENV, true, false, ns * np, 1, 1);
+  auto module = Module_p("LargePack", T_ENV, true, false, ns * np, 1, 1);
   module.setSUs(MinS, false);
   module.setRcontact(Rc2);
 
@@ -378,6 +384,7 @@ inline void run_Cell_ECM_LargePack()
 
 inline void run_Cell_ECM_LargePackLong()
 {
+  constexpr double T_ENV = 15.0_degC;
   std::string ID = "Cell_ECM_LargePackLong"; // + std::to_string(Crate) + '_'
 
   auto c = Cell_ECM();
@@ -392,7 +399,6 @@ inline void run_Cell_ECM_LargePackLong()
   const double Rc_s = 1e-4;
   const double Rc_p = 2e-4;
 
-  using settings::T_ENV;
   Deep_ptr<StorageUnit> MinS[np]; //!< array with modules in one string
   Deep_ptr<StorageUnit> CinM[ns]; //!< array with cells in one module
 
@@ -402,7 +408,7 @@ inline void run_Cell_ECM_LargePackLong()
       CinM[ic] = Deep_ptr<StorageUnit>(c.copy());
       Rc3[ic] = Rc_s; //!< in series module, so every cell has a resistance of Rc
     }
-    auto mi = make<Module_s>("s" + std::to_string(is), settings::T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
+    auto mi = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ns, 1, 1); //!< print warning messages, single-threaded
 
     mi->setSUs(CinM, checkCells, true);
     mi->setRcontact(Rc3);
@@ -410,7 +416,7 @@ inline void run_Cell_ECM_LargePackLong()
     Rc2[is] = Rc_p; //!< in series module, so every cell has a resistance of Rc
   }
 
-  auto module = Module_p("LargePackLong", settings::T_ENV, true, false, ns * np, 1, 1);
+  auto module = Module_p("LargePackLong", T_ENV, true, false, ns * np, 1, 1);
   module.setSUs(MinS, false);
   module.setRcontact(Rc2);
 
