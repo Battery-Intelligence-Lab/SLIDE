@@ -99,7 +99,7 @@ struct DEG_ID
      *         2:		SEI model 1
      *         0:		no SEI porosity
      *         0:		no surface cracks
-     *         0: 		don't decrease the diffusion due to surface cracks
+     *         0: 	don't decrease the diffusion due to surface cracks
      *         2:		LAM model 2
      *         3:		LAM model 3
      *         1:		lithium plating model 1

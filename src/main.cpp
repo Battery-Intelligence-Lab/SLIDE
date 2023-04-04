@@ -136,6 +136,7 @@ int main()
   using namespace slide;
 
   slide::examples::drive_cycle_artemis();
+  slide::examples::GITT_test();
   //!< Benchmarks:
 
   // slide::benchmarks::run_Cell_Bucket();
