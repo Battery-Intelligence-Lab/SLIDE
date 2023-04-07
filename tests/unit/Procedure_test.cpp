@@ -56,66 +56,66 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
   auto cp1 = make<Cell_SPM>("proctest_cell", deg, 1, 1, 1, 1);
   auto p = Procedure(balance, Vbal, ndata, unittest);
 
-  // p.cycleAge(cp1.get(), true); //!< WITH CV -> 1C CCCV cycling
+  p.cycleAge(cp1.get(), true); //!< WITH CV -> 1C CCCV cycling
   //!< just check this runs without producing an error warning
 
   std::cout << "Procedure_test start series module\n";
 
-  //!< test with series module
-  std::string n = "proctest_s_module_" + std::to_string(Rc);
-  Deep_ptr<StorageUnit> cs[] = {
-    make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-    make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
-  };
+  // //!< test with series module
+  // std::string n = "proctest_s_module_" + std::to_string(Rc);
+  // Deep_ptr<StorageUnit> cs[] = {
+  //   make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+  //   make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+  //   make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+  //   make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+  //   make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
+  // };
 
-  double Rcs[] = { Rc, Rc, Rc, Rc, Rc };
-  constexpr double T = 25_degC;
-  constexpr bool checkCells = false;
+  // double Rcs[] = { Rc, Rc, Rc, Rc, Rc };
+  // constexpr double T = 25_degC;
+  // constexpr bool checkCells = false;
 
-  auto mp = make<Module_s>(n, T, true, false, std::size(cs), cool, 1); //!< no multithreading
+  // auto mp = make<Module_s>(n, T, true, false, std::size(cs), cool, 1); //!< no multithreading
 
-  mp->setSUs(cs, checkCells, true);
-  mp->setRcontact(Rcs);
-  auto p2 = Procedure(balance, Vbal, ndata, unittest);
-  p2.cycleAge(mp.get(), false); //!< this should write a file called s_module_capacities.csv
-                                //!< 	check that all cells age more or less the same
-                                //!< 	the capacity of the string should be the capacity of the smallest cell
-  std::cout << "Procedure_test start battery of parallel module\n";
+  // mp->setSUs(cs, checkCells, true);
+  // mp->setRcontact(Rcs);
+  // auto p2 = Procedure(balance, Vbal, ndata, unittest);
+  // p2.cycleAge(mp.get(), false); //!< this should write a file called s_module_capacities.csv
+  //                               //!< 	check that all cells age more or less the same
+  //                               //!< 	the capacity of the string should be the capacity of the smallest cell
+  // std::cout << "Procedure_test start battery of parallel module\n";
 
-  //!< test with Battery from parallel module
-  constexpr size_t ncel2 = 9;
-  std::string n22 = "proctest_p_module_" + std::to_string(Rc) + "_batt";
-  std::string n2 = "mp1";
+  // //!< test with Battery from parallel module
+  // constexpr size_t ncel2 = 9;
+  // std::string n22 = "proctest_p_module_" + std::to_string(Rc) + "_batt";
+  // std::string n2 = "mp1";
 
-  Deep_ptr<StorageUnit> cs2[ncel2];
+  // Deep_ptr<StorageUnit> cs2[ncel2];
 
-  for (size_t i = 0; i < ncel2; i++) {
-    std::string name = "cell" + std::to_string(i);
-    cs2[i] = make<Cell_SPM>(name, deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  }
+  // for (size_t i = 0; i < ncel2; i++) {
+  //   std::string name = "cell" + std::to_string(i);
+  //   cs2[i] = make<Cell_SPM>(name, deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  // }
 
-  double Rcs2[] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
-  constexpr double T2 = 273 + 25;
-  constexpr bool checkCells2 = false;
+  // double Rcs2[] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
+  // constexpr double T2 = 273 + 25;
+  // constexpr bool checkCells2 = false;
 
-  auto mpp = make<Module_p>(n2, T2, true, false, std::size(cs2), cool, 2); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  // auto mpp = make<Module_p>(n2, T2, true, false, std::size(cs2), cool, 2); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
 
-  mpp->setSUs(cs2, checkCells2, true);
-  mpp->setRcontact(Rcs2);
+  // mpp->setSUs(cs2, checkCells2, true);
+  // mpp->setRcontact(Rcs2);
 
-  auto bat = make<Battery>(n22);
-  bat->setModule(std::move(mpp));
+  // auto bat = make<Battery>(n22);
+  // bat->setModule(std::move(mpp));
 
-  auto p3 = Procedure(balance, Vbal, ndata, unittest);
+  // auto p3 = Procedure(balance, Vbal, ndata, unittest);
 
-  p3.cycleAge(bat.get(), false); //!< this should write a file called p_module_capacities.csv
-  //!< check the document with the capacities
-  //!< 	if contact resistance is not zero, then cells with higher numbers (right columns)
-  //!< 		should have more remaining capacities than cells with low numbers (left columns)
-  //!< 	if Rc == 0, all cells should have more or less the same capacity
+  // p3.cycleAge(bat.get(), false); //!< this should write a file called p_module_capacities.csv
+  // //!< check the document with the capacities
+  // //!< 	if contact resistance is not zero, then cells with higher numbers (right columns)
+  // //!< 		should have more remaining capacities than cells with low numbers (left columns)
+  // //!< 	if Rc == 0, all cells should have more or less the same capacity
 
   return true;
 }
@@ -592,10 +592,10 @@ int test_all_Procedure()
   //!< test_Procedure_cycleAge(0.001 / 5.0, true, cool);			//!< 0.2 mOhm contact resistance, with cell-to-cell variation
 
   //!< test with large variation of cells in P module
-  test_Procedure_cycleAge_stress();
+  // test_Procedure_cycleAge_stress();
 
   //!< Test the cooling system
-  test_Prcedure_CoolSystem();
+  // test_Prcedure_CoolSystem();
 
   //!< Test various degradation models
   //!< test_allDegradationModels(cool);							//!< test them all

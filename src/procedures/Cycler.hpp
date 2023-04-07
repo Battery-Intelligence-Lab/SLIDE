@@ -43,7 +43,6 @@ public:
   Status rest(double tlim, double dt, int ndt_data, ThroughputData &th);
   Status CC(double I, double vlim, double tlim, double dt, int ndt_data, ThroughputData &th);
   Status CV(double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th);
-  Status CV_new(double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th);
   Status CCCV(double I, double Vset, double Ilim, double dt, int ndt_data, ThroughputData &th);
   Status CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th);
 
