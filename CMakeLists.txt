@@ -16,7 +16,6 @@ add_subdirectory(src bin)
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
 
-
 # Link this 'library' to use the warnings specified in CompilerWarnings.cmake
 add_library(project_warnings INTERFACE)
 

@@ -94,15 +94,13 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
         break;
       }
 
-      storeThroughput(th, su);                                // #TODO why do we do this?
-      if (!diagnostic && succ != Status::ReachedCurrentLimit) //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
-        break;
+      storeThroughput(th, su); // #TODO why do we do this?
     }
 
 
     succ = cyc.CC(Idis, Vmin, TIME_INF, dt, ndata, th); //!< CC discharge
     storeThroughput(th, su);
-    if (!diagnostic && !isVoltageLimitReached(succ)) {
+    if (!isVoltageLimitReached(succ)) {
       std::cout << "Error in CycleAge when discharging in cycle " << i << ", stop cycling.\n";
       break;
     } // #TODO depending on diagnostics a bad status may be skipped.

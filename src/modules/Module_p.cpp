@@ -120,7 +120,8 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
     Itot += Ia[i]; // We also need to preserve sum of the currents!
   }
 
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
+  int iter{ 0 };
+  for (; iter < maxIteration; iter++) {
     double error{ 0 };
 
     const auto Vmean = std::accumulate(Va.begin(), Va.begin() + nSU, 0.0) / nSU; // Compute the mean voltage
@@ -141,6 +142,9 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
     getVall(Va, print);
   }
 
+  if constexpr (settings::printNumIterations)
+    std::cout << "redistributeCurrent iterations: " << iter << '\n';
+
   return StatusNow;
 }
 
@@ -157,7 +161,8 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
   for (size_t i{}; i < SUs.size(); i++)
     Ia[i] = Iolds[i] = SUs[i]->I();
 
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
+  int iter{ 0 };
+  for (; iter < maxIteration; iter++) {
     getVall(Va, print);
 
     double error{ 0 };
@@ -174,6 +179,10 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
       SUs[i]->setCurrent(Ia[i]);
     }
   }
+
+  if constexpr (settings::printNumIterations)
+    std::cout << "setVoltage iterations: " << iter << '\n';
+
   return StatusNow; // #TODO add some voltage/current etc. check
 }
 
@@ -219,7 +228,8 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   getVall(Va, print);
 
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
+  int iter{ 0 };
+  for (; iter < maxIteration; iter++) {
     double Vmean{ 0 }, error{ 0 };
 
     for (size_t i = 0; i < nSU; i++)
@@ -260,9 +270,12 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     // #TODO give exact id, temporarily set to SUs[0]
   }
 
+  if constexpr (settings::printNumIterations)
+    std::cout << "setCurrent iterations: " << iter << '\n';
   // #TODO set old currents back here!
   return StatusNow; //!< #TODO problem
 }
+
 
 /**
  * @brief Perform a time step at a constant current.
