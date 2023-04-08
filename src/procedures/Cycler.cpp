@@ -415,30 +415,24 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
   using slide::util::sign; //!< #TODO normally sign is very sensitive function
   const bool boolStoreData = ndt_data > 0;
 
-  //!< *************************************************************** INITIALISE *************************************************************************
+  //!< ************************** INITIALISE **************************
   //!< store data point
-  if (boolStoreData)
-    storeData();
+  if (boolStoreData) storeData();
 
   //!< check if we are already at the limit
   double vprev{ su->V() }, Ii{ su->I() }, vi{}; //!< voltage and current in the previous and present time step
   double dV = std::abs(vprev - Vset);
   bool Vlimit = (dV < settings::MODULE_P_V_ABSTOL || dV / Vset < settings::MODULE_P_V_RELTOL); // #TODO seems unnecessary.
 
-  if ((std::abs(Ii) < Ilim) && Vlimit)
-    return Status::ReachedCurrentLimit;
-
+  if ((std::abs(Ii) < Ilim) && Vlimit) return Status::ReachedCurrentLimit;
 
   //!< *******************************************************  apply voltage  ****************************************************************************
-
   const auto nt = static_cast<size_t>(std::ceil(tlim / dt)); //!< number of time steps
 
   double dti = dt;         //!< length of time step i
   double ttot = 0;         //!< total time done
   bool Itot = false;       //!< boolean indicating if Ilim has been reached
   bool Vtolerance = false; //!< boolean indicating if the voltage tolerance was reached
-  double dI, a;            //!< change in current we will apply to keep the voltage constant
-  bool reach;
 
   for (size_t i = 0; i < nt; i++) {
     su->setVoltage(Vset);
@@ -463,7 +457,6 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
     ttot += dti;
     th.Ah() += dAh;
     th.Wh() += dAh * vi;
-
 
     //!< Store a data point if needed
     if (boolStoreData && ((i + 1) % ndt_data == 0)) storeData();
@@ -507,9 +500,7 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
     throw 100;
   }
 
-  //!< store data point
-  if (boolStoreData)
-    storeData();
+  if (boolStoreData) storeData();
 
   return succ;
 }

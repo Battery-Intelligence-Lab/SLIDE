@@ -209,32 +209,6 @@ auto inline check_voltage(double &v, auto &su) //!< Check voltage.
   return Status::Success; //!< #TODO should we also send Vmin/Vmax violations even we are not charging/discharging?
 }
 
-template <bool Print = settings::printBool::printCrit>
-auto inline check_safety(double vi, auto &cyc)
-{
-  const auto SafetyVmin = cyc.getSafetyVmin(); //!< #TODO this requires some calculations!
-  const auto SafetyVmax = cyc.getSafetyVmax();
-
-  if (vi < SafetyVmin) //!< #TODO this requires some calculations!
-  {
-    if constexpr (Print)
-      std::cout << "Error in Cycler::??, the voltage of " << vi
-                << " V is smaller than the minimum safety voltage of the cycler of "
-                << SafetyVmin << " V." << '\n';
-
-    return Status::VMINsafety_violation;
-  } else if (vi > SafetyVmax) //!< #TODO this requires some calculations!
-  {
-    if constexpr (Print)
-      std::cout << "Error in Cycler::??, the voltage of " << vi
-                << " V is larger than the maximum safety voltage of the cycler of "
-                << SafetyVmax << " V." << '\n';
-    return Status::VMAXsafety_violation;
-  }
-
-  return Status::SafeVoltage;
-}
-
 template <bool Print = true>
 auto inline check_current(bool checkV, auto &su) //!< Check voltage.
 {
