@@ -39,7 +39,7 @@
 
 ### Current priority:
 - [ ] Unnecessary printing statements with `prdet` is removed to reduce cluttering. 
-- [ ] check_safety seems useless. Why do we have that when we have VMIN and VMAX? 
+- [x] check_safety seems useless since VMAX and VMIN are check. Therefore being removed. 
 - [ ] regulate diagnostic variable: if diagnostic on the individual cell limits are respected. Otherwise system level. 
 - [ ] T_MODEL and T_ENV etc. should not be constants!!!!
 - [ ] Add a GITT function. 

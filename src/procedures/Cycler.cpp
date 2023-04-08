@@ -466,12 +466,7 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
 
 
     //!< Store a data point if needed
-    if (boolStoreData && ((i + 1) % ndt_data == 0))
-      storeData();
-    const auto safetyStatus = free::check_safety(vi, *this);
-
-    if (safetyStatus != Status::SafeVoltage)
-      return safetyStatus;
+    if (boolStoreData && ((i + 1) % ndt_data == 0)) storeData();
 
     //!< check the current limit
     Ii = su->I();
