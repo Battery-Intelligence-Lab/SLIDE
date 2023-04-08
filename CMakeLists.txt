@@ -10,14 +10,11 @@ project(SLIDE VERSION "3.0.0"
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
 
-
-
 enable_testing()
 add_subdirectory(src bin)
 
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
-
 
 # Link this 'library' to use the warnings specified in CompilerWarnings.cmake
 add_library(project_warnings INTERFACE)
@@ -130,10 +127,3 @@ install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
 # install(TARGETS slide_v3
 # CONFIGURATIONS Release
 # RUNTIME DESTINATION Release/bin)
-
-# target_link_libraries(slide_v3
-# PRIVATE
-# SLIDE
-# ) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
-
-# 1F15CC8FAF2E004105282ADDDC78DC21098DFF10

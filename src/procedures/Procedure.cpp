@@ -94,15 +94,13 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
         break;
       }
 
-      storeThroughput(th, su);                                // #TODO why do we do this?
-      if (!diagnostic && succ != Status::ReachedCurrentLimit) //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
-        break;
+      storeThroughput(th, su); // #TODO why do we do this?
     }
 
 
     succ = cyc.CC(Idis, Vmin, TIME_INF, dt, ndata, th); //!< CC discharge
     storeThroughput(th, su);
-    if (!diagnostic && !isVoltageLimitReached(succ)) {
+    if (!isVoltageLimitReached(succ)) {
       std::cout << "Error in CycleAge when discharging in cycle " << i << ", stop cycling.\n";
       break;
     } // #TODO depending on diagnostics a bad status may be skipped.
@@ -143,7 +141,7 @@ void Procedure::cycleAge(StorageUnit *su, bool testCV)
   const double Ccha{ 1 }, Cdis{ 1 };
   const double Vmax = su->Vmax();
   const double Vmin = su->Vmin();
-  const unsigned Ncycle = 15000;
+  const unsigned Ncycle = 15;  // #TODO it should be 15000
   const unsigned ncheck = 250; //!< do a checkup ever 250 cycles
   const unsigned nbal = 10;    //!< balance every 10 cycles
 

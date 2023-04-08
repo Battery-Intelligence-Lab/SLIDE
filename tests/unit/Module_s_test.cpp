@@ -23,12 +23,12 @@ bool test_BasicGetters()
 {
   std::string n = "na";
 
-  std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
+  Deep_ptr<StorageUnit> cs[] = { make<Cell_Bucket>(), make<Cell_Bucket>() };
 
   double T = settings::T_ENV;
   bool checkCells = false;
 
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
 
   mp->setSUs(cs, checkCells, true);
   assert(mp->getNSUs() == std::size(cs));
@@ -40,9 +40,9 @@ bool test_BasicGetters()
 bool test_getCellV()
 {
   //!< Module_base::getCellVotages
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cs0 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -55,7 +55,7 @@ bool test_getCellV()
   constexpr double T = settings::T_ENV;
   constexpr bool checkCells = false;
 
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   assert(cs0->V() == v[0]);
@@ -69,9 +69,9 @@ bool test_getStates()
   //!< bool Module_base::getStates(double s[], int nin, int& nout)
   std::vector<double> s, s1, s2;
 
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -84,7 +84,7 @@ bool test_getStates()
   double T = settings::T_ENV;
   bool checkCells = false;
 
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
   mp->getStates(s);
 
@@ -103,9 +103,9 @@ bool test_getCells()
 
   double v1, v2;
 
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -120,7 +120,7 @@ bool test_getCells()
   double T = settings::T_ENV;
   bool checkCells = false;
 
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   auto &cs2 = mp->getSUs(); //!< returns storage units, not cells. So getStates is the implementation from SU not Cell_Bucket
@@ -157,15 +157,15 @@ bool test_getCells()
 
 bool test_setT()
 {
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   double Tnew = 0_degC;
@@ -177,9 +177,9 @@ bool test_setT()
 
 bool test_setStates()
 {
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -188,7 +188,7 @@ bool test_setStates()
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   //!< Make a new State vector from cells 1 and 3, where 3 has a different SOC
@@ -244,9 +244,9 @@ bool test_setStates()
 
 bool test_setCells()
 {
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -255,14 +255,14 @@ bool test_setCells()
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells);
 
   //!< set cell with new SOC
   double socnew = 0.4;
-  auto cp22 = std::make_unique<Cell_Bucket>();
+  auto cp22 = make<Cell_Bucket>();
   cp22->setSOC(socnew);
-  cs[0] = std::make_unique<Cell_Bucket>();
+  cs[0] = make<Cell_Bucket>();
   cs[1] = std::move(cp22);
   mp->setSUs(cs);
   //!< check using getCells
@@ -272,10 +272,10 @@ bool test_setCells()
   // assert(cp2->SOC() == 0.5);                                      //!< we replaced the pointer in mp->cells[1] which now points to c22 (with new SOC). c2 should not have changed
 
   //!< try updating the number of cells
-  std::unique_ptr<StorageUnit> cs3[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs3[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   mp->setSUs(cs3);
@@ -294,7 +294,7 @@ bool test_setCells()
   //     //!< try setting cells with different currents
   //     double Inew = 1;
   //     cp2->setCurrent(Inew);
-  //     std::unique_ptr<StorageUnit> cs5[] = { cp1, cp2, cp3 };
+  //     Deep_ptr<StorageUnit> cs5[] = { cp1, cp2, cp3 };
   //     try {
   //       mp->setSUs(cs5); //!< this causes some erorror. 10 is thrown, but we don't arrive in the catch-statement
   //       assert(false);   //!< so probably one of the smart pointer shits is fucking up
@@ -303,7 +303,7 @@ bool test_setCells()
 
   //     /*	//!< cells which belong to a different module
   // * note: that gives errors with the pointers
-  //     auto mp2  = std::make_unique<Module_s>();
+  //     auto mp2  = make<Module_s>();
   //     try{
   //             mp2->setSUs(cs,std::size(cs),false); //this has to throw 10
   //             assert(false);
@@ -319,14 +319,14 @@ bool test_Constructor()
   //!< Module_base_s::Module_base_s()
   //!< Module_base_s::Module_base_s(int ncellsi, Cell_Bucket ci[], double Ti, bool checkCells, bool print)
 
-  auto mp = std::make_unique<Module_s>();
+  auto mp = make<Module_s>();
   assert(mp->getNSUs() == 0);
   // assert(mp->T() == settings::T_ENV); // #TODO throws when T_MODEL is 1 because no cool.
 
 
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -337,7 +337,7 @@ bool test_Constructor()
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp2 = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp2 = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp2->setSUs(cs, checkCells, true);
   //!< note: you have to make a new module, else the getParent() fails
   //!< I made an m before, so &m points to the first module_s made
@@ -355,9 +355,9 @@ bool test_Constructor()
 
 bool test_BasicGetters_s()
 {
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp0 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -366,7 +366,7 @@ bool test_BasicGetters_s()
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   assert(mp->Cap() == cp1->Cap());
@@ -380,9 +380,9 @@ bool test_BasicGetters_s()
 
 bool test_setI()
 {
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp0 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -392,7 +392,7 @@ bool test_setI()
   double v1 = cp1->V();
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
   assert(mp->I() == 0);
   assert(mp->V() == 2 * v1);
@@ -425,9 +425,9 @@ bool test_setI()
 
 bool test_validStates()
 {
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp0 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -436,7 +436,7 @@ bool test_validStates()
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   //!< valid states (current states)
@@ -476,9 +476,9 @@ bool test_validCells()
 {
   //!< bool Module_base_s::validCells(Cell_Bucket c[], int nin, bool print)
 
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp0 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -487,7 +487,7 @@ bool test_validCells()
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   return true;
@@ -495,9 +495,9 @@ bool test_validCells()
 bool test_timeStep_CC()
 {
   //!< bool Module_base_s::timeStep_CC(double dt)
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::make_unique<Cell_Bucket>(),
-    std::make_unique<Cell_Bucket>()
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_Bucket>(),
+    make<Cell_Bucket>()
   };
 
   auto cp0 = dynamic_cast<Cell_Bucket *>(cs[0].get());
@@ -508,7 +508,7 @@ bool test_timeStep_CC()
   double soc1 = cp1->SOC();
   double T = settings::T_ENV;
   bool checkCells = false;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
 
   //!< time step with 0 current
@@ -561,12 +561,12 @@ bool test_Modules_s()
 {
   //!< test series modules make out of ECM cells
   //!< this just repeats the other tests but with a different Cell_Bucket type
-  auto cp3 = std::make_unique<Cell_t>();
-  auto cp22 = std::make_unique<Cell_t>();
+  auto cp3 = make<Cell_t>();
+  auto cp22 = make<Cell_t>();
 
-  std::unique_ptr<StorageUnit> cs[] = {
-    std::unique_ptr<StorageUnit>(new Cell_t()),
-    std::unique_ptr<StorageUnit>(new Cell_t())
+  Deep_ptr<StorageUnit> cs[] = {
+    Deep_ptr<StorageUnit>(new Cell_t()),
+    Deep_ptr<StorageUnit>(new Cell_t())
   };
 
   auto cp1 = dynamic_cast<Cell_t *>(cs[0].get());
@@ -585,7 +585,7 @@ bool test_Modules_s()
 
   double T = settings::T_ENV;
   bool checkCells = true;
-  auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   mp->setSUs(cs, checkCells, true);
   mp->getStates(s);
 
@@ -632,8 +632,8 @@ bool test_Modules_s()
   cp3->setSOC(0.5);
   //!< timeStep_CC
 
-  cs[0] = std::make_unique<Cell_t>();
-  cs[1] = std::make_unique<Cell_t>();
+  cs[0] = make<Cell_t>();
+  cs[1] = make<Cell_t>();
   cp1 = dynamic_cast<Cell_t *>(cs[0].get());
   cp2 = dynamic_cast<Cell_t *>(cs[1].get());
 
@@ -684,9 +684,9 @@ bool test_Hierarchichal()
   //!< test series modules made out of other series modules
   double tol = settings::MODULE_P_I_ABSTOL;
   std::string ids[] = { "H1", "H2", "H3" };
-  std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
-  std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
-  std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
+  Deep_ptr<StorageUnit> SU1[] = { make<Cell_Bucket>(), make<Cell_Bucket>() };
+  Deep_ptr<StorageUnit> SU2[] = { make<Cell_Bucket>(), make<Cell_Bucket>() };
+  Deep_ptr<StorageUnit> SU3[] = { make<Cell_Bucket>(), make<Cell_Bucket>(), make<Cell_Bucket>() };
   auto cp1 = dynamic_cast<Cell_Bucket *>(SU1[0].get());
   auto cp2 = dynamic_cast<Cell_Bucket *>(SU1[1].get());
   auto cp3 = dynamic_cast<Cell_Bucket *>(SU2[0].get());
@@ -697,11 +697,11 @@ bool test_Hierarchichal()
 
   double T = settings::T_ENV;
   bool checkCells = false;
-  std::unique_ptr<StorageUnit> MU[] = {
+  Deep_ptr<StorageUnit> MU[] = {
     //!< middle level modules are pass through
-    std::make_unique<Module_s>(ids[0], T, true, false, std::size(SU1), 1, 2),
-    std::make_unique<Module_s>(ids[1], T, true, false, std::size(SU2), 1, 2),
-    std::make_unique<Module_s>(ids[2], T, true, false, std::size(SU3), 1, 2)
+    make<Module_s>(ids[0], T, true, false, std::size(SU1), 1, 2),
+    make<Module_s>(ids[1], T, true, false, std::size(SU2), 1, 2),
+    make<Module_s>(ids[2], T, true, false, std::size(SU3), 1, 2)
   };
 
   auto mp1 = dynamic_cast<Module_s *>(MU[0].get()); //!< pass through cool systems
@@ -716,7 +716,7 @@ bool test_Hierarchichal()
   int nm = 3;
   std::string n4 = "H4";
   checkCells = true;
-  auto mp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1);
+  auto mp = make<Module_s>(n4, T, true, false, 7, 1, 1);
   mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
   assert(EQ(Vini, mp1->V() + mp2->V() + mp3->V()));
@@ -749,9 +749,9 @@ bool test_Hierarchical_Cross()
   //!< test series-modules made out of parallel-modules
   double tol = settings::MODULE_P_I_ABSTOL;
   std::string ids[] = { "H1", "H2", "H3" };
-  std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
-  std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
-  std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>(), std::make_unique<Cell_Bucket>() };
+  Deep_ptr<StorageUnit> SU1[] = { make<Cell_Bucket>(), make<Cell_Bucket>() };
+  Deep_ptr<StorageUnit> SU2[] = { make<Cell_Bucket>(), make<Cell_Bucket>() };
+  Deep_ptr<StorageUnit> SU3[] = { make<Cell_Bucket>(), make<Cell_Bucket>(), make<Cell_Bucket>() };
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(SU1[0].get());
   auto cp2 = dynamic_cast<Cell_Bucket *>(SU1[1].get());
@@ -769,10 +769,10 @@ bool test_Hierarchical_Cross()
   int nm = 3;
   std::string n4 = "4";
 
-  std::unique_ptr<StorageUnit> MU[] = {
-    std::make_unique<Module_p>(ids[0], T, true, false, std::size(SU1), 1, 2),
-    std::make_unique<Module_p>(ids[1], T, true, false, std::size(SU2), 1, 2),
-    std::make_unique<Module_p>(ids[2], T, true, false, std::size(SU3), 1, 2)
+  Deep_ptr<StorageUnit> MU[] = {
+    make<Module_p>(ids[0], T, true, false, std::size(SU1), 1, 2),
+    make<Module_p>(ids[1], T, true, false, std::size(SU2), 1, 2),
+    make<Module_p>(ids[2], T, true, false, std::size(SU3), 1, 2)
   };
 
   auto mp1 = dynamic_cast<Module_p *>(MU[0].get()); //!< pass through cool systems
@@ -785,7 +785,7 @@ bool test_Hierarchical_Cross()
 
 
   checkCells = true;
-  auto mp = std::make_unique<Module_s>(n4, T, true, false, 7, 1, 1);
+  auto mp = make<Module_s>(n4, T, true, false, 7, 1, 1);
   mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
   assert(Vini == mp1->V() + mp2->V() + mp3->V());
@@ -816,21 +816,21 @@ bool test_copy_s()
 
   //!< 	//!< make module
   //!<
-  //!< 	auto cp1 = std::make_unique<Cell_Bucket>();
-  //!< 	auto cp2 = std::make_unique<Cell_Bucket>();
-  //!< 	std::unique_ptr<StorageUnit> cs[] = {cp1, cp2};
+  //!< 	auto cp1 = make<Cell_Bucket>();
+  //!< 	auto cp2 = make<Cell_Bucket>();
+  //!< 	Deep_ptr<StorageUnit> cs[] = {cp1, cp2};
   //!< 	std::string n = "na";
   //!< 	double v1 = cp1->V();
   //!< 	double T = settings::T_ENV;
   //!< 	bool checkCells = false;
-  //!< 	auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  //!< 	auto mp = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
   //!< 	mp->setSUs(cs, checkCells, true);
 
   //!< 	//!< copy this one and check they are identical
-  //!< 	std::unique_ptr<StorageUnit> cn = mp->copy();
+  //!< 	Deep_ptr<StorageUnit> cn = mp->copy();
   //!< 	Module_s *c22 = dynamic_cast<Module_s *>(cn.get()); //!< Dynamic cast from StorageUnit to Cell_Bucket
   //!< 	assert(mp->V() == c22->V());
-  //!< 	std::unique_ptr<StorageUnit> corig[], cnew[];
+  //!< 	Deep_ptr<StorageUnit> corig[], cnew[];
   //!<
   //!< 	mp->getSUs(corig);
   //!< 	c22->getSUs(cnew);
@@ -900,11 +900,11 @@ bool test_CoolSystem_s()
     //!< ****************************************************************************************************************************************************
     //!< Make a simple module with one SPM cell
     //!< cout<<"module_s_test start coolsystem test with a single cell for cool control setting "<<coolControl<<endl;
-    std::unique_ptr<StorageUnit> cs[] = { std::make_unique<Cell_SPM>() };
+    Deep_ptr<StorageUnit> cs[] = { make<Cell_SPM>() };
     auto cp0 = dynamic_cast<Cell_SPM *>(cs[0].get());
 
     std::string n = "testCoolSystem";
-    auto mp = std::make_unique<Module_s>(n, T, true, false, std::size(cs), coolControl, true);
+    auto mp = make<Module_s>(n, T, true, false, std::size(cs), coolControl, true);
     mp->setSUs(cs, checkCells, true);
     double Tini[1] = { cp0->T() };
 
@@ -946,11 +946,11 @@ bool test_CoolSystem_s()
     //!< **********************************************************************************************************************************************************
     //!< Make a simple module with SPM cells
     //!< cout<<"module_s_test start coolsystem test with a simple module for cool control setting "<<coolControl<<endl;
-    std::unique_ptr<StorageUnit> cs2[] = {
-      std::make_unique<Cell_SPM>(),
-      std::make_unique<Cell_SPM>(),
-      std::make_unique<Cell_SPM>(),
-      std::make_unique<Cell_SPM>()
+    Deep_ptr<StorageUnit> cs2[] = {
+      make<Cell_SPM>(),
+      make<Cell_SPM>(),
+      make<Cell_SPM>(),
+      make<Cell_SPM>()
     };
 
 
@@ -960,7 +960,7 @@ bool test_CoolSystem_s()
     auto cp4 = dynamic_cast<Cell_SPM *>(cs[3].get());
 
     std::string n2 = "testCoolSystem";
-    auto mp2 = std::make_unique<Module_s>(n2, T, true, false, std::size(cs2), coolControl, true);
+    auto mp2 = make<Module_s>(n2, T, true, false, std::size(cs2), coolControl, true);
     mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
 
@@ -1003,9 +1003,9 @@ bool test_CoolSystem_s()
     //!< make the hierarchical module
     //!< cout<<"Module_s_test start coolsystem test with a complex module for cool control setting "<<coolControl<<endl;
     std::string ids[] = { "H1", "H2", "H3" };
-    std::unique_ptr<StorageUnit> SU1[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
-    std::unique_ptr<StorageUnit> SU2[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
-    std::unique_ptr<StorageUnit> SU3[] = { std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>(), std::make_unique<Cell_SPM>() };
+    Deep_ptr<StorageUnit> SU1[] = { make<Cell_SPM>(), make<Cell_SPM>() };
+    Deep_ptr<StorageUnit> SU2[] = { make<Cell_SPM>(), make<Cell_SPM>() };
+    Deep_ptr<StorageUnit> SU3[] = { make<Cell_SPM>(), make<Cell_SPM>(), make<Cell_SPM>() };
     auto cp11 = dynamic_cast<Cell_SPM *>(SU1[0].get());
     auto cp22 = dynamic_cast<Cell_SPM *>(SU1[1].get());
     auto cp33 = dynamic_cast<Cell_SPM *>(SU2[0].get());
@@ -1015,11 +1015,11 @@ bool test_CoolSystem_s()
     auto cp77 = dynamic_cast<Cell_SPM *>(SU3[2].get());
 
 
-    std::unique_ptr<StorageUnit> MU[] = {
+    Deep_ptr<StorageUnit> MU[] = {
       //!< middle level modules are pass through
-      std::make_unique<Module_s>(ids[0], T, true, false, std::size(SU1), coolControl, 2),
-      std::make_unique<Module_s>(ids[1], T, true, false, std::size(SU2), coolControl, 2),
-      std::make_unique<Module_s>(ids[2], T, true, false, std::size(SU3), coolControl, 2)
+      make<Module_s>(ids[0], T, true, false, std::size(SU1), coolControl, 2),
+      make<Module_s>(ids[1], T, true, false, std::size(SU2), coolControl, 2),
+      make<Module_s>(ids[2], T, true, false, std::size(SU3), coolControl, 2)
     };
 
     //!< pass through cool system
@@ -1031,7 +1031,7 @@ bool test_CoolSystem_s()
     mp33->setSUs(SU3, checkCells);
     int nm = 3;
     std::string n44 = "H4";
-    auto mp44 = std::make_unique<Module_s>(n44, T, true, true, 7, coolControl, 1);
+    auto mp44 = make<Module_s>(n44, T, true, true, 7, coolControl, 1);
     mp44->setSUs(MU, checkCells, true);
     double Tini22[7] = { cp11->T(), cp22->T(), cp33->T(), cp44->T(), cp55->T(), cp66->T(), cp77->T() };
 

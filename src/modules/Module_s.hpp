@@ -45,6 +45,6 @@ public:
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current
   void timeStep_CC(double dt, int steps = 1) override;
 
-  Module_s *copy() override;
+  Module_s *copy() override { return new Module_s(*this); }
 };
 } // namespace slide

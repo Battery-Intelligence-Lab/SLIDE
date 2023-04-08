@@ -1,8 +1,8 @@
-/*
- * Module_p.cpp
- *
- *  Created on: 18 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Module_p.cpp
+ * @brief Implementation of parallel module class.
+ * @author Jorn Reniers, Volkan Kumtepeli
+ * @date 18 Dec 2019
  */
 
 #include "Module_p.hpp"
@@ -22,29 +22,38 @@
 
 namespace slide {
 
+/**
+ * @brief Calculate the total resistance of the module.
+ *
+ * Computes the total resistance using the formula for resistances in parallel:
+ * 1/Rtot = sum(1/R_i)
+ *
+ * @return The total resistance of the module.
+ */
 double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
 {
-  /*
-   * Return the total resistance
-   * 		V(I) = OCV - I*Rtot
-   * 		with V and OCV the total values for this module
-   *
-   * parallel: 1/Rtot = sum( 1/R_i )
-   */
+  if (SUs.empty()) return 0; // If there are no cells connected, return 0
 
-  if (SUs.empty()) return 0; //!< If there are no cells connected, return 0
+  // Start from the cell furthest away
+  double rtot = Rcontact.back() + SUs.back()->getRtot();
 
-  double rtot = Rcontact.back() + SUs.back()->getRtot(); //!< start from the cell furthest away
-
-  //!< then iteratively come closer, every time Rcontact[i] + (Rcell[i] \\ Rtot)
-  //!< 				= Rc[i] + Rcell[i]*Rtot / (Rcel[i]*Rtot)
-  for (int i = SUs.size() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs. Also check if Rcontact.empty() or in future it will be array.
+  // Then iteratively come closer, updating resistance  Rcontact[i] + (Rcell[i] \\ Rtot)
+  for (int i = static_cast<int>(SUs.size()) - 2; i >= 0; i--) // #TODO Also check if Rcontact.empty() or in future it will be array.
     rtot = Rcontact[i] + (SUs[i]->getRtot() * rtot) / (SUs[i]->getRtot() + rtot);
 
   return rtot;
 }
 
-void Module_p::getVall(std::span<double> Vall, bool print)
+/**
+ * @brief Calculate the voltage of each SU accounting for contact resistance.
+ *
+ * Computes the terminal voltage Vt for each SU in the module while considering
+ * contact resistances and stores the values in the Vall span.
+ *
+ * @param Vall A span to store the voltage values.
+ * @param print Unused parameter (can be removed if not required).
+ */
+void Module_p::getVall(std::span<double> Vall, bool print) // #TODO span may not be the best container here.
 {
   /*
    * Return the voltage of SU[i] as seen from the terminal while accounting for the contact resistance
@@ -72,15 +81,24 @@ void Module_p::getVall(std::span<double> Vall, bool print)
   double I_cumulative{ 0 };
   for (size_t i{}; i < SUs.size(); i++) {
     const auto j = SUs.size() - 1 - i; // Inverse indexing.
-    Vall[j] = SUs[j]->V();
+    Vall[j] = SUs[j]->V();             // Store the voltage of the current SU
 
-    I_cumulative += SUs[j]->I();
+    I_cumulative += SUs[j]->I(); // Update cumulative current
 
-    for (auto k{ j }; k < SUs.size(); k++)
+    for (auto k{ j }; k < SUs.size(); k++) // Update the voltage values in Vall considering contact resistances
       Vall[k] -= I_cumulative * Rcontact[j];
   }
 }
 
+/**
+ * @brief Redistribute the current among the SUs to balance the voltage.
+ *
+ * Iteratively adjusts the current of each SU to balance the voltages across them.
+ *
+ * @param checkV Unused parameter (can be removed if not required).
+ * @param print Unused parameter (can be removed if not required).
+ * @return The status of the operation.
+ */
 Status Module_p::redistributeCurrent(bool checkV, bool print)
 {
   // New redistributeCurrent without PI control:
@@ -102,26 +120,30 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
     Itot += Ia[i]; // We also need to preserve sum of the currents!
   }
 
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
-    double Vmean{ 0 }, error{ 0 };
+  int iter{ 0 };
+  for (; iter < maxIteration; iter++) {
+    double error{ 0 };
 
-    for (size_t i = 0; i < nSU; i++)
-      Vmean += Va[i];
+    const auto Vmean = std::accumulate(Va.begin(), Va.begin() + nSU, 0.0) / nSU; // Compute the mean voltage
 
-    Vmean /= nSU;
-
-    for (size_t i = 0; i < nSU; i++)
+    for (size_t i = 0; i < nSU; i++) // Compute the error between mean voltage and individual cell voltages
       error += std::abs(Vmean - Va[i]);
 
-    if (error < 1e-10)
+
+    if (error < 1e-10) // Return success if the error is below the threshold
       return Status::Success;
 
+    // Update the currents based on the difference between mean and individual voltages
     for (size_t i = 0; i < nSU; i++) {
       Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
       SUs[i]->setCurrent(Ia[i]);
     }
+
     getVall(Va, print);
   }
+
+  if constexpr (settings::printNumIterations)
+    std::cout << "redistributeCurrent iterations: " << iter << '\n';
 
   return StatusNow;
 }
@@ -139,7 +161,8 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
   for (size_t i{}; i < SUs.size(); i++)
     Ia[i] = Iolds[i] = SUs[i]->I();
 
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
+  int iter{ 0 };
+  for (; iter < maxIteration; iter++) {
     getVall(Va, print);
 
     double error{ 0 };
@@ -156,6 +179,10 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
       SUs[i]->setCurrent(Ia[i]);
     }
   }
+
+  if constexpr (settings::printNumIterations)
+    std::cout << "setVoltage iterations: " << iter << '\n';
+
   return StatusNow; // #TODO add some voltage/current etc. check
 }
 
@@ -201,7 +228,8 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   getVall(Va, print);
 
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
+  int iter{ 0 };
+  for (; iter < maxIteration; iter++) {
     double Vmean{ 0 }, error{ 0 };
 
     for (size_t i = 0; i < nSU; i++)
@@ -219,7 +247,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
     for (size_t i = 0; i < nSU; i++) {
       Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
-      if (SUs[i]->setCurrent(Ia[i]) != Status::Success)
+      if (!isStatusSuccessful(SUs[i]->setCurrent(Ia[i])))
         std::cout << "This should not happen!!" << std::endl; // #TODO
     }
     getVall(Va, print);
@@ -242,23 +270,25 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     // #TODO give exact id, temporarily set to SUs[0]
   }
 
+  if constexpr (settings::printNumIterations)
+    if (iter != 0) std::cout << "setCurrent iterations: " << iter << '\n';
   // #TODO set old currents back here!
   return StatusNow; //!< #TODO problem
 }
 
+
+/**
+ * @brief Perform a time step at a constant current.
+ *
+ * Takes a time step at a constant current by either explicitly solving the system of equations
+ * or letting every cell take a CC time step and checking if the voltage equation is satisfied.
+ *
+ * @param dt The time step.
+ * @param nstep Number of steps.
+ */
 void Module_p::timeStep_CC(double dt, int nstep)
 {
-  /*
-   * Take a time step at a constant current.
-   * There are two ways to do this:
-   * 		rootFinding::Current_EQN with dti = dt, which explicitly solves the system of equations
-   * 		let every cell take a CC time step, and check if the voltage equation is satisfied
-   * 			if not, redistribute the current using setCurrent()
-   *
-   * The second approach is probably quicker since it only solves the system of equations
-   * if the voltage difference becomes too large
-   */
-
+  // Check if the time step is valid
   if (dt < 0) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in Module_p::timeStep_CC, the time step dt must be 0 or positive, but has value "
@@ -341,26 +371,4 @@ void Module_p::timeStep_CC(double dt, int nstep)
   }
 }
 
-Module_p *Module_p::copy()
-{
-  //!< check the type of coolsystem we have #TODO for a better way.
-  int cooltype = 0;
-  if (typeid(*getCoolSystem()) == typeid(CoolSystem_HVAC))
-    cooltype = 1;
-  else if (typeid(*getCoolSystem()) == typeid(CoolSystem_open))
-    cooltype = 2;
-
-  Module_p *copied_ptr = new Module_p(getID(), cool->T(), true, par, getNcells(), cool->getControl(), cooltype);
-
-  copied_ptr->Rcontact = Rcontact;
-  copied_ptr->setT(T());
-
-  copied_ptr->SUs.clear();
-  for (size_t i{ 0 }; i < getNSUs(); i++) {
-    copied_ptr->SUs.emplace_back(SUs[i]->copy()); // #TODO remove when we have Module<...>
-    copied_ptr->SUs.back()->setParent(copied_ptr);
-  }
-
-  return copied_ptr;
-}
 } // namespace slide

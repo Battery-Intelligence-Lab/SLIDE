@@ -37,7 +37,13 @@
 - [ ] Should capacity check also contain a CV phase? 
 
 
-### Current priority: 
+### Current priority:
+- [ ] Unnecessary printing statements with `prdet` is removed to reduce cluttering. 
+- [ ] check_safety seems useless. Why do we have that when we have VMIN and VMAX? 
+- [ ] regulate diagnostic variable: if diagnostic on the individual cell limits are respected. Otherwise system level. 
+- [ ] T_MODEL and T_ENV etc. should not be constants!!!!
+- [ ] Add a GITT function. 
+- [ ] Instead of Battery class holding converter pointer, it is now holding a converter object. 
 - [ ] Test cases testing shared_ptr logic (i.e., testing if the pointer points to another thing when Cell is changed.) should be removed because when you change cells the previous cell is removed due to unique_ptr logic. 
 - [ ] std::span<double> & for set states do not work when a vector given. Need a better idea to set and get. Maybe another class. 
 - [ ] Cannot set current for Module_p<Module_p>. See `test_Hierarchichal_p`. Very important.

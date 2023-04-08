@@ -1,5 +1,5 @@
 /*
- * main.cpp 
+ * main.cpp
  *
  * This file implements the main-function.
  * Here, the user has to choose what to simulate by commenting things in (by placing \\ at the start of the line) and out (by removing the \\)
@@ -135,6 +135,9 @@ int main()
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
   using namespace slide;
 
+  //!< Examples:
+  // slide::examples::drive_cycle_artemis();
+  // slide::examples::GITT_test();
   //!< Benchmarks:
 
   // slide::benchmarks::run_Cell_Bucket();

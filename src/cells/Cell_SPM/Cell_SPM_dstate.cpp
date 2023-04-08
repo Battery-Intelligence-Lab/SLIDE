@@ -326,7 +326,7 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
     //!< If there is no parent, assume we update T every nstep*dt. So update the temperature now
     if (!parent) //!< else it is the responsibility of the parent to call the thermal model function with the correct settings
     {
-      double Tneigh[1] = { settings::T_ENV };
+      double Tneigh[1] = { T_env };
       double Kneigh[1] = { Qch };                 //!< so cooling Qc = Qch * SAV * dT / (rho*cp) = Qch * A * dT / (rho*cp)
       double Atherm[1] = { getThermalSurface() }; //!< calculate the surface of this cell
 
