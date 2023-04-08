@@ -23,7 +23,7 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
 
   //!< Settings
   std::default_random_engine gen;
-  double std1{}, std2{}, std3{};
+  double std1{ 1e-10 }, std2{ 1e-10 }, std3{ 1e-10 };
   if (spread) {
     std1 = 0.004;
     std2 = 0.025;
@@ -61,66 +61,66 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
 
   std::cout << "Procedure_test start series module\n";
 
-  // //!< test with series module
-  // std::string n = "proctest_s_module_" + std::to_string(Rc);
-  // Deep_ptr<StorageUnit> cs[] = {
-  //   make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-  //   make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-  //   make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-  //   make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
-  //   make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
-  // };
+  //!< test with series module
+  std::string n = "proctest_s_module_" + std::to_string(Rc);
+  Deep_ptr<StorageUnit> cs[] = {
+    make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen)),
+    make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen))
+  };
 
-  // double Rcs[] = { Rc, Rc, Rc, Rc, Rc };
-  // constexpr double T = 25_degC;
-  // constexpr bool checkCells = false;
+  double Rcs[] = { Rc, Rc, Rc, Rc, Rc };
+  constexpr double T = 25_degC;
+  constexpr bool checkCells = false;
 
-  // auto mp = make<Module_s>(n, T, true, false, std::size(cs), cool, 1); //!< no multithreading
+  auto mp = make<Module_s>(n, T, true, false, std::size(cs), cool, 1); //!< no multithreading
 
-  // mp->setSUs(cs, checkCells, true);
-  // mp->setRcontact(Rcs);
-  // auto p2 = Procedure(balance, Vbal, ndata, unittest);
-  // p2.cycleAge(mp.get(), false); //!< this should write a file called s_module_capacities.csv
-  //                               //!< 	check that all cells age more or less the same
-  //                               //!< 	the capacity of the string should be the capacity of the smallest cell
-  // std::cout << "Procedure_test start battery of parallel module\n";
+  mp->setSUs(cs, checkCells, true);
+  mp->setRcontact(Rcs);
+  auto p2 = Procedure(balance, Vbal, ndata, unittest);
+  p2.cycleAge(mp.get(), false); //!< this should write a file called s_module_capacities.csv
+                                //!< 	check that all cells age more or less the same
+                                //!< 	the capacity of the string should be the capacity of the smallest cell
+  std::cout << "Procedure_test start battery of parallel module\n";
 
-  // //!< test with Battery from parallel module
-  // constexpr size_t ncel2 = 9;
-  // std::string n22 = "proctest_p_module_" + std::to_string(Rc) + "_batt";
-  // std::string n2 = "mp1";
+  //!< test with Battery from parallel module
+  constexpr size_t ncel2 = 9;
+  std::string n22 = "proctest_p_module_" + std::to_string(Rc) + "_batt";
+  std::string n2 = "mp1";
 
-  // Deep_ptr<StorageUnit> cs2[ncel2];
+  Deep_ptr<StorageUnit> cs2[ncel2];
 
-  // for (size_t i = 0; i < ncel2; i++) {
-  //   std::string name = "cell" + std::to_string(i);
-  //   cs2[i] = make<Cell_SPM>(name, deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  // }
+  for (size_t i = 0; i < ncel2; i++) {
+    std::string name = "cell" + std::to_string(i);
+    cs2[i] = make<Cell_SPM>(name, deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  }
 
-  // double Rcs2[] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
-  // constexpr double T2 = 273 + 25;
-  // constexpr bool checkCells2 = false;
+  double Rcs2[] = { Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc, Rc };
+  constexpr double T2 = 273 + 25;
+  constexpr bool checkCells2 = false;
 
-  // auto mpp = make<Module_p>(n2, T2, true, false, std::size(cs2), cool, 2); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  auto mpp = make<Module_p>(n2, T2, true, false, std::size(cs2), cool, 2); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
 
-  // mpp->setSUs(cs2, checkCells2, true);
-  // mpp->setRcontact(Rcs2);
+  mpp->setSUs(cs2, checkCells2, true);
+  mpp->setRcontact(Rcs2);
 
-  // auto bat = make<Battery>(n22);
-  // bat->setModule(std::move(mpp));
+  auto bat = make<Battery>(n22);
+  bat->setModule(std::move(mpp));
 
-  // auto p3 = Procedure(balance, Vbal, ndata, unittest);
+  auto p3 = Procedure(balance, Vbal, ndata, unittest);
 
-  // p3.cycleAge(bat.get(), false); //!< this should write a file called p_module_capacities.csv
-  // //!< check the document with the capacities
-  // //!< 	if contact resistance is not zero, then cells with higher numbers (right columns)
-  // //!< 		should have more remaining capacities than cells with low numbers (left columns)
-  // //!< 	if Rc == 0, all cells should have more or less the same capacity
+  p3.cycleAge(bat.get(), false); //!< this should write a file called p_module_capacities.csv
+  //!< check the document with the capacities
+  //!< 	if contact resistance is not zero, then cells with higher numbers (right columns)
+  //!< 		should have more remaining capacities than cells with low numbers (left columns)
+  //!< 	if Rc == 0, all cells should have more or less the same capacity
 
   return true;
 }
 
-bool test_Prcedure_CoolSystem()
+bool test_Procedure_CoolSystem()
 {
   /*
    * test the cool system design with proper cycle ageing
@@ -183,7 +183,7 @@ bool test_Prcedure_CoolSystem()
     double Qheat = 0; //!< total energy in heating up the cells
     for (int i = 0; i < 1; i++)
       Qheat += (Tnew[i] - Tini[i]) * (rho * Cp * L * elec_surf);
-    assert(std::abs(Qgen - Qcool - Qheat) / std::abs(Qgen) < 1e-10);
+    assert(std::abs(Qgen - Qcool - Qheat) <= 1e-10 * std::abs(Qgen)); // Equality to include zero condition.
 
     //!< **********************************************************************************************************************************************************
     //!< Make a simple module with SPM cells
@@ -212,7 +212,8 @@ bool test_Prcedure_CoolSystem()
     double Qheat2 = 0; //!< total energy in heating up the cells
     for (int i = 0; i < std::size(Tnew2); i++)
       Qheat2 += (Tnew2[i] - Tini2[i]) * (rho * Cp * L * elec_surf);
-    assert(std::abs((Qgen2 - Qcool2 - Qheat2) / Qgen2) < 1e-10);
+
+    assert(std::abs(Qgen2 - Qcool2 - Qheat2) <= std::abs(Qgen2) * 1e-10);
 
     //!< ******************************************************************************************************************************************************
     //!< make the hierarchical module
@@ -236,9 +237,14 @@ bool test_Prcedure_CoolSystem()
     auto cp55 = dynamic_cast<Cell_SPM *>(SU3[0].get());
     auto cp66 = dynamic_cast<Cell_SPM *>(SU3[1].get());
 
-    auto mp11 = make<Module_s>(n11, T, true, false, ncel11, coolControl, 2);
-    auto mp22 = make<Module_s>(n22, T, true, false, ncel22, coolControl, 2);
-    auto mp33 = make<Module_s>(n33, T, true, false, ncel33, coolControl, 2);
+    Deep_ptr<StorageUnit> MU[] = { make<Module_s>(n11, T, true, false, ncel11, coolControl, 2),
+                                   make<Module_s>(n22, T, true, false, ncel22, coolControl, 2),
+                                   make<Module_s>(n33, T, true, false, ncel33, coolControl, 2) };
+
+
+    auto mp11 = dynamic_cast<Module_s *>(MU[0].get());
+    auto mp22 = dynamic_cast<Module_s *>(MU[1].get());
+    auto mp33 = dynamic_cast<Module_s *>(MU[2].get());
 
     mp11->setSUs(SU1, checkCells);
     mp22->setSUs(SU2, checkCells);
@@ -246,7 +252,6 @@ bool test_Prcedure_CoolSystem()
 
     constexpr size_t nm = 3;
     std::string n44 = "testCoolSystem_complexModule";
-    Deep_ptr<StorageUnit> MU[] = { std::move(mp11), std::move(mp22), std::move(mp33) };
 
     auto mp44 = make<Module_s>(n44, T, true, true, 6, coolControl, 1);
     mp44->setSUs(MU, checkCells, true);
@@ -261,24 +266,24 @@ bool test_Prcedure_CoolSystem()
     Qgen3 = cp11->thermal_getTotalHeat() + cp22->thermal_getTotalHeat();                                                     //!< total heat generated by cells
     Qcool3 = mp11->getCoolSystem()->getHeatEvac();                                                                           //!< total heat extracted by the coolsystem from the cells
     Qheat3 = -((Tini22[0] - cp11->T()) * (rho * Cp * L * elec_surf) + (Tini22[1] - cp22->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
-    assert(std::abs((Qgen3 - Qcool3 - Qheat3) / Qgen3) < 1e-10);
+    assert(std::abs(Qgen3 - Qcool3 - Qheat3) <= std::abs(Qgen3) * 1e-10);
     //!< check balance of module mp22
     Qgen3 = cp33->thermal_getTotalHeat() + cp44->thermal_getTotalHeat();                                                     //!< total heat generated by cells
     Qcool3 = mp22->getCoolSystem()->getHeatEvac();                                                                           //!< total heat extracted by the coolsystem from the cells
     Qheat3 = -((Tini22[2] - cp33->T()) * (rho * Cp * L * elec_surf) + (Tini22[3] - cp44->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
-    assert(std::abs((Qgen3 - Qcool3 - Qheat3) / Qgen3) < 1e-10);
+    assert(std::abs(Qgen3 - Qcool3 - Qheat3) <= std::abs(Qgen3) * 1e-10);
     //!< check balance of module mp33
     //!< Qgen3 = cp55->thermal_getTotalHeat() + cp66->thermal_getTotalHeat() + cp77->thermal_getTotalHeat(); //!< total heat generated by cells
     Qgen3 = cp55->thermal_getTotalHeat() + cp66->thermal_getTotalHeat(); //!< total heat generated by cells
     Qcool3 = mp33->getCoolSystem()->getHeatEvac();                       //!< total heat extracted by the coolsystem from the cells
     //!< Qheat3 = -((Tini22[4] - cp55->T()) * (rho*Cp*L*elec_surf) + (Tini22[5] - cp66->T()) * (rho*Cp*L*elec_surf)+ (Tini22[6] - cp77->T()) * (rho*Cp*L*elec_surf));		//!< total energy in heating up the cells
     Qheat3 = -((Tini22[4] - cp55->T()) * (rho * Cp * L * elec_surf) + (Tini22[5] - cp66->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
-    assert(std::abs((Qgen3 - Qcool3 - Qheat3) / Qgen3) < 1e-10);
+    assert(std::abs(Qgen3 - Qcool3 - Qheat3) <= std::abs(Qgen3) * 1e-10);
     //!< check balance of the top level module
     Qgen3 = mp11->getCoolSystem()->getHeatEvac() + mp22->getCoolSystem()->getHeatEvac() + mp33->getCoolSystem()->getHeatEvac();
     Qcool3 = mp44->getCoolSystem()->getHeatEvac();
     Qheat3 = mp11->getCoolSystem()->getHeatabsorbed() + mp22->getCoolSystem()->getHeatabsorbed() + mp33->getCoolSystem()->getHeatabsorbed();
-    assert(std::abs((Qgen3 - Qcool3 - Qheat3) / Qgen3) < 1e-10);
+    assert(std::abs(Qgen3 - Qcool3 - Qheat3) <= std::abs(Qgen3) * 1e-10);
 
     //!< check balance of total system
     Qgen3 = cp11->thermal_getTotalHeat() + cp22->thermal_getTotalHeat();
@@ -294,8 +299,8 @@ bool test_Prcedure_CoolSystem()
 
     //!< Comparison of cool system performance in the different control strategies: print out the following statement
     //!< cout<<"Total heat balance of coolsystem complex module entire "<<coolControl<<" is Qgen = "<<Qgen3<<", Qheat = "<<Qheat3<<", Qcool = "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl<<flush;
-    assert(std::abs((Qgen3 - Qcool3 - Qheat3) / Qgen3) < 1e-10);
-    assert(Qheat3 > 0);
+    assert(std::abs(Qgen3 - Qcool3 - Qheat3) <= std::abs(Qgen3) * 1e-10);
+    assert(Qheat3 >= 0);
   }
 
   return true;
@@ -503,24 +508,11 @@ bool test_allDegradationModels(int cool)
    * Test the cycle-ageing procedure with different degradation models to see which produces different knee points.
    * This function calls the other one with a range of settings
    */
-
-  bool caps, Rs, degs;
-  DEG_ID deg;
-  deg.SEI_id.add_model(0);
-  deg.SEI_porosity = 0;
-
-  deg.CS_id.add_model(0);
-  deg.CS_diffusion = 0;
-
-  deg.LAM_id.add_model(0);
-  deg.pl_id = 0;
-
-  caps = true;
-  Rs = true;
-  degs = true;
+  bool caps{ true }, Rs{ true }, degs{ true };
+  DEG_ID deg{};
 
   //!< kinetic SEI
-  deg.SEI_id[0] = 1;
+  deg.SEI_id.add_model(1);
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< kinetic SEI from paper
@@ -542,7 +534,7 @@ bool test_allDegradationModels(int cool)
   deg.SEI_porosity = 0;
 
   //!< DAI + Laresgoiti LAM
-  deg.LAM_id[0] = 1;
+  deg.LAM_id.add_model(1);
   test_degradationModel(caps, Rs, degs, deg, cool);
 
   //!< Delacourt LAM [linear with Ah]
@@ -566,7 +558,7 @@ bool test_allDegradationModels(int cool)
 
   //!< SEI + Ekstrom cracks
   deg.SEI_id[0] = 1;
-  deg.CS_id[0] = 5;
+  deg.CS_id.add_model(5);
   deg.LAM_id[0] = 0;
   deg.SEI_porosity = 0;
   test_degradationModel(caps, Rs, degs, deg, cool);
@@ -585,27 +577,27 @@ int test_all_Procedure()
 {
   int cool = 1;
   //!< Test normal procedures, with and without contact resistance and CV phases
-  test_Procedure_cycleAge(0, true, cool);
+  // test_Procedure_cycleAge(0, true, cool);
   //!< test with two different values for contact resistance
-  //!< test_Procedure_cycleAge(0, false, cool); 					//!< no contact resistance, no cell-to-cell variation
-  //!< test_Procedure_cycleAge(0.001 / 5.0, false, cool);
-  //!< test_Procedure_cycleAge(0.001 / 5.0, true, cool);			//!< 0.2 mOhm contact resistance, with cell-to-cell variation
+  // test_Procedure_cycleAge(0, false, cool); //!< no contact resistance, no cell-to-cell variation
+  test_Procedure_cycleAge(0.001 / 5.0, false, cool);
+  //  test_Procedure_cycleAge(0.001 / 5.0, true, cool); //!< 0.2 mOhm contact resistance, with cell-to-cell variation
 
   //!< test with large variation of cells in P module
   // test_Procedure_cycleAge_stress();
 
   //!< Test the cooling system
-  // test_Prcedure_CoolSystem();
+  // test_Procedure_CoolSystem();
 
   //!< Test various degradation models
-  //!< test_allDegradationModels(cool);							//!< test them all
+  // test_allDegradationModels(cool); //!< test them all
 
   //!< test a specific model
-  DEG_ID deg;
-  deg.SEI_id.add_model(1); //!< kinetic SEI and porosity, with Dai/Laresgoiti LAM
-  deg.SEI_porosity = 1;
-  deg.LAM_id.add_model(1);
-  //	test_degradationModel(true, true, true, deg, cool);
+  // DEG_ID deg;
+  // deg.SEI_id.add_model(1); //!< kinetic SEI and porosity, with Dai/Laresgoiti LAM
+  // deg.SEI_porosity = 1;
+  // deg.LAM_id.add_model(1);
+  // test_degradationModel(true, true, true, deg, cool);
 
   return 0;
 }
