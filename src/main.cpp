@@ -135,8 +135,9 @@ int main()
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
   using namespace slide;
 
-  slide::examples::drive_cycle_artemis();
-  slide::examples::GITT_test();
+  //!< Examples:
+  // slide::examples::drive_cycle_artemis();
+  // slide::examples::GITT_test();
   //!< Benchmarks:
 
   // slide::benchmarks::run_Cell_Bucket();

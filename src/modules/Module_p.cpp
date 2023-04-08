@@ -247,7 +247,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
     for (size_t i = 0; i < nSU; i++) {
       Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
-      if (SUs[i]->setCurrent(Ia[i]) != Status::Success)
+      if (!isStatusSuccessful(SUs[i]->setCurrent(Ia[i])))
         std::cout << "This should not happen!!" << std::endl; // #TODO
     }
     getVall(Va, print);
@@ -271,8 +271,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   }
 
   if constexpr (settings::printNumIterations)
-    if (iter != 0)
-      std::cout << "setCurrent iterations: " << iter << '\n';
+    if (iter != 0) std::cout << "setCurrent iterations: " << iter << '\n';
   // #TODO set old currents back here!
   return StatusNow; //!< #TODO problem
 }

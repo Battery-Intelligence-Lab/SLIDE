@@ -112,7 +112,7 @@ constexpr int verbose{ printLevel::printCrit };
 //!< 	6 	on top of the output from 5, we also print details of the nonlinear search for the current needed to do a CV phase
 //!< 	7 	on top of the output from 6, a message is printed every time a function in the Cell is started and terminated
 
-constexpr bool printNumIterations{ true }; //!< Prints number of iterations for improvement. Default is false.
+constexpr bool printNumIterations{ false }; //!< Prints number of iterations for improvement. Default is false.
 
 } // namespace slide::settings
 

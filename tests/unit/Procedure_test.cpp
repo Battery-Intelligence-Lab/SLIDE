@@ -577,27 +577,27 @@ int test_all_Procedure()
 {
   int cool = 1;
   //!< Test normal procedures, with and without contact resistance and CV phases
-  // test_Procedure_cycleAge(0, true, cool);
+  test_Procedure_cycleAge(0, true, cool);
   //!< test with two different values for contact resistance
-  // test_Procedure_cycleAge(0, false, cool); //!< no contact resistance, no cell-to-cell variation
+  test_Procedure_cycleAge(0, false, cool); //!< no contact resistance, no cell-to-cell variation
   test_Procedure_cycleAge(0.001 / 5.0, false, cool);
-  //  test_Procedure_cycleAge(0.001 / 5.0, true, cool); //!< 0.2 mOhm contact resistance, with cell-to-cell variation
+  test_Procedure_cycleAge(0.001 / 5.0, true, cool); //!< 0.2 mOhm contact resistance, with cell-to-cell variation
 
   //!< test with large variation of cells in P module
-  // test_Procedure_cycleAge_stress();
+  test_Procedure_cycleAge_stress();
 
   //!< Test the cooling system
-  // test_Procedure_CoolSystem();
+  test_Procedure_CoolSystem();
 
   //!< Test various degradation models
-  // test_allDegradationModels(cool); //!< test them all
+  test_allDegradationModels(cool); //!< test them all
 
   //!< test a specific model
-  // DEG_ID deg;
-  // deg.SEI_id.add_model(1); //!< kinetic SEI and porosity, with Dai/Laresgoiti LAM
-  // deg.SEI_porosity = 1;
-  // deg.LAM_id.add_model(1);
-  // test_degradationModel(true, true, true, deg, cool);
+  DEG_ID deg;
+  deg.SEI_id.add_model(1); //!< kinetic SEI and porosity, with Dai/Laresgoiti LAM
+  deg.SEI_porosity = 1;
+  deg.LAM_id.add_model(1);
+  test_degradationModel(true, true, true, deg, cool);
 
   return 0;
 }

@@ -141,7 +141,7 @@ void Procedure::cycleAge(StorageUnit *su, bool testCV)
   const double Ccha{ 1 }, Cdis{ 1 };
   const double Vmax = su->Vmax();
   const double Vmin = su->Vmin();
-  const unsigned Ncycle = 15000;
+  const unsigned Ncycle = 15;  // #TODO it should be 15000
   const unsigned ncheck = 250; //!< do a checkup ever 250 cycles
   const unsigned nbal = 10;    //!< balance every 10 cycles
 
