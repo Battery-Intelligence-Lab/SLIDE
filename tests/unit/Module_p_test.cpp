@@ -687,12 +687,11 @@ bool test_equaliseV_timing(Deep_ptr<Module_p> &mp, Deep_ptr<StorageUnit> c[], in
             << ", for timestep at low SOC n3, now starting a CC cycle\n";
 
   //!< Use a Cycler to do a full CC cycle with redistributeCurrent every time step
-  Cycler cyc;
   ThroughputData th;
   double lim = 0.0;
   int ndata = 0;
   double vlim;
-  cyc.initialise(mp.get(), mp->getFullID());
+  Cycler cyc(mp.get(), mp->getFullID());
   vlim = mp->Vmax() - lim;
   cyc.CC(-I, vlim, TIME_INF, dt, ndata, th); //!< CC charge
   vlim = mp->Vmin() + lim;

@@ -157,6 +157,8 @@ If it is false, you don’t check the voltage limits of individual cells during 
 
 The main function in Cycler is CC. It has an auxiliary function to apply the specified current to the SU (which will detect if this will exceed a voltage limit and terminate immediately if it does). Otherwise, CC will keep integrating over time until the specified voltage or time limit is reached. As mentioned, if diagnostic is true, then you will also stop as soon as one cell in the StorageUnit reaches its limit.
 
+Note: diagnostic is removed in SLIDE 3.0. Now we act on the individual cell limits. 
+
 The function CC also controls the number of time steps taken at once (see Module_s). It will start with one at a time, but if we are still far from any limit, it will be increased to a maximum of 10. As we approach the set limit, we will reduce it back to 1. There are a number of issues to bear in mind in relation to this `N` (number of time steps taken at once):
 
 1. During discharge the OCV curve is very steep so you have to reduce N long before you get to the minimum voltage of a cell. You should do this based on the voltage of the cell connected to the StorageUnit with the lowest voltage (since a small cell-to-cell variation will mean that the weakest cell will already be on the ‘steep’ part while the overall StorageUnit will still be on the flat part)

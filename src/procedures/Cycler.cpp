@@ -18,24 +18,6 @@
 #include <algorithm>
 
 namespace slide {
-Cycler &Cycler::initialise(StorageUnit *sui, const std::string &IDi)
-{
-  su = sui;
-  ID = IDi;
-  return *this;
-}
-
-Cycler &Cycler::setDiagnostic(bool newDia)
-{
-  /*
-   * enable or disable diagnostic mode.
-   * If diagnostic mode is on, voltage limits are checked at every level of the connected storage unit.
-   * For instance, if one cell of a series-string reaches its maximum voltage,
-   * this is detected even if the voltage of the entire series string is still within its voltage limits.
-   */
-  diagnostic = newDia;
-  return *this;
-}
 
 int Cycler::writeData()
 {
@@ -114,12 +96,7 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, ThroughputData &th)
       return succ;
     }
 
-    //!< change length of the time step in the last iteration to get exactly tlim seconds
-    if (nOnce * dti > (tlim - ttot)) //!< we are close to the total time -> set nOnce to 1
-      nOnce = 1;
-
-    if (dti > tlim - ttot) //!< the last time step, ensure we end up exactly at the right time
-      dti = tlim - ttot;
+    dti = std::min(dti, tlim - ttot); //!< the last time step, ensure we end up exactly at the right time
 
     //!< take a number of time steps
     try { // #TODO timeStep_CC to return Status
@@ -141,42 +118,28 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, ThroughputData &th)
       idat = 0;
     }
 
-    //!< adapt the number of time steps we take at once
-    if (tlim - ttot < 2 * (nOnce * dti)) //!< getting close to the end
-      nOnce = static_cast<int>(std::floor(nOnce / 2));
-    else {
-      //!< increase every other iteration, else thermal model might freak out
-      if (ninc) { //!< e.g. rest after cycle -> cell needs to cool down before you can take very long time steps
-        nOnce++;  //!< #TODO Increasing nOnce will cause not saving data regularly. We are probably not saving data every ndata_step
-        ninc = false;
-      } else
-        ninc = true;
-    }
     nOnce = std::clamp(nOnce, 1, nOnceMax); //!< respect min and maximum
 
   } //!< end time integration
 
-  //!< check why we stopped the time integration
-  if (ttot >= tlim && std::abs(ttot - tlim) < 1) {
-    succ = su->setCurrent(0, false, true); // #TODO do it one last time otherwise after timeStep_CC currents change!
-    succ = Status::ReachedTimeLimit;
-
-  } else {
+  succ = su->setCurrent(0, false, true); // #TODO do it one last time otherwise after timeStep_CC currents change!
+  if (isStatusBad(succ)) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "Error in Cycler::rest, stopped time integration for unclear reason after "
-                << ttot << "s, we were running with time limit " << tlim << '\n';
-    throw 100;
+                << ttot << "s, we were running with time limit " << tlim << '\n'
+                << getStatusMessage(succ) << '\n';
+    return succ;
   }
 
   if (boolStoreData) storeData();
 
   th.time() += ttot; //!< there is no throughput during resting
 
-  return succ;
+  return Status::ReachedTimeLimit;
 }
 
 /**
- * @brief Sets the current to the connected storage unit, not checking individual cell voltage limits unless in diagnostic mode.
+ * @brief Sets the current to the connected storage unit
  *
  * @param[in] I Current to be set (in Amperes).
  * @param[in] vlim Voltage limit to be respected (in Volts).
@@ -184,8 +147,7 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, ThroughputData &th)
  */
 Status Cycler::setCurrent(double I, double vlim)
 {
-  bool checkCellV = diagnostic; //!< check individual voltage limits of cells in the connected SU
-                                //!< since violated voltage limits does not cause a fatal error in the code, this is a noncritical error
+  bool checkCellV = true;
 
   const double Vini{ su->V() }, Iini{ su->I() };
 
@@ -225,10 +187,7 @@ Status Cycler::setCurrent(double I, double vlim)
  */
 Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, ThroughputData &th)
 {
-  /*
-   * Apply a constant current to the connected storage unit until either a voltage or time limit.
-   * The load is stopped when their first limit is reached (or when the safety limit of the cycler is reached)
-   *
+  /* #TODO
    * NOTE: This function has some sort of adaptive time stepping. The diffusion models are always solved every dt
    * but the thermal and degradation models, as well as module-constraints (V equalisation in parallel) are solved every N*dt seconds.
    * N can go up to 10, which significantly speeds up the computation (5 times faster).
@@ -242,8 +201,10 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
 
   if (boolStoreData) storeData();
 
-  auto succ = setCurrent(I, vlim);
-  if (!isStatusSuccessful(succ)) return succ; //!< stop if we could not successfully set the current
+  auto succNow = setCurrent(I, vlim);
+  if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
+
+  auto succ = Status::ReachedTimeLimit;
 
   //!< Variables
   double dti = dt; //!< length of time step i
@@ -255,27 +216,24 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
   int nOnceMax = 2;                //!< allow maximum this number of steps to be taken at once
   if (boolStoreData)               //!< if we store data, never take more than the interval at which you want to store the voltage
     nOnceMax = std::min(nOnceMax, ndt_data);
-  bool vtot = false;              //!< boolean indicating if vlim has been reached
   double vo{ su->V() }, vi{ vo }; //!< voltage in the previous/this iteration
   bool allowUp = true;            //!< do we allow nOnce to increase?
 
-  //!< check the voltage limit
-  if ((I < 0 && vi > vlim) || (I > 0 && vi < vlim)) //!< charging -> exceeded if Vnew > vlim
-    return Status::ReachedVoltageLimit;
-
-  //!< apply current
   while (ttot < tlim) {
-    auto succ = setCurrent(I, vlim); // #TODO this was not here I added to get nice results from
-    //!< change length of the time step in the last iteration to get exactly tlim seconds
-    if (nOnce * dti > tlim - ttot) //!< we are close to the total time -> set nOnce to 1
-      nOnce = 1;
+    //!< check the voltage limit
+    if ((I < 0 && vi > vlim) || (I > 0 && vi < vlim)) { //!< charging -> exceeded if Vnew > vlim
+      succ = Status::ReachedVoltageLimit;
+      break;
+    }
 
-    if (dti > tlim - ttot) //!< the last time step, ensure we end up exactly at the right time
-      dti = tlim - ttot;
+    auto ssuccNowcc = setCurrent(I, vlim);            // #TODO this was not here I added to get nice results from
+    if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
+
+    dti = std::min(dti, tlim - ttot); //!< the last time step, ensure we end up exactly at the right time
 
     //!< take a number of time steps
     try {
-      su->timeStep_CC(dti, nOnce);
+      su->timeStep_CC(dti, nOnce); // #TODO this should also have some error codes.
     } catch (int e) {
       if constexpr (settings::printBool::printCrit)
         std::cout << "error in Cycler::CC when advancing in time with nOnce = "
@@ -285,26 +243,15 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
     }
 
     //!< get the voltage
-    if (diagnostic) {
-      const auto status = su->checkVoltage(vi, true);
-      if (!isStatusSuccessful(status)) { //!< in diagnostic mode and the voltage of one of the cells was violated
-        if constexpr (settings::printBool::printNonCrit)
-          std::cout << "in Cycler::CC, the voltage of a cell became invalid in time step when the total voltage was "
-                    << vi << '\n';
-        return status; //!< previously -4
-      }
-    } else {
-      const auto v_prev = vi;
-      vi = su->V();
-      if (vi <= 0) {
-        if constexpr (settings::printBool::printNonCrit)
-          std::cout << "error in Cycler::CC in time step when getting the voltage. The previous voltage was "
-                    << v_prev << "V. Terminating the CC phase.\n";
-        return Status::V_not_calculated;
-      }
+    const auto v_prev = vi;
+    vi = su->V();
+    if (vi <= 0) {
+      if constexpr (settings::printBool::printNonCrit)
+        std::cout << "error in Cycler::CC in time step when getting the voltage. "
+                  << "The previous voltage was " << v_prev << "V. Terminating the CC phase.\n";
+      return Status::V_not_calculated;
     }
 
-    auto myVnow = su->V();
     //!< Increase the throughput
     const auto dt_now = dti * nOnce;
     th.time() += dt_now;
@@ -319,90 +266,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
       idat = 0;
     }
 
-    //!< check the voltage limit
-    if (((I < 0) && (vi > vlim)) || ((I > 0) && (vi < vlim))) { //!< charging -> exceeded if Vnew > vlim
-      vtot = true;                                              //!< indicate the voltage limit was reached
-      break;
-    }
-
-    //!< #TODO this is pretty much unnecessary.
-    // Check if the given limit at the beginning inside voltage limits.
-    // Otherwise clamp!
-
-    //!< adapt the number of time steps we take at once
-    if (I < 0) {                           //!< if charging, voltage is increasing -> increase if dV < Vlim-V
-      if (vi - vo < (vlim - vi) / sfactor) //!< still far of, increase nOnce
-        nOnce++;
-      else if (vi - vo >= (vlim - vi)) //!< very close, immediately reset to 1 to avoid overshoot
-        nOnce = 1;
-      else //!< fairly close, reduce nOnce
-        nOnce--;
-
-
-      //!< check the highest cell voltage, if it is close, reduce nOnce aggressively
-      /*
-       * Note: the code below makes the simulation works with more variation and more degraded cells
-       * e.g. v > 4.1 n-2 and v > 4.15 n = 1
-       * 		unit test procedure_test stress test with large variation: simulate to a capacity of 10%
-       * 		large battery simulation coolsystem 2: simulate 3592 cycles instead of 3295
-       *
-       * however, it also significantly slows down the simulation time.
-       * 	e.g. same settings for large batter increase simulation time from 5s per cycle to 12.2s per cycle
-       *
-       * v>4.15 n-2
-       * 	large distribution unit test goes to 30% capacity
-       * 	large simulation takes 25 s per cycle
-       */
-      /*	if(su->getVhigh() >= 4.1){
-                      nOnce-= 2;										//!< reduce nOnce
-                      allowUp = false;								//!< block nOnce from increasing
-
-              }
-              if(su->getVhigh() >= 4.15){
-                      nOnce = 1;										//!< reduce nOnce
-                      allowUp = false;								//!< block nOnce from increasing
-
-              }*/
-    } else //!< on discharge be careful with steep OCV change at low SoC
-    {
-      if (vo - vi < (vi - vlim) / sfactor && allowUp)
-        nOnce++;
-      else if (vo - vi >= (vi - vlim) * 2.0) //!< add the *2 to reduce faster on discharge
-        nOnce = 1;
-      else
-        nOnce -= 2; //!< reduce by 2 to reduce faster
-
-
-      //!< check the lowest cell voltage, and if it is on the steep part, reduce nOnce aggressively
-      if (su->getVlow() < 3.1) { //!< this gets directly to the cell level, so we know for sure the value which matters is 3.1
-        nOnce -= 2;              //!< reduce nOnce
-        allowUp = false;         //!< block nOnce from increasing
-      }
-      if (su->getVlow() < 3.0) //!< #TODO this are for cells? What about modules?
-      {                        //!< this gets directly to the cell level, so we know for sure the value which matters is 3
-        nOnce = 1;
-        allowUp = false;
-      }
-    }
-
-    //!< check minimum and maximum of nOnce
-    nOnce = std::clamp(nOnce, 1, nOnceMax); //!< respect min and max
-    vo = vi;                                //!< update the voltage from the previous time step
-
   } //!< end time integration
-
-  //!< check why we stopped the time integration
-  if (ttot >= tlim)
-    succ = Status::ReachedTimeLimit;
-  else if (vtot)
-    succ = Status::ReachedVoltageLimit;
-  else {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "Error in Cycler::CC, stopped time integration for unclear reason after "
-                << ttot << "s and voltage " << vi << "V, we were running with time limit "
-                << tlim << " and voltage limit " << vlim << "V and current " << I << '\n';
-    throw 100;
-  }
 
   if (boolStoreData) storeData();
 
@@ -412,7 +276,6 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
 Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th)
 {
   // New CV function using setVoltage.
-  using slide::util::sign; //!< #TODO normally sign is very sensitive function
   const bool boolStoreData = ndt_data > 0;
 
   //!< ************************** INITIALISE **************************
@@ -421,33 +284,28 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
 
   //!< check if we are already at the limit
   double vprev{ su->V() }, Ii{ su->I() }, vi{}; //!< voltage and current in the previous and present time step
-  double dV = std::abs(vprev - Vset);
-  bool Vlimit = (dV < settings::MODULE_P_V_ABSTOL || dV / Vset < settings::MODULE_P_V_RELTOL); // #TODO seems unnecessary.
 
-  if ((std::abs(Ii) < Ilim) && Vlimit) return Status::ReachedCurrentLimit;
+  if ((std::abs(Ii) < Ilim)) return Status::ReachedCurrentLimit;
 
-  //!< *******************************************************  apply voltage  ****************************************************************************
-  const auto nt = static_cast<size_t>(std::ceil(tlim / dt)); //!< number of time steps
+  int idat = 0;    //!< consecutive number of time steps done without storing data
+  double dti = dt; //!< length of time step i
+  double ttot = 0; //!< total time done
 
-  double dti = dt;         //!< length of time step i
-  double ttot = 0;         //!< total time done
-  bool Itot = false;       //!< boolean indicating if Ilim has been reached
-  bool Vtolerance = false; //!< boolean indicating if the voltage tolerance was reached
+  auto succ{ Status::ReachedTimeLimit }; //!< time limit;
 
-  for (size_t i = 0; i < nt; i++) {
-    su->setVoltage(Vset);
+  while (ttot < tlim) {
+    auto succNow = su->setVoltage(Vset);
+    if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
 
-    //!< change length of the time step in the last iteration to get exactly tlim seconds
-    if (i + 1 == nt)
-      dti = tlim - dt * (nt - 1);
+    dti = std::min(dti, tlim - ttot); //!< change length of the time step in the last iteration to get exactly tlim seconds
 
     //!< take a time step
     try {
       su->timeStep_CC(dti); // #TODO should return status.
     } catch (int e) {
       if constexpr (settings::printBool::printCrit)
-        std::cout << "error in Cycler::CV of module " << su->getFullID() << " in time step "
-                  << i << " when advancing in time. Passing the error on, " << e << '\n';
+        std::cout << "error in Cycler::CV of module " << su->getFullID() << " at time "
+                  << ttot << " when advancing in time. Passing the error on, " << e << '\n';
       return Status::timeStep_CC_failed;
     }
 
@@ -455,50 +313,22 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
     const auto dAh = std::abs(su->I() * dti / 3600.0);
     vi = su->V();
     ttot += dti;
+    idat++;
     th.Ah() += dAh;
     th.Wh() += dAh * vi;
 
     //!< Store a data point if needed
-    if (boolStoreData && ((i + 1) % ndt_data == 0)) storeData();
-
+    if (boolStoreData && idat >= ndt_data) {
+      storeData();
+      idat = 0;
+    }
     //!< check the current limit
     Ii = su->I();
-    dV = std::abs(vi - Vset);
-    Vlimit = (dV < settings::MODULE_P_V_ABSTOL || dV / Vset < settings::MODULE_P_V_RELTOL);
-    if (std::abs(Ii) < Ilim && Vlimit) {
-      Itot = true; //!< indicate the current limit was reached
-      Vtolerance = true;
-      break;
-    }
-
-    //!< fail-safe to avoid an eternal loop if the current is extremely small but the voltage still is not correct
-    //!< in this case, stop even though the voltage tolerance has not been achieved
-    if (std::abs(Ii) < Ilim / 10.0 || std::abs(Ii) < 1e-6) {
-      Itot = true;        //!< indicate the current limit was reached
-      Vtolerance = false; //!< but without reaching the voltage tolerance
+    if (std::abs(Ii) < Ilim) {
+      succ = Status::ReachedCurrentLimit; //!< current limit
       break;
     }
   } //!< end time integration
-
-  //!< *********************************************************** TERMINATE ******************************************************************************
-  //!< check why we stopped the time integration
-  Status succ;
-  if (ttot >= tlim)
-    succ = Status::ReachedTimeLimit; //!< time limit
-  else if (Itot)                     //!< #TODO why a bool named Itot? It looks like double.
-  {
-    if (Vtolerance)
-      succ = Status::ReachedCurrentLimit; //!< current limit
-    else
-      succ = Status::ReachedSmallCurrent; //!< #TODO is this ever possible? current became way too small, but voltage limit still not reached
-  } else {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "Error in Cycler::CV, stopped time integration for unclear reason after "
-                << ttot << "s and voltage " << vi << "V, we were running with time limit " << tlim
-                << " and current limit " << Ilim << "V and set voltage " << Vset << '\n';
-
-    throw 100;
-  }
 
   if (boolStoreData) storeData();
 
@@ -511,18 +341,23 @@ Status Cycler::CCCV(double I, double Vset, double Ilim, double dt, int ndt_data,
   return Cycler::CCCV_with_tlim(I, Vset, Ilim, TIME_INF, dt, ndt_data, th);
 }
 
+/**
+ * @brief Performs both a CC (Constant Current) and CV (Constant Voltage) (dis)charge sequentially.
+ *
+ * This function first performs a CC (dis)charge and then a CV (dis)charge.
+ *
+ * @param[in] I Absolute value of the current.
+ * @param[in] Vset Voltage to which the cell should be (dis)charged.
+ * @param[in] Ilim Absolute value of the current limit for the CV phase.
+ * @param[in] tlim Time limit for the CC and CV phases combined.
+ * @param[in] dt Time step for time integration.
+ * @param[in] ndt_data Integer indicating after how many time steps a data point should be stored.
+ * @param[out] th ThroughputData reference to store the time, charge, and energy throughput.
+ * @return Status indicating the success or failure of the operation.
+ */
 Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, double dt, int ndt_data, ThroughputData &th)
 {
-  /*
-   * Function to do both a CC and CV (dis)charge after each other.
-   *
-   * IN
-   * I 	absolute value of the current
-   * Vset voltage to which the cell should be (dis)charged
-   *
-   */
-
-  //!< check all input parameters are sensible
+  //!< #TODO check all input parameters are sensible
   I = std::abs(I);
   Ilim = std::abs(Ilim);
 
@@ -571,15 +406,18 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
   return succ;
 }
 
+/**
+ * @brief Calculates the charge capacity of the connected Storage Unit (SU).
+ *
+ * This function performs a full charge and discharge cycle and calculates the charge capacity.
+ * It does not affect the Cell; the original states are restored at the end.
+ *
+ * @param[out] Ah Charge capacity in ampere-hours.
+ * @param[out] ttot Total time spent during the full charge and discharge cycle.
+ * @return Charge capacity in ampere-hours.
+ */
 double Cycler::testCapacity(double &Ah, double &ttot)
 {
-  /*
-   * Calculate the charge capacity of the connected SU.
-   * note, this function does not affect the Cell, it restores the original states at the end
-   *
-   * in diagnostic mode, we cannot really do a CV since the small voltage errors during CV will cause some cells to exceed their voltage limit
-   * therefore, we have to measure it with a slow (dis)charge
-   */
   constexpr double dt = 1; //!< use a 2 second time step for accuracy (probably 5 would be fine as well)
   constexpr double crate = 1.0 / 25.0;
   ThroughputData th1{}, th2{};
@@ -631,6 +469,7 @@ double Cycler::testCapacity(double &Ah, double &ttot)
 
 Status Cycler::Profile(std::span<double> I_vec, double vlim, double tlim, double dt, int ndt_data, double &Ah, double &Wh)
 {
-  return Status::Unknown_problem;
+  return Status::NotImplementedYet;
 }
+
 } // namespace slide

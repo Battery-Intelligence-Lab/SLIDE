@@ -59,8 +59,7 @@ void Vequalisation_Rdc(double Rdc)
   mpp4.setRcontact(Rcs);
 
   //!< Make the cycler
-  Cycler cyc;
-  cyc.initialise(&mpp4, ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
+  Cycler cyc(&mpp4, ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
   double vlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
@@ -146,8 +145,7 @@ void thermalModel()
   mpp4->setSUs(cs4, true, true);
 
   //!< Make the cycler
-  Cycler cyc;
-  cyc.initialise(mpp4.get(), ID);
+  Cycler cyc(mpp4.get(), ID);
   double vlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)

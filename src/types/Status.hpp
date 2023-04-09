@@ -35,6 +35,7 @@ enum class Status : int_fast8_t //!< -128 to 127 = 1 byte.
   RedistributeCurrent_failed,
   timeStep_CC_failed,
   setVoltage_not_defined,
+  NotImplementedYet = 126,
   Unknown_problem = 127,
 
   //!< Auxillary definitions:

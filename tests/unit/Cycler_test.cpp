@@ -28,31 +28,30 @@ bool test_CyclerSU(StorageUnit *su, bool testCV)
    * 	while the module with three cells is not yet at the maximum voltage and neither is the total voltage
    */
 
-  Cycler cyc;
+  Cycler cyc(su, "Cycler_test");
   double tol = settings::MODULE_P_V_ABSTOL; //!< complex modules have larger under- and overshoot due to the larger numbers involved
   double lim{ 0.0 }, V1{};
   ThroughputData th{};
 
-  cyc.initialise(su, "Cycler_test");
   double vlim, Ilim, dt{ 1 };
   int ndata = 0;
   double I = su->Cap(); //!< use a 1C rate
 
   //!< CC charge
-  //!< cout<<"\t CC charge"<<endl<<flush;
+  //!< std::cout<<"\t CC charge"<<std::endl<<flush;
   vlim = su->Vmax() - lim;
   auto succ = cyc.CC(-I, vlim, TIME_INF, dt, ndata, th); //!< CC charge must do a slight overshoot
   assert(succ == Status::ReachedVoltageLimit);
   assert(NEAR(su->V(), vlim, tol));
 
   //!< rest for 1h to relax
-  //!< cout<<"\t resting 1h after CC charge for SU "<<su->getFullID()<<endl;
+  //!< std::cout<<"\t resting 1h after CC charge for SU "<<su->getFullID()<<std::endl;
   double tlim = 3600;
   succ = cyc.rest(tlim, dt, ndata, th);
   assert(succ == Status::ReachedTimeLimit);
   assert(NEAR(su->I(), 0.0, 1e-10));
   //!< rest for 10h and check the voltage does not change
-  //!< cout<<"\t resting 10h after CC charge for SU "<<su->getFullID()<<endl;
+  //!< std::cout<<"\t resting 10h after CC charge for SU "<<su->getFullID()<<std::endl;
   tlim = 10 * 3600;
   V1 = su->V();
   succ = cyc.rest(tlim, dt, ndata, th);
@@ -62,7 +61,7 @@ bool test_CyclerSU(StorageUnit *su, bool testCV)
 
 
   //!< CC discharge
-  //!< cout<<"\t CC discharge"<<endl<<flush;
+  //!< std::cout<<"\t CC discharge"<<std::endl<<flush;
   vlim = su->Vmin() + lim;
   succ = cyc.CC(I, vlim, TIME_INF, dt, ndata, th); //!< CC discharge must do a slight overshoot
   assert(succ == Status::ReachedVoltageLimit);
@@ -70,13 +69,13 @@ bool test_CyclerSU(StorageUnit *su, bool testCV)
   assert(su->V() <= vlim);
 
   //!< rest for 1h to relax
-  //!< cout<<"\t resting 1h after CC discharge for SU "<<su->getFullID()<<endl;
+  //!< std::cout<<"\t resting 1h after CC discharge for SU "<<su->getFullID()<<std::endl;
   tlim = 3600;
   succ = cyc.rest(tlim, dt, ndata, th);
   assert(succ == Status::ReachedTimeLimit);
   assert(NEAR(su->I(), 0.0, 1e-10));
   //!< rest for 10h and check the voltage does not change
-  //!< cout<<"\t resting 10h after CC discharge for SU "<<su->getFullID()<<endl;
+  //!< std::cout<<"\t resting 10h after CC discharge for SU "<<su->getFullID()<<std::endl;
   tlim = 10 * 3600;
   V1 = su->V();
   succ = cyc.rest(tlim, dt, ndata, th);
@@ -102,30 +101,30 @@ bool test_CyclerSU(StorageUnit *su, bool testCV)
 
   if (testCV) {
     //!< CCCV charge
-    //!< cout<<"\t CCCV charge"<<endl<<flush;
+    //!< std::cout<<"\t CCCV charge"<<std::endl<<flush;
     vlim = su->Vmax() - lim;
-    //!< cout<<"\t \t starting CC phase"<<endl<<flush;
+    //!< std::cout<<"\t \t starting CC phase"<<std::endl<<flush;
     succ = cyc.CC(-I, vlim, TIME_INF, dt, ndata, th); //!< CC charge must do a slight overshoot
-    //!< cout<<"\t \t terminating CC phase"<<endl<<flush;
+    //!< std::cout<<"\t \t terminating CC phase"<<std::endl<<flush;
     assert(succ == Status::ReachedVoltageLimit);
     assert(su->V() - vlim < tol);
     assert(su->V() >= vlim);
     Ilim = 0.1;
-    //!< cout<<"\t \t starting CV phase"<<endl<<flush;
+    //!< std::cout<<"\t \t starting CV phase"<<std::endl<<flush;
     succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, th); //!< CV charge must do a slight overshoot
-    //!< cout<<"\t \t terminating CV phase with "<<succ<<"\t"<<su->V()<<"\t"<<su->I()<<endl<<flush;
+    //!< std::cout<<"\t \t terminating CV phase with "<<succ<<"\t"<<su->V()<<"\t"<<su->I()<<std::endl<<flush;
     assert(succ == Status::ReachedVoltageLimit);
     assert(NEAR(su->V(), vlim, tol));
     assert(-su->I() <= Ilim);
 
     //!< rest for 1h to relax
-    //!< cout<<"\t resting 1h after CCCV charge for SU "<<su->getFullID()<<endl;
+    //!< std::cout<<"\t resting 1h after CCCV charge for SU "<<su->getFullID()<<std::endl;
     tlim = 3600;
     succ = cyc.rest(tlim, dt, ndata, th);
     assert(succ == Status::ReachedTimeLimit);
     assert(NEAR(su->I(), 0.0, 1e-10));
     //!< rest for 10h and check the voltage does not change
-    //!< cout<<"\t resting 10h after CCCV charge for SU "<<su->getFullID()<<endl;
+    //!< std::cout<<"\t resting 10h after CCCV charge for SU "<<su->getFullID()<<std::endl;
     tlim = 10 * 3600;
     V1 = su->V();
     succ = cyc.rest(tlim, dt, ndata, th);
@@ -134,7 +133,7 @@ bool test_CyclerSU(StorageUnit *su, bool testCV)
     assert(NEAR(V1, su->V(), tol));
 
     //!< CCCV discharge
-    //!< cout<<"\t CCCV discharge"<<endl<<flush;
+    //!< std::cout<<"\t CCCV discharge"<<std::endl<<flush;
     vlim = su->Vmin() + lim;
     succ = cyc.CC(I, vlim, TIME_INF, dt, ndata, th); //!< CC charge must do a slight overshoot
     assert(succ == Status::ReachedVoltageLimit);
@@ -142,19 +141,19 @@ bool test_CyclerSU(StorageUnit *su, bool testCV)
     assert(su->V() <= vlim);
     Ilim = 0.1;
     succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, th); //!< CV discharge must do a slight overshoot
-    //!< cout<<"\t \t terminating CV phase with "<<succ<<"\t"<<su->V()<<"\t"<<su->I()<<" and voltage error "<<abs(su->V()-vlim) <<endl<<flush;
+    //!< std::cout<<"\t \t terminating CV phase with "<<succ<<"\t"<<su->V()<<"\t"<<su->I()<<" and voltage error "<<abs(su->V()-vlim) <<std::endl<<flush;
     assert(succ == Status::ReachedCurrentLimit);
     assert(NEAR(su->V(), vlim, tol));
     assert(su->I() <= Ilim);
 
     //!< rest for 1h to relax
-    //!< cout<<"\t resting 1h after CCCV discharge for SU "<<su->getFullID()<<endl;
+    //!< std::cout<<"\t resting 1h after CCCV discharge for SU "<<su->getFullID()<<std::endl;
     tlim = 3600;
     succ = cyc.rest(tlim, dt, ndata, th);
     assert(succ == Status::ReachedTimeLimit);
     assert(NEAR(su->I(), 0.0, 1e-10));
     //!< rest for 10h and check the voltage does not change
-    //!< cout<<"\t resting 10h after CCCV discharge for SU "<<su->getFullID()<<endl;
+    //!< std::cout<<"\t resting 10h after CCCV discharge for SU "<<su->getFullID()<<std::endl;
     tlim = 10 * 3600;
     V1 = su->V();
     succ = cyc.rest(tlim, dt, ndata, th);
@@ -163,7 +162,7 @@ bool test_CyclerSU(StorageUnit *su, bool testCV)
     assert(NEAR(V1, su->V(), tol));
 
     //!< getCapacity
-    //!< cout<<"\t getCapacity 1"<<endl<<flush;
+    //!< std::cout<<"\t getCapacity 1"<<std::endl<<flush;
     double Ah, dtime;
     double cap = cyc.testCapacity(Ah, dtime);
     assert(std::abs(cap - su->Cap()) / su->Cap() < 0.15); //!< check we are close to the nominal capacity, i.e. error < 15%
@@ -171,9 +170,9 @@ bool test_CyclerSU(StorageUnit *su, bool testCV)
     double cap2 = cyc.testCapacity(Ah, dtime);
     assert(NEAR(cap, cap2, tol));                          //!< get the capacity while ignoring degradation
     cyc.CC(-cap / 10.0, su->Vmin() + 1.4, 3600, 2, 0, th); //!< charge to get in the valid voltage region
-    cyc.setDiagnostic(true);
+
     //  double cap3 = cyc.testCapacity(Ah, dtime);
-    //!< cout<<"\t capacity measurements: "<<cap<<"\t"<<cap2<<"\t"<<cap3<<"\t for nominal capacity "<<su->Cap()<<endl; //
+    //!< std::cout<<"\t capacity measurements: "<<cap<<"\t"<<cap2<<"\t"<<cap3<<"\t for nominal capacity "<<su->Cap()<<std::endl; //
     //!< assert(std::abs(cap-cap3) < tol);								//!< get the capacity while stopping when one cell reached the voltage limit
     //!<  this should fail for a complex hierarchial module (see testCyclerSPM)
   }
@@ -194,12 +193,12 @@ bool test_CyclerCell()
                         //!< the resistive effect is much to quick for the PI controller in Cycler
 
   //!< test cell
-  //!< cout<<"Test cycler made of one Cell"<<endl;
+  //!< std::cout<<"Test cycler made of one Cell"<<std::endl;
   // auto cp1 = make<Cell_t>();
   // test_CyclerSU(cp1.get(), checkCV);
 
   //!< test series of cell
-  //!< cout<<"Test cycler made of a series module of Cells"<<endl;
+  //!< std::cout<<"Test cycler made of a series module of Cells"<<std::endl;
   // Deep_ptr<StorageUnit> cs[] = { make<Cell_t>(), make<Cell_t>() };
   // std::string n = "module_series_cell";
   // auto ms = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
@@ -207,7 +206,7 @@ bool test_CyclerCell()
   // test_CyclerSU(ms.get(), checkCV);
 
   //!< test parallel of cells
-  //!< cout<<"Test cycler made of a parallel module of Cells"<<endl;
+  //!< std::cout<<"Test cycler made of a parallel module of Cells"<<std::endl;
   // Deep_ptr<StorageUnit> cs2[] = { make<Cell_t>(), make<Cell_t>() };
   // n = "module_paralell_cell";
   // auto mp = make<Module_p>(n, T, true, false, std::size(cs2), 1, 1);
@@ -215,7 +214,7 @@ bool test_CyclerCell()
   // test_CyclerSU(mp.get(), checkCV);
 
   //!< test complex module
-  //!< cout<<"Cycler test complex module of Cells"<<endl;
+  //!< std::cout<<"Cycler test complex module of Cells"<<std::endl;
   std::string ids[] = { "1", "2", "3" };
   Deep_ptr<StorageUnit> SU1[] = { make<Cell_t>(), make<Cell_t>() };
   Deep_ptr<StorageUnit> SU2[] = { make<Cell_t>(), make<Cell_t>() };
@@ -247,7 +246,6 @@ bool test_CyclerCell()
   //!< 	but the 3rd module has three cells, so it will not have reached its voltage limit yet
   //!< 	so the overall module won't have reached its voltage limit and you keep (dis)charging
   //!< 	and then the overall module reaches its voltage limit after > 2 * cell capacity, the first two will be over(dis)charged
-  //!< so the capacity check with and without diagnostic will give a different result
 
   return true;
 }
@@ -261,7 +259,7 @@ bool test_CyclerVariations(double Rc)
    * Rc 	value of the contact resistance
    */
 
-  //!< cout<<"start test with cell-to-cell variations with contact resistance "<<Rc<<endl;
+  //!< std::cout<<"start test with cell-to-cell variations with contact resistance "<<Rc<<std::endl;
 
   //!< cell-to-cell variations
   std::default_random_engine gen;
@@ -321,14 +319,13 @@ bool test_Cycler_writeData(int control)
    */
 
   auto su = make<Cell_SPM>();
-  Cycler cyc;
+  Cycler cyc(su.get(), "Cycler_test_cell");
   double tol = settings::MODULE_P_V_ABSTOL; //!< complex modules have larger under- and overshoot due to the larger numbers involved
   double lim = 0.0;
   ThroughputData th;
   double Ah{}, Wh{}, dtime{};
 
   //!< ******************************************************* test a single cell doing a single CCCV cycle *********************************************
-  cyc.initialise(su.get(), "Cycler_test_cell");
   double vlim, Ilim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
@@ -380,25 +377,25 @@ bool test_Cycler_writeData(int control)
   std::string n = "mod1";
   auto ms = make<Module_s>(n, settings::T_ENV, true, false, std::size(cs), control, 1);
   ms->setSUs(cs, checkCells, true);
-  cyc.initialise(ms.get(), "test_writeData_sModule");
+  Cycler cyc2(ms.get(), "test_writeData_sModule");
 
   //!< do 100 cycles
   for (int i = 0; i < 100; i++) {
     //!< CCCV charge
     vlim = ms->Vmax() - lim;
-    succ = cyc.CC(-I, vlim, TIME_INF, dt, ndata, th);
+    succ = cyc2.CC(-I, vlim, TIME_INF, dt, ndata, th);
     Ilim = 0.1;
-    succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, th);
+    succ = cyc2.CV(vlim, Ilim, TIME_INF, dt, ndata, th);
 
     //!< CCCV discharge
     vlim = ms->Vmin() + lim;
-    succ = cyc.CC(I, vlim, TIME_INF, dt, ndata, th);
+    succ = cyc2.CC(I, vlim, TIME_INF, dt, ndata, th);
     Ilim = 0.1;
-    succ = cyc.CV(vlim, Ilim, TIME_INF, dt, ndata, th);
+    succ = cyc2.CV(vlim, Ilim, TIME_INF, dt, ndata, th);
   }
 
   //!< Some data might be written during the 100 cycles, push the rest out too (note the prefix must be the same or this last batch will end up in a different file)
-  ms->writeData("test_writeData_sModule");
+  ms->writeData("test_writeData_sModule"); // #TODO why ms writes the data not cycler?
 
   return true;
 }
@@ -425,7 +422,6 @@ bool test_Cycler_CoolSystem()
   double Icha, Idis;
   double dt = 2;
   int N = 10;
-  Cycler cyc;
   double lim = 0.0;
   ThroughputData th{};
   double vlim;
@@ -443,7 +439,7 @@ bool test_Cycler_CoolSystem()
     auto mp = make<Module_s>(n, T, true, false, std::size(cs), coolControl, 1);
     mp->setSUs(cs, checkCells, true);
     double Tini[1] = { cp0->T() };
-    cyc.initialise(mp.get(), "Cycler_cooltest_oneCell");
+    Cycler cyc(mp.get(), "Cycler_cooltest_oneCell");
 
     //!< do a few 1C cycles
     Icha = -cp0->Cap();
@@ -466,7 +462,7 @@ bool test_Cycler_CoolSystem()
       double Qheat = 0; //!< total energy in heating up the cells
       for (int i = 0; i < 1; i++)
         Qheat += (Tnew[i] - Tini[i]) * (rho * Cp * L * elec_surf);
-      //!< cout<<"Total heat balance of coolsystem single cell "<<coolControl<<" is "<<Qgen<<", "<<Qheat<<", "<<Qcool<<" and error "<<abs(Qgen - Qcool - Qheat)<<endl;
+      //!< std::cout<<"Total heat balance of coolsystem single cell "<<coolControl<<" is "<<Qgen<<", "<<Qheat<<", "<<Qcool<<" and error "<<abs(Qgen - Qcool - Qheat)<<std::endl;
       assert(NEAR(Qgen, Qcool + Qheat, 1e-9));
     }
 
@@ -488,7 +484,7 @@ bool test_Cycler_CoolSystem()
     auto mp2 = make<Module_s>(n2, T, true, false, std::size(cs2), coolControl, 1);
     mp2->setSUs(cs2, checkCells, true);
     double Tini2[4] = { cp1->T(), cp2->T(), cp3->T(), cp4->T() };
-    cyc.initialise(mp2.get(), "Cycler_cooltest_simpleModule");
+    Cycler cyc2(mp2.get(), "Cycler_cooltest_simpleModule");
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp1->Cap();
@@ -496,11 +492,11 @@ bool test_Cycler_CoolSystem()
     for (int i = 0; i < 5; i++) {
       //!< charge
       vlim = mp2->Vmax() - lim;
-      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, th);
+      cyc2.CC(Icha, vlim, TIME_INF, dt, ndata, th);
 
       //!< CC discharge
       vlim = mp2->Vmin() + lim;
-      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, th);
+      cyc2.CC(Idis, vlim, TIME_INF, dt, ndata, th);
     }
 
     if (settings::T_MODEL == 2) {
@@ -511,7 +507,7 @@ bool test_Cycler_CoolSystem()
       double Qheat2 = 0; //!< total energy in heating up the cells
       for (int i = 0; i < 4; i++)
         Qheat2 += (Tnew2[i] - Tini2[i]) * (rho * Cp * L * elec_surf);
-      //!< cout<<"Total heat balance of coolsystem simle module "<<coolControl<<" is "<<Qgen2<<", "<<Qheat2<<", "<<Qcool2<<" and error "<<abs(Qgen2 - Qcool2 - Qheat2)<<endl;
+      //!< std::cout<<"Total heat balance of coolsystem simle module "<<coolControl<<" is "<<Qgen2<<", "<<Qheat2<<", "<<Qcool2<<" and error "<<abs(Qgen2 - Qcool2 - Qheat2)<<std::endl;
       assert(std::abs(Qgen2 - Qcool2 - Qheat2) / std::abs(Qgen2) < 1e-10);
     }
 
@@ -551,7 +547,7 @@ bool test_Cycler_CoolSystem()
     auto mp44 = make<Module_s>(n44, T, true, true, 7, coolControl, 1);
     mp44->setSUs(MU, checkCells, true);
     double Tini22[7] = { cp11->T(), cp22->T(), cp33->T(), cp44->T(), cp55->T(), cp66->T(), cp77->T() };
-    cyc.initialise(mp44.get(), "Cycler_cooltest_complexModule");
+    Cycler cyc3(mp44.get(), "Cycler_cooltest_complexModule");
 
     //!< do a few 1C cycles (note just some time steps since we don't have the Cycler
     Icha = -cp11->Cap();
@@ -559,11 +555,11 @@ bool test_Cycler_CoolSystem()
     for (int i = 0; i < 5; i++) {
       //!< charge
       vlim = mp44->Vmax() - lim;
-      cyc.CC(Icha, vlim, TIME_INF, dt, ndata, th);
+      cyc3.CC(Icha, vlim, TIME_INF, dt, ndata, th);
 
       //!< CC discharge
       vlim = mp44->Vmin() + lim;
-      cyc.CC(Idis, vlim, TIME_INF, dt, ndata, th);
+      cyc3.CC(Idis, vlim, TIME_INF, dt, ndata, th);
     }
 
     double Qgen3, Qcool3, Qheat3;
@@ -571,26 +567,26 @@ bool test_Cycler_CoolSystem()
     Qgen3 = cp11->thermal_getTotalHeat() + cp22->thermal_getTotalHeat();                                                     //!< total heat generated by cells
     Qcool3 = mp11->getCoolSystem()->getHeatEvac();                                                                           //!< total heat extracted by the coolsystem from the cells
     Qheat3 = -((Tini22[0] - cp11->T()) * (rho * Cp * L * elec_surf) + (Tini22[1] - cp22->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
-    //!< cout<<"Total heat balance of coolsystem complex module 1 "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
+    //!< std::cout<<"Total heat balance of coolsystem complex module 1 "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<std::endl;
     assert(NEAR(Qgen3, Qcool3 + Qheat3, 1e-9));
     //!< check balance of module mp22
     Qgen3 = cp33->thermal_getTotalHeat() + cp44->thermal_getTotalHeat();                                                     //!< total heat generated by cells
     Qcool3 = mp22->getCoolSystem()->getHeatEvac();                                                                           //!< total heat extracted by the coolsystem from the cells
     Qheat3 = -((Tini22[2] - cp33->T()) * (rho * Cp * L * elec_surf) + (Tini22[3] - cp44->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
-    //!< cout<<"Total heat balance of coolsystem complex module 2 "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
+    //!< std::cout<<"Total heat balance of coolsystem complex module 2 "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<std::endl;
     assert(NEAR(Qgen3, Qcool3 + Qheat3, 1e-9));
     //!< check balance of module mp33
     Qgen3 = cp55->thermal_getTotalHeat() + cp66->thermal_getTotalHeat() + cp77->thermal_getTotalHeat();                                                                             //!< total heat generated by cells
     Qcool3 = mp33->getCoolSystem()->getHeatEvac();                                                                                                                                  //!< total heat extracted by the coolsystem from the cells
     Qheat3 = -((Tini22[4] - cp55->T()) * (rho * Cp * L * elec_surf) + (Tini22[5] - cp66->T()) * (rho * Cp * L * elec_surf) + (Tini22[6] - cp77->T()) * (rho * Cp * L * elec_surf)); //!< total energy in heating up the cells
-    //!< cout<<"Total heat balance of coolsystem complex module 3 "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
+    //!< std::cout<<"Total heat balance of coolsystem complex module 3 "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<std::endl;
     assert(NEAR(Qgen3, Qcool3 + Qheat3, 1e-9));
 
     //!< check balance of the top level module
     Qgen3 = mp11->getCoolSystem()->getHeatEvac() + mp22->getCoolSystem()->getHeatEvac() + mp33->getCoolSystem()->getHeatEvac();
     Qcool3 = mp44->getCoolSystem()->getHeatEvac();
     Qheat3 = mp11->getCoolSystem()->getHeatabsorbed() + mp22->getCoolSystem()->getHeatabsorbed() + mp33->getCoolSystem()->getHeatabsorbed();
-    //!< cout<<"Total heat balance of coolsystem complex module top "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
+    //!< std::cout<<"Total heat balance of coolsystem complex module top "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<std::endl;
     assert(std::abs(Qgen3 - Qcool3 - Qheat3) / std::abs(Qgen3) < 1e-10);
 
     //!< check balance of total system
@@ -606,7 +602,7 @@ bool test_Cycler_CoolSystem()
     assert(Qheat3 > 0);
 
     //!< Comparison of cool system performance in the different control strategies: print out the following statement
-    //!< cout<<"Total heat balance of coolsystem complex module entire "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<endl;
+    //!< std::cout<<"Total heat balance of coolsystem complex module entire "<<coolControl<<" is "<<Qgen3<<", "<<Qheat3<<", "<<Qcool3<<" and error "<<abs(Qgen3 - Qcool3 - Qheat3)<<std::endl;
   }
 
   return true;
