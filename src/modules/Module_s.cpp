@@ -93,28 +93,30 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   Vmodule_valid = false; //!< we are changing the current, so the stored voltage is no longer valid
 
   std::array<double, settings::MODULE_NSUs_MAX> Iolds;
+  auto StatusNow = Status::Success;
 
   for (int i = 0; i < getNSUs(); i++) {
     Iolds[i] = SUs[i]->I();
-    const auto status = SUs[i]->setCurrent(Inew, checkV, print);
+    StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Inew, checkV, print)); // #TODO updateStatus
 
-    if (isStatusBad(status)) {
+
+    if (isStatusBad(StatusNow)) {
       if (verb)
         std::cerr << "ERROR in Module_s::setCurrent when setting the current of cell " << i
                   << " with id " << SUs[i]->getFullID() << " for Inew = "
                   << Inew << ". Restoring the old currents and throwing on error "
-                  << getStatusMessage(status) << '\n';
+                  << getStatusMessage(StatusNow) << '\n';
 
 
       for (int j{ i }; j > 0; j--)
         SUs[j]->setCurrent(Iolds[j], false, false); // #TODO this can start from j{i-1} since probably SUs[i] failed to assign any currents.
 
-      return status; // #TODO setCurrent here may be costly.
+      return StatusNow; // #TODO setCurrent here may be costly.
     }
   }
   //!< Check if the voltage is valid  #TODO
   //!< #TODO Here we need module specific voltage.
-  return Status::Success;
+  return StatusNow;
 }
 
 void Module_s::timeStep_CC(double dt, int nstep)

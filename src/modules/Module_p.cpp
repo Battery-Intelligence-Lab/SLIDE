@@ -204,70 +204,52 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   constexpr int maxIteration = 10550;
-  const auto nSU = getNSUs();
+  const int nSU = getNSUs();
 
   auto StatusNow = Status::Success;
 
-  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Va;
-
-  double Itot{ 0 };
-
+  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Ib, Va, Vb;
   //!< get the old currents so we can revert if needed
-  for (size_t i{}; i < SUs.size(); i++) {
-    Ia[i] = Iolds[i] = SUs[i]->I();
-    Itot += Iolds[i];
-  }
 
-  const auto dI = (Inew - Itot) / nSU; // #TODO must change if charge/discharge.
+  size_t iter{};
 
-  for (size_t i{}; i < SUs.size(); i++) {
-    Ia[i] += dI;
-    StatusNow = SUs[i]->setCurrent(Ia[i]); // #TODO worse status should be here.
-    if (!isStatusOK(StatusNow)) return StatusNow;
-  }
-
-  getVall(Va, print);
-
-  int iter{ 0 };
   for (; iter < maxIteration; iter++) {
-    double Vmean{ 0 }, error{ 0 };
+    int i{ nSU - 1 };
+    Ia[i] = SUs[i]->I();
+    Va[i] = SUs[i]->V();
+    double Itot_a{ Ia[i] };
+    for (--i; i >= 0; i--) {
+      Va[i] = Va[i + 1] - Ia[i + 1] * Rcontact[i + 1];
+      SUs[i]->setVoltage(Va[i]);
 
-    for (size_t i = 0; i < nSU; i++)
-      Vmean += Va[i];
-
-    Vmean /= nSU;
-
-    for (size_t i = 0; i < nSU; i++)
-      error += std::abs(Vmean - Va[i]);
-
-    if (error < 1e-9) {
-      StatusNow = Status::Success;
-      break;
+      Ia[i] = SUs[i]->I();
+      Itot_a += Ia[i];
     }
 
-    for (size_t i = 0; i < nSU; i++) {
-      Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
-      if (!isStatusSuccessful(SUs[i]->setCurrent(Ia[i])))
-        std::cout << "This should not happen!!" << std::endl; // #TODO
+
+    auto dI = (Inew - Itot_a); // #TODO must change if charge/discharge.
+    if (std::abs(dI) < 1e-10)
+      return Status::Success; // #TODO always need to return to worse situation if battery limits are surpassed etc.
+
+    i = nSU - 1;
+    Ib[i] = Ia[i] + dI / nSU;
+    StatusNow = SUs[i]->setCurrent(Ib[i]);
+    if (isStatusBad(StatusNow)) return StatusNow;
+
+    Vb[i] = SUs[i]->V();
+    double Itot_b{ Ib[i] };
+    for (--i; i >= 0; i--) {
+      Vb[i] = Vb[i + 1] - Ib[i + 1] * Rcontact[i + 1];
+      StatusNow = SUs[i]->setVoltage(Vb[i]);
+      if (isStatusBad(StatusNow)) return StatusNow;
+      Ib[i] = SUs[i]->I();
+      Itot_b += Ib[i];
     }
-    getVall(Va, print);
-  }
 
-  //!< voltage of cell i is outside the valid range, but within safety limits
-  //!< indicate this happened but continue setting states
-  if (isStatusWarning(StatusNow)) { // #TODO maybe we should not need to set current equally immediately?
-    if (verb)
-      std::cout << "warning in Module_p::setCurrent, the voltage of cell with id "
-                << SUs[0]->getFullID() << " is outside the allowed range for Inew = " << Inew / getNSUs()
-                << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
+    const double slope = (Ia[nSU - 1] - Ib[nSU - 1]) / (Itot_a - Itot_b);
+    const auto Iend_new = Ib[nSU - 1] - (Itot_b - Inew) * slope; //!< False-Position method.
 
-  } else if (isStatusBad(StatusNow)) {
-    if (verb)
-      std::cout << "ERROR " << getStatusMessage(StatusNow) << " in Module_p::setCurrent when setting the current of cell "
-                << " with id " << SUs[0]->getFullID() << " for Inew = " << Inew / nSU
-                << ". Try to recover using the iterative version of setCurrent.\n";
-    //!< throw error, the catch statement will use the iterative function
-    // #TODO give exact id, temporarily set to SUs[0]
+    SUs[nSU - 1]->setCurrent(Iend_new);
   }
 
   if constexpr (settings::printNumIterations)

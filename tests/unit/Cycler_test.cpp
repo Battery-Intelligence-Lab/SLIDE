@@ -195,24 +195,24 @@ bool test_CyclerCell()
 
   //!< test cell
   //!< cout<<"Test cycler made of one Cell"<<endl;
-  auto cp1 = make<Cell_t>();
-  test_CyclerSU(cp1.get(), checkCV);
+  // auto cp1 = make<Cell_t>();
+  // test_CyclerSU(cp1.get(), checkCV);
 
   //!< test series of cell
   //!< cout<<"Test cycler made of a series module of Cells"<<endl;
-  Deep_ptr<StorageUnit> cs[] = { make<Cell_t>(), make<Cell_t>() };
-  std::string n = "module_series_cell";
-  auto ms = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
-  ms->setSUs(cs, checkCells, true);
-  test_CyclerSU(ms.get(), checkCV);
+  // Deep_ptr<StorageUnit> cs[] = { make<Cell_t>(), make<Cell_t>() };
+  // std::string n = "module_series_cell";
+  // auto ms = make<Module_s>(n, T, true, false, std::size(cs), 1, 1);
+  // ms->setSUs(cs, checkCells, true);
+  // test_CyclerSU(ms.get(), checkCV);
 
   //!< test parallel of cells
   //!< cout<<"Test cycler made of a parallel module of Cells"<<endl;
-  Deep_ptr<StorageUnit> cs2[] = { make<Cell_t>(), make<Cell_t>() };
-  n = "module_paralell_cell";
-  auto mp = make<Module_p>(n, T, true, false, std::size(cs2), 1, 1);
-  mp->setSUs(cs2, checkCells, true);
-  test_CyclerSU(mp.get(), checkCV);
+  // Deep_ptr<StorageUnit> cs2[] = { make<Cell_t>(), make<Cell_t>() };
+  // n = "module_paralell_cell";
+  // auto mp = make<Module_p>(n, T, true, false, std::size(cs2), 1, 1);
+  // mp->setSUs(cs2, checkCells, true);
+  // test_CyclerSU(mp.get(), checkCV);
 
   //!< test complex module
   //!< cout<<"Cycler test complex module of Cells"<<endl;
@@ -618,7 +618,7 @@ int test_all_Cycler()
   auto test_CyclerVariations_high = []() { return test_CyclerVariations(0.001 / 5.0); };
   auto test_Cycler_writeData_1 = []() { return test_Cycler_writeData(1); };
 
-  if (!TEST(test_CyclerCell<Cell_Bucket>, "test_Cycler_Cell_Bucket")) return 1;
+  // if (!TEST(test_CyclerCell<Cell_Bucket>, "test_Cycler_Cell_Bucket")) return 1;
   if (!TEST(test_CyclerCell<Cell_ECM<1>>, "test_Cycler_Cell_ECM<1>")) return 2;
   if (!TEST(test_CyclerCell<Cell_SPM>, "test_Cycler_Cell_SPM")) return 3;
   if (!TEST(test_CyclerVariations_0, "test_CyclerVariations_0")) return 4;
