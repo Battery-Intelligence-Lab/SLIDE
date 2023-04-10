@@ -154,7 +154,7 @@ Status Cycler::setCurrent(double I, double vlim)
   //!< Try setting the current
   const auto status = su->setCurrent(I, checkCellV, settings::printBool::printNonCrit); //!< throws error if checkCellv == true and voltage out of range of a cell
 
-  if (isStatusVoltageLimitsViolated(status)) {
+  if (isStatusBad(status)) {
     if constexpr (settings::printBool::printNonCrit)
       std::cout << "Error caught in Cycler::setCurrent of SU " << su->getFullID() << " when trying to set a current of "
                 << I << " A. This current cannot be set without violating the voltage limits of one of the cells" << '\n';
@@ -164,11 +164,10 @@ Status Cycler::setCurrent(double I, double vlim)
 
   const double Vnew = su->V();
   //!< check if the voltage limit was exceeded while setting the current
-  if (I < 0 && Vini <= vlim && Vnew > vlim) //!< charging -> exceeded if Vini < vlim  & Vnew > vlim
+  //!< charging -> exceeded if Vini < vlim  & Vnew > vlim //!< #TODO why Vini check?
+  if ((I < 0 && Vini <= vlim && Vnew > vlim) || (I > 0 && Vini >= vlim && Vnew < vlim) || isStatusWarning(status))
     return Status::ReachedVoltageLimit;
-  else {
-    if (Vini >= vlim && Vnew < vlim) return Status::ReachedVoltageLimit; //!< #TODO why Vini check?
-  }
+
 
   return Status::Success; //!< if none of the above, we could set the current without exceeding any voltage limit
 }
@@ -226,7 +225,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
       break;
     }
 
-    auto ssuccNowcc = setCurrent(I, vlim);            // #TODO this was not here I added to get nice results from
+    auto succNow = setCurrent(I, vlim);               // #TODO this was not here I added to get nice results from
     if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
 
     dti = std::min(dti, tlim - ttot); //!< the last time step, ensure we end up exactly at the right time
@@ -393,7 +392,7 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
                 << getStatusMessage(succ) << ". Trying to do a CV phase.\n";
 
   const auto t_remaining = tlim - th1.time();
-  succ = CV(Vset, Ilim, t_remaining, dt, ndt_data, th2);
+  succ = CV(su->V(), Ilim, t_remaining, dt, ndt_data, th2);
   if constexpr (settings::printBool::printNonCrit)
     if (succ != Status::ReachedCurrentLimit)
       std::cout << "Cycler::CCCV could not complete the CV phase, terminated with "

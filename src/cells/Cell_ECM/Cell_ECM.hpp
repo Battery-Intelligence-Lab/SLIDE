@@ -186,8 +186,7 @@ inline Status Cell_ECM<N_RC>::setCurrent(double Inew, bool checkV, bool print)
 
   const auto status = checkCurrent(checkV, print);
 
-  if (isStatusBad(status))
-    st.I() = Iold;
+  if (isStatusBad(status)) st.I() = Iold;
 
   return status;
 }

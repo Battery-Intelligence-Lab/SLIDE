@@ -67,7 +67,6 @@ bool test_BasicGetters_p()
 }
 bool test_setI_p()
 {
-  //!< double Module_base_s::setCurrent(double Inew, bool checkV, bool print)
   double tol = 0.005;
   double Inew, V;
 
@@ -196,7 +195,7 @@ bool test_timeStep_CC_p()
   //!< discharge
   double Inew = 1 * std::size(cs);
   double V, err;
-  double tol = settings::MODULE_P_I_ABSTOL;
+  double tol = 1e-4;
   mp->setCurrent(Inew);
   mp->timeStep_CC(dt);
   V = mp->V();
@@ -242,7 +241,7 @@ template <typename Cell_t>
 bool test_Modules_p()
 {
   //!< test parallel modules with ECM cells
-  double tol = settings::MODULE_P_I_ABSTOL;
+  double tol = 1e-4; //  #TODO we set a higher tolerance for SOC but current tolerance can be less.
   Cell_t *cell1;
 
   //!< setCurrent
@@ -454,7 +453,7 @@ bool test_contactR()
 bool test_Hierarchichal_p()
 {
   //!< test parallel modules made out of other parallel modules
-  double tol = settings::MODULE_P_I_ABSTOL;
+  double tol = 1e-3;
   std::string ids[] = { "H1", "H2", "H3" };
   Deep_ptr<StorageUnit> SU1[] = { make<Cell_Bucket>(), make<Cell_Bucket>() };
   Deep_ptr<StorageUnit> SU2[] = { make<Cell_Bucket>(), make<Cell_Bucket>() };

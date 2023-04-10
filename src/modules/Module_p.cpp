@@ -214,13 +214,15 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   size_t iter{};
 
   for (; iter < maxIteration; iter++) {
+    StatusNow = Status::Success; //!< reset at each iteration.
+
     int i{ nSU - 1 };
     Ia[i] = SUs[i]->I();
     Va[i] = SUs[i]->V();
     double Itot_a{ Ia[i] };
     for (--i; i >= 0; i--) {
       Va[i] = Va[i + 1] - Ia[i + 1] * Rcontact[i + 1];
-      SUs[i]->setVoltage(Va[i]);
+      StatusNow = std::max(StatusNow, SUs[i]->setVoltage(Va[i]));
 
       Ia[i] = SUs[i]->I();
       Itot_a += Ia[i];
@@ -228,19 +230,18 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
 
     auto dI = (Inew - Itot_a); // #TODO must change if charge/discharge.
-    if (std::abs(dI) < 1e-10)
-      return Status::Success; // #TODO always need to return to worse situation if battery limits are surpassed etc.
+    if (std::abs(dI) < settings::MODULE_P_I_ABSTOL) return StatusNow;
 
     i = nSU - 1;
-    Ib[i] = Ia[i] + dI / nSU;
-    StatusNow = SUs[i]->setCurrent(Ib[i]);
+    Ib[i] = Ia[i] + 0.5 * dI / nSU;
+    StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i]));
     if (isStatusBad(StatusNow)) return StatusNow;
 
     Vb[i] = SUs[i]->V();
     double Itot_b{ Ib[i] };
     for (--i; i >= 0; i--) {
       Vb[i] = Vb[i + 1] - Ib[i + 1] * Rcontact[i + 1];
-      StatusNow = SUs[i]->setVoltage(Vb[i]);
+      StatusNow = std::max(StatusNow, SUs[i]->setVoltage(Vb[i]));
       if (isStatusBad(StatusNow)) return StatusNow;
       Ib[i] = SUs[i]->I();
       Itot_b += Ib[i];
@@ -249,7 +250,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     const double slope = (Ia[nSU - 1] - Ib[nSU - 1]) / (Itot_a - Itot_b);
     const auto Iend_new = Ib[nSU - 1] - (Itot_b - Inew) * slope; //!< False-Position method.
 
-    SUs[nSU - 1]->setCurrent(Iend_new);
+    StatusNow = std::max(StatusNow, SUs[nSU - 1]->setCurrent(Iend_new));
   }
 
   if constexpr (settings::printNumIterations)
