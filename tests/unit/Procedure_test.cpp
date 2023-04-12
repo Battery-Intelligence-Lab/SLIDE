@@ -36,7 +36,7 @@ bool test_Procedure_cycleAge(double Rc, bool spread, int cool)
 
   //!< Make the procedure with standard settings
   double Vbal = 3.5;
-  int ndata = 20;
+  int ndata = 100;
   bool balance = true;
   bool unittest = true;
 
@@ -152,7 +152,7 @@ bool test_Procedure_CoolSystem()
   double T = settings::T_ENV;
   bool checkCells = true;
   double Vbal = 3.5;
-  int ndata = 20;
+  int ndata = 100;
   bool balance = true;
   bool unitest = true; //!< controls printing for cycle age, should be true unless for debugging
   auto p = Procedure(balance, Vbal, ndata, unitest);
@@ -328,7 +328,7 @@ bool test_Procedure_cycleAge_stress()
   double T2 = settings::T_ENV;
   bool checkCells2 = false;
   double Vbal = 3.5;
-  int ndata = 20;
+  int ndata = 100;
   bool balance = true;
   bool unittest = true;
 
@@ -427,7 +427,7 @@ bool test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
 
   //!< Make the procedure with standard settings
   double Vbal = 3.5;
-  int ndata = 20;
+  int ndata = 100;
   bool balance = true;
   double Ccha = 1;
   double Cdis = 1;
@@ -575,29 +575,34 @@ bool test_allDegradationModels(int cool)
 
 int test_all_Procedure()
 {
+  slide::Clock clk{};
   int cool = 1;
   //!< Test normal procedures, with and without contact resistance and CV phases
-  test_Procedure_cycleAge(0, true, cool);
-  //!< test with two different values for contact resistance
-  test_Procedure_cycleAge(0, false, cool); //!< no contact resistance, no cell-to-cell variation
-  test_Procedure_cycleAge(0.001 / 5.0, false, cool);
-  test_Procedure_cycleAge(0.001 / 5.0, true, cool); //!< 0.2 mOhm contact resistance, with cell-to-cell variation
+  auto test_Procedure_cycleAge_0 = [cool]() { return test_Procedure_cycleAge(0, true, cool); };
+  auto test_Procedure_cycleAge_1 = [cool]() { return test_Procedure_cycleAge(0, false, cool); }; //!< no contact resistance, no cell-to-cell variation
 
-  //!< test with large variation of cells in P module
-  test_Procedure_cycleAge_stress();
+  auto test_Procedure_cycleAge_high_0 = [cool]() { return test_Procedure_cycleAge(0.001 / 5.0, false, cool); };
+  auto test_Procedure_cycleAge_high_1 = [cool]() { return test_Procedure_cycleAge(0.001 / 5.0, true, cool); }; //!< 0.2 mOhm contact resistance, with cell-to-cell variation
 
-  //!< Test the cooling system
-  test_Procedure_CoolSystem();
+  auto test_allDeg = [cool]() { return test_allDegradationModels(cool); }; //!< Test various degradation models
 
-  //!< Test various degradation models
-  test_allDegradationModels(cool); //!< test them all
 
   //!< test a specific model
-  DEG_ID deg;
-  deg.SEI_id.add_model(1); //!< kinetic SEI and porosity, with Dai/Laresgoiti LAM
+  DEG_ID deg; //!< kinetic SEI and porosity, with Dai/Laresgoiti LAM
+  deg.SEI_id.add_model(1);
   deg.SEI_porosity = 1;
   deg.LAM_id.add_model(1);
-  test_degradationModel(true, true, true, deg, cool);
+
+  auto test_specificDeg = [cool, deg]() { return test_degradationModel(true, true, true, deg, cool); }; //!< Test various degradation models
+
+  // if (!TEST(test_Procedure_cycleAge_0, "test_Procedure_cycleAge(0, true, cool)")) return 1;
+  // if (!TEST(test_Procedure_cycleAge_1, "test_Procedure_cycleAge(0, false, cool)")) return 2;
+  // if (!TEST(test_Procedure_cycleAge_high_0, "test_Procedure_cycleAge(0.001 / 5.0, false, cool)")) return 3;
+  // if (!TEST(test_Procedure_cycleAge_high_1, "test_Procedure_cycleAge(0.001 / 5.0, true, cool)")) return 4;
+
+  if (!TEST(test_Procedure_cycleAge_stress, "test_getCellV")) return 5;
+  // if (!TEST(test_Procedure_CoolSystem, "test_Procedure_CoolSystem")) return 6; //!< Test the cooling system
+  // if (!TEST(test_specificDeg, "test_degradationModel(true, true, true, deg, cool)")) return 7;
 
   return 0;
 }

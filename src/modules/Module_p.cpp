@@ -254,7 +254,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   }
 
   if constexpr (settings::printNumIterations)
-    if (iter != 0) std::cout << "setCurrent iterations: " << iter << '\n';
+    if (iter != 0) std::cout << "setCurrent iterations: " << iter << std::endl;
   // #TODO set old currents back here!
   return StatusNow; //!< #TODO problem
 }

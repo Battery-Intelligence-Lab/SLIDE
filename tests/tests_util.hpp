@@ -7,6 +7,9 @@
 
 #pragma once
 
+
+#include "../src/utility/timing.hpp"
+
 #include <cmath>
 #include <cassert>
 #include <iostream>
@@ -24,14 +27,20 @@ constexpr bool DEBUG_TESTS = false;
 bool TEST(auto &&fun, auto &&fun_name)
 {
 
+  slide::Clock clk;
+
   if (DEBUG_TESTS)
     std::cout << fun_name << " test is started!" << std::endl;
 
   try {
-    return fun();
+    auto out = fun();
+    std::cout << "Finished " << fun_name << " in " << clk << std::endl;
+    return out;
   } catch (...) {
+    std::cout << "Finished " << fun_name << " in " << clk << std::endl;
     return false;
   }
+
   return true;
 }
 
