@@ -56,12 +56,12 @@ inline auto GITT_test()
 
 
   // Start GITT test 20x0.05C pulse and 2 hr rest:
-  const auto N_repeat{ 20 };     // Repeat 20 times.
-  const auto t_pulse = 1 * 3600; // 1 hr pulse time.
-  const auto t_rest = 2 * 3600;  // 2 hr rest time.
-  const auto dt = 1;             // 1 seconds time step.
+  const auto N_repeat{ 20 };         // Repeat 20 times.
+  const auto t_pulse = 1 * 3600;     // 1 hr pulse time.
+  const auto t_rest = 2 * 3600;      // 2 hr rest time.
+  const auto dt = 1;                 // 1 seconds time step.
   const auto Crate = 0.05;
-  auto current = Crate * c.Cap();
+  auto current = Crate * 17.0285333; // c.Cap();
 
   std::ofstream out_GITT{ PathVar::results / "GITT_20x0.05C_1h_rest_2h.csv" };
   out_GITT << "Time [s],"
@@ -76,7 +76,7 @@ inline auto GITT_test()
 
   for (int i{}; i < N_repeat; i++) {
     c.setCurrent(-current);
-    d.setCurrent(current);
+    d.setCurrent(Crate * 17.0285333);
 
     for (int j{}; j < 3600; j++) {
       out_GITT << t_all << ',' << c.I() << ',' << c.V() << ','

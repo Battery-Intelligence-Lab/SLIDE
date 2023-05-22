@@ -185,17 +185,23 @@ inline void drive_cycle_artemis()
   c.setBlockDegAndTherm(true);
   c.setT(21.0_degC);
 
+  auto d = c;
+
   double Cmaxpos{ 51385 };
   double Cmaxneg{ 30555 };
   double cps, cns;
 
 
   auto &st = c.getStateObj();
-  auto cyc = Cycler(&c, "discharge");
+  auto cyc = Cycler(&c, "charge");
+  auto cycd = Cycler(&d, "discharge");
 
   ThroughputData th{};
   cyc.CCCV(1, 2.7, 0.0001, 1, 0, th);
   cyc.rest(100, 1, 0, th);
+
+  cycd.CCCV(1, 4.2, 0.0001, 1, 0, th);
+  cycd.rest(100, 1, 0, th);
 
   std::ofstream out_fraction{ PathVar::results / "Kokam_NMC_16Ah_OCV.csv" };
 
@@ -210,8 +216,10 @@ inline void drive_cycle_artemis()
   double V_old{ c.V() }, fp_old{ cps / Cmaxpos }, fn_old{ cns / Cmaxneg };
   out_fraction << c.I() << ',' << c.V() << ',' << fp_old << ',' << fn_old << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
 
-  c.setCurrent(-0.02);
+  c.setCurrent(-17 * 0.05);
   double threshold{ 1e-4 };
+  double time_capacity{};
+
   while (c.V() < 4.2) {
     c.getCSurf(cps, cns, false);
     auto fp{ cps / Cmaxpos }, fn{ cns / Cmaxneg };
@@ -223,7 +231,21 @@ inline void drive_cycle_artemis()
       out_fraction << c.I() << ',' << c.V() << ',' << fp << ',' << fn << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
     }
     c.timeStep_CC(1, 1);
+    time_capacity += 1;
   }
+
+  double time_dischargeCap{};
+
+  d.setCurrent(0.02);
+  while (d.V() > 2.7) {
+    d.timeStep_CC(1, 1);
+    time_dischargeCap += 1;
+  }
+
+
+  double asd, bsd;
+  auto testedCap = cyc.testCapacity(asd, bsd);
+
 
   out_fraction.close();
 
