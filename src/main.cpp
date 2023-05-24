@@ -163,8 +163,6 @@ int main()
 
   // slide::benchmarks::run_Cell_ECM_parallel_3_withRcontact_CCCV();
 
-  auto cap_estimated = 0.01 * t_total / 3600;
-
   // *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
   // estimateOCVparameters(); // OCV parametrisation
   // estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
