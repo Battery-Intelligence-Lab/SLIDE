@@ -1,12 +1,11 @@
 % This function is written to verify SLIDE's estimation algorithm.
+% This file is the MILP version. 
 % Param sp sn AMp AMn
 
 clear variables; close all; clc;
 
 OCVp = load('../data/OCVfit_cathode.csv'); % stochiometry vs cathode potential
-
 OCVn = load('../data/OCVfit_anode.csv'); % stochiometry vs anode potential
-
 OCV  = load('../data/OCVfit_cell.csv'); % Ah vs full cell OCV
 OCV(:,1) = (16/OCV(end,1))*OCV(:,1);
 
@@ -18,6 +17,52 @@ cmaxp = 51385;  %!< maximum li-concentration in the cathode [mol m-3]
 cmaxn = 30555;  %!< maximum li-concentration in the anode [mol m-3]
 
 cap = Ah_cell(end);
+
+
+
+
+
+%%
+
+sp0  = sdpvar(1,1);
+sn0  = sdpvar(1,1);
+
+AMp_1 = sdpvar(1,1); % 1/AMp
+AMn_1 = sdpvar(1,1); % 1/AMn
+
+
+sp = sp0 + (As/(n*F)/cmaxp)*AMp_1;
+sn = sn0 - (As/(n*F)/cmaxn)*AMn_1;
+
+
+ocvpi = interp1(OCVp(:,1),OCVp(:,2), sp,'milp');
+ocvni = interp1(OCVn(:,1),OCVn(:,2), sn,'milp');
+ocv = ocvpi - ocvni;
+
+J = (ocv-OCV(:,2))'*(ocv-OCV(:,2));
+
+
+Fconst = [0<= sp <= 1;
+     0<= sn <= 1;
+     0<= AMp_1;
+     0<= AMn_1;
+     ];
+
+optimize(Fconst,J,sdpsettings('solver','gurobi','verbose',2))
+
+
+
+
+
+
+
+%%
+
+
+
+
+
+
 
 AMp_guess = cap*3600/(n*F*cmaxp);
 AMn_guess = cap*3600/(n*F*cmaxn);
