@@ -166,6 +166,8 @@ int main(int argv, char *argc[])
 		t_total += dt;
 	}
 
+	auto cap_estimated = 0.01 * t_total / 3600;
+
 	// *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
 	// estimateOCVparameters(); // OCV parametrisation
 	// estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
