@@ -163,7 +163,11 @@ int main()
 
   // slide::benchmarks::run_Cell_ECM_parallel_3_withRcontact_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_series_3_withRcontact_CCCV();
+  auto cap_estimated = 0.01 * t_total / 3600;
+
+  // *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
+  // estimateOCVparameters(); // OCV parametrisation
+  // estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
 
   //!<*********************************************** END ********************************************************
   //!< Now all the simulations have finished. Print this message, as well as how long it took to do the simulations
