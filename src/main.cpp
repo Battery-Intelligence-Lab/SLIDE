@@ -53,12 +53,12 @@ int main(int argv, char *argc[])
 	// This is typically a number, and the reason why we use it is that results of previous simulations are not overwritten.
 	// i.e. for one simulation, use pref "0", then the next simulation could have pref "1".
 	// this ensures the results of the second simulation are written in different files and folders, rather than overwriting the files from the first simulation
-	const std::string pref = "0"; //todo
-								  // will be used to name a folder with the results, so must comply with the naming convention on your operating system
-								  // letters, numbers, underscores and dots are fine
-								  // don't use spaces
-								  // don't use forbidden characters, e.g. for Windows the following are not allowed < > : " \ | / ? *
-								  // https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
+	const std::string pref = "0"; // todo
+								  //  will be used to name a folder with the results, so must comply with the naming convention on your operating system
+								  //  letters, numbers, underscores and dots are fine
+								  //  don't use spaces
+								  //  don't use forbidden characters, e.g. for Windows the following are not allowed < > : " \ | / ? *
+								  //  https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
 
 	// Choose which cell should be used for the simulations
 	const int cellType = slide::cellType::KokamNMC;
@@ -70,50 +70,50 @@ int main(int argv, char *argc[])
 	// Choose which degradation models to use for the simulations
 	// The models are identified by a number, see DEG_ID in Cell.hpp and below
 	/* SEI_id 		identification for which model(s) to use for SEI growth
-		 * 					0	no SEI growth
-		 * 					1 	kinetic model only (Tafel kinetics)
-		 * 							ref: Ning & Popov, Journal of the Electrochemical Society 151 (10), 2004
-		 * 					2 	Pinson&Bazant model: linear diffusion + Tafel kinetics
-		 * 							ref: Pinson & Bazant, Journal of the Electrochemical society 160 (2), 2013
-		 * 					3	Christensen and Newman model: diffusion and kinetics model
-		 * 							ref: Christensen & Newmann, Journal of the Electrochemical Society 152 (4), 2005
-		 * SEI_porosity	integer deciding whether we reduce the volume fraction of active electrode material due to SEI growth
-		 *  				0	don't subtract anything
-		 * 					1	use correlation from Ashwin
-		 * 							ref: Ashwin, Chung, Wang, Journal of Power Sources 328, 2016
-		 * CS_id	identification for which model(s) to use for surface crack growth
-		 *  				0 	no surface cracking
-		 * 					1 	Laresgoiti's stress + crack growth model
-		 * 							ref: Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015
-		 * 					2 	Dai stress model + Laresgoiti crack growth
-		 * 							ref: Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015
-		 * 								 Dai, Cai, White, Journal of Power sources 247, 2014
-		 * 					3 	model based on Deshpande and Bernardi
-		 * 							ref: Deshpande & Bernardi,Journal of the Electrochemical Society 164 (2), 2017
-		 * 					4 	model from Barai
-		 * 							ref: Barai, Smith, Chen, Kim, Mukherjee, Journal of the Electrochemical Society 162 (9), 2015
-		 * 					5 	model from Ekstrom
-		 * 							ref: Ekstrom and Lindbergh, Journal of the Electrochemical Society 162 (6), 2015
-		 * CS_diffusion	integer deciding whether to reduce the negative diffusion constant due to surface cracks
-		 *  				0 	don't decrease diffusion
-		 * 					1	decrease according to Barai
-		 * 							ref: Barai, Smith, Chen, Kim, Mukherjee, Journal of the Electrochemical Society 162 (9), 2015
-		 * LAM_id  identification for which model(s) to use for loss of active material
-		 *  				0 	no LAM
-		 * 					1	Dai's stress model and Laresgoiti's correlation to relate the stress to LAM
-		 * 							ref: Dai, Cai, White, Journal of Power sources 247, 2014
-		 * 								 Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015
-		 * 					2	delacourt's correlation between abs(current density) and porosity
-		 * 							ref: Delacourt & Safari, Journal of the Electrochemical Society 159 (8), 2012
-		 * 					3 	Kindermann's model for cathode dissolution: tafel kinetics for increased porosity
-		 * 							ref: Kindermann, Keil, Frank, Jossen, Journal of the Electrochemical Society 164 (12), 2017
-		 * 					4 	Narayanrao's correlation between effective surface area and current density
-		 * 							ref: Narayanrao, Joglekar, Inguva, Journal of the Electrochemical Society 160 (1), 2012
-		 * pl_id 	identification for which model to use for li-plating
-		 *  				0 	no plating
-		 * 					1	Yang et al's model for thermodynamic plating (Tafel kinetics)
-		 * 							ref: Yang, Leng, Zhang, Ge, Wang, Journal of Power Sources 360, 2017
-		 */
+	 * 					0	no SEI growth
+	 * 					1 	kinetic model only (Tafel kinetics)
+	 * 							ref: Ning & Popov, Journal of the Electrochemical Society 151 (10), 2004
+	 * 					2 	Pinson&Bazant model: linear diffusion + Tafel kinetics
+	 * 							ref: Pinson & Bazant, Journal of the Electrochemical society 160 (2), 2013
+	 * 					3	Christensen and Newman model: diffusion and kinetics model
+	 * 							ref: Christensen & Newmann, Journal of the Electrochemical Society 152 (4), 2005
+	 * SEI_porosity	integer deciding whether we reduce the volume fraction of active electrode material due to SEI growth
+	 *  				0	don't subtract anything
+	 * 					1	use correlation from Ashwin
+	 * 							ref: Ashwin, Chung, Wang, Journal of Power Sources 328, 2016
+	 * CS_id	identification for which model(s) to use for surface crack growth
+	 *  				0 	no surface cracking
+	 * 					1 	Laresgoiti's stress + crack growth model
+	 * 							ref: Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015
+	 * 					2 	Dai stress model + Laresgoiti crack growth
+	 * 							ref: Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015
+	 * 								 Dai, Cai, White, Journal of Power sources 247, 2014
+	 * 					3 	model based on Deshpande and Bernardi
+	 * 							ref: Deshpande & Bernardi,Journal of the Electrochemical Society 164 (2), 2017
+	 * 					4 	model from Barai
+	 * 							ref: Barai, Smith, Chen, Kim, Mukherjee, Journal of the Electrochemical Society 162 (9), 2015
+	 * 					5 	model from Ekstrom
+	 * 							ref: Ekstrom and Lindbergh, Journal of the Electrochemical Society 162 (6), 2015
+	 * CS_diffusion	integer deciding whether to reduce the negative diffusion constant due to surface cracks
+	 *  				0 	don't decrease diffusion
+	 * 					1	decrease according to Barai
+	 * 							ref: Barai, Smith, Chen, Kim, Mukherjee, Journal of the Electrochemical Society 162 (9), 2015
+	 * LAM_id  identification for which model(s) to use for loss of active material
+	 *  				0 	no LAM
+	 * 					1	Dai's stress model and Laresgoiti's correlation to relate the stress to LAM
+	 * 							ref: Dai, Cai, White, Journal of Power sources 247, 2014
+	 * 								 Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015
+	 * 					2	delacourt's correlation between abs(current density) and porosity
+	 * 							ref: Delacourt & Safari, Journal of the Electrochemical Society 159 (8), 2012
+	 * 					3 	Kindermann's model for cathode dissolution: tafel kinetics for increased porosity
+	 * 							ref: Kindermann, Keil, Frank, Jossen, Journal of the Electrochemical Society 164 (12), 2017
+	 * 					4 	Narayanrao's correlation between effective surface area and current density
+	 * 							ref: Narayanrao, Joglekar, Inguva, Journal of the Electrochemical Society 160 (1), 2012
+	 * pl_id 	identification for which model to use for li-plating
+	 *  				0 	no plating
+	 * 					1	Yang et al's model for thermodynamic plating (Tafel kinetics)
+	 * 							ref: Yang, Leng, Zhang, Ge, Wang, Journal of Power Sources 360, 2017
+	 */
 	// For now, assume we want to include 'Pinson&Bazant'-SEI growth, 'Delacourt'-LAM, 'Kindermann'-LAM and 'Yang'-lithium plating
 	DEG_ID deg;
 	deg.SEI_n = 1;		  // there is 1 SEI model
@@ -138,13 +138,41 @@ int main(int argv, char *argc[])
 	std::cout << "Available number of threads : " << numThreads << '\n';
 	std::cout << "Used threads : " << (settings::isParallel ? std::min(settings::numMaxParallelWorkers, numThreads) : 1) << '\n';
 
+	Cell_Fit cell_init(M, true);
+	bool print{};
+	double V{}, OCVp{}, OCVn{}, etap{}, etan{}, Rdrop{}, Temp{};
+
+	cell_init.getVoltage(print, &V, &OCVp, &OCVn, &etap, &etan, &Rdrop, &Temp);
+
+	cell_init.setI(0, 0, -0.01);
+
+	double dt{1}, t_total{0};
+
+	while (V < 4.2)
+	{
+		cell_init.ETI(0, dt, 1);
+		cell_init.getVoltage(print, &V, &OCVp, &OCVn, &etap, &etan, &Rdrop, &Temp);
+	}
+
+	cell_init.getVoltage(print, &V, &OCVp, &OCVn, &etap, &etan, &Rdrop, &Temp);
+
+	cell_init.setI(0, 0, +0.01);
+
+	while (V > 2.7)
+	{
+		cell_init.ETI(0, dt, 1);
+		cell_init.getVoltage(print, &V, &OCVp, &OCVn, &etap, &etan, &Rdrop, &Temp);
+
+		t_total += dt;
+	}
+
 	// *********************************************** PARAMETRISATION FUNCTION CALLS *********************************************************************
 	// estimateOCVparameters(); // OCV parametrisation
 	// estimateCharacterisation(); // parametrisation of diffusion constant, rate constant and DC resistance
 
 	// *********************************************** CYCLING FUNCTION CALLS ********************************************************
-	CCCV(M, pref, deg, cellType, settings::verbose);		  // a cell does a few CCCV cycles
-	FollowCurrent(M, pref, deg, cellType, settings::verbose); // a cell follows the current profile specified in a csv file
+	// CCCV(M, pref, deg, cellType, settings::verbose);		  // a cell does a few CCCV cycles
+	// FollowCurrent(M, pref, deg, cellType, settings::verbose); // a cell follows the current profile specified in a csv file
 
 	// *********************************************** DEGRADATION FUNCTION CALLS ********************************************************
 	// CalendarAgeing(M, pref, deg, cellType, settings::verbose); // simulates a bunch of calendar degradation experiments
