@@ -1,5 +1,5 @@
 % This function is written to verify SLIDE's estimation algorithm.
-% This file is the MILP version. 
+% This file is the MILP version.
 % Param sp sn AMp AMn
 
 clear variables; close all; clc;
@@ -19,10 +19,19 @@ cmaxn = 30555;  %!< maximum li-concentration in the anode [mol m-3]
 cap = Ah_cell(end);
 
 
+AMp_guess = cap*3600/(n*F*cmaxp);
+AMn_guess = cap*3600/(n*F*cmaxn);
 
+% A = [1, 0, (As(end)/(n*F*cmaxp)), 0;
+%     0, -1, 0, (As(end)/(n*F*cmaxn))];
+% lb = [0;    0.8;  1/(5*AMp_guess); 1/(5*AMn_guess)];
+% ub = [0.4;    1;   1/(0.01*AMp_guess)   ;   1/(0.01*AMn_guess) ];
 
 
 %%
+Nocv = length(As); % Number of points in the OCV curve.
+Np   = length(OCVp); % Number of points in the OCVp curve.
+Nn   = length(OCVn); % Number of points in the OCVn curve.
 
 sp0  = sdpvar(1,1);
 sn0  = sdpvar(1,1);
@@ -34,22 +43,61 @@ AMn_1 = sdpvar(1,1); % 1/AMn
 sp = sp0 + (As/(n*F)/cmaxp)*AMp_1;
 sn = sn0 - (As/(n*F)/cmaxn)*AMn_1;
 
+w_p = sdpvar(Nocv, Np,'full'); % Weights 0-1
+w_n = sdpvar(Nocv, Nn,'full');
 
-ocvpi = interp1(OCVp(:,1),OCVp(:,2), sp,'milp');
-ocvni = interp1(OCVn(:,1),OCVn(:,2), sn,'milp');
+Fconst = [0<= w_p <= 1, 0<= w_n <= 1, sum(w_p,2)==1, sum(w_n,2)==1]; % Constraints.
+
+gray_p = findGrayWeightIndicators(Np-1,0,0);
+gray_n = findGrayWeightIndicators(Nn-1,0,0);
+
+bin_p = binvar(Nocv, gray_p.nt,'full'); % Binary variables to get weights {0,1}
+bin_n = binvar(Nocv, gray_n.nt,'full');
+
+for ijk=1:Nocv
+    for iOut=1:gray_p.nt
+        % A loop over the new binary variables.
+        temp = w_p(ijk,:);
+        %delta
+        Fconst = [Fconst, ...
+            sum( temp(gray_p.delta{iOut})  )  <=( bin_p(ijk,iOut)  )];
+        %1-delta
+        Fconst = [Fconst, ...
+            sum( temp(gray_p.one_min_delta{iOut})  )  <=( 1 - bin_p(ijk,iOut)  )];
+    end
+
+    for iOut=1:gray_n.nt
+        % A loop over the new binary variables.
+        temp = w_n(ijk,:);
+        %delta
+        Fconst = [Fconst, ...
+            sum( temp(gray_n.delta{iOut})  )  <=( bin_n(ijk,iOut)   )];
+        %1-delta
+        Fconst = [Fconst, ...
+            sum( temp(gray_n.one_min_delta{iOut})  )  <=( 1 - bin_n(ijk,iOut) )];
+    end
+end
+
+OCVp_s  = w_p*OCVp(:,1);
+ocvpi   = w_p*OCVp(:,2);
+
+OCVn_s  = w_n*OCVn(:,1);
+ocvni   = w_n*OCVn(:,2);
+
+Fconst = [Fconst, OCVp_s==sp, OCVn_s==sn];
+
 ocv = ocvpi - ocvni;
 
 J = (ocv-OCV(:,2))'*(ocv-OCV(:,2));
 
 
-Fconst = [0<= sp <= 1;
-     0<= sn <= 1;
-     0<= AMp_1;
-     0<= AMn_1;
-     ];
+Fconst = [Fconst, 0<= sp <= 1, ... 
+    0<= sn <= 1, ...
+    1/(5*AMp_guess)<= AMp_1 <= 1/(0.01*AMp_guess), ...
+    1/(5*AMn_guess)<= AMn_1 <= 1/(0.01*AMn_guess), ...
+    ];
 
 optimize(Fconst,J,sdpsettings('solver','gurobi','verbose',2))
-
 
 
 
@@ -64,8 +112,7 @@ optimize(Fconst,J,sdpsettings('solver','gurobi','verbose',2))
 
 
 
-AMp_guess = cap*3600/(n*F*cmaxp);
-AMn_guess = cap*3600/(n*F*cmaxn);
+
 
 
 % ------ Constraints ------
@@ -74,23 +121,23 @@ AMn_guess = cap*3600/(n*F*cmaxn);
 lb = [0;    0.8;  1/(5*AMp_guess); 1/(5*AMn_guess)];
 ub = [0.4;    1;   1/(0.01*AMp_guess)   ;   1/(0.01*AMn_guess) ];
 
-% Linear constraints: 
+% Linear constraints:
 % sp = x(1);  sn = x(2);
-% AMp = 1/x(3); AMn = 1/x(4); 
+% AMp = 1/x(3); AMn = 1/x(4);
 %
-% sp(end)<1 
+% sp(end)<1
 % sp(end) = sp0 + As(end)/(n*F)/AMp/cmaxp
-% x(1) + (As(end)/(n*F*cmaxp))*(1/AMp)  < 1 
-% x(1) + (As(end)/(n*F*cmaxp))*x(3)  < 1 
+% x(1) + (As(end)/(n*F*cmaxp))*(1/AMp)  < 1
+% x(1) + (As(end)/(n*F*cmaxp))*x(3)  < 1
 %
 %
-% sn(end)>0 
+% sn(end)>0
 % sn(end) = sn0 - As/(n*F)/AMn/cmaxn
-% x(2) - (As(end)/(n*F*cmaxn))*(1/AMn) > 0 
-% -x(2) + (As(end)/(n*F*cmaxn))*x(4) < 0 
+% x(2) - (As(end)/(n*F*cmaxn))*(1/AMn) > 0
+% -x(2) + (As(end)/(n*F*cmaxn))*x(4) < 0
 
 A = [1, 0, (As(end)/(n*F*cmaxp)), 0;
-     0, -1, 0, (As(end)/(n*F*cmaxn))];
+    0, -1, 0, (As(end)/(n*F*cmaxn))];
 
 b = [1;-0.01];
 
@@ -108,15 +155,15 @@ x_best_16Ah = [0.3853; 0.5647; 1/2.1171e-05; 1/3.6459e-05]; % Best solution if C
 x_best_2 =  [0.385208057798616;   0.564328197343929; 1/2.116379738e-05; 1/3.648106966443356e-05];
 
 x0 = x_best_2;
-% Values to use: 
+% Values to use:
 
 % sp(1) = 0.385208057798616;
 % sp(end) = 0.934146599395399;
 % sp(50%) = 0.659677328597008;
-% 
+%
 % sn(1) = 0.564328197343929;
 % sn(end) = 0.028773505826926;
-% sn(50%) = 0.296550851585427; 
+% sn(50%) = 0.296550851585427;
 
 gStats = @(x) guessStats(x, OCVp, OCVn, OCV);
 
@@ -130,7 +177,7 @@ gStats = @(x) guessStats(x, OCVp, OCVn, OCV);
 
 % %x_fmincon = fmincon(f,x0,A,b,[],[],lb,ub,[],optimoptions('fmincon',Display='iter'));
 gs = GlobalSearch();
- 
+
 problem = createOptimProblem('fmincon','x0',x0,'objective',f,'lb',lb,'ub',ub, 'Aineq',A, 'bineq',b, 'options', optimoptions('fmincon',Display='iter'));
 x_fmincon = run(gs,problem);
 
@@ -165,11 +212,11 @@ sn = sn0 - As/(n*F)/AMn/cmaxn;
 if(sp(end)>1 || sn(end)<0)
     residuals = [OCV(:,2); diff(OCV(:,2))];
 else
-   ocvpi = interp1(OCVp(:,1),OCVp(:,2), sp);
-   ocvni = interp1(OCVn(:,1),OCVn(:,2), sn);
-   ocv = ocvpi - ocvni;
+    ocvpi = interp1(OCVp(:,1),OCVp(:,2), sp);
+    ocvni = interp1(OCVn(:,1),OCVn(:,2), sn);
+    ocv = ocvpi - ocvni;
 
-   residuals = [OCV(:,2)-ocv; diff(OCV(:,2)) - diff(ocv)];
+    residuals = [OCV(:,2)-ocv; diff(OCV(:,2)) - diff(ocv)];
 end
 
 end
@@ -196,11 +243,11 @@ sn = sn0 - As/(n*F)/AMn/cmaxn;
 if(sp(end)>1 || sn(end)<0)
     residuals = OCV(:,2);
 else
-   ocvpi = interp1(OCVp(:,1),OCVp(:,2), sp);
-   ocvni = interp1(OCVn(:,1),OCVn(:,2), sn);
-   ocv = ocvpi - ocvni;
+    ocvpi = interp1(OCVp(:,1),OCVp(:,2), sp);
+    ocvni = interp1(OCVn(:,1),OCVn(:,2), sn);
+    ocv = ocvpi - ocvni;
 
-   residuals = OCV(:,2) - ocv;
+    residuals = OCV(:,2) - ocv;
 end
 
 figure;
