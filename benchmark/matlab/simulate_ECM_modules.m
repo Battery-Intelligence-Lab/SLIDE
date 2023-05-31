@@ -39,7 +39,7 @@ CCCV.SLIDE_3 = readmatrix('../../results/Cell_ECM_parallel_3_withRcontact_CCCV_P
 % Plotting:
 plot_variables(CCCV, testNow);
 
-%%
+%% 
 testNow = defaultSettings();
 testNow.Name = "Parallel 3 ECM Cell pulse w/o contact resistances";
 testNow.type = "module_p"; 

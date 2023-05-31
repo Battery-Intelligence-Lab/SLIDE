@@ -117,38 +117,6 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
 
   setCurrent(I(), true, true);
 
-  // double Itot{ 0 };
-  // getVall(Va, print);
-  // for (size_t i = 0; i < nSU; i++) {
-  //   Ia[i] = SUs[i]->I();
-  //   Itot += Ia[i]; // We also need to preserve sum of the currents!
-  // }
-
-  // int iter{ 0 };
-  // for (; iter < maxIteration; iter++) {
-  //   double error{ 0 };
-
-  //   const auto Vmean = std::accumulate(Va.begin(), Va.begin() + nSU, 0.0) / nSU; // Compute the mean voltage
-
-  //   for (size_t i = 0; i < nSU; i++) // Compute the error between mean voltage and individual cell voltages
-  //     error += std::abs(Vmean - Va[i]);
-
-
-  //   if (error < 1e-10) // Return success if the error is below the threshold
-  //     return Status::Success;
-
-  //   // Update the currents based on the difference between mean and individual voltages
-  //   for (size_t i = 0; i < nSU; i++) {
-  //     Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
-  //     SUs[i]->setCurrent(Ia[i]);
-  //   }
-
-  //   getVall(Va, print);
-  // }
-
-  // if constexpr (settings::printNumIterations)
-  //   std::cout << "redistributeCurrent iterations: " << iter << '\n';
-
   return StatusNow;
 }
 
@@ -156,36 +124,89 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
 {
   constexpr int maxIteration = 50;
   const auto nSU = getNSUs();
+  int iter{}; // Current iteration
 
-  auto StatusNow = Status::RedistributeCurrent_failed;
 
-  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Va;
+  auto StatusNow = Status::Success;
 
-  //!< get the old currents so we can revert if needed
-  for (size_t i{}; i < SUs.size(); i++)
-    Ia[i] = Iolds[i] = SUs[i]->I();
+  using A_type = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX>;
+  using b_type = Eigen::Array<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX>;
 
-  int iter{ 0 };
-  for (; iter < maxIteration; iter++) {
-    getVall(Va, print);
+  b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
 
-    double error{ 0 };
-    for (size_t i = 0; i < nSU; i++)
-      error += std::abs(Vnew - Va[i]);
+  const double tolerance = 1e-9;
 
-    if (error < 1e-10) {
-      StatusNow = Status::Success;
-      break;
+  double Icumulative{}, error_voltage{}, error_current{};
+  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+    Icumulative += Ib[i] = SUs[i]->I();
+    Vb[i] = SUs[i]->V();
+
+    if (i != 0)
+      error_voltage += std::abs(Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i]);
+    else
+      error_voltage += std::abs(Vb[i] - Vnew - Icumulative * Rcontact[i]);
+  }
+
+  if (error_voltage < tolerance) return StatusNow;
+
+  Eigen::PartialPivLU<A_type> LU = [&]() { // #TODO this will be static in future defined in parallel block
+    // Perturb a bit:
+    const double perturbation = 0.5; //
+    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      Ib[i] += perturbation; // Perturbation
+      SUs[i]->setCurrent(Ib[i]);
+
+      const double Vnew = SUs[i]->V();
+      r_est[i] = (Vb[i] - Vnew) / perturbation; // Estimated resistance.
+      Vb[i] = Vnew;
     }
 
-    for (size_t i = 0; i < nSU; i++) {
-      Ia[i] += -0.2 * (Vnew - Va[i]) / 0.001;
-      SUs[i]->setCurrent(Ia[i]);
+    A_type A(nSU, nSU);
+    // Set up the A matrix in Ax = b
+    for (size_t j = 0; j < nSU; j++)
+      for (size_t i = 0; i < nSU; i++) {
+        if (i == j)
+          A(i, j) = -Rcontact[i] - r_est[i];
+        else if (i == j + 1)
+          A(i, j) = r_est[j];
+        else if (j > i)
+          A(i, j) = -Rcontact[i];
+        else
+          A(i, j) = 0;
+      }
+
+    Eigen::PartialPivLU<A_type> LU(A); // LU decomposition of A.
+    return LU;
+  }();
+
+  while (iter < maxIteration) {
+    double Icumulative{}, error{};
+    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      Icumulative += Ib[i];
+
+      if (i != 0)
+        b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
+      else
+        b(i) = Vb[i] - Vnew - Icumulative * Rcontact[i];
+
+      error += std::abs(b(i));
+    }
+
+    if (error < tolerance) break;
+    iter++;
+
+    b_type deltaI = LU.solve(b.matrix()).array();
+
+    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i] - deltaI[i]));
+      Ib[i] = SUs[i]->I();
+      Vb[i] = SUs[i]->V();
     }
   }
 
+
   if constexpr (settings::printNumIterations)
-    std::cout << "setVoltage iterations: " << iter << '\n';
+    if (iter > 1) std::cout << "setVoltage iterations: " << iter << '\n';
 
   return StatusNow; // #TODO add some voltage/current etc. check
 }
