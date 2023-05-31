@@ -332,8 +332,8 @@ bool test_Constructor()
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
   auto cp2 = dynamic_cast<Cell_Bucket *>(cs[0].get());
 
-  assert(cp1->getID() == "Cell_ECM<0>");
-  assert(cp1->getFullID() == "Cell_ECM<0>"); //!< has no parent yet
+  assert(cp1->getID() == "Cell_ECM_0_");
+  assert(cp1->getFullID() == "Cell_ECM_0_"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
@@ -347,8 +347,8 @@ bool test_Constructor()
   assert(mp2->getID() == n);
   assert(cp1->getParent() == mp2.get());
   assert(cp2->getParent() == mp2.get());
-  assert(cp1->getID() == "Cell_ECM<0>");
-  assert(cp1->getFullID() == "na_Cell_ECM<0>");
+  assert(cp1->getID() == "Cell_ECM_0_");
+  assert(cp1->getFullID() == "na_Cell_ECM_0_");
 
   return true;
 }
@@ -723,9 +723,9 @@ bool test_Hierarchichal()
   assert(NEAR(Vini, 7 * cp1->V(), 1e-6));
   assert(mp->getFullID() == "H4");
   assert(mp1->getFullID() == "H4_H1");
-  assert(cp1->getFullID() == "H4_H1_Cell_ECM<0>");
-  assert(cp4->getFullID() == "H4_H2_Cell_ECM<0>");
-  assert(cp5->getFullID() == "H4_H3_Cell_ECM<0>");
+  assert(cp1->getFullID() == "H4_H1_Cell_ECM_0_");
+  assert(cp4->getFullID() == "H4_H2_Cell_ECM_0_");
+  assert(cp5->getFullID() == "H4_H3_Cell_ECM_0_");
 
   //!< set a CC current
   double Inew = -5;

@@ -24,8 +24,8 @@ bool test_Constructor_p()
 
   auto cp1 = make<Cell_Bucket>();
   auto cp2 = make<Cell_Bucket>();
-  assert(cp1->getID() == "Cell_ECM<0>");
-  assert(cp1->getFullID() == "Cell_ECM<0>"); //!< has no parent yet
+  assert(cp1->getID() == "Cell_ECM_0_");
+  assert(cp1->getFullID() == "Cell_ECM_0_"); //!< has no parent yet
 
   Deep_ptr<StorageUnit> cs[] = { std::move(cp1), std::move(cp2) };
   std::string n = "na";
@@ -46,8 +46,8 @@ bool test_BasicGetters_p()
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
   auto cp2 = dynamic_cast<Cell_Bucket *>(cs[1].get());
-  assert(cp1->getID() == "Cell_ECM<0>");
-  assert(cp1->getFullID() == "Cell_ECM<0>"); //!< has no parent yet
+  assert(cp1->getID() == "Cell_ECM_0_");
+  assert(cp1->getFullID() == "Cell_ECM_0_"); //!< has no parent yet
 
   std::string n = "na";
   double T = settings::T_ENV;
@@ -74,8 +74,8 @@ bool test_setI_p()
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
   auto cp2 = dynamic_cast<Cell_Bucket *>(cs[1].get());
-  assert(cp1->getID() == "Cell_ECM<0>");
-  assert(cp1->getFullID() == "Cell_ECM<0>"); //!< has no parent yet
+  assert(cp1->getID() == "Cell_ECM_0_");
+  assert(cp1->getFullID() == "Cell_ECM_0_"); //!< has no parent yet
 
 
   double v1 = cp1->V();
@@ -130,8 +130,8 @@ bool test_validStates_p()
   auto cp2 = dynamic_cast<Cell_Bucket *>(cs[1].get());
 
 
-  assert(cp1->getID() == "Cell_ECM<0>");
-  assert(cp1->getFullID() == "Cell_ECM<0>"); //!< has no parent yet
+  assert(cp1->getID() == "Cell_ECM_0_");
+  assert(cp1->getFullID() == "Cell_ECM_0_"); //!< has no parent yet
   std::string n = "na";
   double T = settings::T_ENV;
   bool checkCells = false;
@@ -492,9 +492,9 @@ bool test_Hierarchichal_p()
   assert(NEAR(Vini, cp5->V(), tol));
   assert(mp->getFullID() == "4");
   assert(mp1->getFullID() == "4_H1");
-  assert(cp1->getFullID() == "4_H1_Cell_ECM<0>");
-  assert(cp4->getFullID() == "4_H2_Cell_ECM<0>");
-  assert(cp5->getFullID() == "4_H3_Cell_ECM<0>");
+  assert(cp1->getFullID() == "4_H1_Cell_ECM_0_");
+  assert(cp4->getFullID() == "4_H2_Cell_ECM_0_");
+  assert(cp5->getFullID() == "4_H3_Cell_ECM_0_");
 
   //!< set a CC current
   double Inew = -14;    //!< should give about 2A per cell

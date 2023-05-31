@@ -39,6 +39,7 @@
 
 ### Current priority:
 
+- [ ] Problem compiling with MSVC vs Clang whereas Clang is 3x faster. Are we really enabling vectorisation and/or sse2/avx etc.? Make sure all optimisations are on for all compilers. 
 - [ ] Eigen is included! Remove unnecessary folders. 
 - [ ] Why CV controls voltage limit? It seems unnecessary. 
 - [x] Cycler `getSafetyVmin` and `getSafetyVmax` are removed for redundancy and expensiveness.
