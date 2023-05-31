@@ -10,6 +10,8 @@
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
 
+#include <Eigen/Dense>
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -109,41 +111,43 @@ Status Module_p::redistributeCurrent(bool checkV, bool print)
   constexpr int maxIteration = 2500;
   const auto nSU = getNSUs();
 
-  auto StatusNow = Status::RedistributeCurrent_failed;
+  auto StatusNow = Status::Success; //  Status::RedistributeCurrent_failed;
 
   if (nSU <= 1) return Status::Success;
 
-  double Itot{ 0 };
-  getVall(Va, print);
-  for (size_t i = 0; i < nSU; i++) {
-    Ia[i] = SUs[i]->I();
-    Itot += Ia[i]; // We also need to preserve sum of the currents!
-  }
+  setCurrent(I(), true, true);
 
-  int iter{ 0 };
-  for (; iter < maxIteration; iter++) {
-    double error{ 0 };
+  // double Itot{ 0 };
+  // getVall(Va, print);
+  // for (size_t i = 0; i < nSU; i++) {
+  //   Ia[i] = SUs[i]->I();
+  //   Itot += Ia[i]; // We also need to preserve sum of the currents!
+  // }
 
-    const auto Vmean = std::accumulate(Va.begin(), Va.begin() + nSU, 0.0) / nSU; // Compute the mean voltage
+  // int iter{ 0 };
+  // for (; iter < maxIteration; iter++) {
+  //   double error{ 0 };
 
-    for (size_t i = 0; i < nSU; i++) // Compute the error between mean voltage and individual cell voltages
-      error += std::abs(Vmean - Va[i]);
+  //   const auto Vmean = std::accumulate(Va.begin(), Va.begin() + nSU, 0.0) / nSU; // Compute the mean voltage
+
+  //   for (size_t i = 0; i < nSU; i++) // Compute the error between mean voltage and individual cell voltages
+  //     error += std::abs(Vmean - Va[i]);
 
 
-    if (error < 1e-10) // Return success if the error is below the threshold
-      return Status::Success;
+  //   if (error < 1e-10) // Return success if the error is below the threshold
+  //     return Status::Success;
 
-    // Update the currents based on the difference between mean and individual voltages
-    for (size_t i = 0; i < nSU; i++) {
-      Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
-      SUs[i]->setCurrent(Ia[i]);
-    }
+  //   // Update the currents based on the difference between mean and individual voltages
+  //   for (size_t i = 0; i < nSU; i++) {
+  //     Ia[i] = Ia[i] - (Vmean - Va[i]) * SUs[i]->Cap();
+  //     SUs[i]->setCurrent(Ia[i]);
+  //   }
 
-    getVall(Va, print);
-  }
+  //   getVall(Va, print);
+  // }
 
-  if constexpr (settings::printNumIterations)
-    std::cout << "redistributeCurrent iterations: " << iter << '\n';
+  // if constexpr (settings::printNumIterations)
+  //   std::cout << "redistributeCurrent iterations: " << iter << '\n';
 
   return StatusNow;
 }
@@ -208,55 +212,124 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   auto StatusNow = Status::Success;
 
-  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Ib, Va, Vb;
+  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Ib, Va, Vb, r_est, Vc;
   //!< get the old currents so we can revert if needed
 
-  size_t iter{};
 
-  for (; iter < maxIteration; iter++) {
-    StatusNow = Status::Success; //!< reset at each iteration.
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX> A;
+  Eigen::Matrix<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX> b;
 
-    int i{ nSU - 1 };
+
+  A.resize(nSU, nSU);
+  b.resize(nSU);
+
+
+  StatusNow = Status::Success; //!< reset at each iteration.
+  for (size_t i = 0; i < SUs.size(); i++) {
     Ia[i] = SUs[i]->I();
     Va[i] = SUs[i]->V();
-    double Itot_a{ Ia[i] };
-    for (--i; i >= 0; i--) {
-      Va[i] = Va[i + 1] - Ia[i + 1] * Rcontact[i + 1];
-      StatusNow = std::max(StatusNow, SUs[i]->setVoltage(Va[i]));
 
-      Ia[i] = SUs[i]->I();
-      Itot_a += Ia[i];
-    }
-
-
-    auto dI = (Inew - Itot_a); // #TODO must change if charge/discharge.
-    if (std::abs(dI) < settings::MODULE_P_I_ABSTOL) return StatusNow;
-
-    i = nSU - 1;
-    Ib[i] = Ia[i] + 0.5 * dI / nSU;
-    StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i]));
-    if (isStatusBad(StatusNow)) return StatusNow;
+    Ib[i] = Ia[i] + 0.5; // Perturbation
+    SUs[i]->setCurrent(Ib[i]);
 
     Vb[i] = SUs[i]->V();
-    double Itot_b{ Ib[i] };
-    for (--i; i >= 0; i--) {
-      Vb[i] = Vb[i + 1] - Ib[i + 1] * Rcontact[i + 1];
-      StatusNow = std::max(StatusNow, SUs[i]->setVoltage(Vb[i]));
-      if (isStatusBad(StatusNow)) return StatusNow;
-      Ib[i] = SUs[i]->I();
-      Itot_b += Ib[i];
-    }
 
-    const double slope = (Ia[nSU - 1] - Ib[nSU - 1]) / (Itot_a - Itot_b);
-    const auto Iend_new = Ib[nSU - 1] - (Itot_b - Inew) * slope; //!< False-Position method.
-
-    StatusNow = std::max(StatusNow, SUs[nSU - 1]->setCurrent(Iend_new));
+    r_est[i] = -(Va[i] - Vb[i]) / (Ia[i] - Ib[i]); // Estimated resistance.
   }
 
-  if constexpr (settings::printNumIterations)
-    if (iter != 0) std::cout << "setCurrent iterations: " << iter << std::endl;
-  // #TODO set old currents back here!
-  return StatusNow; //!< #TODO problem
+
+  for (size_t j = 0; j < nSU; j++)
+    for (size_t i = 0; i < nSU; i++) {
+      if (i == 0)
+        A(i, j) = -1;
+      else if (i == j)
+        A(i, j) = -Rcontact[i] - r_est[i];
+      else if (i == j + 1)
+        A(i, j) = r_est[j];
+      else if (j > i)
+        A(i, j) = -Rcontact[i];
+      else
+        A(i, j) = 0;
+    }
+
+  for (size_t i = 0; i < nSU; i++)
+    if (i == 0)
+      b(i) = -Inew;
+    else
+      b(i) = Vb[i - 1] - Vb[i];
+
+  Eigen::Matrix<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX> sol = A.partialPivLu().solve(b);
+
+  for (size_t i = 0; i < nSU; i++) {
+    StatusNow = std::max(StatusNow, SUs[i]->setCurrent(sol[i]));
+    Ia[i] = SUs[i]->I();
+    Va[i] = SUs[i]->V();
+  }
+
+  return StatusNow;
+
+  // getVall(Vc, false);
+
+  // size_t iter{};
+
+  // SUs[0]->setCurrent(0.5);
+
+  // auto I0 = SUs[0]->I();
+  // auto V0 = SUs[0]->V();
+
+  // auto I1 = I0 + 1;
+
+  // SUs[0]->setCurrent(I1);
+  // auto V1 = SUs[0]->V();
+
+  // auto r_estimated = -(V0 - V1) / (I0 - I1);
+  // auto r_tot = SUs[0]->getRtot();
+
+
+  // for (; iter < maxIteration; iter++) {
+  //   StatusNow = Status::Success; //!< reset at each iteration.
+
+  //   int i{ nSU - 1 };
+  //   Ia[i] = SUs[i]->I();
+  //   Va[i] = SUs[i]->V();
+  //   double Itot_a{ Ia[i] };
+  //   for (--i; i >= 0; i--) {
+  //     Va[i] = Va[i + 1] - Ia[i + 1] * Rcontact[i + 1];
+  //     StatusNow = std::max(StatusNow, SUs[i]->setVoltage(Va[i]));
+
+  //     Ia[i] = SUs[i]->I();
+  //     Itot_a += Ia[i];
+  //   }
+
+
+  // auto dI = (Inew - Itot_a); // #TODO must change if charge/discharge.
+  // if (std::abs(dI) < settings::MODULE_P_I_ABSTOL) return StatusNow;
+
+  // i = nSU - 1;
+  // Ib[i] = Ia[i] + 0.5 * dI / nSU;
+  // StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i]));
+  // if (isStatusBad(StatusNow)) return StatusNow;
+
+  // Vb[i] = SUs[i]->V();
+  // double Itot_b{ Ib[i] };
+  // for (--i; i >= 0; i--) {
+  //   Vb[i] = Vb[i + 1] - Ib[i + 1] * Rcontact[i + 1];
+  //   StatusNow = std::max(StatusNow, SUs[i]->setVoltage(Vb[i]));
+  //   if (isStatusBad(StatusNow)) return StatusNow;
+  //   Ib[i] = SUs[i]->I();
+  //   Itot_b += Ib[i];
+  // }
+
+  // const double slope = (Ia[nSU - 1] - Ib[nSU - 1]) / (Itot_a - Itot_b);
+  // const auto Iend_new = Ib[nSU - 1] - (Itot_b - Inew) * slope; //!< False-Position method.
+
+  // StatusNow = std::max(StatusNow, SUs[nSU - 1]->setCurrent(Iend_new));
+  //}
+
+  // if constexpr (settings::printNumIterations)
+  //   if (iter != 0) std::cout << "setCurrent iterations: " << iter << std::endl;
+  // // #TODO set old currents back here!
+  // return StatusNow; //!< #TODO problem
 }
 
 

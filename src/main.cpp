@@ -34,17 +34,6 @@ int main()
 
   //!< print that you start simulations
   //!< slide::tests::unit::test_all();
-  std::cout << "Start simulations" << std::endl;
-
-  using Eigen::MatrixXd;
-
-  MatrixXd m(2, 2);
-  m(0, 0) = 3;
-  m(1, 0) = 2.5;
-  m(0, 1) = -1;
-  m(1, 1) = m(1, 0) + m(0, 1);
-  std::cout << m << std::endl;
-
   //!< Make a clock to measure how long the simulation takes
   slide::Clock clk;
   //!< Read the values for the matrices for the spatial discretisation of the solid diffusion PDE.
@@ -169,7 +158,7 @@ int main()
   // slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
   // slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
+  slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
 
   // slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
 
