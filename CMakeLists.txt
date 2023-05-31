@@ -12,6 +12,9 @@ include(cmake/PreventInSourceBuilds.cmake)
 
 enable_testing()
 add_subdirectory(src bin)
+add_subdirectory(external/eigen)
+
+target_link_libraries(src PUBLIC eigen)
 
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
@@ -26,6 +29,7 @@ target_compile_features(project_options INTERFACE cxx_std_20)
 add_executable(slide
   src/main.cpp
 )
+
 
 target_link_libraries(slide
   PRIVATE

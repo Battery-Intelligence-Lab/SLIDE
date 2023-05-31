@@ -39,6 +39,7 @@
 
 ### Current priority:
 
+- [ ] Eigen is included! Remove unnecessary folders. 
 - [ ] Why CV controls voltage limit? It seems unnecessary. 
 - [x] Cycler `getSafetyVmin` and `getSafetyVmax` are removed for redundancy and expensiveness.
 - [x] Cycler `initialise` is removed now constructor is used. 
