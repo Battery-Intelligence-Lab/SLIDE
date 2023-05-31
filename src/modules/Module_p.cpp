@@ -212,20 +212,23 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   auto StatusNow = Status::Success;
 
-  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Ib, Va, Vb, r_est, Vc;
+  // std::array<double, settings::MODULE_NSUs_MAX> ;
   //!< get the old currents so we can revert if needed
 
 
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX> A;
-  Eigen::Matrix<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX> b;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX> A(nSU, nSU);
+  Eigen::Array<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX> b(nSU), Iolds(nSU), Ia(nSU), Ib(nSU), Va(nSU), Vb(nSU),
+    r_est(nSU), Vc(nSU);
 
 
-  A.resize(nSU, nSU);
-  b.resize(nSU);
+  // A.resize(nSU, nSU);
+  // b.resize(nSU);
 
 
   StatusNow = Status::Success; //!< reset at each iteration.
-  for (size_t i = 0; i < SUs.size(); i++) {
+
+
+  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
     Ia[i] = SUs[i]->I();
     Va[i] = SUs[i]->V();
 
@@ -237,6 +240,16 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     r_est[i] = -(Va[i] - Vb[i]) / (Ia[i] - Ib[i]); // Estimated resistance.
   }
 
+  double Icumulative{};
+  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+    Icumulative += Ib[i];
+
+    if (i != 0) {
+      b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
+    } else {
+      b(i) = Inew - Icumulative;
+    }
+  }
 
   for (size_t j = 0; j < nSU; j++)
     for (size_t i = 0; i < nSU; i++) {
@@ -252,18 +265,31 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
         A(i, j) = 0;
     }
 
-  for (size_t i = 0; i < nSU; i++)
-    if (i == 0)
-      b(i) = -Inew;
-    else
-      b(i) = Vb[i - 1] - Vb[i];
-
-  Eigen::Matrix<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX> sol = A.partialPivLu().solve(b);
+  Eigen::Matrix<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX> deltaI = A.partialPivLu().solve(b.matrix());
 
   for (size_t i = 0; i < nSU; i++) {
-    StatusNow = std::max(StatusNow, SUs[i]->setCurrent(sol[i]));
-    Ia[i] = SUs[i]->I();
-    Va[i] = SUs[i]->V();
+    StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i] - deltaI[i]));
+    Ib[i] = SUs[i]->I();
+    Vb[i] = SUs[i]->V();
+  }
+
+  Icumulative = 0;
+  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+    Icumulative += Ib[i];
+
+    if (i != 0) {
+      b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
+    } else {
+      b(i) = -Inew + Icumulative;
+    }
+  }
+
+  deltaI = A.partialPivLu().solve(b.matrix());
+
+  for (size_t i = 0; i < nSU; i++) {
+    StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i] - deltaI[i]));
+    Ib[i] = SUs[i]->I();
+    Vb[i] = SUs[i]->V();
   }
 
   return StatusNow;
