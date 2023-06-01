@@ -32,7 +32,7 @@ namespace slide {
  *
  * @return The total resistance of the module.
  */
-double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
+double Module_p::getRtot()   // #TODO -> This function seems to be very expensive.
 {
   if (SUs.empty()) return 0; // If there are no cells connected, return 0
 
@@ -82,10 +82,10 @@ void Module_p::getVall(std::span<double> Vall, bool print) // #TODO span may not
 
   double I_cumulative{ 0 };
   for (size_t i{}; i < SUs.size(); i++) {
-    const auto j = SUs.size() - 1 - i; // Inverse indexing.
-    Vall[j] = SUs[j]->V();             // Store the voltage of the current SU
+    const auto j = SUs.size() - 1 - i;     // Inverse indexing.
+    Vall[j] = SUs[j]->V();                 // Store the voltage of the current SU
 
-    I_cumulative += SUs[j]->I(); // Update cumulative current
+    I_cumulative += SUs[j]->I();           // Update cumulative current
 
     for (auto k{ j }; k < SUs.size(); k++) // Update the voltage values in Vall considering contact resistances
       Vall[k] -= I_cumulative * Rcontact[j];
@@ -143,7 +143,7 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
     // Perturb a bit:
     const double perturbation = 0.5; //
     for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
-      Ib[i] += perturbation; // Perturbation
+      Ib[i] += perturbation;         // Perturbation
       SUs[i]->setCurrent(Ib[i]);
 
       const double Vnew = SUs[i]->V();
@@ -370,7 +370,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
     therm.time += nstep * dt;
 
     //!< Increase the heat from the contact resistances
-    double Ii = 0; //!< current through resistor I
+    double Ii = 0;                            //!< current through resistor I
     for (size_t i = 0; i < SUs.size(); i++) {
       for (size_t j = i; j < SUs.size(); j++) // #TODO very important! Not calculating current for Rcontact properly!!!!!!!!!!
         Ii += SUs[j]->I();                    //!< resistor i sees the currents through the cells 'behind' them
@@ -422,7 +422,8 @@ void Module_p::timeStep_CC(double dt, int nstep)
   //!< check if the cell's voltage is valid #TODO I changed this to make redistribute everytime!
   auto status = redistributeCurrent(false, true); //!< don't check the currents
   if (!isStatusOK(status)) {
-    throw 100000; //!< #TODO
+    status = redistributeCurrent(false, true);    //!< don't check the currents
+    throw 100000;                                 //!< #TODO
   }
 }
 
