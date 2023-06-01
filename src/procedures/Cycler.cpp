@@ -209,11 +209,10 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
   double dti = dt; //!< length of time step i
   double ttot{};   //!< total time done
 
-  int idat = 0;                    //!< consecutive number of time steps done without storing data
-  int nOnce = 1;                   //!< number of time steps we take at once, will change dynamically
-  constexpr double sfactor = 10.0; //!< increase nOnce if the voltage headroom is bigger than sfactor*dV (dV = change in this iteration)
-  int nOnceMax = 2;                //!< allow maximum this number of steps to be taken at once
-  if (boolStoreData)               //!< if we store data, never take more than the interval at which you want to store the voltage
+  int idat = 0;      //!< consecutive number of time steps done without storing data
+  int nOnce = 1;     //!< number of time steps we take at once, will change dynamically
+  int nOnceMax = 2;  //!< allow maximum this number of steps to be taken at once
+  if (boolStoreData) //!< if we store data, never take more than the interval at which you want to store the voltage
     nOnceMax = std::min(nOnceMax, ndt_data);
   double vo{ su->V() }, vi{ vo }; //!< voltage in the previous/this iteration
   bool allowUp = true;            //!< do we allow nOnce to increase?

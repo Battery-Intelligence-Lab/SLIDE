@@ -329,18 +329,13 @@ inline bool Cell_ECM<N_RC>::validStates(bool print)
   return range;
 }
 
+/**
+ * @brief Perform a time step at a constant current.
+ */
 template <size_t N_RC>
 inline void Cell_ECM<N_RC>::timeStep_CC(double dt, int nstep)
 {
-  /*
-   *	take a time step of dt seconds while keeping the current constant
-   */
-  if (dt < 0) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Cell_ECM::timeStep_CC, the time step dt must be "
-                << "0 or positive, but has value " << dt << '\n';
-    throw 10;
-  }
+  assert(dt > 0); // Check if the time step is valid (only in debug mode)
 
   const auto dth = dt / 3600.0;
   //!< take the specified number of time steps

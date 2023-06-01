@@ -344,13 +344,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
  */
 void Module_p::timeStep_CC(double dt, int nstep)
 {
-  // Check if the time step is valid
-  if (dt < 0) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Module_p::timeStep_CC, the time step dt must be 0 or positive, but has value "
-                << dt << '\n';
-    throw 10;
-  }
+  assert(dt > 0); // Check if the time step is valid (only in debug mode)
 
   //!< we simply take one CC time step on every cell
   auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, nstep); };

@@ -117,17 +117,13 @@ void Module_s::timeStep_CC(double dt, int nstep)
    * a time step at constant current is simply a time step of every individual cell
    *
    * THROWS
-   * 10 	negative time step
    * 13 	in multithreading, an exception was thrown in one of the child threads of timeSetp_CC_i;
    * 14 	this module has no parent (i.e. is top level) but does not have an HVAC coolsystem
    * 			the top level needs an HVAC system for heat exchange with the environment
    * 			lower-level modules (with a parent module) will get cooling from the coolsystems of their parent so they have a regular coolSystem
    */
-  if (dt < 0) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Module_s::timeStep_CC, the time step dt must be 0 or positive, but has value " << dt << '\n';
-    throw 10;
-  }
+
+  assert(dt > 0); // Check if the time step is valid (only in debug mode)
 
   //!< we simply take one CC time step on every cell
   auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, nstep); };
@@ -173,12 +169,12 @@ void Module_s::timeStep_CC(double dt, int nstep)
       setT(thermalModel(0, Tneigh, Kneigh, Aneigh, therm.time)); //!< the 0 signals there are no neighbours or parents
 
       /*
-double Tneigh[1] = {settings::T_ENV};							//!< T of environment
-double Kneigh[1] = {cool->getH()}; 					//!< h to environment is same as to children, since the speed of the coolant is the same
-double Aneigh[1] = {therm.A};						//!< A to the environment is the A of this module
-//!< note that this will have more heat exchange than to children, since A = min(A_this, A_parent)
-//!< 	children will have a smaller A themselves, so the resulting A = A_child < A of this module
-setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
+      double Tneigh[1] = {settings::T_ENV};							//!< T of environment
+      double Kneigh[1] = {cool->getH()}; 					//!< h to environment is same as to children, since the speed of the coolant is the same
+      double Aneigh[1] = {therm.A};						//!< A to the environment is the A of this module
+      //!< note that this will have more heat exchange than to children, since A = min(A_this, A_parent)
+      //!< 	children will have a smaller A themselves, so the resulting A = A_child < A of this module
+      setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
     }
 
     //!< control the cooling system

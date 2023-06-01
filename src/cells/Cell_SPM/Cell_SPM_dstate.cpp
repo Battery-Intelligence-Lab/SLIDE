@@ -259,12 +259,7 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
    *
    */
 
-  //!< check the time step is positive
-  if (dt < 0) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Cell_ECM::timeStep_CC, the time step dt must be 0 or positive, but has value " << dt << '\n';
-    throw 10;
-  }
+  assert(dt > 0); // Check if the time step is valid (only in debug mode)
 
   const bool print = true;
 
