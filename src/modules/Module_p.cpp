@@ -236,33 +236,41 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   StatusNow = Status::Success; //!< reset at each iteration.
 
   const double tolerance = 1e-9;
-
-  double Icumulative{}, error_voltage{}, error_current{};
   for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
-    Icumulative += Ib[i] = SUs[i]->I();
+    Ib[i] = SUs[i]->I();
     Vb[i] = SUs[i]->V();
-
-    if (i != 0)
-      error_voltage += std::abs(Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i]);
-    else
-      error_current = std::abs(Inew - Icumulative);
   }
 
-  if (error_voltage < tolerance && error_current < (8 * tolerance)) return StatusNow;
+
+  double Icumulative{}, error{};
+  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+    Icumulative += Ib[i];
+
+    if (i != 0)
+      b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
+    else
+      b(i) = Inew - Icumulative; // #TODO????
+
+    error += std::abs(b(i));
+
+    r_est[i] = 0.01; // 0.1e-3; // initialise constant and see.
+  }
+
+  if (error < tolerance) return StatusNow;
 
 
-  Eigen::PartialPivLU<A_type> LU = [&]() { // #TODO this will be static in future defined in parallel block
-    // Perturb a bit:
-    const double perturbation = 1; //
-    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
-      Ib[i] += perturbation; // Perturbation
-      SUs[i]->setCurrent(Ib[i]);
+  // // Perturb a bit:
+  // const double perturbation = 0.5; //
+  // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+  //   Ib[i] += perturbation; // Perturbation
+  //   SUs[i]->setCurrent(Ib[i]);
 
-      const double Vnew = SUs[i]->V();
-      r_est[i] = (Vb[i] - Vnew) / perturbation; // Estimated resistance.
-      Vb[i] = Vnew;
-    }
+  //   const double Vnew = SUs[i]->V();
+  //   r_est[i] = (Vb[i] - Vnew) / perturbation; // Estimated resistance.
+  //   Vb[i] = Vnew;
+  // }
 
+  auto getLU = [&]() { // #TODO this will be static in future defined in parallel block
     A_type A(nSU, nSU);
     // Set up the A matrix in Ax = b
     for (size_t j = 0; j < nSU; j++)
@@ -280,7 +288,8 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
       }
     Eigen::PartialPivLU<A_type> LU(A); // LU decomposition of A.
     return LU;
-  }();
+  };
+
 
   while (iter < maxIteration) {
     double Icumulative{}, error{};
@@ -298,12 +307,18 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     if (error < tolerance) break;
     iter++;
 
+    Eigen::PartialPivLU<A_type> LU = getLU();
     b_type deltaI = LU.solve(b.matrix()).array();
 
     for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      double Vb_old = Vb[i];
       StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i] - deltaI[i]));
       Ib[i] = SUs[i]->I();
       Vb[i] = SUs[i]->V();
+
+
+      if (std::abs(deltaI[i]) > 1e-9)
+        r_est[i] = (Vb[i] - Vb_old) / deltaI[i];
     }
   }
 
@@ -311,7 +326,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     StatusNow = Status::RedistributeCurrent_failed;
 
   if constexpr (settings::printNumIterations)
-    if (iter > 3) std::cout << "setCurrent iterations: " << iter << std::endl;
+    if (iter > 5) std::cout << "setCurrent iterations: " << iter << std::endl;
 
   // #TODO set old currents back here!
   return StatusNow;
@@ -405,14 +420,9 @@ void Module_p::timeStep_CC(double dt, int nstep)
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
   //!< check if the cell's voltage is valid #TODO I changed this to make redistribute everytime!
-  try {
-    auto status = redistributeCurrent(false, true); //!< don't check the currents
-    if (status != Status::Success) {
-      auto status = redistributeCurrent(false, true); //!< don't check the currents
-      throw 100000;                                   //!< #TODO
-    }
-  } catch (std::exception &e) {
-    std::cout << e.what() << '\n';
+  auto status = redistributeCurrent(false, true); //!< don't check the currents
+  if (!isStatusOK(status)) {
+    throw 100000; //!< #TODO
   }
 }
 
