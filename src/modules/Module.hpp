@@ -49,11 +49,9 @@ protected:
   ModuleThermalParam therm;
 
   //!< voltage
-  size_t Ncells;               //!< Number of cells this module contains.
-  double Vmodule{ 0 };         //!< voltage of the module
-  bool Vmodule_valid{ false }; //!< boolean indicating if stored the voltage of the module is valid
-  bool par{ true };            //!< if true, some functions will be calculated parallel using multithreaded computing
-                               //!< data storage
+  size_t Ncells;    //!< Number of cells this module contains.
+  bool par{ true }; //!< if true, some functions will be calculated parallel using multithreaded computing
+                    //!< data storage
 
   State<0, settings::data::N_CumulativeModule> st_module;
   std::vector<double> data; //!< Time data
@@ -124,7 +122,6 @@ public:
     assert(Rc.size() == getNSUs());
     Rcontact.resize(Rc.size());
     std::copy(Rc.begin(), Rc.end(), Rcontact.begin());
-    Vmodule_valid = false; //!< we are changing the resistance, so the stored voltage is no longer valid
   }
 
   virtual Module *copy() override = 0;

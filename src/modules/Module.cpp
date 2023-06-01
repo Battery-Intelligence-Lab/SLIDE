@@ -93,9 +93,6 @@ void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
   //!< check the cells are valid according to this module layout
   // #TODO checkCells & setSUs removed from here
 
-  //!< connect the cells to this module
-  Vmodule_valid = false; //!< we are changing the SUs, so the stored voltage is no longer valid
-
   SUs.clear();
   Rcontact.clear();
   size_t r{ 0 };
@@ -217,8 +214,6 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
   getStates(sorig);
 
   std::span<double> spn_orig{ sorig };
-
-  Vmodule_valid = false; //!< we are changing the states, so the stored voltage is no longer valid
 
   //!< set the new cell states
   for (size_t i = 0; i < getNSUs(); i++) {

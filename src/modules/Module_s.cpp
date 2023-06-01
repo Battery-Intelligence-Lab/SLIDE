@@ -55,12 +55,7 @@ double Module_s::V()
   //!< sum of the voltage of all cells
   //!< bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  //!< if the stored value is up to date, return that one
-  if (Vmodule_valid)
-    return Vmodule;
-
-  //!< else calculate the voltage
-  Vmodule = 0;
+  double Vmodule{ 0 };
   for (size_t i = 0; i < getNSUs(); i++) {
     const auto v_i = SUs[i]->V();
 
@@ -70,7 +65,6 @@ double Module_s::V()
     Vmodule += v_i - Rcontact[i] * SUs[i]->I();
   }
 
-  Vmodule_valid = true;
   return Vmodule;
 }
 
@@ -90,8 +84,6 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Set the current, if checkVi this also gets the cell voltages
-  Vmodule_valid = false; //!< we are changing the current, so the stored voltage is no longer valid
-
   std::array<double, settings::MODULE_NSUs_MAX> Iolds;
   auto StatusNow = Status::Success;
 
@@ -193,8 +185,6 @@ setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
     const double Tlocal = transform_max(SUs, free::get_T<SU_t>); // #TODO Battery also has this.
     cool->control(Tlocal, getThotSpot());
   }
-
-  Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 }
 
 } // namespace slide
