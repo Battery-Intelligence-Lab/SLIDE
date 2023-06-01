@@ -104,20 +104,10 @@ void Module_p::getVall(std::span<double> Vall, bool print) // #TODO span may not
 Status Module_p::redistributeCurrent(bool checkV, bool print)
 {
   // New redistributeCurrent without PI control:
-  //!< get cell voltages
-  std::array<double, settings::MODULE_NSUs_MAX> Va, Vb, Ia, Ib; //!< #TODO if we should make them vector.
-
   //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
-  constexpr int maxIteration = 2500;
-  const auto nSU = getNSUs();
+  if (getNSUs() <= 1) return Status::Success;
 
-  auto StatusNow = Status::Success; //  Status::RedistributeCurrent_failed;
-
-  if (nSU <= 1) return Status::Success;
-
-  setCurrent(I(), true, true);
-
-  return StatusNow;
+  return setCurrent(I(), true, true);
 }
 
 Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
@@ -204,11 +194,13 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
     }
   }
 
+  if (iter == maxIteration)
+    StatusNow = Status::RedistributeCurrent_failed;
 
   if constexpr (settings::printNumIterations)
-    if (iter > 1) std::cout << "setVoltage iterations: " << iter << '\n';
+    if (iter > 3) std::cout << "setVoltage iterations: " << iter << '\n';
 
-  return StatusNow; // #TODO add some voltage/current etc. check
+  return StatusNow; // #TODO add some voltage/current etc. Also return max iter condition!!!!
 }
 
 Status Module_p::setCurrent(double Inew, bool checkV, bool print)
@@ -228,7 +220,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  constexpr int maxIteration = 5;
+  constexpr int maxIteration = 50;
   int iter{}; // Current iteration
   const int nSU = getNSUs();
 
@@ -261,7 +253,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   Eigen::PartialPivLU<A_type> LU = [&]() { // #TODO this will be static in future defined in parallel block
     // Perturb a bit:
-    const double perturbation = 0.5; //
+    const double perturbation = 1; //
     for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
       Ib[i] += perturbation; // Perturbation
       SUs[i]->setCurrent(Ib[i]);
@@ -315,8 +307,11 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     }
   }
 
+  if (iter == maxIteration)
+    StatusNow = Status::RedistributeCurrent_failed;
+
   if constexpr (settings::printNumIterations)
-    if (iter > 1) std::cout << "setCurrent iterations: " << iter << std::endl;
+    if (iter > 3) std::cout << "setCurrent iterations: " << iter << std::endl;
 
   // #TODO set old currents back here!
   return StatusNow;
@@ -410,10 +405,14 @@ void Module_p::timeStep_CC(double dt, int nstep)
   Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
 
   //!< check if the cell's voltage is valid #TODO I changed this to make redistribute everytime!
-  auto status = redistributeCurrent(false, true); //!< don't check the currents
-  if (status != Status::Success) {
+  try {
     auto status = redistributeCurrent(false, true); //!< don't check the currents
-    throw 100000;                                   //!< #TODO
+    if (status != Status::Success) {
+      auto status = redistributeCurrent(false, true); //!< don't check the currents
+      throw 100000;                                   //!< #TODO
+    }
+  } catch (std::exception &e) {
+    std::cout << e.what() << '\n';
   }
 }
 

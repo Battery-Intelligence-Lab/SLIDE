@@ -47,7 +47,7 @@ set(Eigen_BINARY_DIR ${Eigen3_BINARY_DIR})
 # guard against bad build-type strings
 
 if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release")
+  set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
 

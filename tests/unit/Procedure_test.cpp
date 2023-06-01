@@ -357,26 +357,26 @@ bool test_Procedure_cycleAge_stress()
   auto p1 = Procedure(balance, Vbal, ndata, unittest);
   p1.cycleAge(mpp3.get(), false);
 
-  // //!< 4 similar and one very different
-  // std::cout << "Start procedure test with 4 similar and one very different cell.\n";
-  // std::string n4 = "proctest_mp_4and1";
-  // std1 = 0.004;
-  // std2 = 0.025;
-  // std::normal_distribution<double> distr_c(1.0, std1); //!< normal distribution with mean 1 and std 0.4% for cell capacity
-  // std::normal_distribution<double> distr_r(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
-  // std::normal_distribution<double> distr_d(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
+  //!< 4 similar and one very different
+  std::cout << "Start procedure test with 4 similar and one very different cell.\n";
+  std::string n4 = "proctest_mp_4and1";
+  std1 = 0.004;
+  std2 = 0.025;
+  std::normal_distribution<double> distr_c(1.0, std1); //!< normal distribution with mean 1 and std 0.4% for cell capacity
+  std::normal_distribution<double> distr_r(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell resistance
+  std::normal_distribution<double> distr_d(1.0, std2); //!< normal distribution with mean 1 and std 2.5% for cell degradation rate
 
-  // Deep_ptr<StorageUnit> cs4[ncel1];
-  // cs4[0] = make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  // cs4[1] = make<Cell_SPM>("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  // cs4[2] = make<Cell_SPM>("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  // cs4[3] = make<Cell_SPM>("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  // cs4[4] = make<Cell_SPM>("cell9", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance and 10% more degradation
+  Deep_ptr<StorageUnit> cs4[ncel1];
+  cs4[0] = make<Cell_SPM>("cell5", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[1] = make<Cell_SPM>("cell6", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[2] = make<Cell_SPM>("cell7", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[3] = make<Cell_SPM>("cell8", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[4] = make<Cell_SPM>("cell9", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance and 10% more degradation
 
-  // auto mpp4 = make<Module_p>(n4, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
-  // mpp4->setSUs(cs4, checkCells2, true);
-  // auto p2 = Procedure(balance, Vbal, ndata, unittest);
-  // p2.cycleAge(mpp4.get(), false); //!< this should write a file called s_module_capacities.csv
+  auto mpp4 = make<Module_p>(n4, T2, true, false, ncel1, 1, 1); //!< no multithreading, nt_Vcheck time steps between checking SU voltage
+  mpp4->setSUs(cs4, checkCells2, true);
+  auto p2 = Procedure(balance, Vbal, ndata, unittest);
+  p2.cycleAge(mpp4.get(), false); //!< this should write a file called s_module_capacities.csv
 
   return true;
 }

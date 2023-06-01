@@ -12,9 +12,9 @@ include(cmake/PreventInSourceBuilds.cmake)
 
 enable_testing()
 add_subdirectory(src bin)
-add_subdirectory(external/eigen)
+#add_subdirectory(external/eigen)
 
-target_link_libraries(src PUBLIC eigen)
+target_include_directories(src PUBLIC external/eigen)
 
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
