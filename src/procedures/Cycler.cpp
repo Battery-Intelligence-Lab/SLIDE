@@ -145,11 +145,15 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, ThroughputData &th)
  * @param[in] vlim Voltage limit to be respected (in Volts).
  * @return Status for the reason why the function stopped.
  */
-Status Cycler::setCurrent(double I, double vlim)
+Status Cycler::setCurrent(double I, double vlim, double &v_now)
 {
-  bool checkCellV = true;
+  const bool checkCellV = true;
 
   const double Vini{ su->V() }, Iini{ su->I() };
+
+  //!< check the voltage limit
+  if ((I < 0 && Vini > vlim) || (I > 0 && Vini < vlim)) //!< charging -> exceeded if Vnew > vlim
+    return Status::ReachedVoltageLimit;
 
   //!< Try setting the current
   const auto status = su->setCurrent(I, checkCellV, settings::printBool::printNonCrit); //!< throws error if checkCellv == true and voltage out of range of a cell
@@ -165,9 +169,13 @@ Status Cycler::setCurrent(double I, double vlim)
   const double Vnew = su->V();
   //!< check if the voltage limit was exceeded while setting the current
   //!< charging -> exceeded if Vini < vlim  & Vnew > vlim //!< #TODO why Vini check?
-  if ((I < 0 && Vini <= vlim && Vnew > vlim) || (I > 0 && Vini >= vlim && Vnew < vlim) || isStatusWarning(status))
+  if (Vnew <= 0) {
+    if constexpr (settings::printBool::printNonCrit)
+      std::cout << "error in Cycler::setCurrent in time step when getting the voltage. "
+                << "The previous voltage was " << Vini << "V. Terminating the corresponding phase.\n";
+    return Status::V_not_calculated;
+  } else if ((I < 0 && Vnew > vlim) || (I > 0 && Vnew < vlim) || isStatusWarning(status))
     return Status::ReachedVoltageLimit;
-
 
   return Status::Success; //!< if none of the above, we could set the current without exceeding any voltage limit
 }
@@ -200,7 +208,8 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
 
   if (boolStoreData) storeData();
 
-  auto succNow = setCurrent(I, vlim);
+  double vi{}; //!< voltage now
+  auto succNow = setCurrent(I, vlim, vi);
   if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
 
   auto succ = Status::ReachedTimeLimit;
@@ -214,17 +223,11 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
   int nOnceMax = 2;  //!< allow maximum this number of steps to be taken at once
   if (boolStoreData) //!< if we store data, never take more than the interval at which you want to store the voltage
     nOnceMax = std::min(nOnceMax, ndt_data);
-  double vo{ su->V() }, vi{ vo }; //!< voltage in the previous/this iteration
-  bool allowUp = true;            //!< do we allow nOnce to increase?
+  bool allowUp = true; //!< do we allow nOnce to increase?
 
   while (ttot < tlim) {
-    //!< check the voltage limit
-    if ((I < 0 && vi > vlim) || (I > 0 && vi < vlim)) { //!< charging -> exceeded if Vnew > vlim
-      succ = Status::ReachedVoltageLimit;
-      break;
-    }
 
-    auto succNow = setCurrent(I, vlim);               // #TODO this was not here I added to get nice results from
+    auto succNow = setCurrent(I, vlim, vi);           // #TODO this was not here I added to get nice results from
     if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
 
     dti = std::min(dti, tlim - ttot); //!< the last time step, ensure we end up exactly at the right time
@@ -240,23 +243,13 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
       return Status::timeStep_CC_failed;
     }
 
-    //!< get the voltage
-    const auto v_prev = vi;
-    vi = su->V();
-    if (vi <= 0) {
-      if constexpr (settings::printBool::printNonCrit)
-        std::cout << "error in Cycler::CC in time step when getting the voltage. "
-                  << "The previous voltage was " << v_prev << "V. Terminating the CC phase.\n";
-      return Status::V_not_calculated;
-    }
-
     //!< Increase the throughput
     const auto dt_now = dti * nOnce;
     th.time() += dt_now;
     ttot += dt_now;
     th.Ah() += std::abs(I) * dt_now / 3600.0;
     idat += nOnce;
-    th.Wh() += std::abs(I) * dt_now / 3600 * vi;
+    th.Wh() += std::abs(I) * dt_now / 3600 * vi; // #TODO This should be (v_before + v_after)/2
 
     //!< Store a data point if needed
     if (boolStoreData && idat >= ndt_data) {

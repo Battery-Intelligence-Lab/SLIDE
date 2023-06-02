@@ -24,7 +24,7 @@ private:
   size_t index{ 0 }; //!< Cycler should keep its on index for data writing.
 
   //!< secondary functions
-  Status setCurrent(double I, double vlim); //!< sets the current to the connected SU
+  Status setCurrent(double I, double vlim, double &v_now); //!< sets the current to the connected SU
 public:
   Cycler() = default;
   Cycler(StorageUnit *sui) : su(sui) {}

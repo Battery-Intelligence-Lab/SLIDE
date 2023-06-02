@@ -199,9 +199,7 @@ double Battery::getCoolingLoad()
 
 void Battery::timeStep_CC(double dt, int steps)
 {
-
-  //!< integrate in time for the cells
-  cells->timeStep_CC(dt, steps);
+  cells->timeStep_CC(dt, steps); //!< integrate in time for the cells
 
   //!< increase the losses from the converter
   double l = conv.getLosses(V(), I()) * dt * steps; //!< losses [J] during this period

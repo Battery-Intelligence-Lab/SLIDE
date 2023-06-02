@@ -410,13 +410,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
 
     cool->control(Tlocal, getThotSpot());
   }
-
-  //!< check if the cell's voltage is valid #TODO I changed this to make redistribute everytime!
-  auto status = redistributeCurrent(false, true); //!< don't check the currents
-  if (!isStatusOK(status)) {
-    status = redistributeCurrent(false, true); //!< don't check the currents
-    throw 100000;                              //!< #TODO
-  }
 }
 
 } // namespace slide

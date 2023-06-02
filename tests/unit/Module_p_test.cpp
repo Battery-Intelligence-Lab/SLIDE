@@ -167,8 +167,6 @@ bool test_validStates_p()
 
 bool test_timeStep_CC_p()
 {
-  //!< bool Module_base_s::timeStep_CC(double dt)
-
   double T = settings::T_ENV;
   bool checkCells = false;
 

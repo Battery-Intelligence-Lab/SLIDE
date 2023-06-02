@@ -494,7 +494,6 @@ bool test_validCells()
 }
 bool test_timeStep_CC()
 {
-  //!< bool Module_base_s::timeStep_CC(double dt)
   Deep_ptr<StorageUnit> cs[] = {
     make<Cell_Bucket>(),
     make<Cell_Bucket>()
