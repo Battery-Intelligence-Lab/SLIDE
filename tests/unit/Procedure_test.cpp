@@ -259,7 +259,7 @@ bool test_Procedure_CoolSystem()
 
     //!< Use procedure age to cycle it
     //!< cout<<"Procedure_test start coolsystem test with a complex module for cool control setting "<<coolControl<<endl;
-    p.cycleAge(mp44.get(), Ncycle, ncheck, nbal, false, Ccha, Cdis, mp->Vmax(), mp->Vmin()); //!< exclude CV phase, CC only
+    p.cycleAge(mp44.get(), Ncycle, ncheck, nbal, false, Ccha, Cdis, mp44->Vmax(), mp44->Vmin()); //!< exclude CV phase, CC only
 
     double Qgen3, Qcool3, Qheat3;
     //!< check balance of module mp11
@@ -455,11 +455,9 @@ bool test_degradationModel(bool capsread, bool Rspread, bool degspread, DEG_ID d
   auto mp = make<Module_s>(n, T, true, false, ncel, cool, true); //!< no multithreading
 
   mp->setSUs(cs, checkCells, true);
-  Vmax = mp->Vmax();
-  Vmin = mp->Vmin();
   auto p2 = Procedure(balance, Vbal, ndata, unitTest);
   try {
-    p2.cycleAge(mp.get(), Ncycle, ncheck, nbal, true, Ccha, Cdis, Vmax, Vmin);
+    p2.cycleAge(mp.get(), Ncycle, ncheck, nbal, true, Ccha, Cdis, mp->Vmax(), mp->Vmin());
   } catch (...) {
     std::cout << "Something happened.\n";
   }
@@ -600,8 +598,8 @@ int test_all_Procedure()
   // if (!TEST(test_Procedure_cycleAge_high_0, "test_Procedure_cycleAge(0.001 / 5.0, false, cool)")) return 3;
   // if (!TEST(test_Procedure_cycleAge_high_1, "test_Procedure_cycleAge(0.001 / 5.0, true, cool)")) return 4;
 
-  if (!TEST(test_Procedure_cycleAge_stress, "test_getCellV")) return 5;
-  // if (!TEST(test_Procedure_CoolSystem, "test_Procedure_CoolSystem")) return 6; //!< Test the cooling system
+  // if (!TEST(test_Procedure_cycleAge_stress, "test_getCellV")) return 5;
+  if (!TEST(test_Procedure_CoolSystem, "test_Procedure_CoolSystem")) return 6; //!< Test the cooling system
   // if (!TEST(test_specificDeg, "test_degradationModel(true, true, true, deg, cool)")) return 7;
 
   return 0;
