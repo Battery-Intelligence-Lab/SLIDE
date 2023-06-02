@@ -85,7 +85,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
     //!< CV charge
     if (testCV) {
-      succ = cyc.CV(Vmax, Ilim, TIME_INF, dt, ndata, th);
+      succ = cyc.CV(su->V(), Ilim, TIME_INF, dt, ndata, th);
       if (!isCurrentLimitReached(succ)) {
         std::cout << "Error in CycleAge when CV charging in cycle "
                   << i << ", stopping cycling.\n"
@@ -107,8 +107,8 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
     //!< CV discharge
     if (testCV) {
       //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-      succ = cyc.CV(Vmin, Ilim, TIME_INF, dt, ndata, th);
-      if (!isCurrentLimitReached(succ)) { //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
+      succ = cyc.CV(su->V(), Ilim, TIME_INF, dt, ndata, th); // #TODO su->V() because if an individual cell is not good then cannot use Vlim.
+      if (!isCurrentLimitReached(succ)) {                    //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
         std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
         break;
       }
