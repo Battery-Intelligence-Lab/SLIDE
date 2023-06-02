@@ -38,7 +38,7 @@
 
 
 ### Current priority:
-
+- [ ] CCCV for ageing CV should be done with the remaining voltage. 
 - [ ] Battery class distributes current equally between each module. We can insert Schimpe-style optimisation if we could integrate a current distribution algorithm. 
 - [ ] Vmodule and Vmodule_valid are removed but it could be useful for series module. 
 - [ ] Problem compiling with MSVC vs Clang whereas Clang is 3x faster. Are we really enabling vectorisation and/or sse2/avx etc.? Make sure all optimisations are on for all compilers. 

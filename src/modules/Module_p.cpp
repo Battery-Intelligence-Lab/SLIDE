@@ -235,7 +235,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   StatusNow = Status::Success; //!< reset at each iteration.
 
-  const double tolerance = 1e-9;
+  const double tolerance = 1e-6;
   for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
     Ib[i] = SUs[i]->I();
     Vb[i] = SUs[i]->V();
@@ -251,9 +251,9 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     else
       b(i) = Inew - Icumulative; // #TODO????
 
-    error += std::abs(b(i));
+    error += std::max(std::abs(b(i)), error);
 
-    r_est[i] = 0.01; // 0.1e-3; // initialise constant and see.
+    r_est[i] = 200e-3; // 100e-3; // Init the resistances high at the beginning. #TODO probably not robust for all cases.
   }
 
   if (error < tolerance) return StatusNow;
@@ -290,7 +290,8 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
     return LU;
   };
 
-
+  b_type deltaI;
+  Eigen::PartialPivLU<A_type> LU;
   while (iter < maxIteration) {
     double Icumulative{}, error{};
     for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
@@ -301,14 +302,15 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
       else
         b(i) = Inew - Icumulative; // #TODO????
 
-      error += std::abs(b(i));
+      error = std::max(std::abs(b(i)), error);
     }
 
     if (error < tolerance) break;
-    iter++;
 
-    Eigen::PartialPivLU<A_type> LU = getLU();
-    b_type deltaI = LU.solve(b.matrix()).array();
+    LU = getLU();
+
+    deltaI = LU.solve(b.matrix()).array();
+
 
     for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
       double Vb_old = Vb[i];
@@ -317,9 +319,17 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
       Vb[i] = SUs[i]->V();
 
 
-      if (std::abs(deltaI[i]) > 1e-9)
-        r_est[i] = (Vb[i] - Vb_old) / deltaI[i];
+      if (std::abs(deltaI[i]) > 1e-6 || iter == 0) {
+        double r_est_i = (Vb[i] - Vb_old) / deltaI[i];
+
+        if (r_est_i > 0)
+          r_est[i] = r_est_i;
+        else
+          r_est[i] = 1e-3;
+      }
     }
+
+    iter++;
   }
 
   if (iter == maxIteration)
