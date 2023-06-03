@@ -26,7 +26,7 @@ inline auto GITT_test()
 
   // double Tref = 21.0_degC; // Temperature at which the characterisation should be done [K]
   // Our data is between 23.5 and 25.9 with mean 24.2 C temperature. 26.44 for test data.
-  if (settings::T_MODEL != 0) {
+  if constexpr (settings::T_MODEL != 0) {
     std::cerr << "GITT_test example works with T_MODEL=0 but it is not!\n";
     throw 1234;
   }
@@ -36,11 +36,11 @@ inline auto GITT_test()
   c.setBlockDegAndTherm(true);
   c.setT(21.0_degC);
 
-  double Cmaxpos{ 51385 };
-  double Cmaxneg{ 30555 };
-  double cps{}, cns{};
+  // double Cmaxpos{ 51385 };
+  // double Cmaxneg{ 30555 };
+  // double cps{}, cns{};
 
-  auto &st = c.getStateObj();
+  // auto &st = c.getStateObj();
   auto cyc = Cycler(&c, "charge");
 
   auto d = c; // Copy cell for discharge.
@@ -56,10 +56,10 @@ inline auto GITT_test()
 
 
   // Start GITT test 20x0.05C pulse and 2 hr rest:
-  const auto N_repeat{ 20 };     // Repeat 20 times.
-  const auto t_pulse = 1 * 3600; // 1 hr pulse time.
-  const auto t_rest = 2 * 3600;  // 2 hr rest time.
-  const auto dt = 1;             // 1 seconds time step.
+  const auto N_repeat{ 20 }; // Repeat 20 times.
+  // const auto t_pulse = 1 * 3600; // 1 hr pulse time.
+  // const auto t_rest = 2 * 3600;  // 2 hr rest time.
+  // const auto dt = 1;             // 1 seconds time step.
   const auto Crate = 0.05;
   auto current = Crate * c.Cap();
 

@@ -277,7 +277,7 @@ inline double Cell_ECM<N_RC>::V()
       v_now -= Rp[i] * st.Ir(i);
 
     return v_now;
-  } catch (int e) {
+  } catch (...) {
     if (verb)
       std::cerr << "ERROR in Cell_ECM::getV when getting the OCV.\n";
     return 0;
