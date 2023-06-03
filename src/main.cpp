@@ -13,6 +13,9 @@
 #include "slide.hpp"
 #include "../benchmark/benchmarks.hpp"
 #include "../examples/examples.hpp"
+#include <matplotlibcpp.h>
+
+namespace plt = matplotlibcpp;
 
 #include <Eigen/Dense>
 
@@ -134,6 +137,8 @@ int main()
 
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
   using namespace slide;
+  plt::plot({ 1, 3, 2, 4 });
+  plt::show();
 
   //!< Examples:
   // slide::examples::drive_cycle_artemis();
@@ -149,8 +154,8 @@ int main()
   // slide::benchmarks::run_LP_case_LargePack();
 
   // MATLAB ECM benchmarks:
-  slide::benchmarks::run_Cell_Bucket_single_default_pulse();
-  slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
+  // slide::benchmarks::run_Cell_Bucket_single_default_pulse();
+  // slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
 
   // slide::benchmarks::run_Cell_ECM_single_default_pulse();
   // slide::benchmarks::run_Cell_ECM_single_default_CCCV();

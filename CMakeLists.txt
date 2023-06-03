@@ -14,7 +14,13 @@ enable_testing()
 add_subdirectory(src bin)
 #add_subdirectory(external/eigen)
 
+set(WITHOUT_NUMPY "OFF")
+
+add_subdirectory(external/matplotlib-cpp)
+
 target_include_directories(src PUBLIC external/eigen)
+#target_include_directories(src PUBLIC external/matplotlib-cpp)
+target_link_libraries(src PUBLIC matplotlib_cpp)
 
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
@@ -36,11 +42,13 @@ target_link_libraries(slide
   src
   project_warnings
   project_options
+  matplotlib_cpp
 )
 
 target_include_directories(slide
   PUBLIC
   data
+  ${Python3_INCLUDE_DIRS}
 )
 
 
