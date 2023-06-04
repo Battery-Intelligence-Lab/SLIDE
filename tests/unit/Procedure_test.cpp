@@ -593,14 +593,14 @@ int test_all_Procedure()
 
   auto test_specificDeg = [cool, deg]() { return test_degradationModel(true, true, true, deg, cool); }; //!< Test various degradation models
 
-  // if (!TEST(test_Procedure_cycleAge_0, "test_Procedure_cycleAge(0, true, cool)")) return 1;
-  // if (!TEST(test_Procedure_cycleAge_1, "test_Procedure_cycleAge(0, false, cool)")) return 2;
-  // if (!TEST(test_Procedure_cycleAge_high_0, "test_Procedure_cycleAge(0.001 / 5.0, false, cool)")) return 3;
-  // if (!TEST(test_Procedure_cycleAge_high_1, "test_Procedure_cycleAge(0.001 / 5.0, true, cool)")) return 4;
+  if (!TEST(test_Procedure_cycleAge_0, "test_Procedure_cycleAge(0, true, cool)")) return 1;
+  if (!TEST(test_Procedure_cycleAge_1, "test_Procedure_cycleAge(0, false, cool)")) return 2;
+  if (!TEST(test_Procedure_cycleAge_high_0, "test_Procedure_cycleAge(0.001 / 5.0, false, cool)")) return 3;
+  if (!TEST(test_Procedure_cycleAge_high_1, "test_Procedure_cycleAge(0.001 / 5.0, true, cool)")) return 4;
 
-  // if (!TEST(test_Procedure_cycleAge_stress, "test_getCellV")) return 5;
+  if (!TEST(test_Procedure_cycleAge_stress, "test_getCellV")) return 5;
   if (!TEST(test_Procedure_CoolSystem, "test_Procedure_CoolSystem")) return 6; //!< Test the cooling system
-  // if (!TEST(test_specificDeg, "test_degradationModel(true, true, true, deg, cool)")) return 7;
+  if (!TEST(test_specificDeg, "test_degradationModel(true, true, true, deg, cool)")) return 7;
 
   return 0;
 }
