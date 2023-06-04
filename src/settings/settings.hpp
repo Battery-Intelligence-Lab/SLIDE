@@ -13,8 +13,6 @@
 
 #pragma once
 
-#pragma warning(disable : 4100)
-#pragma warning(disable : 4267)
 #include "../utility/units.hpp"
 #include "enum_definitions.hpp"
 #include "constants.hpp"

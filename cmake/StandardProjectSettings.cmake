@@ -45,11 +45,17 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_CURRENT_SOURCE_DIR}/bin/Mi
 
 
 
+
 if(MSVC)
   message(STATUS "Building for MSVC")
-else()
-  message(STATUS "Building for non-MSVC")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  message(STATUS "Building for Clang")
   add_compile_options("$<$<CONFIG:Release>:-march=native>") # "-Weffc++" -Ofast -march=native -g -fno-omit-frame-pointer -gdwarf-2 (flto not good) -Wextra -pedantic
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  message(STATUS "Building for GCC")
+  add_compile_options("$<$<CONFIG:Release>:-march=native>") # "-Weffc++" -Ofast -march=native -g -fno-omit-frame-pointer -gdwarf-2 (flto not good) -Wextra -pedantic
+else()
+  message(STATUS "Building for an unknown compiler")
 endif()
 
 message(STATUS "Host system: ${CMAKE_HOST_SYSTEM}")

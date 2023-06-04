@@ -47,6 +47,7 @@ function(set_project_warnings project_name)
       -Wnull-dereference # warn if a null dereference is detected
       -Wdouble-promotion # warn if float is implicit promoted to double
       -Wformat=2 # warn on security issues around functions that format output (ie printf)
+      -Wno-unknown-attributes
   )
 
   if(WARNINGS_AS_ERRORS)
@@ -63,6 +64,27 @@ function(set_project_warnings project_name)
       -Wuseless-cast # warn if you perform a cast to the same type
   )
 
+
+  # Warnings to ignore: 
+  # Adapted from Eigen library's "DisableStupidWarnings.h"
+
+  set(CLANG_WARNINGS ${CLANG_WARNINGS} -Wno-unknown-attributes -Wno-unused-parameter)
+  set(GCC_WARNINGS ${GCC_WARNINGS} -Wno-unknown-attributes)
+
+  set(MSVC_WARNINGS
+      ${MSVC_WARNINGS}
+      /wd4100 # unreferenced formal parameter (occurred e.g. in aligned_allocator::destroy(pointer p))
+      /wd4101 # unreferenced local variable
+      /wd4127 # conditional expression is constant
+      /wd4181 # qualifier applied to reference type ignored
+      /wd4211 # nonstandard extension used : redefined extern to static
+      /wd4244 # 'argument' : conversion from 'type1' to 'type2', possible loss of data
+      /wd4267 # 'var' : conversion from 'size_t' to 'type', possible loss of data
+      /wd4273 # QtAlignedMalloc, inconsistent DLL linkage
+      /wd4324 # structure was padded due to declspec(align())
+      /wd4503 # decorated name length exceeded, name was truncated
+  )
+  
   if(MSVC)
     set(PROJECT_WARNINGS ${MSVC_WARNINGS})
   elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")

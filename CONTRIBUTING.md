@@ -25,3 +25,7 @@ Links to profile pages below, which includes email contact info
 
 - [Volkan Kumtepeli](https://github.com/ElektrikAkar)
 - [David A. Howey](https://github.com/davidhowey)
+
+## Past Developers
+
+- Jorn M. Reniers

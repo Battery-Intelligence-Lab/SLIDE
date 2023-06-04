@@ -6,18 +6,10 @@ project(SLIDE VERSION "3.0.0"
   HOMEPAGE_URL https://github.com/Battery-Intelligence-Lab/SLIDE/
   LANGUAGES CXX)
 
+
  
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
-
-enable_testing()
-add_subdirectory(src bin)
-#add_subdirectory(external/eigen)
-
-target_include_directories(src PUBLIC external/eigen)
-
-include(cmake/Coverage.cmake)
-add_subdirectory(tests)
 
 # Link this 'library' to use the warnings specified in CompilerWarnings.cmake
 add_library(project_warnings INTERFACE)
@@ -25,6 +17,17 @@ add_library(project_warnings INTERFACE)
 # Link this 'library' to set the c++ standard / compile-time options requested
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
+
+enable_testing()
+add_subdirectory(src bin)
+add_subdirectory(external/eigen)
+
+target_link_libraries(src PUBLIC eigen)
+
+include(cmake/Coverage.cmake)
+add_subdirectory(tests)
+
+
 
 add_executable(slide
   src/main.cpp
@@ -75,8 +78,8 @@ set_project_warnings(project_warnings)
 # include(cmake/Doxygen.cmake)
 # enable_doxygen(src doxygen-docs)
 
-# # allow for static analysis options
-# include(cmake/StaticAnalyzers.cmake)
+# allow for static analysis options
+include(cmake/StaticAnalyzers.cmake)
 
 # set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)

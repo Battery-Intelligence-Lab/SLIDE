@@ -13,5 +13,4 @@ target_sources(modules
   )
 
 target_include_directories(modules PUBLIC .)
-target_include_directories(modules PUBLIC ../../external/eigen)
-target_link_libraries(modules PRIVATE cooling)
+target_link_libraries(modules PRIVATE eigen)
