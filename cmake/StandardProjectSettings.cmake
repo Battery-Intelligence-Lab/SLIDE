@@ -44,16 +44,22 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_SOURCE_DIR}/bi
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_CURRENT_SOURCE_DIR}/bin/MinSizeRel)
 
 
-
-
 if(MSVC)
   message(STATUS "Building for MSVC")
+  add_compile_options("$<$<CONFIG:Release>:/O2>")
+  add_compile_options("$<$<CONFIG:Release>:/fp:fast>")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
   message(STATUS "Building for Clang")
   add_compile_options("$<$<CONFIG:Release>:-march=native>") # "-Weffc++" -Ofast -march=native -g -fno-omit-frame-pointer -gdwarf-2 (flto not good) -Wextra -pedantic
+  add_compile_options("$<$<CONFIG:Release>:-Ofast>")
+  add_compile_options("$<$<CONFIG:Release>:-ffast-math>")
+ # add_compile_options("$<$<CONFIG:Release>:-fopenmp>")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   message(STATUS "Building for GCC")
-  add_compile_options("$<$<CONFIG:Release>:-march=native>") # "-Weffc++" -Ofast -march=native -g -fno-omit-frame-pointer -gdwarf-2 (flto not good) -Wextra -pedantic
+  add_compile_options("$<$<CONFIG:Release>:-march=native>") 
+  add_compile_options("$<$<CONFIG:Release>:-Ofast>")
+  add_compile_options("$<$<CONFIG:Release>:-ffast-math>")
+#  add_compile_options("$<$<CONFIG:Release>:-fopenmp>")
 else()
   message(STATUS "Building for an unknown compiler")
 endif()

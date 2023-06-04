@@ -85,7 +85,7 @@ Deep_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread
   deg.LAM_id.add_model(0); //!< no LAM
   deg.pl_id = 0; //!< no litihium plating
 
-  /*	//!< Generalised degradation model
+ 	//!< Generalised degradation model
   deg.SEI_id.add_model(1); //!< kinetic SEI
   deg.SEI_id.add_model(2); //!< diffusion SEI
   deg.SEI_porosity = 0; //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
@@ -96,7 +96,7 @@ Deep_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread
   deg.LAM_id.add_model(2); //!< Delacourt LAM
   deg.LAM_id.add_model(3); //!< Kindermann LAM
   deg.pl_id =  1; //!< kinetic litihium plating
-  */
+
 
   //!< Kinetic SEI + porosity + Dai LAM
   deg.SEI_id.add_model(4);

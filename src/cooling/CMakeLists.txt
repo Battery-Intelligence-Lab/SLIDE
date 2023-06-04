@@ -19,7 +19,3 @@ target_sources(cooling
   )
 
 target_include_directories(cooling PUBLIC .)
-
-
-
-

@@ -64,13 +64,10 @@ function(set_project_warnings project_name)
       -Wuseless-cast # warn if you perform a cast to the same type
   )
 
-
   # Warnings to ignore: 
   # Adapted from Eigen library's "DisableStupidWarnings.h"
-
   set(CLANG_WARNINGS ${CLANG_WARNINGS} -Wno-unknown-attributes -Wno-unused-parameter)
   set(GCC_WARNINGS ${GCC_WARNINGS} -Wno-unknown-attributes)
-
   set(MSVC_WARNINGS
       ${MSVC_WARNINGS}
       /wd4100 # unreferenced formal parameter (occurred e.g. in aligned_allocator::destroy(pointer p))
