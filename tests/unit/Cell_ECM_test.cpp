@@ -51,7 +51,7 @@ bool test_getStates_ECM()
   assert(NEAR(s[State_ECM<1>::i_T], settings::T_ENV)); //!< T
   assert(NEAR(s[State_ECM<1>::i_I], 0));               //!< current
 
-  std::span<const double> spn{ s };
+  std::span<double> spn{ s };
   c1.setStates(spn); //!< #TODO this must throw an error
 
   return true;
@@ -103,7 +103,7 @@ bool test_setStates_ECM()
   s[State_ECM<1>::i_T] = t;
   s[State_ECM<1>::i_I] = i;
 
-  std::span<const double> spn{ s };
+  std::span<double> spn{ s };
   c1.setStates(spn, true, true);
 
   s.clear();
@@ -147,7 +147,7 @@ bool test_validStates_ECM()
   s[State_ECM<1>::i_Ir] = ir;
   s[State_ECM<1>::i_T] = t;
   s[State_ECM<1>::i_I] = i;
-  std::span<const double> spn{ s };
+  std::span<double> spn{ s };
   c1.setStates(spn);
   assert(c1.validStates());
 

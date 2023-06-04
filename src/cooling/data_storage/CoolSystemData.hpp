@@ -18,7 +18,7 @@ class CoolSystem;
 struct CoolSystemData
 {
   CoolSystemCumulative cData;                   //!< Cumulative variables.
-  [[no_unique_address]] CoolSystemData_t tData; //!< Time data (histogram or basic data)
+  CoolSystemData_t tData; //!< Time data (histogram or basic data)
 
 public:
   void initialise(CoolSystem &cs); //!< Do nothing.

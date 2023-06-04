@@ -6,7 +6,6 @@
  */
 
 #include "slide.hpp"
-// #include "unit_tests.hpp"
 #include "paperCode.hpp"
 
 #include <cmath>
@@ -45,12 +44,12 @@ void Vequalisation_Rdc(double Rdc)
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-  std::unique_ptr<StorageUnit> cs4[5];
-  cs4[0] = std::make_unique<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[1] = std::make_unique<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[2] = std::make_unique<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[3] = std::make_unique<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[4] = std::make_unique<Cell_SPM>("cell5", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance and 10% more degradation
+  Deep_ptr<StorageUnit> cs4[5];
+  cs4[0] = make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[1] = make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[2] = make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[3] = make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[4] = make<Cell_SPM>("cell5", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance and 10% more degradation
 
   double Rcs[5] = { Rdc, Rdc, Rdc, Rdc, Rdc };
 
@@ -60,8 +59,7 @@ void Vequalisation_Rdc(double Rdc)
   mpp4.setRcontact(Rcs);
 
   //!< Make the cycler
-  Cycler cyc;
-  cyc.initialise(&mpp4, ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
+  Cycler cyc(&mpp4, ID); //!< #TODO we may make this shared pointer. Otherwise it will cause problems. Or unique.
   double vlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
@@ -136,19 +134,18 @@ void thermalModel()
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-  std::unique_ptr<StorageUnit> cs4[5];
-  cs4[0] = std::make_unique<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[1] = std::make_unique<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[2] = std::make_unique<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[3] = std::make_unique<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
-  cs4[4] = std::make_unique<Cell_SPM>("cell5", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance and 10% more degradation
+  Deep_ptr<StorageUnit> cs4[5];
+  cs4[0] = make<Cell_SPM>("cell1", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[1] = make<Cell_SPM>("cell2", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[2] = make<Cell_SPM>("cell3", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[3] = make<Cell_SPM>("cell4", deg, distr_c(gen), distr_r(gen), distr_d(gen), distr_d(gen));
+  cs4[4] = make<Cell_SPM>("cell5", deg, 0.5, 2.0, 1.1, 1.1); //!< one with half the capacity and double the resistance and 10% more degradation
 
-  auto mpp4 = std::make_unique<Module_p>(name, settings::T_ENV, true, false, 5, 1, 1); //!< print, no multithread, coolcontrol 1, HVAC coolsystem
+  auto mpp4 = make<Module_p>(name, settings::T_ENV, true, false, 5, 1, 1); //!< print, no multithread, coolcontrol 1, HVAC coolsystem
   mpp4->setSUs(cs4, true, true);
 
   //!< Make the cycler
-  Cycler cyc;
-  cyc.initialise(mpp4.get(), ID);
+  Cycler cyc(mpp4.get(), ID);
   double vlim;
   double dt = 2;
   int ndata = 2; //!< store data every 2 seconds (or every dt)
@@ -230,16 +227,16 @@ void degradation_1cell()
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-  auto mc = std::make_unique<Cell_SPM>("cell1", deg, 1, 1, 1, 1); //!< cell-to-cell variation parameters are 0
+  auto mc = make<Cell_SPM>("cell1", deg, 1, 1, 1, 1); //!< cell-to-cell variation parameters are 0
 
   //!< Wrap the cell in a series-module
-  auto modulei = std::make_unique<Module_s>("module1", settings::T_ENV, true, false, 1, 1, 0); //!< single-threaded, conventional coolsystem
-                                                                                               //!<(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
-  std::unique_ptr<StorageUnit> RinB[1] = { std::move(mc) };
+  auto modulei = make<Module_s>("module1", settings::T_ENV, true, false, 1, 1, 0); //!< single-threaded, conventional coolsystem
+                                                                                   //!<(std::string IDi, double Ti, bool print, bool pari, int Ncells, int coolControl, int cooltype)
+  Deep_ptr<StorageUnit> RinB[1] = { std::move(mc) };
   modulei->setSUs(RinB, true, true);
 
   //!< Wrap the module in a Battery and set number of series and parallel
-  auto bat = std::make_unique<Battery>("single_cell_multiplied_by_300s_63p");
+  auto bat = make<Battery>("single_cell_multiplied_by_300s_63p");
   bat->setSeriesandParallel(ser, par);
   bat->setModule(std::move(modulei));
 

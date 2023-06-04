@@ -1,8 +1,8 @@
-/*
- * Cell.hpp
- *
- *  Created on: 22 Nov 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Cell.hpp
+ * @brief Cell class definition
+ * @author Jorn Reniers, Volkan Kumtepeli
+ * @date 22 Nov 2019
  */
 
 #pragma once
@@ -25,15 +25,19 @@
 #include <span>
 
 namespace slide {
+
+/**
+ * @brief Abstract Class representing a single battery cell.
+ */
 class Cell : public StorageUnit
 {
 protected:
-  double capNom{ 16 }; //!< capacity [Ah]
+  double capNom{ 16 }; //!< capacity [Ah].
 
-  CellData<settings::DATASTORE_CELL> cellData;
+  CellData<settings::DATASTORE_CELL> cellData; //!< Cell data storage.
 
 public:
-  constexpr static CellLimits limits{ defaultCellLimits }; // #TODO make it changable.
+  constexpr static CellLimits limits{ defaultCellLimits }; // Default cell limits. #TODO make it changable.
 
   Cell() : StorageUnit("cell") {}
 
@@ -53,7 +57,10 @@ public:
   double getVhigh() final { return V(); } //!< return the voltage of the cell with the highest voltage
   double getVlow() final { return V(); }  //!< return the voltage of the cell with the lowest voltage
 
+  virtual Status setSOC(double SOCnew, bool checkV = true, bool print = true) = 0;
+  virtual double SOC() = 0;
   virtual double getThotSpot() override { return T(); }
+  size_t getNcells() override final { return 1; } //!< this is a single cell
 
   virtual Status checkCurrent(bool checkV, bool print) noexcept
   {
@@ -63,39 +70,31 @@ public:
     return Vstatus;
   }
 
-  virtual Status checkVoltage(double &v, bool print) noexcept override
-  {
-    /*
-     * -2 	V < VMIN				discharging and outside safety range, cycling should be halted asap to avoid numerical errors
-     * -1	VMIN <= V < Vmin		discharging and outside range of cell, but not yet safety limit
-     * 0 	Vmin <= V <= Vmax 		valid range
-     * 1 	Vmax < V <= VMAX		charging and ...
-     * 2 	VMAX < V 				charging and ...
-     *
-     * note: allow a small margin on Vmin and Vmax for when we are doing a CV phase
-     * then occasionally, V can be slightly above or below Vlimit
-     */
+  /**
+   * @brief Check the voltage status of the cell.
+   * @param v Reference to the voltage value.
+   * @param print Boolean flag to indicate whether to print the result or not.
+   * @return Status of the voltage check.
+   */
+  virtual Status checkVoltage(double &v, bool print) noexcept override { return free::check_voltage(v, *this); }
 
-    return free::check_voltage(v, *this);
-  }
-
-  size_t getNcells() override final { return 1; } //!< this is a single cell
-
-  virtual Status setSOC(double SOCnew, bool checkV = true, bool print = true) = 0;
-  virtual double SOC() = 0;
-
-  //!< virtual int getNstates() = 0;
 
   //!< thermal model
   //!< virtual double getThermalSurface() = 0; //!< todo not implemented
+
+  /**
+   * @brief Calculate the thermal model of the cell.
+   * @param Nneighb Number of neighboring cells.
+   * @param Tneighb Pointer to an array of neighboring cells' temperatures.
+   * @param Kneighb Pointer to an array of neighboring cells' thermal conductivities.
+   * @param Aneighb Pointer to an array of neighboring cells' contact areas.
+   * @param tim Time duration for the thermal model calculation.
+   * @return Cell temperature after thermal model calculation.
+   * @note The thermal model is not implemented yet. Requires something similar to an SPM cell
+   * (keep track of heat generation and time) and then solve the ODE here.
+   */
   virtual double thermalModel(int Nneighb, double Tneighb[], double Kneighb[], double Aneighb[], double tim) override
   {
-    /*
-     * Calculate the thermal model of this cell
-     */
-    //!< todo not implemented #TODO
-    //!< need something similar as SPM cell (keep track of heat generation and time)
-    //!< and then here you can solve the ODE
     return T();
   }
 

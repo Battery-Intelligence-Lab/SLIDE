@@ -55,12 +55,7 @@ double Module_s::V()
   //!< sum of the voltage of all cells
   //!< bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  //!< if the stored value is up to date, return that one
-  if (Vmodule_valid)
-    return Vmodule;
-
-  //!< else calculate the voltage
-  Vmodule = 0;
+  double Vmodule{ 0 };
   for (size_t i = 0; i < getNSUs(); i++) {
     const auto v_i = SUs[i]->V();
 
@@ -70,7 +65,6 @@ double Module_s::V()
     Vmodule += v_i - Rcontact[i] * SUs[i]->I();
   }
 
-  Vmodule_valid = true;
   return Vmodule;
 }
 
@@ -90,76 +84,31 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Set the current, if checkVi this also gets the cell voltages
-  bool validVcell = true; //!< #TODO
-  Vmodule_valid = false;  //!< we are changing the current, so the stored voltage is no longer valid
-  double Iold = I();
+  std::array<double, settings::MODULE_NSUs_MAX> Iolds;
+  auto StatusNow = Status::Success;
 
-  for (size_t i = 0; i < getNSUs(); i++) {
-    try {
-      SUs[i]->setCurrent(Inew, checkV, print); //!< note: this will throw 2 or 3 if the voltage of a cell is illegal
-    } catch (int e) {
-      if (e == 2) {
-        //!< voltage of cell i is outside the valid range, but within safety limits
-        //!< indicate this happened but continue setting states
-        validVcell = false;
-        if (verb)
-          std::cout << "warning in Module_s::setCurrent, the voltage of cell " << i
-                    << " with id " << SUs[i]->getFullID()
-                    << " is outside the allowed range for Inew = " << Inew << ". Continue for now\n";
-      } else {
-        //!< error 10 is illegal state
-        //!< error 3 means the voltage is outside the safety limit
-        if (verb)
-          std::cerr << "ERROR in Module_s::setCurrent when setting the current of cell " << i << " for Inew = "
-                    << Inew << ". Restoring the old currents and throwing on error " << e << '\n';
-        setCurrent(Iold, false, print); //!< restore the original current without checking validity (they should be valid)
-        std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
-        throw e;
-      }
-    }
-  }
+  for (int i = 0; i < getNSUs(); i++) {
+    Iolds[i] = SUs[i]->I();
+    StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Inew, checkV, print)); // #TODO updateStatus
 
-  //!< check and return the voltage of the module
-  //!< Check if the voltage is valid
 
-  //!< #TODO Here we need module specific voltage.
-
-  return Status::Success;
-}
-
-bool Module_s::validSUs(SUs_span_t c, bool print)
-{
-  /*
-   * Checks the cells are a valid combination for a series-connected module
-   * the current is the same in each cell
-   *
-   * Note that nothing else is checked. This function should not be relied on on its own to check validity
-   * For that, you shoud use setStates
-   *
-   */
-
-  // #TODO -> Unnecessary function. Check validity when settings SUs or states.
-  // Algorithms should not leave anything in an invalid state.
-
-  bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-  bool result{ true };
-  //!< check the currents are the same
-  const double Imod = c[0]->I();
-  for (size_t i = 1; i < c.size(); i++) {
-    const double err = std::abs(Imod - c[i]->I());
-    bool val = err < settings::MODULE_P_I_ABSTOL || err < Imod * settings::MODULE_P_I_RELTOL; //!< #TODO should not be || here. Ok got it due to 0 current.
-    //!< in complex modules, an s can be made out of p modules, and p modules are allowed to have a small error in their current
-    if (!val) {
+    if (isStatusBad(StatusNow)) {
       if (verb)
-        std::cout << "error in Module_s::validCells, the current of cell " << i << " is "
-                  << c[i]->I() << "A while the current in the 0th cell is " << Imod << "A.\n";
+        std::cerr << "ERROR in Module_s::setCurrent when setting the current of cell " << i
+                  << " with id " << SUs[i]->getFullID() << " for Inew = "
+                  << Inew << ". Restoring the old currents and throwing on error "
+                  << getStatusMessage(StatusNow) << '\n';
 
-      result = false;
-      break;
+
+      for (int j{ i }; j > 0; j--)
+        SUs[j]->setCurrent(Iolds[j], false, false); // #TODO this can start from j{i-1} since probably SUs[i] failed to assign any currents.
+
+      return StatusNow; // #TODO setCurrent here may be costly.
     }
   }
-
-  return result; //!< else the cells are valid
+  //!< Check if the voltage is valid  #TODO
+  //!< #TODO Here we need module specific voltage.
+  return StatusNow;
 }
 
 void Module_s::timeStep_CC(double dt, int nstep)
@@ -168,17 +117,13 @@ void Module_s::timeStep_CC(double dt, int nstep)
    * a time step at constant current is simply a time step of every individual cell
    *
    * THROWS
-   * 10 	negative time step
    * 13 	in multithreading, an exception was thrown in one of the child threads of timeSetp_CC_i;
    * 14 	this module has no parent (i.e. is top level) but does not have an HVAC coolsystem
    * 			the top level needs an HVAC system for heat exchange with the environment
    * 			lower-level modules (with a parent module) will get cooling from the coolsystems of their parent so they have a regular coolSystem
    */
-  if (dt < 0) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Module_s::timeStep_CC, the time step dt must be 0 or positive, but has value " << dt << '\n';
-    throw 10;
-  }
+
+  assert(dt > 0); // Check if the time step is valid (only in debug mode)
 
   //!< we simply take one CC time step on every cell
   auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, nstep); };
@@ -224,44 +169,18 @@ void Module_s::timeStep_CC(double dt, int nstep)
       setT(thermalModel(0, Tneigh, Kneigh, Aneigh, therm.time)); //!< the 0 signals there are no neighbours or parents
 
       /*
-double Tneigh[1] = {settings::T_ENV};							//!< T of environment
-double Kneigh[1] = {cool->getH()}; 					//!< h to environment is same as to children, since the speed of the coolant is the same
-double Aneigh[1] = {therm.A};						//!< A to the environment is the A of this module
-//!< note that this will have more heat exchange than to children, since A = min(A_this, A_parent)
-//!< 	children will have a smaller A themselves, so the resulting A = A_child < A of this module
-setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
+      double Tneigh[1] = {settings::T_ENV};							//!< T of environment
+      double Kneigh[1] = {cool->getH()}; 					//!< h to environment is same as to children, since the speed of the coolant is the same
+      double Aneigh[1] = {therm.A};						//!< A to the environment is the A of this module
+      //!< note that this will have more heat exchange than to children, since A = min(A_this, A_parent)
+      //!< 	children will have a smaller A themselves, so the resulting A = A_child < A of this module
+      setT(thermalModel(1, Tneigh, Kneigh, Aneigh, therm.time));*/
     }
 
     //!< control the cooling system
     const double Tlocal = transform_max(SUs, free::get_T<SU_t>); // #TODO Battery also has this.
     cool->control(Tlocal, getThotSpot());
   }
-
-  Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
-}
-
-Module_s *Module_s::copy()
-{
-  //!< check the type of coolsystem we have #TODO for a better way. Also same for both modules.
-
-  int cooltype = 0;
-
-  if (typeid(*getCoolSystem()) == typeid(CoolSystem_HVAC))
-    cooltype = 1;
-  else if (typeid(*getCoolSystem()) == typeid(CoolSystem_open))
-    cooltype = 2;
-
-  Module_s *copied_ptr = new Module_s(getID(), cool->T(), true, par, getNcells(), cool->getControl(), cooltype);
-
-  copied_ptr->Rcontact = Rcontact;
-  copied_ptr->setT(T());
-
-  for (size_t i{ 0 }; i < getNSUs(); i++) {
-    copied_ptr->SUs.emplace_back(SUs[i]->copy());
-    copied_ptr->SUs.back()->setParent(copied_ptr);
-  }
-
-  return copied_ptr;
 }
 
 } // namespace slide

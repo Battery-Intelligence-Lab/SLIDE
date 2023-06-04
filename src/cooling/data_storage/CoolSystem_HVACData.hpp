@@ -18,7 +18,7 @@ class CoolSystem_HVAC;
 struct CoolSystem_HVACData
 {
   CoolSystem_HVACCumulative cData;              //!< Cumulative variables.
-  [[no_unique_address]] CoolSystemData_t tData; //!< Time data (histogram or basic data)
+  CoolSystemData_t tData; //!< Time data (histogram or basic data)
 
 public:
   void initialise(CoolSystem_HVAC &cs, double Qac_per_cell); //!< Do nothing.

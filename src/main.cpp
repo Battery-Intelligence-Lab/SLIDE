@@ -14,6 +14,8 @@
 #include "../benchmark/benchmarks.hpp"
 #include "../examples/examples.hpp"
 
+#include <Eigen/Dense>
+
 #include <ctime>
 #include <thread>
 #include <array>
@@ -32,8 +34,6 @@ int main()
 
   //!< print that you start simulations
   //!< slide::tests::unit::test_all();
-  std::cout << "Start simulations" << std::endl;
-
   //!< Make a clock to measure how long the simulation takes
   slide::Clock clk;
   //!< Read the values for the matrices for the spatial discretisation of the solid diffusion PDE.
@@ -135,6 +135,9 @@ int main()
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
   using namespace slide;
 
+  //!< Examples:
+  // slide::examples::drive_cycle_artemis();
+  // slide::examples::GITT_test();
   //!< Benchmarks:
 
   // slide::benchmarks::run_Cell_Bucket();
@@ -146,8 +149,8 @@ int main()
   // slide::benchmarks::run_LP_case_LargePack();
 
   // MATLAB ECM benchmarks:
-  // slide::benchmarks::run_Cell_Bucket_single_default_pulse();
-  // slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
+  slide::benchmarks::run_Cell_Bucket_single_default_pulse();
+  slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
 
   // slide::benchmarks::run_Cell_ECM_single_default_pulse();
   // slide::benchmarks::run_Cell_ECM_single_default_CCCV();

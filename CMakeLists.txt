@@ -3,18 +3,13 @@ cmake_minimum_required(VERSION 3.17)
 # include(cmake/ProjectSettings.cmake)
 project(SLIDE VERSION "3.0.0"
   DESCRIPTION "A simulator for lithium-ion battery degradation"
-  HOMEPAGE_URL https://davidhowey.github.io/SLIDE/
+  HOMEPAGE_URL https://github.com/Battery-Intelligence-Lab/SLIDE/
   LANGUAGES CXX)
+
 
  
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
-
-
-enable_testing()
-add_subdirectory(src bin)
-add_subdirectory(tests)
-
 
 # Link this 'library' to use the warnings specified in CompilerWarnings.cmake
 add_library(project_warnings INTERFACE)
@@ -23,9 +18,21 @@ add_library(project_warnings INTERFACE)
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
 
+enable_testing()
+add_subdirectory(src bin)
+add_subdirectory(external/eigen)
+
+target_link_libraries(src PUBLIC eigen)
+
+include(cmake/Coverage.cmake)
+add_subdirectory(tests)
+
+
+
 add_executable(slide
   src/main.cpp
 )
+
 
 target_link_libraries(slide
   PRIVATE
@@ -39,7 +46,7 @@ target_include_directories(slide
   data
 )
 
-include(cmake/Coverage.cmake)
+
 
 # message(STATUS "Project: ${PROJECT_NAME} version ${PROJECT_HOMEPAGE_URL}")
 
@@ -71,8 +78,8 @@ set_project_warnings(project_warnings)
 # include(cmake/Doxygen.cmake)
 # enable_doxygen(src doxygen-docs)
 
-# # allow for static analysis options
-# include(cmake/StaticAnalyzers.cmake)
+# allow for static analysis options
+include(cmake/StaticAnalyzers.cmake)
 
 # set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
@@ -127,10 +134,3 @@ install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
 # install(TARGETS slide_v3
 # CONFIGURATIONS Release
 # RUNTIME DESTINATION Release/bin)
-
-# target_link_libraries(slide_v3
-# PRIVATE
-# SLIDE
-# ) # "-Wl,--stack,8000000000" -> No need anymore. % pthread
-
-# 1F15CC8FAF2E004105282ADDDC78DC21098DFF10

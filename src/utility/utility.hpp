@@ -24,4 +24,9 @@
 #include "slide_aux.hpp"
 #include "units.hpp"
 
+
 #include "io/read_CSVfiles.hpp"
+
+// Types:
+
+#include "../types/Deep_ptr.hpp"

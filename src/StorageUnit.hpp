@@ -12,6 +12,7 @@
 
 #include "settings/settings.hpp"
 #include "types/Status.hpp"
+#include "types/Deep_ptr.hpp"
 #include "utility/free_functions.hpp"
 
 #include <string>
@@ -19,16 +20,17 @@
 #include <vector>
 #include <span>
 #include <string_view>
+#include <utility>
 
 namespace slide {
 class StorageUnit
 {
 protected:
-  std::string ID{ "StorageUnit" };               //!< identification string
-  StorageUnit *parent{ nullptr };                //!< pointer to the SU 'above' this one [e.g. the module to which a cell is connected]
-  bool blockDegAndTherm{ false };                //!< if true, degradation and the thermal ODE are ignored
-  using setStates_t = std::span<const double> &; //!< To pass states to read, non-expandable container.
-  using getStates_t = std::vector<double> &;     //!< To pass states to save, expandable container.
+  std::string ID{ "StorageUnit" };           //!< identification string
+  StorageUnit *parent{ nullptr };            //!< pointer to the SU 'above' this one [e.g. the module to which a cell is connected]
+  bool blockDegAndTherm{ false };            //!< if true, degradation and the thermal ODE are ignored
+  using setStates_t = std::span<double> &;   //!< To pass states to read, non-expandable container.
+  using getStates_t = std::vector<double> &; //!< To pass states to save, expandable container.
   using viewStates_t = std::span<double>;
   virtual size_t calculateNcells() { return 0; }
 
@@ -103,5 +105,15 @@ public:
   virtual void storeData() = 0;
   virtual void writeData(const std::string &prefix) = 0;
 };
+
+// Free functions:
+// template <typename T, typename... Args>
+// auto make_SU(Args &&...args) { return Deep_ptr<StorageUnit>(new T(std::forward<Args>(args)...)); }
+
+template <typename T, typename... Args>
+auto make_SU(Args &&...args)
+{
+  return Deep_ptr<StorageUnit>(std::unique_ptr<T>(new T(std::forward<Args>(args)...)));
+}
 
 } // namespace slide

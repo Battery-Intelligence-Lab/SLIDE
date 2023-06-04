@@ -13,6 +13,7 @@
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
 
+
 #include <vector>
 #include <cstdlib>
 #include <memory>
@@ -34,25 +35,23 @@ class Module : public StorageUnit
 
 public:
   //!< connected child SUs
-  using SU_t = std::unique_ptr<StorageUnit>; // #TODO in future it should store directly storage unit itself.
+  using SU_t = Deep_ptr<StorageUnit>; // #TODO in future it should store directly storage unit itself.
   using SUs_t = std::vector<SU_t>;
   using SUs_span_t = std::span<SU_t>;
-  using CoolSystem_t = std::unique_ptr<CoolSystem>;
+  using CoolSystem_t = Deep_ptr<CoolSystem>;
 
 protected:
   SUs_t SUs;
   std::vector<double> Rcontact; //!< array with the contact resistance for cell i
 
   //!< thermal model
-  std::unique_ptr<CoolSystem> cool{ nullptr }; //!< cooling system of this module //!< std::make_unique<CoolSystem>(settings::MODULE_NSUs_MAX, 1);
+  CoolSystem_t cool{ nullptr }; //!< cooling system of this module //!< make<CoolSystem>(settings::MODULE_NSUs_MAX, 1);
   ModuleThermalParam therm;
 
   //!< voltage
-  size_t Ncells;               //!< Number of cells this module contains.
-  double Vmodule{ 0 };         //!< voltage of the module
-  bool Vmodule_valid{ false }; //!< boolean indicating if stored the voltage of the module is valid
-  bool par{ true };            //!< if true, some functions will be calculated parallel using multithreaded computing
-                               //!< data storage
+  size_t Ncells;    //!< Number of cells this module contains.
+  bool par{ true }; //!< if true, some functions will be calculated parallel using multithreaded computing
+                    //!< data storage
 
   State<0, settings::data::N_CumulativeModule> st_module;
   std::vector<double> data; //!< Time data
@@ -81,6 +80,9 @@ public:
   size_t getNSUs() { return SUs.size(); } //!< note that these child-SUs can be modules themselves (or they can be cells)
   SUs_t &getSUs() { return SUs; }
 
+  const auto &operator[](size_t i) const { return SUs[i]; }
+  auto &operator[](size_t i) { return SUs[i]; }
+
   virtual Status checkVoltage(double &v, bool print) noexcept override; //!< get the voltage and check if it is valid
   double getVhigh() override;                                           //!< return the voltage of the cell with the highest voltage
   double getVlow() override;                                            //!< return the voltage of the cell with the lowest voltage
@@ -103,10 +105,6 @@ public:
   double getCoolingLoad(); //!< return the energy required to run the entire coolingsystem of this module and all its children
   double thermalModel(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim) override;
 
-  //!< different implementation for series vs parallel modules
-  virtual bool validSUs(SUs_span_t c, bool print = true) = 0;               //!< check if the cells in this array are valid for this module
-  virtual bool validSUs(bool print = true) { return validSUs(SUs, print); } //!< check if the cells in valid for this module
-
   virtual void setSUs(SUs_span_t c, bool checkCells = true, bool print = true);
   //!< Sets the cells of this module. Checks module-constraints
   //!< does not check if the states of cells are valid, nor the voltages of the cells and module
@@ -124,7 +122,6 @@ public:
     assert(Rc.size() == getNSUs());
     Rcontact.resize(Rc.size());
     std::copy(Rc.begin(), Rc.end(), Rcontact.begin());
-    Vmodule_valid = false; //!< we are changing the resistance, so the stored voltage is no longer valid
   }
 
   virtual Module *copy() override = 0;

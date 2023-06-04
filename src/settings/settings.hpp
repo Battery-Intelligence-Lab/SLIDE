@@ -63,8 +63,6 @@ constexpr int DATASTORE_COOL = 0; //!< if 0, no data is stored
                                   //!< if 1, statistics about the cooling system is stored
                                   //!< if 2, operating power etc is stored every time step
 
-constexpr int CELL_NDEG = 10; //!< maximum number of any type of degradation model
-
 constexpr int MODULE_NSUs_MAX = 100; //!< #TODO eliminate but recursive static does not solve the situation since it is recursive.
                                      //!< maximum number of cells in a base module
                                      //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
@@ -91,7 +89,7 @@ constexpr size_t CELL_NSTATE_MAX{ 30 }; //!< maximum number of states of all typ
                          //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
 //!< temperature
-constexpr int T_MODEL{ 1 }; //!< which thermal model to use
+constexpr int T_MODEL{ 0 }; //!< which thermal model to use
                             //!< 	0 no thermal model
                             //!< 	1 individual cell bulk thermal model
                             //!< 	2 coupled cell thermal model with cooling from modules
@@ -113,6 +111,8 @@ constexpr int verbose{ printLevel::printCrit };
 //!< 	5 	on top of the output from 4, the low-level flow of the program in the BasicCycler is printed (e.g. 'in time step 101, the voltage is 3.65V')
 //!< 	6 	on top of the output from 5, we also print details of the nonlinear search for the current needed to do a CV phase
 //!< 	7 	on top of the output from 6, a message is printed every time a function in the Cell is started and terminated
+
+constexpr bool printNumIterations{ true }; //!< Prints number of iterations for improvement. Default is false.
 
 } // namespace slide::settings
 

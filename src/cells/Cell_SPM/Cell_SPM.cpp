@@ -111,7 +111,6 @@ Status Cell_SPM::setCurrent(double Inew, bool checkV, bool print)
   const auto status = checkCurrent(checkV, print);
 
   if (isStatusBad(status)) {
-
     st.I() = old_I;
     st.V() = old_V;
     Vcell_valid = Vcell_valid_old; //!< #TODO in future make it into states.

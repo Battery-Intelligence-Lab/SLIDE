@@ -1,32 +1,11 @@
-# Cell_Bucket unit tests:
-add_executable(unit_test_Cell_Bucket Cell_Bucket_test.cpp)
-target_link_libraries(unit_test_Cell_Bucket PRIVATE src)
-add_test(NAME unit_test_Cell_Bucket COMMAND unit_test_Cell_Bucket WORKING_DIRECTORY bin)
+# Add executables and tests with coverage flags applied
+add_executable_with_coverage_and_test(unit_test_Cell_Bucket Cell_Bucket_test.cpp)
+add_executable_with_coverage_and_test(unit_test_Cell_ECM Cell_ECM_test.cpp)
+add_executable_with_coverage_and_test(unit_test_Cell_SPM Cell_SPM_test.cpp)
 
-add_executable(unit_test_Cell_ECM Cell_ECM_test.cpp)
-target_link_libraries(unit_test_Cell_ECM PRIVATE src)
-add_test(NAME unit_test_Cell_ECM COMMAND unit_test_Cell_ECM WORKING_DIRECTORY bin)
+add_executable_with_coverage_and_test(unit_test_Converter converter_test.cpp)
+add_executable_with_coverage_and_test(unit_test_Module_p Module_p_test.cpp)
 
-add_executable(unit_test_Cell_SPM Cell_SPM_test.cpp)
-target_link_libraries(unit_test_Cell_SPM PRIVATE src)
-add_test(NAME unit_test_Cell_SPM COMMAND unit_test_Cell_SPM WORKING_DIRECTORY bin)
-
-add_executable(unit_test_Converter converter_test.cpp)
-target_link_libraries(unit_test_Converter PRIVATE src)
-add_test(NAME unit_test_Converter COMMAND unit_test_Converter WORKING_DIRECTORY bin)
-
-# add_executable(unit_test_Module_p Module_p_test.cpp)
-# target_link_libraries(unit_test_Module_p PRIVATE src)
-# add_test(NAME unit_test_Module_p COMMAND unit_test_Module_p WORKING_DIRECTORY bin)
-
-# add_executable(unit_test_Module_s Module_s_test.cpp)
-# target_link_libraries(unit_test_Module_s PRIVATE src)
-# add_test(NAME unit_test_Module_s COMMAND unit_test_Module_s WORKING_DIRECTORY bin)
-
-# add_executable(unit_test_Cycler Cycler_test.cpp)
-# target_link_libraries(unit_test_Cycler PRIVATE src)
-# add_test(NAME unit_test_Cycler COMMAND unit_test_Cycler WORKING_DIRECTORY bin)
-
-# add_executable(unit_test_Procedure Procedure_test.cpp)
-# target_link_libraries(unit_test_Procedure PRIVATE src)
-# add_test(NAME unit_test_Procedure COMMAND unit_test_Procedure WORKING_DIRECTORY bin)
+add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
+add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
+add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

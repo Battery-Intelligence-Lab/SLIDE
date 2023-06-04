@@ -45,8 +45,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
    * Simulate a cycle ageing experiment with the given parameters
    */
   const std::string pref{ "cycleAge" }; //!< prefix appended at the start of the names of all files
-  constexpr auto diagnostic = true;     //!< stop (dis)charging when one of the cells reaches a voltage limit
-  auto cyc = Cycler(su, pref).setDiagnostic(diagnostic);
+  auto cyc = Cycler(su, pref);
 
   //!< variables
   constexpr double dt = 2;
@@ -86,7 +85,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
 
     //!< CV charge
     if (testCV) {
-      succ = cyc.CV(Vmax, Ilim, TIME_INF, dt, ndata, th);
+      succ = cyc.CV(su->V(), Ilim, TIME_INF, dt, ndata, th);
       if (!isCurrentLimitReached(succ)) {
         std::cout << "Error in CycleAge when CV charging in cycle "
                   << i << ", stopping cycling.\n"
@@ -94,15 +93,13 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
         break;
       }
 
-      storeThroughput(th, su);                                // #TODO why do we do this?
-      if (!diagnostic && succ != Status::ReachedCurrentLimit) //!< #TODO what is diagnostic? -> if diagnostic on the individual cell limits are respected. Otherwise system level.
-        break;
+      storeThroughput(th, su); // #TODO why do we do this?
     }
 
 
     succ = cyc.CC(Idis, Vmin, TIME_INF, dt, ndata, th); //!< CC discharge
     storeThroughput(th, su);
-    if (!diagnostic && !isVoltageLimitReached(succ)) {
+    if (!isVoltageLimitReached(succ)) {
       std::cout << "Error in CycleAge when discharging in cycle " << i << ", stop cycling.\n";
       break;
     } // #TODO depending on diagnostics a bad status may be skipped.
@@ -110,8 +107,8 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
     //!< CV discharge
     if (testCV) {
       //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
-      succ = cyc.CV(Vmin, Ilim, TIME_INF, dt, ndata, th);
-      if (!isCurrentLimitReached(succ)) { //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
+      succ = cyc.CV(su->V(), Ilim, TIME_INF, dt, ndata, th); // #TODO su->V() because if an individual cell is not good then cannot use Vlim.
+      if (!isCurrentLimitReached(succ)) {                    //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
         std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
         break;
       }
@@ -143,7 +140,7 @@ void Procedure::cycleAge(StorageUnit *su, bool testCV)
   const double Ccha{ 1 }, Cdis{ 1 };
   const double Vmax = su->Vmax();
   const double Vmin = su->Vmin();
-  const unsigned Ncycle = 15000;
+  const unsigned Ncycle = 15;  // #TODO it should be 15000
   const unsigned ncheck = 250; //!< do a checkup ever 250 cycles
   const unsigned nbal = 10;    //!< balance every 10 cycles
 
@@ -167,7 +164,6 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
    */
 
   //!< settings
-  constexpr bool diagnostic = true;  //!< stop (dis)charging when one of the cells reaches a voltage limit
   const std::string pref = "useAge"; //!< prefix appended at the start of the names of all files
   constexpr double dt = 1;
   constexpr unsigned Ncycle = 20; //!< 365 * 10; //!< 10 year
@@ -175,7 +171,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
   constexpr unsigned Nbal = 7;    //!< balance every week
 
   //!< Variables
-  auto cyc = Cycler(su, pref).setDiagnostic(diagnostic);
+  auto cyc = Cycler(su, pref);
   ThroughputData th{};
   Status succ;
 
@@ -501,16 +497,17 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   if (!unitTest) std::cout << "Finishing the check-up after Ah = " << Ah << '\n';
 }
 
+/**
+ * @brief Prepares the top-level StorageUnit for a capacity check.
+ *
+ * This function ensures the StorageUnit is in the middle voltage range and
+ * allows the battery to cool down to a normal temperature. This is done by
+ * charging the StorageUnit to about 75% SOC using a C/25 rate.
+ *
+ * @param[in] su Pointer to the StorageUnit to be prepared for the capacity check.
+ */
 void Procedure::checkUp_prep(StorageUnit *su)
 {
-  /*
-   * Prepare the top-level SU for a capacity check.
-   * We do two things
-   * 		ensure we are in the middle V range
-   * 			problem in parallel modules if you are <3V then the state might be illegal cause dV is very large if there was no CV phase due to steep OCV curve
-   * 			and if initial state is illegal, the capcheck will fail since you always restore sini (i.e. this illegal state)
-   * 		this will also allow the battery to cool down to a normal temperature
-   */
   const double V = 0.75 * su->Vmax() + 0.25 * su->Vmin(); //!< go to a voltage at about 75% SOC
   const double I = -su->Cap() / 25.0;                     //!< use a C/25 rate to charge, so P modules have plenty of time to equalise the voltages
   const double dt = 2;
@@ -519,15 +516,16 @@ void Procedure::checkUp_prep(StorageUnit *su)
 
   //!< charge to middle voltage, stop when the voltage of one cell has reached the maximum or minimum
   ThroughputData th{};
-  Cycler(su, "pre-checkUp").setDiagnostic(true).CC(I, V, TIME_INF, dt, ndata, th);
+  Cycler(su, "pre-checkUp").CC(I, V, TIME_INF, dt, ndata, th);
 }
 
+/**
+ * @brief Overall function to do a check-up of the modules
+ *
+ * @param[in] su Pointer to the StorageUnit to be prepared for the capacity check.
+ */
 void Procedure::checkMod(StorageUnit *su)
 {
-  /*
-   * Overall function to do a check-up of the modules
-   */
-
   //!< Name of the file which will be written
   std::string name_overall = su->getFullID() + "_checkModules_overall.csv";
   std::string name_hist = su->getFullID() + "_checkModules_histograms.csv";

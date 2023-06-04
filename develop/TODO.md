@@ -37,7 +37,33 @@
 - [ ] Should capacity check also contain a CV phase? 
 
 
-### Current priority: 
+### Current priority:
+- [ ] CCCV for ageing CV should be done with the remaining voltage. 
+- [ ] Battery class distributes current equally between each module. We can insert Schimpe-style optimisation if we could integrate a current distribution algorithm. 
+- [ ] Vmodule and Vmodule_valid are removed but it could be useful for series module. 
+- [ ] Problem compiling with MSVC vs Clang whereas Clang is 3x faster. Are we really enabling vectorisation and/or sse2/avx etc.? Make sure all optimisations are on for all compilers. 
+- [ ] Eigen is included! Remove unnecessary folders. 
+- [ ] Why CV controls voltage limit? It seems unnecessary. 
+- [x] Cycler `getSafetyVmin` and `getSafetyVmax` are removed for redundancy and expensiveness.
+- [x] Cycler `initialise` is removed now constructor is used. 
+- [x] nOnce scaling is being removed; it will be added in future if necessary. 
+- [x] Unnecessary printing statements with `prdet` is removed to reduce cluttering. 
+- [x] check_safety seems useless since VMAX and VMIN are check. Therefore being removed. 
+- [x] regulate diagnostic variable: if diagnostic on the individual cell limits are respected. Otherwise system level. Diagnostic is removed and now we act on individual cell limits. 
+- [ ] T_MODEL and T_ENV etc. should not be constants!!!!
+- [ ] Add a GITT function. 
+- [x] Instead of Battery class holding converter pointer, it is now holding a converter object. 
+- [ ] Test cases testing shared_ptr logic (i.e., testing if the pointer points to another thing when Cell is changed.) should be removed because when you change cells the previous cell is removed due to unique_ptr logic. 
+- [ ] std::span<double> & for set states do not work when a vector given. Need a better idea to set and get. Maybe another class. 
+- [x] Cannot set current for Module_p<Module_p>. See `test_Hierarchichal_p`. Very important.
+- [ ] copy functions are commented out. 
+- [ ] validSUs actually not necessary! Removing. Write free functions to check voltage/current equality!
+- [ ] T_MODEL == 2 causes thermal runaway in test_CyclerVariations_high
+- [ ] redistributeCurrent_new and other iterative algorithms require many iterations (up to 2500)!
+- [ ] test_Cycler_CoolSystem passes only when T_MODEL==2
+- [x] Some tests were hard-coded for Cell_type which has been changed to template.
+- [x] operator[] is added to Module class to reach SUs. 
+- [ ] getNSUs() -> size() so module size should be number of SUs.
 - [x] Module_p::getRtot() check for contact resistances is removed for simplification. 
 - [ ] Why do we need getRtot? Only for algorithms? Maybe getThevenin would be better. 
 - [x] V(bool print),  getOCV(bool print) print argument is removed. 
@@ -63,12 +89,12 @@
   - [x] checkUp_getCells and checkUp_getModules are deleted and replaced with visitors. 
   - [ ] Reduce dynamic pointer cast in Procedure and let Polymorphism work. 
   - [ ] Capacity checking protocol in Procedure::CheckUp is removed.  
-- [ ] TIME_INF is created for a large time value. 
-- [ ] getDaiStress is simplified by removing unnecessary R multiplication and division. 
+- [x] TIME_INF is created for a large time value. 
+- [x] getDaiStress is simplified by removing unnecessary R multiplication and division. 
 - [ ] State classes should have const members. 
 - [ ] Make more methods const : Vmin(), Vmax(), VMIN(), VMAX(), Cap()
 - [ ] Stressparam vs. classes may encapsulate calculating some things. 
-- [ ] cube and sqr functions added for utility. 
+- [x] cube and sqr functions added for utility. 
 - [ ] Module requires number of cells to construct which is unnecessary. 
 - [ ] Cycler CV is not working???? CCCV works if it does not have current beforehand it does not work... 
 - [ ] Create a small class config for limits reached. It should have CheckLimits.
@@ -80,7 +106,7 @@
 - [ ] Doxygen integration - adapting commenting style. 
 - [ ] CPack and installation improvements. 
 - [ ] Figure out why OBJECT libraries cause linker error. We converted everything to STATIC
-- [ ] Check #CHECK tags in the code.  
+- [ ] Check #CHECK and #TODO tags in the code.  
 - [ ] Add variable data storage (Vk is working on)
   - [ ] Create enum for storable data. 
   - [ ] Why are we using different vector<struct> anyway? We can use just a big vector + deserializer? 
@@ -198,7 +224,7 @@ slide_pack integration:
 - [ ] setStates to support r-values. 
 - [ ] do not copy shared pointers in for loops.
 - [ ] Why there are so many ifs instead of else-ifs
-- [ ] validSUs functions are combined. 
+- [x] validSUs functions are combined. 
 - [ ] Cycler was checking if storeData is full but storeData itself should check and call writeData. Or better, Cycler should collect everything and write. 
 - [ ] su->getIndex() should not be used  in cycler because it is removed. 
 - [ ] timeStep_CC_i -> seems to be used only for binding; therefore, not needed anymore. 
@@ -266,7 +292,7 @@ slide_pack integration:
 - [ ] Remember that in copy(), usage stats are not copied across to the new module.
 		 * So this function will write all zeros if called with a copy of the SU   -> is this a bug or feature? 
 
-- [ ] for setSUs and validSUs span is used. 
+- [x] for setSUs and validSUs span is used. 
 - [ ] We are reading file lots of times when individually creating cells! In release mode it takes 30 seconds. 
   - [x] slide::Model_SPM -> slide::Model_SPM*  and makeModel();  from 34 seconds to 12 seconds.  18900x326 double = 47 MB RAM is also saved.
   - [ ] OCVcurves -> OCVcurves*   12 seconds to 0.22 seconds. Do not forget things otherwise than NMC. 

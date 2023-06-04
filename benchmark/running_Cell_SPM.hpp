@@ -57,7 +57,7 @@ inline void run_Cell_SPM_2(double Crate)
 
   std::cout << "Vbefore: " << c.V() << '\n';
   c.setBlockDegAndTherm(true);
-  ThroughputData th{};
+  // ThroughputData th{};
 
   c.setCurrent(Idisch);
 

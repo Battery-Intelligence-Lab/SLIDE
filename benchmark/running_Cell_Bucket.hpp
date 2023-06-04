@@ -111,7 +111,7 @@ inline void run_Cell_SPM()
   std::string ID = "temp";
   Clock clk;
 
-  constexpr size_t N = 15;
+  // constexpr size_t N = 15;
 
   auto c = Cell_SPM();
   std::cout << "V: " << c.V() << '\n';

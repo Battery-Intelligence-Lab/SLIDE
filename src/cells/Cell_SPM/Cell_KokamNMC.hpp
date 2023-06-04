@@ -104,7 +104,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   checkModelparam(); //!< check if the inputs to the MATLAB code are the same as the ones here in the C++ code
 
   //!< Initialise state variables
-  double Rdc = 0.0102; //!< DC resistance of the total cell in Ohm
+  // double Rdc = 0.0102; //!< DC resistance of the total cell in Ohm
 
   double fp{ 0.689332 }, fn{ 0.479283 }; //!< lithium fraction in the cathode/anode at 50% soc [-]
 
@@ -141,7 +141,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
   //!< Check if this was a valid state
   try {
     validState(st, s_ini);
-  } catch (int e) {
+  } catch (...) {
     std::cout << "Error in State::initialise, one of the states has an illegal value, throwing an error\n";
     throw 12;
   }

@@ -26,7 +26,7 @@ namespace slide::settings //!< #TODO if it is in slide::settings it gives 600+ e
 constexpr double MODULE_P_V_ABSTOL = 0.01;   //!< tolerance on the difference between parallel-connected cells
                                              //!< i.e. the difference in voltage between two parallel connected cell has to be below this value
 constexpr double MODULE_P_V_RELTOL = 0.001;  //!< tolerance on the relative difference between parallel-connected cells
-constexpr double MODULE_P_I_ABSTOL = 0.005;  //!< absolute tolerance on the difference between the set current and real current in a parallel modules
+constexpr double MODULE_P_I_ABSTOL = 1e-10;  //!< absolute tolerance on the difference between the set current and real current in a parallel modules
                                              //!< i.e. in Module_p::setCurrent(), Inew - I < Itol
 constexpr double MODULE_P_I_RELTOL = 0.0005; //!< relative tolerance on the difference between the set current and real current in a parallel modules
                                              //!< i.e. in Module_p::setCurrent(), abs(Inew - I) < Itol*Inew

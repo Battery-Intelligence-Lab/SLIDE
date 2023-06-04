@@ -33,7 +33,7 @@ inline auto get_exampleCell()
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-  auto example_cell = std::make_unique<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
+  auto example_cell = make<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
 
   // Specify the OCV parameters (calculated by determineOCV::estimateOCVparameters)
   OCVparam ocvfit;
@@ -153,13 +153,18 @@ auto inline init_cell_manual(auto &su, double I_0, double V_0, double &Ah, doubl
 
 inline void drive_cycle_artemis()
 {
+
+  // Note: Entropic effect must be added!
+
   std::string ID = "temp";
   Clock clk;
 
-
-  double Tref = PhyConst::Kelvin + 20; // Temperature at which the characterisation should be done [K]
-                                       // Pivot power data is between 23.5 and 25.9 with mean 24.2 C temperature. 26.44 for test data.
-
+  // double Tref = 21.0_degC; // Temperature at which the characterisation should be done [K]
+  // Our data is between 23.5 and 25.9 with mean 24.2 C temperature. 26.44 for test data.
+  if (settings::T_MODEL != 0) {
+    std::cerr << "drive_cycle_artemis works with T_MODEL=0 but it is not!\n";
+    throw 1234;
+  }
 
   std::string profile_path{ "profiles/drive_cycles/ArtemisM_scaled.csv" };
 
@@ -176,56 +181,21 @@ inline void drive_cycle_artemis()
   deg.LAM_id.add_model(1);
   deg.pl_id = 0;
 
-  auto c = std::make_unique<Cell_SPM>("cell_ancillary", deg, 1, 1, 1, 1);
-  c->setBlockDegAndTherm(true);
+  auto c = Cell_SPM("cell_ancillary", deg, 1, 1, 1, 1);
+  c.setBlockDegAndTherm(true);
+  c.setT(21.0_degC);
 
   double Cmaxpos{ 51385 };
   double Cmaxneg{ 30555 };
   double cps, cns;
 
 
-  auto &st = c->getStateObj();
+  auto &st = c.getStateObj();
+  auto cyc = Cycler(&c, "discharge");
 
-  for (auto z_i : st.z())
-    std::cout << z_i << ' ';
-  std::cout << '\n';
-
-  c->setCurrent(1);
-
-  for (auto z_i : st.z())
-    std::cout << z_i << ' ';
-  std::cout << '\n';
-
-  while (c->V() > 2.9)
-    c->timeStep_CC(1, 1);
-
-  for (auto z_i : st.z())
-    std::cout << z_i << ' ';
-  std::cout << '\n';
-
-  c->setCurrent(0.005);
-  while (c->V() > 2.7)
-    c->timeStep_CC(1, 1);
-
-  for (auto z_i : st.z())
-    std::cout << z_i << ' ';
-  std::cout << '\n';
-
-  c->setCurrent(0.0001);
-  while (c->V() > 2.7)
-    c->timeStep_CC(1, 1);
-
-  for (auto z_i : st.z())
-    std::cout << z_i << ' ';
-  std::cout << '\n';
-
-  c->setCurrent(0);
-  c->timeStep_CC(1, 100);
-
-  for (auto z_i : st.z())
-    std::cout << z_i << ' ';
-  std::cout << '\n';
-
+  ThroughputData th{};
+  cyc.CCCV(1, 2.7, 0.0001, 1, 0, th);
+  cyc.rest(100, 1, 0, th);
 
   std::ofstream out_fraction{ PathVar::results / "Kokam_NMC_16Ah_OCV.csv" };
 
@@ -236,68 +206,63 @@ inline void drive_cycle_artemis()
                << "zp(3),"
                << "zn(3)\n";
 
-  c->getCSurf(cps, cns, false);
-  double V_old{ c->V() }, fp_old{ cps / Cmaxpos }, fn_old{ cns / Cmaxneg };
-  out_fraction << c->I() << ',' << c->V() << ',' << fp_old << ',' << fn_old << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
+  c.getCSurf(cps, cns, false);
+  double V_old{ c.V() }, fp_old{ cps / Cmaxpos }, fn_old{ cns / Cmaxneg };
+  out_fraction << c.I() << ',' << c.V() << ',' << fp_old << ',' << fn_old << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
 
-
-  c->setCurrent(-0.02);
+  c.setCurrent(-0.02);
   double threshold{ 1e-4 };
-  while (c->V() < 4.2) {
-    c->getCSurf(cps, cns, false);
+  while (c.V() < 4.2) {
+    c.getCSurf(cps, cns, false);
     auto fp{ cps / Cmaxpos }, fn{ cns / Cmaxneg };
 
-    if (std::abs(V_old - c->V()) > threshold || std::abs(fp_old - fp) > threshold || std::abs(fn_old - fn) > threshold) {
-      V_old = c->V();
+    if (std::abs(V_old - c.V()) > threshold || std::abs(fp_old - fp) > threshold || std::abs(fn_old - fn) > threshold) {
+      V_old = c.V();
       fp_old = fp;
       fn_old = fn;
-      out_fraction << c->I() << ',' << c->V() << ',' << fp << ',' << fn << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
+      out_fraction << c.I() << ',' << c.V() << ',' << fp << ',' << fn << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
     }
-    c->timeStep_CC(1, 1);
+    c.timeStep_CC(1, 1);
   }
 
   out_fraction.close();
 
-  c->getCSurf(cps, cns, false);
-  std::cout << "V: " << c->V() << " cps, cns : " << cps / Cmaxpos << ", " << cns / Cmaxneg << ',' << st.zp(3) << ',' << st.zn(3) << "\n";
+  c.getCSurf(cps, cns, false);
+  std::cout << "V: " << c.V() << " cps, cns : " << cps / Cmaxpos << ", " << cns / Cmaxneg << ',' << st.zp(3) << ',' << st.zn(3) << "\n";
   for (auto z_i : st.z())
     std::cout << z_i << ' ';
   std::cout << '\n';
 
 
-  double SOC_vs_Volt[] = { 2.7, 3.4872, 3.5606, 3.6206, 3.6492, 3.6845, 3.7635, 3.8388, 3.9289, 4.0439, 4.2 };
+  // double SOC_vs_Volt[] = { 2.7, 3.4872, 3.5606, 3.6206, 3.6492, 3.6845, 3.7635, 3.8388, 3.9289, 4.0439, 4.2 };
   double SOC_vs_zn3[] = { 0.017456, 0.072543, 0.127650, 0.182757, 0.237865, 0.292971, 0.348078, 0.403186, 0.458292, 0.513400, 0.568507 };
-  double SOC_vs_zp3[] = { 0.670246, 0.630914, 0.591568, 0.552221, 0.512874, 0.473528, 0.434182, 0.394835, 0.355489, 0.316142, 0.276795 };
+  // double SOC_vs_zp3[] = { 0.670246, 0.630914, 0.591568, 0.552221, 0.512874, 0.473528, 0.434182, 0.394835, 0.355489, 0.316142, 0.276795 };
 
   double SOC_vs_fp[] = { 0.970530, 0.913563, 0.856588, 0.799614, 0.742639, 0.685665, 0.628691, 0.571716, 0.514742, 0.457767, 0.400792 };
   double SOC_vs_fn[] = { 0.028906, 0.120170, 0.211423, 0.302676, 0.393928, 0.485181, 0.576434, 0.667687, 0.758939, 0.850192, 0.941444 };
 
   for (int i = 0; i < 11; i++) {
-    c->setC(SOC_vs_fp[i], SOC_vs_fn[i]);
-    std::cout << "i = " << i << " V = " << c->V() << '\n';
+    c.setC(SOC_vs_fp[i], SOC_vs_fn[i]);
+    std::cout << "i = " << i << " V = " << c.V() << '\n';
   }
-
 
   DynamicMatrix<double> profile;
   loadCSV_Ncol(PathVar::data / profile_path, profile);
 
   // Set the characterisation parameters of the cell to the ones given as input to this function
-
-
-  // auto cyc = Cycler(c.get(), ID);
   auto experiment = [&](std::string name) {
     std::vector<double> voltage;
     std::vector<State_SPM> states;
     std::vector<double> estimated_SOC;
-    double cap = c->Cap();
+    double cap = c.Cap();
     for (auto c_rate : profile.data) {
-      c->setCurrent(c_rate * cap, true);
-      voltage.push_back(c->V());
-      states.push_back(c->getStateObj());
+      c.setCurrent(c_rate * cap, true);
+      voltage.push_back(c.V());
+      states.push_back(c.getStateObj());
 
       estimated_SOC.push_back(100.0 * ((st.zn(3) - SOC_vs_zn3[0]) / (SOC_vs_zn3[10] - SOC_vs_zn3[0])));
 
-      c->timeStep_CC(1, 1);
+      c.timeStep_CC(1, 1);
 
       if (st.zn(3) < SOC_vs_zn3[1]) // Until 10%
         break;
@@ -332,19 +297,18 @@ inline void drive_cycle_artemis()
   };
 
   // Experiment from 90%
-  // c->setCurrent(0.01);
-  // while (c->V() > SOC_vs_Volt[9]) // 9 -> 90%
-  //   c->timeStep_CC(1, 1);
-
+  // c.setCurrent(0.01);
+  // while (c.V() > SOC_vs_Volt[9]) // 9 -> 90%
+  //   c.timeStep_CC(1, 1);
 
   for (int i = 9; i > 1; i--) {
-    c->setC(SOC_vs_fp[i], SOC_vs_fn[i]);
+    c.setC(SOC_vs_fp[i], SOC_vs_fn[i]);
     experiment(std::to_string(i) + "0");
   }
 
-  // c->writeData("drive_cycle");
-  std::cout << "V: " << c->V() << '\n';
-  std::cout << "SOC: " << 100 * c->SOC() << '\n';
+  // c.writeData("drive_cycle");
+  std::cout << "V: " << c.V() << '\n';
+  std::cout << "SOC: " << 100 * c.SOC() << '\n';
   std::cout << "Finished drive_cycle example in " << clk << ".\n";
 }
 

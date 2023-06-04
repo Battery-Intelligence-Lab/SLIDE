@@ -90,14 +90,17 @@ public:
   Cell_ECM<N_RC> *copy() override { return new Cell_ECM<N_RC>(*this); }
 };
 
-//!< Implementation:
+// Implementation:
 
+/**
+ * Default constructor for Cell_ECM class template.
+ */
 template <size_t N_RC>
 inline Cell_ECM<N_RC>::Cell_ECM()
 {
-  ID = "Cell_ECM";
+  ID = "Cell_ECM_" + std::to_string(N_RC) + "_";
   capNom = 16;
-  //!< OCV curve, dummy linear curve with 3 points from 2.0V to 4.4V
+  /// OCV curve, dummy linear curve with 3 points from 2.0V to 4.4V
   OCV.x = slide::linspace_fix(0.0, 1.0, 3);
   OCV.y = slide::linspace_fix(VMIN(), VMAX(), 3);
 
@@ -116,16 +119,29 @@ inline Cell_ECM<N_RC>::Cell_ECM()
   cellData.initialise(*this);
 }
 
+/**
+ * Constructor for Cell_ECM class template with given capacity and state of charge.
+ * @param capin Capacity input.
+ * @param SOCin State of charge input.
+ */
 template <size_t N_RC>
 inline Cell_ECM<N_RC>::Cell_ECM(double capin, double SOCin) : Cell_ECM()
 {
-  //!< check that the input argument is valid
+  /// check that the input argument is valid
   if (!free::check_SOC(SOCin)) throw 10;
 
   st.SOC() = SOCin;
   setCapacity(capin);
 }
 
+/**
+ * Constructor for Cell_ECM class template with given capacity, state of charge, and other parameters.
+ * @param capin Capacity input.
+ * @param SOCin State of charge input.
+ * @param Rdc_ DC resistance.
+ * @param Rp_ Array of parallel resistance values.
+ * @param inv_tau_ Array of inverse time constant values.
+ */
 template <size_t N_RC>
 inline Cell_ECM<N_RC>::Cell_ECM(double capin, double SOCin, double Rdc_,
                                 std::array<double, N_RC> Rp_,
@@ -170,12 +186,18 @@ inline Status Cell_ECM<N_RC>::setCurrent(double Inew, bool checkV, bool print)
 
   const auto status = checkCurrent(checkV, print);
 
-  if (isStatusBad(status))
-    st.I() = Iold;
+  if (isStatusBad(status)) st.I() = Iold;
 
   return status;
 }
 
+/**
+ * Sets the voltage of the cell, updates the current accordingly, and checks the current if specified.
+ * @param Vnew New voltage value.
+ * @param checkI If true, checks the current after setting the voltage (default is true).
+ * @param print If true, prints error messages (default is true).
+ * @return The status of the operation.
+ */
 template <size_t N_RC>
 inline Status Cell_ECM<N_RC>::setVoltage(double Vnew, bool checkI, bool print)
 {
@@ -200,25 +222,22 @@ inline Status Cell_ECM<N_RC>::setVoltage(double Vnew, bool checkI, bool print)
   return status;
 }
 
+/**
+ * Sets the state of charge (SOC) of the cell and checks the voltage if specified.
+ * @note This function is mainly used for testing purposes.
+ * @param SOCnew New SOC value (must be between 0 and 1).
+ * @param checkV If true, the voltage is checked after setting the SOC (default is true).
+ *               - If the voltage is outside the safety limits, an error is thrown and the old SOC is restored.
+ *               - If the voltage is outside the valid limits, an error is thrown but the new SOC is kept.
+ *               - If the voltage is within the allowed range, the function returns the voltage.
+ * @param print If true, error messages are printed based on the global printing variable (default is true).
+ *              If false, no messages are printed, but errors are still thrown.
+ * @return The status of the operation.
+ * @throws 10 If SOCnew is illegal (values must be between 0 and 1).
+ */
 template <size_t N_RC>
 inline Status Cell_ECM<N_RC>::setSOC(double SOCnew, bool checkV, bool print) //!< Also not used except test functions.
 {
-  /*
-   * checkV	true, the voltage is checked after setting the current
-   * 				if it is outside the safety limits of the cell, error 3 is thrown and the old SOC is restored
-   * 				if it is outside the valid limits of the cell, error 2 is thrown but the new SOC is kept
-   * 				if inside allowed Vrange, it returns the voltage
-   * 			false, the voltage is not checked (function returns 0, no errors are thrown)
-   *  		if no value of checkV is given, it is set to true
-   * print 	controls the printing of error messages
-   * 			if true, error messages are printed (if the global printing variable is high enough)
-   * 			if false, no messages are printed, but the errors are still thrown
-   * 			if no value, the default is true
-   *
-   * THROWS
-   * 10 	illegal SOC, values must be between 0 and 1
-   */
-
   if (!free::check_SOC(SOCnew))
     return Status::SOC_limits_violation;
 
@@ -239,22 +258,16 @@ inline Status Cell_ECM<N_RC>::setSOC(double SOCnew, bool checkV, bool print) //!
   return Status::Success;
 }
 
+/**
+ * Calculates the cell voltage based on the current state of the cell.
+ * @note Throws an error if the SOC is outside the allowed range.
+ * @tparam N_RC The number of RC-elements in the ECM model.
+ * @return The calculated cell voltage.
+ * @throws 1 If the SOC is outside the allowed range (passed on from linear interpolation).
+ */
 template <size_t N_RC>
 inline double Cell_ECM<N_RC>::V()
 {
-  /*
-   * print 	controls the printing of error messages, (default = true)
-   * 			if the SOC is out of the range, an error is always thrown (1)
-   * 				if crit is true an error message is printed (if verbose is above the critical level)
-   * 				else no error messages are printed
-   * 			this is an optional argument. If no value is given, it is assumed to be true
-   * 				this can be overwritten by giving an argument of false
-   *
-   * THROWS
-   * 1 	if SOC is outside the allowed range
-   * 			passed on from linear interpolation
-   */
-
   const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
   try {
     const double ocv = getOCV();
@@ -264,7 +277,7 @@ inline double Cell_ECM<N_RC>::V()
       v_now -= Rp[i] * st.Ir(i);
 
     return v_now;
-  } catch (int e) {
+  } catch (...) {
     if (verb)
       std::cerr << "ERROR in Cell_ECM::getV when getting the OCV.\n";
     return 0;
@@ -316,18 +329,13 @@ inline bool Cell_ECM<N_RC>::validStates(bool print)
   return range;
 }
 
+/**
+ * @brief Perform a time step at a constant current.
+ */
 template <size_t N_RC>
 inline void Cell_ECM<N_RC>::timeStep_CC(double dt, int nstep)
 {
-  /*
-   *	take a time step of dt seconds while keeping the current constant
-   */
-  if (dt < 0) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Cell_ECM::timeStep_CC, the time step dt must be "
-                << "0 or positive, but has value " << dt << '\n';
-    throw 10;
-  }
+  assert(dt > 0); // Check if the time step is valid (only in debug mode)
 
   const auto dth = dt / 3600.0;
   //!< take the specified number of time steps

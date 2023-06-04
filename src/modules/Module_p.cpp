@@ -1,14 +1,16 @@
-/*
- * Module_p.cpp
- *
- *  Created on: 18 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Module_p.cpp
+ * @brief Implementation of parallel module class.
+ * @author Jorn Reniers, Volkan Kumtepeli
+ * @date 18 Dec 2019
  */
 
 #include "Module_p.hpp"
 
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
+
+#include <Eigen/Dense>
 
 #include <cassert>
 #include <iostream>
@@ -22,29 +24,38 @@
 
 namespace slide {
 
+/**
+ * @brief Calculate the total resistance of the module.
+ *
+ * Computes the total resistance using the formula for resistances in parallel:
+ * 1/Rtot = sum(1/R_i)
+ *
+ * @return The total resistance of the module.
+ */
 double Module_p::getRtot() // #TODO -> This function seems to be very expensive.
 {
-  /*
-   * Return the total resistance
-   * 		V(I) = OCV - I*Rtot
-   * 		with V and OCV the total values for this module
-   *
-   * parallel: 1/Rtot = sum( 1/R_i )
-   */
+  if (SUs.empty()) return 0; // If there are no cells connected, return 0
 
-  if (SUs.empty()) return 0; //!< If there are no cells connected, return 0
+  // Start from the cell furthest away
+  double rtot = Rcontact.back() + SUs.back()->getRtot();
 
-  double rtot = Rcontact.back() + SUs.back()->getRtot(); //!< start from the cell furthest away
-
-  //!< then iteratively come closer, every time Rcontact[i] + (Rcell[i] \\ Rtot)
-  //!< 				= Rc[i] + Rcell[i]*Rtot / (Rcel[i]*Rtot)
-  for (int i = SUs.size() - 2; i >= 0; i--) //!< #TODO bug if there are less than 2 SUs. Also check if Rcontact.empty() or in future it will be array.
+  // Then iteratively come closer, updating resistance  Rcontact[i] + (Rcell[i] \\ Rtot)
+  for (int i = static_cast<int>(SUs.size()) - 2; i >= 0; i--) // #TODO Also check if Rcontact.empty() or in future it will be array.
     rtot = Rcontact[i] + (SUs[i]->getRtot() * rtot) / (SUs[i]->getRtot() + rtot);
 
   return rtot;
 }
 
-void Module_p::getVall(std::span<double> Vall, bool print)
+/**
+ * @brief Calculate the voltage of each SU accounting for contact resistance.
+ *
+ * Computes the terminal voltage Vt for each SU in the module while considering
+ * contact resistances and stores the values in the Vall span.
+ *
+ * @param Vall A span to store the voltage values.
+ * @param print Unused parameter (can be removed if not required).
+ */
+void Module_p::getVall(std::span<double> Vall, bool print) // #TODO span may not be the best container here.
 {
   /*
    * Return the voltage of SU[i] as seen from the terminal while accounting for the contact resistance
@@ -72,91 +83,124 @@ void Module_p::getVall(std::span<double> Vall, bool print)
   double I_cumulative{ 0 };
   for (size_t i{}; i < SUs.size(); i++) {
     const auto j = SUs.size() - 1 - i; // Inverse indexing.
-    Vall[j] = SUs[j]->V();
+    Vall[j] = SUs[j]->V();             // Store the voltage of the current SU
 
-    I_cumulative += SUs[j]->I();
+    I_cumulative += SUs[j]->I(); // Update cumulative current
 
-    for (auto k{ j }; k < SUs.size(); k++)
+    for (auto k{ j }; k < SUs.size(); k++) // Update the voltage values in Vall considering contact resistances
       Vall[k] -= I_cumulative * Rcontact[j];
   }
 }
 
-Status Module_p::redistributeCurrent_new(bool checkV, bool print)
+/**
+ * @brief Redistribute the current among the SUs to balance the voltage.
+ *
+ * Iteratively adjusts the current of each SU to balance the voltages across them.
+ *
+ * @param checkV Unused parameter (can be removed if not required).
+ * @param print Unused parameter (can be removed if not required).
+ * @return The status of the operation.
+ */
+Status Module_p::redistributeCurrent(bool checkV, bool print)
 {
   // New redistributeCurrent without PI control:
-  //!< get cell voltages
-  std::array<double, settings::MODULE_NSUs_MAX> Va, Vb, Ia, Ib; //!< #TODO if we should make them vector.
-
   //!< voltage and initial current of each cell //!< #TODO it is a constant value SU.
-  constexpr int maxIteration = 50;
-  const auto nSU = getNSUs();
+  if (getNSUs() <= 1) return Status::Success;
 
-  auto StatusNow = Status::RedistributeCurrent_failed;
-
-  if (nSU <= 1) return Status::Success;
-
-  double Itot{ 0 };
-  getVall(Va, print);
-  for (size_t i = 0; i < nSU; i++) {
-    Ia[i] = SUs[i]->I();
-    Itot += Ia[i]; // We also need to preserve sum of the currents!
-  }
-
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
-    double Vmean{ 0 }, error{ 0 };
-
-    for (size_t i = 0; i < nSU; i++)
-      Vmean += Va[i];
-
-    Vmean /= nSU;
-
-    for (size_t i = 0; i < nSU; i++)
-      error += std::abs(Vmean - Va[i]);
-
-    if (error < 1e-10)
-      return Status::Success;
-
-    for (size_t i = 0; i < nSU; i++) {
-      Ia[i] = Ia[i] - 0.2 * (Vmean - Va[i]) / 0.001;
-      SUs[i]->setCurrent(Ia[i]);
-    }
-    getVall(Va, print);
-  }
-
-  return StatusNow;
+  return setCurrent(I(), true, true);
 }
 
 Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
 {
   constexpr int maxIteration = 50;
   const auto nSU = getNSUs();
+  int iter{}; // Current iteration
 
-  auto StatusNow = Status::RedistributeCurrent_failed;
 
-  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Va;
+  auto StatusNow = Status::Success;
 
-  //!< get the old currents so we can revert if needed
-  for (size_t i{}; i < SUs.size(); i++)
-    Ia[i] = Iolds[i] = SUs[i]->I();
+  using A_type = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX>;
+  using b_type = Eigen::Array<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX>;
 
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
-    getVall(Va, print);
+  b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
 
-    double error{ 0 };
-    for (size_t i = 0; i < nSU; i++)
-      error += std::abs(Vnew - Va[i]);
+  const double tolerance = 1e-9;
 
-    if (error < 1e-10) {
-      StatusNow = Status::Success;
-      break;
+  double Icumulative{}, error_voltage{}, error_current{};
+  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+    Icumulative += Ib[i] = SUs[i]->I();
+    Vb[i] = SUs[i]->V();
+
+    if (i != 0)
+      error_voltage += std::abs(Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i]);
+    else
+      error_voltage += std::abs(Vb[i] - Vnew - Icumulative * Rcontact[i]);
+  }
+
+  if (error_voltage < tolerance) return StatusNow;
+
+  Eigen::PartialPivLU<A_type> LU = [&]() { // #TODO this will be static in future defined in parallel block
+    // Perturb a bit:
+    const double perturbation = 0.5; //
+    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      Ib[i] += perturbation; // Perturbation
+      SUs[i]->setCurrent(Ib[i]);
+
+      const double Vnew = SUs[i]->V();
+      r_est[i] = (Vb[i] - Vnew) / perturbation; // Estimated resistance.
+      Vb[i] = Vnew;
     }
 
-    for (size_t i = 0; i < nSU; i++) {
-      Ia[i] += -0.2 * (Vnew - Va[i]) / 0.001;
-      SUs[i]->setCurrent(Ia[i]);
+    A_type A(nSU, nSU);
+    // Set up the A matrix in Ax = b
+    for (size_t j = 0; j < nSU; j++)
+      for (size_t i = 0; i < nSU; i++) {
+        if (i == j)
+          A(i, j) = -Rcontact[i] - r_est[i];
+        else if (i == j + 1)
+          A(i, j) = r_est[j];
+        else if (j > i)
+          A(i, j) = -Rcontact[i];
+        else
+          A(i, j) = 0;
+      }
+
+    Eigen::PartialPivLU<A_type> LU(A); // LU decomposition of A.
+    return LU;
+  }();
+
+  while (iter < maxIteration) {
+    double Icumulative{}, error{};
+    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      Icumulative += Ib[i];
+
+      if (i != 0)
+        b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
+      else
+        b(i) = Vb[i] - Vnew - Icumulative * Rcontact[i];
+
+      error += std::abs(b(i));
+    }
+
+    if (error < tolerance) break;
+    iter++;
+
+    b_type deltaI = LU.solve(b.matrix()).array();
+
+    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i] - deltaI[i]));
+      Ib[i] = SUs[i]->I();
+      Vb[i] = SUs[i]->V();
     }
   }
-  return StatusNow; // #TODO add some voltage/current etc. check
+
+  if (iter == maxIteration)
+    StatusNow = Status::RedistributeCurrent_failed;
+
+  if constexpr (settings::printNumIterations)
+    if (iter > 3) std::cout << "setVoltage iterations: " << iter << '\n';
+
+  return StatusNow; // #TODO add some voltage/current etc. Also return max iter condition!!!!
 }
 
 Status Module_p::setCurrent(double Inew, bool checkV, bool print)
@@ -177,124 +221,140 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
   const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   constexpr int maxIteration = 50;
-  const auto nSU = getNSUs();
+  int iter{}; // Current iteration
+  const int nSU = getNSUs();
 
   auto StatusNow = Status::Success;
 
-  std::array<double, settings::MODULE_NSUs_MAX> Iolds, Ia, Va;
+  using A_type = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX>;
+  using b_type = Eigen::Array<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX>;
 
-  double Itot{ 0 };
 
-  //!< get the old currents so we can revert if needed
-  for (size_t i{}; i < SUs.size(); i++) {
-    Ia[i] = Iolds[i] = SUs[i]->I();
-    Itot += Iolds[i];
+  b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
+
+
+  StatusNow = Status::Success; //!< reset at each iteration.
+
+  const double tolerance = 1e-6;
+  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+    Ib[i] = SUs[i]->I();
+    Vb[i] = SUs[i]->V();
   }
 
-  const auto dI = (Inew - Itot) / nSU; // #TODO must change if charge/discharge.
 
-  for (size_t i{}; i < SUs.size(); i++) {
-    Ia[i] += dI;
-    StatusNow = SUs[i]->setCurrent(Ia[i]); // #TODO worse status should be here.
+  double Icumulative{}, error{};
+  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+    Icumulative += Ib[i];
+
+    if (i != 0)
+      b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
+    else
+      b(i) = Inew - Icumulative; // #TODO????
+
+    error += std::max(std::abs(b(i)), error);
+
+    r_est[i] = 200e-3; // 100e-3; // Init the resistances high at the beginning. #TODO probably not robust for all cases.
   }
 
-  getVall(Va, print);
+  if (error < tolerance) return StatusNow;
 
-  for (int iter{ 0 }; iter < maxIteration; iter++) {
-    double Vmean{ 0 }, error{ 0 };
 
-    for (size_t i = 0; i < nSU; i++)
-      Vmean += Va[i];
+  // // Perturb a bit:
+  // const double perturbation = 0.5; //
+  // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+  //   Ib[i] += perturbation; // Perturbation
+  //   SUs[i]->setCurrent(Ib[i]);
 
-    Vmean /= nSU;
+  //   const double Vnew = SUs[i]->V();
+  //   r_est[i] = (Vb[i] - Vnew) / perturbation; // Estimated resistance.
+  //   Vb[i] = Vnew;
+  // }
 
-    for (size_t i = 0; i < nSU; i++)
-      error += std::abs(Vmean - Va[i]);
+  auto getLU = [&]() { // #TODO this will be static in future defined in parallel block
+    A_type A(nSU, nSU);
+    // Set up the A matrix in Ax = b
+    for (size_t j = 0; j < nSU; j++)
+      for (size_t i = 0; i < nSU; i++) {
+        if (i == 0)
+          A(i, j) = -1;
+        else if (i == j)
+          A(i, j) = -Rcontact[i] - r_est[i];
+        else if (i == j + 1)
+          A(i, j) = r_est[j];
+        else if (j > i)
+          A(i, j) = -Rcontact[i];
+        else
+          A(i, j) = 0;
+      }
+    Eigen::PartialPivLU<A_type> LU(A); // LU decomposition of A.
+    return LU;
+  };
 
-    if (error < 1e-9) {
-      StatusNow = Status::Success;
-      break;
+  b_type deltaI;
+  Eigen::PartialPivLU<A_type> LU;
+  while (iter < maxIteration) {
+    double Icumulative{}, error{};
+    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      Icumulative += Ib[i];
+
+      if (i != 0)
+        b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
+      else
+        b(i) = Inew - Icumulative; // #TODO????
+
+      error = std::max(std::abs(b(i)), error);
     }
 
-    for (size_t i = 0; i < nSU; i++) {
-      Ia[i] = Ia[i] - 0.2 * (Vmean - Va[i]) / 0.001;
-      SUs[i]->setCurrent(Ia[i]);
+    if (error < tolerance) break;
+
+    LU = getLU();
+
+    deltaI = LU.solve(b.matrix()).array();
+
+
+    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+      double Vb_old = Vb[i];
+      StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i] - deltaI[i]));
+      Ib[i] = SUs[i]->I();
+      Vb[i] = SUs[i]->V();
+
+
+      if (std::abs(deltaI[i]) > 1e-6 || iter == 0) {
+        double r_est_i = (Vb[i] - Vb_old) / deltaI[i];
+
+        if (r_est_i > 0)
+          r_est[i] = r_est_i;
+        else
+          r_est[i] = 1e-3;
+      }
     }
-    getVall(Va, print);
+
+    iter++;
   }
 
-  //!< voltage of cell i is outside the valid range, but within safety limits
-  //!< indicate this happened but continue setting states
-  if (isStatusWarning(StatusNow)) { // #TODO maybe we should not need to set current equally immediately?
-    if (verb)
-      std::cout << "warning in Module_p::setCurrent, the voltage of cell with id "
-                << SUs[0]->getFullID() << " is outside the allowed range for Inew = " << Inew / getNSUs()
-                << ". Continue for now since we are going to redistribute the current to equalise the voltages.\n";
+  if (iter == maxIteration)
+    StatusNow = Status::RedistributeCurrent_failed;
 
-  } else if (isStatusBad(StatusNow)) {
-    if (verb)
-      std::cout << "ERROR " << getStatusMessage(StatusNow) << " in Module_p::setCurrent when setting the current of cell "
-                << " with id " << SUs[0]->getFullID() << " for Inew = " << Inew / nSU
-                << ". Try to recover using the iterative version of setCurrent.\n";
-    //!< throw error, the catch statement will use the iterative function
-    // #TODO give exact id, temporarily set to SUs[0]
-  }
+  if constexpr (settings::printNumIterations)
+    if (iter > 5) std::cout << "setCurrent iterations: " << iter << std::endl;
 
   // #TODO set old currents back here!
-  return StatusNow; //!< #TODO problem
+  return StatusNow;
 }
 
-bool Module_p::validSUs(SUs_span_t c, bool print)
-{
-  /*
-   * Checks the cells are a valid combination for a parallel-connected module
-   * the voltage differences are within the tolerance
-   *
-   * If the number of cells is the same as in this module, use the contact resistances
-   */
-  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  //!< Check the voltage of each cell is valid and within the error tolerance #TODO it is better to supply both module and Rcontact.
-  std::array<double, settings::MODULE_NSUs_MAX> Vall;
-  getVall(Vall, print);
-
-  auto [V_min_it, V_max_it] = std::minmax_element(Vall.begin(), Vall.begin() + SUs.size());
-
-  const double dV = *V_max_it - *V_min_it; //!< Check that this limit is below the absolute or relative threshold
-  if (dV > settings::MODULE_P_V_ABSTOL || dV > settings::MODULE_P_V_RELTOL * (*V_max_it)) {
-    if (verb)
-      std::cout << "error in Module_p::validSUs for SU = " << getFullID() << ", the maximum voltage is in cell"
-                << std::distance(Vall.begin(), V_max_it) << " and is " << *V_max_it
-                << " while the minimum voltage is in cell" << std::distance(Vall.begin(), V_min_it) << " and is "
-                << *V_min_it << " which is an error of " << dV << " and the allowed absolute tolerance is "
-                << settings::MODULE_P_V_ABSTOL << ", the allowed relative tolerance gives an error of "
-                << settings::MODULE_P_V_RELTOL * (*V_max_it) << '\n';
-
-    return false;
-  } //!< else the voltage is valid
-
-  return true;
-}
-
+/**
+ * @brief Perform a time step at a constant current.
+ *
+ * Takes a time step at a constant current by either explicitly solving the system of equations
+ * or letting every cell take a CC time step and checking if the voltage equation is satisfied.
+ *
+ * @param dt The time step.
+ * @param nstep Number of steps.
+ */
 void Module_p::timeStep_CC(double dt, int nstep)
 {
-  /*
-   * Take a time step at a constant current.
-   * There are two ways to do this:
-   * 		rootFinding::Current_EQN with dti = dt, which explicitly solves the system of equations
-   * 		let every cell take a CC time step, and check if the voltage equation is satisfied
-   * 			if not, redistribute the current using setCurrent()
-   *
-   * The second approach is probably quicker since it only solves the system of equations
-   * if the voltage difference becomes too large
-   */
-
-  if (dt < 0) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Module_p::timeStep_CC, the time step dt must be 0 or positive, but has value "
-                << dt << '\n';
-    throw 10;
-  }
+  assert(dt > 0); // Check if the time step is valid (only in debug mode)
 
   //!< we simply take one CC time step on every cell
   auto task_indv = [&](int i) { SUs[i]->timeStep_CC(dt, nstep); };
@@ -360,43 +420,6 @@ void Module_p::timeStep_CC(double dt, int nstep)
 
     cool->control(Tlocal, getThotSpot());
   }
-
-  Vmodule_valid = false; //!< we have changed the SOC/concnetration, so the stored voltage is no longer valid
-
-  //!< check if the cell's voltage is valid
-  if (!validSUs(SUs, false)) {
-    try {
-      auto status = redistributeCurrent_new(false, true); //!< don't check the currents
-
-      if (status != Status::Success)
-        throw 100000; //!< #TODO
-    } catch (int e) {
-      std::cerr << "error in Module_p::timeStep_CC when redistributing the current. Throwing the error on " << e << '\n';
-      throw e;
-    }
-  }
 }
 
-Module_p *Module_p::copy()
-{
-  //!< check the type of coolsystem we have #TODO for a better way.
-  int cooltype = 0;
-  if (typeid(*getCoolSystem()) == typeid(CoolSystem_HVAC))
-    cooltype = 1;
-  else if (typeid(*getCoolSystem()) == typeid(CoolSystem_open))
-    cooltype = 2;
-
-  Module_p *copied_ptr = new Module_p(getID(), cool->T(), true, par, getNcells(), cool->getControl(), cooltype);
-
-  copied_ptr->Rcontact = Rcontact;
-  copied_ptr->setT(T());
-
-  copied_ptr->SUs.clear();
-  for (size_t i{ 0 }; i < getNSUs(); i++) {
-    copied_ptr->SUs.emplace_back(SUs[i]->copy()); // #TODO remove when we have Module<...>
-    copied_ptr->SUs.back()->setParent(copied_ptr);
-  }
-
-  return copied_ptr;
-}
 } // namespace slide

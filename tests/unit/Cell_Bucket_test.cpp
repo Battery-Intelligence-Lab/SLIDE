@@ -149,7 +149,7 @@ bool setStates_test()
   s[State_Bucket::i_T] = t;
   s[State_Bucket::i_I] = i;
 
-  std::span<const double> spn{ s };
+  std::span<double> spn{ s };
   c1.setStates(spn, true, true);
 
   s.clear();
@@ -225,7 +225,7 @@ bool Copy_test()
 {
   Cell_Bucket c1;
 
-  std::unique_ptr<StorageUnit> c2{ c1.copy() };
+  Deep_ptr<StorageUnit> c2{ c1.copy() };
   //!< dynamic cast c2 back to a cell
   Cell_Bucket *c22 = dynamic_cast<Cell_Bucket *>(c2.get()); //!< Dynamic cast from smart pointer of StorageUnit to regular pointer of Cell
   assert(NEAR(c1.SOC(), c22->SOC()));

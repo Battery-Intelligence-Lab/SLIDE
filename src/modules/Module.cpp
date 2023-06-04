@@ -46,11 +46,11 @@ Module::Module(std::string_view ID_, double Ti, bool print, bool pari, int Ncell
   double Q0 = 0;                  //!< constant ancillary losses. There are none since a module only has cells
 
   if (cooltype == 1)
-    cool = std::make_unique<CoolSystem_HVAC>(Ncells, coolControl, Q0);
+    cool = make<CoolSystem_HVAC>(Ncells, coolControl, Q0);
   else if (cooltype == 2)
-    cool = std::make_unique<CoolSystem_open>(Ncells, coolControl);
+    cool = make<CoolSystem_open>(Ncells, coolControl);
   else
-    cool = std::make_unique<CoolSystem>(Ncells, coolControl);
+    cool = make<CoolSystem>(Ncells, coolControl);
 
   cool->setT(Ti);
 }
@@ -91,15 +91,7 @@ void Module::setSUs(SUs_span_t c, bool checkCells, bool print)
   }
 
   //!< check the cells are valid according to this module layout
-  if (checkCells && !validSUs(c, print)) {
-    if (verb)
-      std::cerr << "ERROR in Module::setCells, the cells are "
-                   "an illegal combination for this module.\n";
-    throw 10;
-  }
-
-  //!< connect the cells to this module
-  Vmodule_valid = false; //!< we are changing the SUs, so the stored voltage is no longer valid
+  // #TODO checkCells & setSUs removed from here
 
   SUs.clear();
   Rcontact.clear();
@@ -192,10 +184,7 @@ bool Module::validStates(bool print)
 
   const bool verb = print && (settings::printBool::printNonCrit); //!< print if the (global) verbose-setting is above the threshold
 
-  //!< check the resulting state is valid
-  bool val = validSUs(verb); // #TODO validSUs does not take vector.
-
-  return val;
+  return true; // #TODO here we probably need to check if all submodule states valid!
 }
 
 Status Module::setStates(setStates_t s, bool checkV, bool print)
@@ -224,9 +213,7 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
   std::vector<double> sorig;
   getStates(sorig);
 
-  std::span<const double> spn_orig{ sorig };
-
-  Vmodule_valid = false; //!< we are changing the states, so the stored voltage is no longer valid
+  std::span<double> spn_orig{ sorig };
 
   //!< set the new cell states
   for (size_t i = 0; i < getNSUs(); i++) {
@@ -261,15 +248,15 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
    * So we must have a way of restoring the state without checking anything.
    * OR alternatively, at the beginning we check that the initial state is valid.
    */
-  if (checkV) {
-    bool valCells = validSUs(SUs, print);
-    if (!valCells) {
-      if (verb)
-        std::cerr << "ERROR in Module:setStates for SU = " << getFullID() << ", the state is illegal "
-                  << "according to validCells(), returning the old states and throwing 10.\n";
+  if (checkV) { // #TODO
+    // bool valCells = validSUs(SUs, print);
+    // if (!valCells) {
+    //   if (verb)
+    //     std::cerr << "ERROR in Module:setStates for SU = " << getFullID() << ", the state is illegal "
+    //               << "according to validCells(), returning the old states and throwing 10.\n";
 
-      return Status::Invalid_states;
-    }
+    //   return Status::Invalid_states;
+    // }
   }
 
   return Status::Success; //!< return success.
@@ -454,15 +441,15 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
     return T();
 }
 
+/*
+ * Calculate the thermal model of this SU and its children
+ *
+ * throws
+ * 98 	invalid time keeping
+ * 99 	invalid module temperature
+ */
 double Module::thermalModel(int Nneighbours, double Tneighbours[], double Kneighbours[], double Aneighb[], double tim)
 {
-  /*
-   * Calculate the thermal model of this SU and its children
-   *
-   * throws
-   * 98 	invalid time keeping
-   * 99 	invalid module temperature
-   */
   double Tout;
   try {
     if constexpr (settings::T_MODEL == 0)

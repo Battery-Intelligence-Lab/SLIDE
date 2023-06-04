@@ -259,12 +259,7 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
    *
    */
 
-  //!< check the time step is positive
-  if (dt < 0) {
-    if constexpr (settings::printBool::printCrit)
-      std::cerr << "ERROR in Cell_ECM::timeStep_CC, the time step dt must be 0 or positive, but has value " << dt << '\n';
-    throw 10;
-  }
+  assert(dt > 0); // Check if the time step is valid (only in debug mode)
 
   const bool print = true;
 
@@ -324,9 +319,9 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
     //!< if there is no parent, this cell is a stand-alone cell.
     //!< We assume convective cooling with an environment
     //!< If there is no parent, assume we update T every nstep*dt. So update the temperature now
-    if (parent == nullptr) //!< else it is the responsibility of the parent to call the thermal model function with the correct settings
+    if (!parent) //!< else it is the responsibility of the parent to call the thermal model function with the correct settings
     {
-      double Tneigh[1] = { settings::T_ENV };
+      double Tneigh[1] = { T_env };
       double Kneigh[1] = { Qch };                 //!< so cooling Qc = Qch * SAV * dT / (rho*cp) = Qch * A * dT / (rho*cp)
       double Atherm[1] = { getThermalSurface() }; //!< calculate the surface of this cell
 
