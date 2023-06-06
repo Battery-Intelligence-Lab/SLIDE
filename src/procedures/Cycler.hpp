@@ -29,7 +29,9 @@ public:
   Cycler() = default;
   Cycler(StorageUnit *sui) : su(sui) {}
   Cycler(StorageUnit *sui, const std::string &IDi) : ID(IDi), su(sui) {}
-  Cycler(Deep_ptr<StorageUnit> &sui, const std::string &IDi) : Cycler(sui.get(), IDi) {}
+
+  template <typename T>
+  Cycler(Deep_ptr<T> &sui, const std::string &IDi) : Cycler(sui.get(), IDi) {}
 
   Status rest(double tlim, double dt, int ndt_data, ThroughputData &th);
   Status CC(double I, double vlim, double tlim, double dt, int ndt_data, ThroughputData &th);
