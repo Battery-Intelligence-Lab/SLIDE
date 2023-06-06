@@ -84,24 +84,23 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Set the current, if checkVi this also gets the cell voltages
-  std::array<double, settings::MODULE_NSUs_MAX> Iolds;
+  const double Iold{I()};
   auto StatusNow = Status::Success;
 
   for (int i = 0; i < getNSUs(); i++) {
-    Iolds[i] = SUs[i]->I();
     StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Inew, checkV, print)); // #TODO updateStatus
 
 
     if (isStatusBad(StatusNow)) {
       if (verb)
         std::cerr << "ERROR in Module_s::setCurrent when setting the current of cell " << i
-                  << " with id " << SUs[i]->getFullID() << " for Inew = "
-                  << Inew << ". Restoring the old currents and throwing on error "
+                  << " with id " << SUs[i]->getFullID() << "from " << Iold << " A for Inew = "
+                  << Inew << " A. Restoring the old currents and throwing on error "
                   << getStatusMessage(StatusNow) << '\n';
 
 
       for (int j{ i }; j > 0; j--)
-        SUs[j]->setCurrent(Iolds[j], false, false); // #TODO this can start from j{i-1} since probably SUs[i] failed to assign any currents.
+        SUs[j]->setCurrent(Iold, false, false); // #TODO this can start from j{i-1} since probably SUs[i] failed to assign any currents.
 
       return StatusNow; // #TODO setCurrent here may be costly.
     }
