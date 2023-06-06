@@ -62,16 +62,16 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, ThroughputData &th)
   if (boolStoreData) storeData();
 
   //!< Variables
-  double dti = dt;   //!< length of time step i
-  double ttot = 0;   //!< total time done
-  int idat = 0;      //!< consecutive number of time steps done without storing data
-  int nOnce = 1;     //!< number of time steps we take at once, will change dynamically
-  int nOnceMax = 10; //!< allow maximum this number of steps to be taken at once
-                     //!< careful with thermal stability. Thermal model only calculated every nOnce*dt
-                     //!< 	so that can be in the unstable region for large batteries with cooling systems
-                     //!< so don't have nOnceMax above 10 (even though once everything is in equilibrium, you could take much larger steps)
+  double dti = dt;                           //!< length of time step i
+  double ttot = 0;                           //!< total time done
+  int idat = 0;                              //!< consecutive number of time steps done without storing data
+  int nOnce = 1;                             //!< number of time steps we take at once, will change dynamically
+  int nOnceMax = 10;                         //!< allow maximum this number of steps to be taken at once
+                                             //!< careful with thermal stability. Thermal model only calculated every nOnce*dt
+                                             //!< 	so that can be in the unstable region for large batteries with cooling systems
+                                             //!< so don't have nOnceMax above 10 (even though once everything is in equilibrium, you could take much larger steps)
 
-  bool ninc = true; //!< can nonce increase this iteration?
+  bool ninc = true;                          //!< can nonce increase this iteration?
   if (boolStoreData)
     nOnceMax = std::min(nOnceMax, ndt_data); //!< if we store data, never take more than the interval at which you want to store the voltage
 
@@ -120,9 +120,9 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, ThroughputData &th)
 
     nOnce = std::clamp(nOnce, 1, nOnceMax); //!< respect min and maximum
 
-  } //!< end time integration
+  }                                         //!< end time integration
 
-  succ = su->setCurrent(0, false, true); // #TODO do it one last time otherwise after timeStep_CC currents change!
+  succ = su->setCurrent(0, false, true);    // #TODO do it one last time otherwise after timeStep_CC currents change!
   if (isStatusBad(succ)) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "Error in Cycler::rest, stopped time integration for unclear reason after "
@@ -208,29 +208,30 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
 
   if (boolStoreData) storeData();
 
-  double vi{}; //!< voltage now
+  double vi{};                                      //!< voltage now
   auto succNow = setCurrent(I, vlim, vi);
   if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
 
   auto succ = Status::ReachedTimeLimit;
 
   //!< Variables
-  double dti = dt; //!< length of time step i
-  double ttot{};   //!< total time done
+  double dti = dt;     //!< length of time step i
+  double ttot{};       //!< total time done
 
-  int idat = 0;      //!< consecutive number of time steps done without storing data
-  int nOnce = 1;     //!< number of time steps we take at once, will change dynamically
-  int nOnceMax = 2;  //!< allow maximum this number of steps to be taken at once
-  if (boolStoreData) //!< if we store data, never take more than the interval at which you want to store the voltage
+  int idat = 0;        //!< consecutive number of time steps done without storing data
+  int nOnce = 1;       //!< number of time steps we take at once, will change dynamically
+  int nOnceMax = 2;    //!< allow maximum this number of steps to be taken at once
+  if (boolStoreData)   //!< if we store data, never take more than the interval at which you want to store the voltage
     nOnceMax = std::min(nOnceMax, ndt_data);
   bool allowUp = true; //!< do we allow nOnce to increase?
 
   while (ttot < tlim) {
 
-    auto succNow = setCurrent(I, vlim, vi);           // #TODO this was not here I added to get nice results from
-    if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
+    auto succNow = setCurrent(I, vlim, vi); // #TODO this was not here I added to get nice results from
+    if (!isStatusSuccessful(succNow))
+      return succNow;                       //!< stop if we could not successfully set the current
 
-    dti = std::min(dti, tlim - ttot); //!< the last time step, ensure we end up exactly at the right time
+    dti = std::min(dti, tlim - ttot);       //!< the last time step, ensure we end up exactly at the right time
 
     //!< take a number of time steps
     try {
@@ -278,17 +279,17 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
 
   if ((std::abs(Ii) < Ilim)) return Status::ReachedCurrentLimit;
 
-  int idat = 0;    //!< consecutive number of time steps done without storing data
-  double dti = dt; //!< length of time step i
-  double ttot = 0; //!< total time done
+  int idat = 0;                          //!< consecutive number of time steps done without storing data
+  double dti = dt;                       //!< length of time step i
+  double ttot = 0;                       //!< total time done
 
   auto succ{ Status::ReachedTimeLimit }; //!< time limit;
 
   while (ttot < tlim) {
     auto succNow = su->setVoltage(Vset);
-    if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
+    if (!isStatusOK(succNow)) return succNow; //!< stop if we could not successfully set the current
 
-    dti = std::min(dti, tlim - ttot); //!< change length of the time step in the last iteration to get exactly tlim seconds
+    dti = std::min(dti, tlim - ttot);         //!< change length of the time step in the last iteration to get exactly tlim seconds
 
     //!< take a time step
     try {
@@ -373,7 +374,7 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
     return status;
   }
 
-  I = (su->V() > Vset) ? I : -I; //!< OCV larger than Vset so we need to discharge
+  I = (su->V() > Vset) ? std::abs(I) : -std::abs(I); //!< OCV larger than Vset so we need to discharge
 
   ThroughputData th1{}, th2{};
   auto succ = CC(I, Vset, tlim, dt, ndt_data, th1); //!< do the CC phase
@@ -384,7 +385,17 @@ Status Cycler::CCCV_with_tlim(double I, double Vset, double Ilim, double tlim, d
                 << getStatusMessage(succ) << ". Trying to do a CV phase.\n";
 
   const auto t_remaining = tlim - th1.time();
-  succ = CV(su->V(), Ilim, t_remaining, dt, ndt_data, th2);
+
+  // Due to the fixed time step CC does not exactly stop on Vlimit but slightly passes it like 2.68 instead of 2.7 V limit.
+  // So if we passed voltage limit set to the voltage limit anyway.
+  // But at the same time since in series/parallel module voltages you may also stop due to an individual cell limit instead of the total limit then you probably
+  // Stopped before let's say 2.7 like 2.75, this time we set the CV voltage to 2.75 V as individual cell is probably experiencing a lower voltage limit.
+  auto V_CV = su->V();
+  if ((I > 0 && V_CV < Vset) || (I < 0 && V_CV > Vset))
+    V_CV = Vset;
+
+
+  succ = CV(V_CV, Ilim, t_remaining, dt, ndt_data, th2);
   if constexpr (settings::printBool::printNonCrit)
     if (succ != Status::ReachedCurrentLimit)
       std::cout << "Cycler::CCCV could not complete the CV phase, terminated with "

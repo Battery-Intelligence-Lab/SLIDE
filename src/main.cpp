@@ -24,6 +24,7 @@
 #include <cmath>
 #include <iomanip>
 
+
 int main()
 {
   /*
@@ -133,43 +134,43 @@ int main()
 
 
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
-  using namespace slide;
+  // using namespace slide;
 
-  auto c = make<Cell_SPM>();
-  auto& st = c->getStateObj();
+  // auto c = make<Cell_SPM>();
+  // auto &st = c->getStateObj();
 
-
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100*st.SOC() << " %.\n";
-  c->setCurrent(16); 
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100*st.SOC() << " %.\n";
-  c->timeStep_CC(1, 60);
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100*st.SOC() << " %.\n";
-
-
-  // Cycler: 
-
-  Cycler cyc(c, "Cycler1"); 
-  ThroughputData th{}; 
-  cyc.CC(-16, 4.2, 3600, 1, 1, th);
-
-  std::cout << "\nAfter CC charge:\n";
-  std::cout << "Voltage: " << c->V()<< " I: " << 1000*c->I()  << "mA SOC: " << 100*st.SOC() << " %.\n";
-  std::cout << "Ah: " << th.Ah() << " Wh: " <<  th.Wh() << " time: " << th.time() << '\n';
-
-  auto status = cyc.CV(4.2, 10e-3, 7200, 1, 1, th);
-
-  std::cout << "\nAfter CV charge:\n";
-  std::cout << "Voltage: " << c->V()<< " I: " << 1000*c->I()  << "mA SOC: " << 100*st.SOC() << " %.\n";
-  std::cout << "Ah: " << th.Ah() << " Wh: " <<  th.Wh() << " time: " << th.time() << '\n';
-
-  
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  // c->setCurrent(16);
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  // c->timeStep_CC(1, 60);
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
 
 
+  // // Cycler:
 
- // Cycler cyc(c, "Cycler1"); 
+  // Cycler cyc(c, "Cycler2");
+  // ThroughputData th{};
+  // cyc.CC(-16, 4.2, 3600, 1, 1, th);
+
+  // std::cout << "\nAfter CC charge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << "Ah: " << th.Ah() << " Wh: " << th.Wh() << " time: " << th.time() << '\n';
+
+  // auto status = cyc.CV(4.2, 10e-3, 7200, 1, 1, th);
+
+  // std::cout << "Why did CV stopped is: " << getStatusMessage(status) << '\n';
+  // std::cout << "\nAfter CV charge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << "Ah: " << th.Ah() << " Wh: " << th.Wh() << " time: " << th.time() << '\n';
 
 
+  // auto status2 = cyc.CCCV(16, 2.7, 5e-3, 0.5, 1, th);
+  // std::cout << "Why did CCCV stopped is: " << getStatusMessage(status2) << '\n';
+  // std::cout << "\nAfter CCCV discharge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << "Ah: " << th.Ah() << " Wh: " << th.Wh() << " time: " << th.time() << '\n';
 
+  // cyc.writeData();
 
 
   //!< Examples:

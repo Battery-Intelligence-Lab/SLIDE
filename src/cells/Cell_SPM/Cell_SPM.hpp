@@ -49,7 +49,7 @@ protected:                 //!< protected such that child classes can access the
   double Cmaxneg{ 30555 }; //!< maximum lithium concentration in the anode [mol m-3] value for C
   double C_elec{ 1000 };   //!< Li- concentration in electrolyte [mol m-3] standard concentration of 1 molar
 
-  double n{ 1 }; //!< number of electrons involved in the main reaction [-] #TODO if really constant?
+  double n{ 1 };           //!< number of electrons involved in the main reaction [-] #TODO if really constant?
 
   //!< parameters of the main li-insertion reaction
   double kp{ 5e-11 };      //!< rate constant of main reaction at positive electrode at reference temperature
@@ -80,14 +80,14 @@ protected:                 //!< protected such that child classes can access the
   param::StressParam sparam{ param::def::StressParam_Kokam }; //!< Stress parameters.
 
   //!< Constants and parameters for the SEI growth model //!< #TODO if we can make these static and speed gain.
-  double rsei{ 2037.4 * 50 }; //!< specific resistance times real surface area of the SEI film [Ohm m] ? #TODO if unit is correct. aging fit.
-  double nsei{ 1 };           //!< number of electrons involved in the SEI reaction [-]
-  double alphasei{ 1 };       //!< charge transfer coefficient of the SEI reaction [-]
-  double OCVsei{ 0.4 };       //!< equilibrium potential of the SEI side reaction [V]
-  double rhosei{ 100e3 };     //!< partial molar volume of the SEI layer [m3 mol-1]
-  double c_elec0{ 4.541e-3 }; //!< bulk concentration of the electrolyte molecule participating in the SEI growth (e.g. EC) [mol m-3]
-  double Vmain{ 13 };         //!< partial molar volume of the main reaction, see Ashwin et al, 2016
-  double Vsei{ 64.39 };       //!< partial molar volume of the SEI side reaction, see Ashwin et al., 2016
+  double rsei{ 2037.4 * 50 };                          //!< specific resistance times real surface area of the SEI film [Ohm m] ? #TODO if unit is correct. aging fit.
+  double nsei{ 1 };                                    //!< number of electrons involved in the SEI reaction [-]
+  double alphasei{ 1 };                                //!< charge transfer coefficient of the SEI reaction [-]
+  double OCVsei{ 0.4 };                                //!< equilibrium potential of the SEI side reaction [V]
+  double rhosei{ 100e3 };                              //!< partial molar volume of the SEI layer [m3 mol-1]
+  double c_elec0{ 4.541e-3 };                          //!< bulk concentration of the electrolyte molecule participating in the SEI growth (e.g. EC) [mol m-3]
+  double Vmain{ 13 };                                  //!< partial molar volume of the main reaction, see Ashwin et al, 2016
+  double Vsei{ 64.39 };                                //!< partial molar volume of the SEI side reaction, see Ashwin et al., 2016
 
   param::SEIparam sei_p{ param::def::SEIparam_Kokam }; //!< structure with the fitting parameters of the different SEI growth models
 
@@ -115,12 +115,12 @@ protected:                 //!< protected such that child classes can access the
 
   //!< Functions
   std::pair<double, double> calcSurfaceConcentration(double jp, double jn, double Dpt, double Dnt);
-  std::pair<double, double> calcOverPotential(double cps, double cns, double i_app); //!< Should not throw normally, except divide by zero?
+  std::pair<double, double> calcOverPotential(double cps, double cns, double i_app);     //!< Should not throw normally, except divide by zero?
 
   inline double calcArrheniusCoeff() { return (1 / T_ref - 1 / st.T()) / PhyConst::Rg; } //!< Calculates Arrhenius coefficient.
 
-  std::array<double, 2> calcDiffConstant(); //!< Calculate the diffusion constant at the battery temperature using an Arrhenius relation
-  std::array<double, 3> calcMolarFlux();    //!< Calculate molar flux
+  std::array<double, 2> calcDiffConstant();                                              //!< Calculate the diffusion constant at the battery temperature using an Arrhenius relation
+  std::array<double, 3> calcMolarFlux();                                                 //!< Calculate molar flux
 
   //!< void setStates(State_SPM &&states);											  //!< set the cell's states to the states in the array
 
@@ -171,7 +171,7 @@ public:
 
   std::array<double, 4> getVariations() const noexcept override { return { var_cap, var_R, var_degSEI, var_degLAM }; } // #TODO : deprecated will be deleted.
 
-  void getTemperatures(double *Tenv, double *Tref) noexcept //!< get the environmental and reference temperature
+  void getTemperatures(double *Tenv, double *Tref) noexcept                                                            //!< get the environmental and reference temperature
   {
     /*
      * Function to get the environmental and reference temperatures
@@ -205,13 +205,13 @@ public:
 
   double getAnodeSurface() noexcept { return st.an() * st.thickn() * geo.elec_surf; } //!< get the anode pure surface area (without cracks) product of the effective surface area (an) with the electrode volume
 
-  double I() const override { return st.I(); } //!< get the cell current [A]  positive for discharging
+  double I() const override { return st.I(); }                                        //!< get the cell current [A]  positive for discharging
   double V() override;
 
-  bool getCSurf(double &cps, double &cns, bool print);                                                                           //!< get the surface concentrations
-  void getC(double cp[], double cn[]) noexcept;                                                                                  //!< get the concentrations at all nodes
-  int getVoltage(bool print, double *V, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp);    //!< get the cell's voltage
-  int getVoltage_ne(bool print, double *V, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp); //!< get the cell's voltage noexcept
+  bool getCSurf(double &cps, double &cns, bool print);                                                                                                                                                    //!< get the surface concentrations
+  void getC(double cp[], double cn[]) noexcept;                                                                                                                                                           //!< get the concentrations at all nodes
+  int getVoltage(bool print, double *V, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp);                                                                             //!< get the cell's voltage
+  int getVoltage_ne(bool print, double *V, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp);                                                                          //!< get the cell's voltage noexcept
 
   void getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p, sigma_type &sigma_r_n, sigma_type &sigma_t_p, sigma_type &sigma_t_n, sigma_type &sigma_h_p, sigma_type &sigma_h_n) noexcept; //!< get the stresses at all nodes according to Dai's stress model
   void updateDaiStress() noexcept;                                                                                                                                                                        //!< updated the stored stress values for Dai's stress model

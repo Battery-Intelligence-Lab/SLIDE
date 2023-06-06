@@ -38,7 +38,8 @@
 
 
 ### Current priority:
-
+- [ ] Renew matlab scripts to read results. 
+- [ ] Matio and parquet data types. 
 - [ ] In `test_specificDeg` in `Procedure_test.cpp` there is a weak cell.
 - [ ] What to do if one of the series cells reach maximum voltage? 
 - [ ] CCCV for ageing CV should be done with the remaining voltage. 
