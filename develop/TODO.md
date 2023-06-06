@@ -8,7 +8,7 @@
 
 
 ### Code-review by Martin Robinson: 
-- [ ] It is both a library and application in between. 
+  - [ ] It is both a library and application in between. 
   - [ ] One way: have a config file model file and options. 
   - [ ] Brady: Julia wrapper? 
   - [ ] Martin: Lot more Python audience. 
@@ -38,6 +38,9 @@
 
 
 ### Current priority:
+
+- [ ] In `test_specificDeg` in `Procedure_test.cpp` there is a weak cell.
+- [ ] What to do if one of the series cells reach maximum voltage? 
 - [ ] CCCV for ageing CV should be done with the remaining voltage. 
 - [ ] Battery class distributes current equally between each module. We can insert Schimpe-style optimisation if we could integrate a current distribution algorithm. 
 - [ ] Vmodule and Vmodule_valid are removed but it could be useful for series module. 

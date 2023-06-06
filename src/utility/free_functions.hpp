@@ -29,10 +29,12 @@ inline Status setVoltage_iterative(Tsu *su, double Vset)
   constexpr int maxIteration = 50;
   double Ia{ su->I() };
 
+  auto StatusNow = Status::Success;
+
   for (int iter{ 0 }; iter < maxIteration; iter++) {
     const auto Va = su->V();
     if (std::abs(Vset - Va) < 1e-6)
-      return Status::Success;
+      return StatusNow;
 
     const auto Ib = (Vset > Va) ? Ia - 0.01 * su->Cap() : Ia + 0.01 * su->Cap();
     su->setCurrent(Ib);
@@ -40,7 +42,7 @@ inline Status setVoltage_iterative(Tsu *su, double Vset)
 
     const double slope = (Ia - Ib) / (Va - Vb);
     Ia = Ib - (Vb - Vset) * slope; //!< False-Position method.
-    su->setCurrent(Ia);
+    StatusNow = su->setCurrent(Ia);
   }
 
   return Status::RedistributeCurrent_failed; // #TODO change to setVoltage failed.

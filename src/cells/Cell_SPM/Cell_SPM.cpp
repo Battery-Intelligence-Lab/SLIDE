@@ -296,7 +296,8 @@ double Cell_SPM::V()
     const auto overpotential = etapi - etani;
     const auto OCV = (OCV_p - OCV_n + entropic_effect);
 
-    st.V() = OCV + overpotential - getRdc() * I(); //
+    const double Vnow = OCV + overpotential - getRdc() * I(); //
+    st.V() = Vnow; 
     Vcell_valid = true;                            //!< we now have the most up to date value stored
   }
 
