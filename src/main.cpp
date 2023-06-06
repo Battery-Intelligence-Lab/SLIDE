@@ -135,6 +135,43 @@ int main()
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
   using namespace slide;
 
+  auto c = make<Cell_SPM>();
+  auto& st = c->getStateObj();
+
+
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100*st.SOC() << " %.\n";
+  c->setCurrent(16); 
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100*st.SOC() << " %.\n";
+  c->timeStep_CC(1, 60);
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100*st.SOC() << " %.\n";
+
+
+  // Cycler: 
+
+  Cycler cyc(c, "Cycler1"); 
+  ThroughputData th{}; 
+  cyc.CC(-16, 4.2, 3600, 1, 1, th);
+
+  std::cout << "\nAfter CC charge:\n";
+  std::cout << "Voltage: " << c->V()<< " I: " << 1000*c->I()  << "mA SOC: " << 100*st.SOC() << " %.\n";
+  std::cout << "Ah: " << th.Ah() << " Wh: " <<  th.Wh() << " time: " << th.time() << '\n';
+
+  auto status = cyc.CV(4.2, 10e-3, 7200, 1, 1, th);
+
+  std::cout << "\nAfter CV charge:\n";
+  std::cout << "Voltage: " << c->V()<< " I: " << 1000*c->I()  << "mA SOC: " << 100*st.SOC() << " %.\n";
+  std::cout << "Ah: " << th.Ah() << " Wh: " <<  th.Wh() << " time: " << th.time() << '\n';
+
+  
+
+
+
+ // Cycler cyc(c, "Cycler1"); 
+
+
+
+
+
   //!< Examples:
   // slide::examples::drive_cycle_artemis();
   // slide::examples::GITT_test();
@@ -149,8 +186,8 @@ int main()
   // slide::benchmarks::run_LP_case_LargePack();
 
   // MATLAB ECM benchmarks:
-  slide::benchmarks::run_Cell_Bucket_single_default_pulse();
-  slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
+  // slide::benchmarks::run_Cell_Bucket_single_default_pulse();
+  // slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
 
   // slide::benchmarks::run_Cell_ECM_single_default_pulse();
   // slide::benchmarks::run_Cell_ECM_single_default_CCCV();
