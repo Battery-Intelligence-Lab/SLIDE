@@ -110,16 +110,16 @@ int main()
    * 							ref: Yang, Leng, Zhang, Ge, Wang, Journal of Power Sources 360, 2017
    */
   //!< For now, assume we want to include 'Pinson&Bazant'-SEI growth, 'Delacourt'-LAM, 'Kindermann'-LAM and 'Yang'-lithium plating
-  // slide::DEG_ID deg;
-  // deg.SEI_id.add_model(2); //!< Pinson & Bazant SEI growth
-  // deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+  slide::DEG_ID deg;
+  deg.SEI_id.add_model(2); //!< Pinson & Bazant SEI growth
+  deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
 
-  // deg.CS_id.add_model(0); //!< no surface cracks
-  // deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+  deg.CS_id.add_model(0); //!< no surface cracks
+  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
 
-  // //!< there are 2 LAM models (Delacourt and Kindermann)
-  // deg.LAM_id.add_model(2); //!< Delacourt LAM
-  // deg.LAM_id.add_model(3); //!< Kindermann LAM
+  //!< there are 2 LAM models (Delacourt and Kindermann)
+  deg.LAM_id.add_model(2); //!< Delacourt LAM
+  deg.LAM_id.add_model(3); //!< Kindermann LAM
 
   // deg.pl_id = 1; //!< Yang lithium plating
 
@@ -134,18 +134,34 @@ int main()
 
 
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
-  // using namespace slide;
+  using namespace slide;
 
-  // auto c = make<Cell_SPM>();
-  // auto &st = c->getStateObj();
+  auto c = make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
+  auto& st = c->getStateObj();
 
-  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  // c->setCurrent(16);
-  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  // c->timeStep_CC(1, 60);
-  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  c->setCurrent(16); 
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  c->timeStep_CC(1,60);
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
 
+  Cycler cyc(c, "Cycler1");
 
+  ThroughputData th{}; 
+  cyc.CC(-16, 4.2, 3600, 1, 1, th);
+  std::cout << "\nAfter CC charge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+
+  auto status = cyc.CV(4.2, 10e-3, 7200, 0.1, 1, th);
+  std::cout << "\nAfter CV charge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  std::cout << getStatusMessage(status) << "\n";
+
+  cyc.CCCV(16, 2.7, 5e-3, 1, 1, th);
+  std::cout << "\nAfter CCCV discharge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n"; 
+
+  cyc.writeData();
   // // Cycler:
 
   // Cycler cyc(c, "Cycler2");
@@ -187,22 +203,22 @@ int main()
   // slide::benchmarks::run_LP_case_LargePack();
 
   // MATLAB ECM benchmarks:
-  // slide::benchmarks::run_Cell_Bucket_single_default_pulse();
-  // slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
+  slide::benchmarks::run_Cell_Bucket_single_default_pulse();
+  slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_single_default_pulse();
-  // slide::benchmarks::run_Cell_ECM_single_default_CCCV();
+  slide::benchmarks::run_Cell_ECM_single_default_pulse();
+  slide::benchmarks::run_Cell_ECM_single_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
-  // slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
+  slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
+  slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
+  slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
 
-  // slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
+  slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_parallel_3_withRcontact_CCCV();
+  slide::benchmarks::run_Cell_ECM_parallel_3_withRcontact_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_series_3_withRcontact_CCCV();
+  slide::benchmarks::run_Cell_ECM_series_3_withRcontact_CCCV();
 
   //!<*********************************************** END ********************************************************
   //!< Now all the simulations have finished. Print this message, as well as how long it took to do the simulations
