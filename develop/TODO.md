@@ -38,6 +38,8 @@
 
 
 ### Current priority:
+- [ ] cmake_minimum_required(VERSION 3.17) -> 3.19
+- [ ] CPM package manager is adtopted. 
 - [ ] Renew matlab scripts to read results. 
 - [ ] Matio and parquet data types. 
 - [ ] In `test_specificDeg` in `Procedure_test.cpp` there is a weak cell.

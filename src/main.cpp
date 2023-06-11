@@ -15,6 +15,7 @@
 #include "../examples/examples.hpp"
 
 #include <Eigen/Dense>
+#include <range/v3/all.hpp>
 
 #include <ctime>
 #include <thread>
@@ -133,6 +134,13 @@ int main()
   std::cout << "Available number of threads : " << numThreads << '\n';
 
 
+   std::string s{"hello"};
+
+    // output: h e l l o
+    ranges::for_each(s, [](char c) { std::cout << c << ' '; });
+    std::cout << '\n';
+
+
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
   using namespace slide;
 
@@ -203,22 +211,22 @@ int main()
   // slide::benchmarks::run_LP_case_LargePack();
 
   // MATLAB ECM benchmarks:
-  slide::benchmarks::run_Cell_Bucket_single_default_pulse();
-  slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
+  // slide::benchmarks::run_Cell_Bucket_single_default_pulse();
+  // slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
 
-  slide::benchmarks::run_Cell_ECM_single_default_pulse();
-  slide::benchmarks::run_Cell_ECM_single_default_CCCV();
+  // slide::benchmarks::run_Cell_ECM_single_default_pulse();
+  // slide::benchmarks::run_Cell_ECM_single_default_CCCV();
 
-  slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
-  slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
+  // slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
+  // slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
 
-  slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
+  // slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
 
-  slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
+  // slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
 
-  slide::benchmarks::run_Cell_ECM_parallel_3_withRcontact_CCCV();
+  // slide::benchmarks::run_Cell_ECM_parallel_3_withRcontact_CCCV();
 
-  slide::benchmarks::run_Cell_ECM_series_3_withRcontact_CCCV();
+  // slide::benchmarks::run_Cell_ECM_series_3_withRcontact_CCCV();
 
   //!<*********************************************** END ********************************************************
   //!< Now all the simulations have finished. Print this message, as well as how long it took to do the simulations

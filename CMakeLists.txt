@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.19)
 
 # include(cmake/ProjectSettings.cmake)
 project(SLIDE VERSION "3.0.0"
@@ -6,8 +6,6 @@ project(SLIDE VERSION "3.0.0"
   HOMEPAGE_URL https://github.com/Battery-Intelligence-Lab/SLIDE/
   LANGUAGES CXX)
 
-
- 
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
 
@@ -20,33 +18,30 @@ target_compile_features(project_options INTERFACE cxx_std_20)
 
 enable_testing()
 add_subdirectory(src bin)
-add_subdirectory(external/eigen)
-
-target_link_libraries(src PUBLIC eigen)
 
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
 
+include(cmake/External.cmake) # Include external projects
 
+target_link_libraries(src PUBLIC eigen)
 
 add_executable(slide
   src/main.cpp
 )
-
 
 target_link_libraries(slide
   PRIVATE
   src
   project_warnings
   project_options
+  range-v3
 )
 
 target_include_directories(slide
   PUBLIC
   data
 )
-
-
 
 # message(STATUS "Project: ${PROJECT_NAME} version ${PROJECT_HOMEPAGE_URL}")
 
@@ -97,7 +92,6 @@ target_link_libraries(${LIB_NAME}
 )
 
 # # install header
-# install(FILES "src/slide.hpp" DESTINATION include)
 include(GNUInstallDirs)
 
 install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
@@ -106,31 +100,3 @@ install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
 )
-
-# install(EXPORT MyProject-targets DESTINATION lib/cmake/MyProject)
-
-# # # install the library
-# # install(TARGETS MyProject
-# # 	EXPORT MyProject-targets
-# # 	LIBRARY DESTINATION lib
-# # 	ARCHIVE DESTINATION lib
-# # )
-
-# # # install export target and config for find_package
-# # install(EXPORT ${LIB_NAME}Targets DESTINATION lib/cmake/${LIB_NAME})
-# # include(CMakePackageConfigHelpers)
-# # configure_package_config_file(
-# # 	"MyProjectConfig.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/MyProjectConfig.cmake"
-# # 	INSTALL_DESTINATION "lib/cmake/${LIB_NAME}"
-# # )
-# # install(FILES "${CMAKE_CURRENT_BINARY_DIR}/MyProjectConfig.cmake" DESTINATION "lib/cmake/${LIB_NAME}")
-
-# # defines targets and sources CMAKE_BUILD_PARALLEL_LEVEL -> Try this to see if it gets better than -j
-# add_subdirectory(src)
-
-# install(TARGETS slide_v3
-# CONFIGURATIONS Debug
-# RUNTIME DESTINATION Debug/bin)
-# install(TARGETS slide_v3
-# CONFIGURATIONS Release
-# RUNTIME DESTINATION Release/bin)
