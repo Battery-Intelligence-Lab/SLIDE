@@ -38,7 +38,8 @@
 
 
 ### Current priority:
-- [ ] cmake_minimum_required(VERSION 3.17) -> 3.19
+- [ ] Catch2 added for testing. 
+- [ ] cmake_minimum_required(VERSION 3.17) -> 3.21
 - [ ] CPM package manager is adtopted. 
 - [ ] Renew matlab scripts to read results. 
 - [ ] Matio and parquet data types. 

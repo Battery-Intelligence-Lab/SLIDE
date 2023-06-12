@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.21)
 add_library(power_conversion STATIC)
 
 target_sources(power_conversion

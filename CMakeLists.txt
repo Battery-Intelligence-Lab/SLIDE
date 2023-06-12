@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.21)
 
 # include(cmake/ProjectSettings.cmake)
 project(SLIDE VERSION "3.0.0"
@@ -22,9 +22,9 @@ add_subdirectory(src bin)
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
 
-include(cmake/External.cmake) # Include external projects
+include(cmake/Dependencies.cmake) # Include external projects
 
-target_link_libraries(src PUBLIC eigen)
+target_link_libraries(src PUBLIC eigen range-v3) # Link dependencies to the src library.
 
 add_executable(slide
   src/main.cpp
@@ -35,7 +35,6 @@ target_link_libraries(slide
   src
   project_warnings
   project_options
-  range-v3
 )
 
 target_include_directories(slide
