@@ -7,19 +7,19 @@
 
 #include "../../src/slide.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
 #include <span>
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers_string.hpp>
-#include <catch2/matchers/catch_matchers_floating_point.hpp>
-
 using Catch::Matchers::WithinAbs;
 using namespace slide;
 
-TEST_CASE("Test ECM constructors", "[ECM]")
+TEST_CASE("Test ECM constructors", "[CELL_ECM]")
 {
   Cell_ECM c1;
   REQUIRE_THAT(c1.Cap(), WithinAbs(16, 1e-15));
@@ -42,7 +42,7 @@ TEST_CASE("Test ECM constructors", "[ECM]")
   REQUIRE_THAT(c2.T(), WithinAbs(settings::T_ENV, 1e-15));
 }
 
-TEST_CASE("Test getting ECM states", "[ECM]")
+TEST_CASE("Test getting ECM states", "[CELL_ECM]")
 {
   Cell_ECM c1;
   std::vector<double> s;
@@ -54,7 +54,7 @@ TEST_CASE("Test getting ECM states", "[ECM]")
   REQUIRE_THAT(s[State_ECM<1>::i_I], WithinAbs(0, 1e-15));               //!< current
 }
 
-TEST_CASE("Test ECM getV", "[ECM]")
+TEST_CASE("Test ECM getV", "[CELL_ECM]")
 {
   //!< double V(bool print = true); //!< crit is an optional argument
   Cell_ECM c1;
@@ -80,7 +80,7 @@ TEST_CASE("Test ECM getV", "[ECM]")
   REQUIRE(c1.V() < V);
 }
 
-TEST_CASE("Test setting ECM states", "[ECM]")
+TEST_CASE("Test setting ECM states", "[CELL_ECM]")
 {
   Cell_ECM c1;
 
@@ -103,7 +103,7 @@ TEST_CASE("Test setting ECM states", "[ECM]")
   REQUIRE_THAT(s[State_ECM<1>::i_I], WithinAbs(i, 1e-15));     //!< current
 }
 
-TEST_CASE("Test ECM validStates", "[ECM]")
+TEST_CASE("Test ECM validStates", "[CELL_ECM]")
 {
   Cell_ECM c1;
 
@@ -119,7 +119,7 @@ TEST_CASE("Test ECM validStates", "[ECM]")
   REQUIRE(c1.validStates());
 }
 
-TEST_CASE("Test ECM timeStep_CC", "[ECM]")
+TEST_CASE("Test ECM timeStep_CC", "[CELL_ECM]")
 {
   constexpr double I = -1;
   constexpr double dt = 5;
