@@ -5,17 +5,23 @@
  *   Author(s): Jorn Reniers
  */
 
-#include "../tests_util.hpp"
 #include "../../src/slide.hpp"
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include <cmath>
 #include <cassert>
 #include <iostream>
 #include <fstream>
 
-namespace slide::tests::unit {
+using Catch::Matchers::WithinAbs;
+using namespace slide;
 
-bool testLosses()
+constexpr double TOL_EQ = 1e-15;
+
+TEST_CASE("Test losses", "[Converter]")
 {
   slide::Converter c;
 
@@ -42,8 +48,8 @@ bool testLosses()
     relloss = loss / (I * v);
 
     //!< check the losses are between 0 and 15 %
-    assert(relloss > 0);
-    assert(relloss < 0.15);
+    REQUIRE(relloss > 0);
+    REQUIRE(relloss < 0.15);
 
     //!< cout<<"V = "<<v/(15.0*20.0)<<", I = "<<I<<", loss = "<<loss<<" W or "<<relloss*100<<" %"<<endl;
   }
@@ -75,15 +81,4 @@ bool testLosses()
   v = 2.7 * 15 * 20;
   std::cout<<"Losses for the EFL battery at Vmin are "<<c.getLosses(v,I)<<" W or "<<c.getLosses(v,I)/(I*v)*100<<" %"<<endl;
   */
-  return true;
 }
-
-int test_all_Converter()
-{
-  if (!TEST(testLosses, "testLosses")) return 1;
-
-  return 0;
-}
-} // namespace slide::tests::unit
-
-int main() { return slide::tests::unit::test_all_Converter(); }

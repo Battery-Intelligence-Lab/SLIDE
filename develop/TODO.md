@@ -16,7 +16,7 @@
   - [ ] There are classes with completely capital? Which one? 
   - [ ] SUNDIALS is pretty quick. 
   - [ ] Automated tests against PyBAMM 
-  - [ ] Catch2 library for testing. 
+  - [x] Catch2 library for testing. 
   - [ ] Snapshot testing. 
   - [ ] Template projects in OxRSE template-project-cpp
   - [ ] gui_starter_library Jason Turner. 
