@@ -33,8 +33,8 @@ TEST_CASE("test_Constructor_p")
 
   auto cp1 = make<Cell_Bucket>();
   auto cp2 = make<Cell_Bucket>();
-  REQUIRE_THAT(cp1->getID(), Catch::Matchers::Equals("Cell_ECM_0_"));
-  REQUIRE_THAT(cp1->getFullID(), Catch::Matchers::Equals("Cell_ECM_0_")); // Has no parent yet
+  REQUIRE_THAT(cp1->getID(), Equals("Cell_ECM_0_"));
+  REQUIRE_THAT(cp1->getFullID(), Equals("Cell_ECM_0_")); // Has no parent yet
 
   Deep_ptr<StorageUnit> cs[] = { std::move(cp1), std::move(cp2) };
   std::string n = "na";
@@ -53,8 +53,8 @@ TEST_CASE("test_BasicGetters_p")
 
   auto cp1 = dynamic_cast<Cell_Bucket *>(cs[0].get());
   auto cp2 = dynamic_cast<Cell_Bucket *>(cs[1].get());
-  REQUIRE_THAT(cp1->getID(), Catch::Matchers::Equals("Cell_ECM_0_", Catch::CaseSensitive::Yes));
-  REQUIRE_THAT(cp1->getFullID(), Catch::Matchers::Equals("Cell_ECM_0_", Catch::CaseSensitive::Yes)); // Has no parent yet
+  REQUIRE_THAT(cp1->getID(), Equals("Cell_ECM_0_", Catch::CaseSensitive::Yes));
+  REQUIRE_THAT(cp1->getFullID(), Equals("Cell_ECM_0_", Catch::CaseSensitive::Yes)); // Has no parent yet
 
   std::string n = "na";
   double T = settings::T_ENV;
@@ -284,14 +284,11 @@ TEMPLATE_TEST_CASE("test_Modules_p", "[Module_p]", Cell_ECM<1>, Cell_SPM)
   }
 }
 
-bool test_contactR()
+TEST_CASE("test_contactR", "[Module_p]")
 {
-  /*
-   * Make a module with 3 cells and a contact resistance
-   */
-
+  // Make a module with 3 cells and a contact resistance
   double Rc = 0.01;
-  double tol = 0.0001;
+  constexpr double tol = 0.0001;
   Deep_ptr<StorageUnit> cs[] = {
     make<Cell_Bucket>(),
     make<Cell_Bucket>(),
@@ -315,10 +312,12 @@ bool test_contactR()
   //!< 		   |    |    |
   //!< 		  Rs    Rs   Rs
   //!< where Rp = contact resistance (value Rc) and Rs = cell resistance = 0.01;
+
+  // Calculating total resistance
   double Rs = cp1->getRtot();
   double Rq = Rc + (Rs * (Rs + Rc)) / (Rc + 2 * Rs); //!< resistance of last two branches
   double Rtot = Rc + Rs * Rq / (Rs + Rq);
-  assert(NEAR(mp->getRtot(), Rtot, tol));
+  REQUIRE_THAT(mp->getRtot(), WithinAbs(Rtot, tol));
 
   //!< setCurrent
   //!< check voltages at each node from the branch going 'down' and the branch going 'right'
@@ -329,70 +328,70 @@ bool test_contactR()
   //!< 	since all cells have the same OCV
   double I = 20;
   mp->setCurrent(I, true, true);
-  double I1 = cp1->I();
-  double I2 = cp2->I();
-  double I3 = cp3->I();
+  double I1{ cp1->I() }, I2{ cp2->I() }, I3{ cp3->I() };
 
-  //!< assert the currents of cells further from the terminal are smaller
-  assert(std::abs(I1) > std::abs(I2));
-  assert(std::abs(I2) > std::abs(I3));
+  // Asserting the currents of cells further from the terminal are smaller
+  REQUIRE(std::abs(I1) > std::abs(I2));
+  REQUIRE(std::abs(I2) > std::abs(I3));
 
-  //!< Check the voltage at every node
+  // Checking the voltage at every node
   double Rcell = cp1->getRtot();                //!< all cell resistances are the same
   double V11 = Rcell * I1;                      //!< voltage at the node connecting the first cell, going down [ignoring OCV]
   double V12 = Rcs[1] * (I2 + I3) + Rcell * I2; //!< voltage at the node connecting the first cell, going right
   //!< double V13 = Rcs[1] * (I2 + I3) + Rcs[2]*I3 + Rcell*I3;
-  double V22 = Rcell * I2;            //!< voltage at node of 2nd cell going down
-  double V23 = (Rcs[2] + Rcell) * I3; //!< voltage at node of 2nc cell going right
-  assert(NEAR(V11, V12, settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(V22, V23, settings::MODULE_P_V_ABSTOL));
+  double V22 = Rcell * I2;
+  double V23 = (Rcs[2] + Rcell) * I3;
+  REQUIRE_THAT(V11, WithinAbs(V12, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(V22, WithinAbs(V23, settings::MODULE_P_V_ABSTOL));
 
-  //!< check the total voltage
+  // Checking the total voltage
   double V1 = cp1->V() - Rcs[0] * (I1 + I2 + I3);
   double V2 = cp2->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3);
   double V3 = cp3->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3) - Rcs[2] * I3;
-  assert(NEAR(V1, V2, settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(V1, V3, settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(V2, V3, settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(mp->V(), V2, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(V1, WithinAbs(V2, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(V1, WithinAbs(V3, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(V2, WithinAbs(V3, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(mp->V(), WithinAbs(V2, settings::MODULE_P_V_ABSTOL));
 
   // #TODO needs to have getVall but it is protected.
   // assert(NEAR(V1, mp->Vi(0), tol)); //!< these numbers should be exactly the same
   // assert(NEAR(V2, mp->Vi(1), tol)); //!< these numbers should be exactly the same
   // assert(NEAR(V3, mp->Vi(2), tol)); //!< these numbers should be exactly the same
 
-  //!< set charging current
+  // Setting charging current
   I = -20;
   mp->setCurrent(I, true, true);
-  I1 = cp1->I();
-  I2 = cp2->I();
-  I3 = cp3->I();
-  assert(std::abs(I1) > std::abs(I2));
-  assert(std::abs(I2) > std::abs(I3));
-  Rcell = cp1->getRtot();                //!< all cell resistances are the same
-  V11 = Rcell * I1;                      //!< voltage at the node connecting the first cell, going down [ignoring OCV]
-  V12 = Rcs[1] * (I2 + I3) + Rcell * I2; //!< voltage at the node connecting the first cell, going right
-  V22 = Rcell * I2;                      //!< voltage at node of 2nd cell going down
-  V23 = (Rcs[2] + Rcell) * I3;           //!< voltage at node of 2nc cell going right
-  assert(NEAR(V11, V12, settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(V22, V23, settings::MODULE_P_V_ABSTOL));
+  I1 = cp1->I(), I2 = cp2->I(), I3 = cp3->I();
 
+  // Asserting the currents of cells further from the terminal are smaller
+  REQUIRE(std::abs(I1) > std::abs(I2));
+  REQUIRE(std::abs(I2) > std::abs(I3));
+
+  // Checking the voltage at every node
+  Rcell = cp1->getRtot();
+  V11 = Rcell * I1;
+  V12 = Rcs[1] * (I2 + I3) + Rcell * I2;
+  V22 = Rcell * I2;
+  V23 = (Rcs[2] + Rcell) * I3;
+  REQUIRE_THAT(V11, WithinAbs(V12, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(V22, WithinAbs(V23, settings::MODULE_P_V_ABSTOL));
+
+  // Checking the total voltage
   V1 = cp1->V() - Rcs[0] * (I1 + I2 + I3);
   V2 = cp2->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3);
   V3 = cp3->V() - Rcs[0] * (I1 + I2 + I3) - Rcs[1] * (I2 + I3) - Rcs[2] * I3;
-  assert(NEAR(V1, V2, settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(V1, V3, settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(V2, V3, settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(mp->V(), V2, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(V1, WithinAbs(V2, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(V1, WithinAbs(V3, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(V2, WithinAbs(V3, settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(mp->V(), WithinAbs(V2, settings::MODULE_P_V_ABSTOL));
 
   // #TODO needs to have getVall but it is protected.
   // assert(NEAR(V1, mp->Vi(0), tol)); //!< these numbers should be exactly the same
   // assert(NEAR(V2, mp->Vi(1), tol)); //!< these numbers should be exactly the same
   // assert(NEAR(V3, mp->Vi(2), tol)); //!< these numbers should be exactly the same
-  return true;
 }
 
-bool test_Hierarchichal_p()
+TEST_CASE("test_Hierarchichal_p", "[module]")
 {
   //!< test parallel modules made out of other parallel modules
   double tol = 1e-3;
@@ -424,42 +423,42 @@ bool test_Hierarchichal_p()
   mp2->setSUs(SU2, checkCells);
   mp3->setSUs(SU3, checkCells);
 
-  //!< make the hierarichical module
+  //!< make the hierarchical module
   std::string n4 = "4";
   checkCells = true;
   auto mp = make<Module_p>(n4, T, true, true, 7, 1, 1);
   mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
-  assert(NEAR(Vini, mp1->V(), tol));
-  assert(NEAR(Vini, cp5->V(), tol));
-  assert(mp->getFullID() == "4");
-  assert(mp1->getFullID() == "4_H1");
-  assert(cp1->getFullID() == "4_H1_Cell_ECM_0_");
-  assert(cp4->getFullID() == "4_H2_Cell_ECM_0_");
-  assert(cp5->getFullID() == "4_H3_Cell_ECM_0_");
+  REQUIRE_THAT(Vini, WithinAbs(mp1->V(), tol));
+  REQUIRE_THAT(Vini, WithinAbs(cp5->V(), tol));
+  REQUIRE_THAT(mp->getFullID(), Equals("4"));
+  REQUIRE_THAT(mp1->getFullID(), Equals("4_H1"));
+  REQUIRE_THAT(cp1->getFullID(), Equals("4_H1_Cell_ECM_0_"));
+  REQUIRE_THAT(cp4->getFullID(), Equals("4_H2_Cell_ECM_0_"));
+  REQUIRE_THAT(cp5->getFullID(), Equals("4_H3_Cell_ECM_0_"));
 
   //!< set a CC current
   double Inew = -14;    //!< should give about 2A per cell
   mp->setCurrent(Inew); // #TODO cannot set current !
-  // assert(NEAR(mp->I(), Inew, tol));
-  assert(NEAR(mp1->V(), mp2->V(), settings::MODULE_P_V_ABSTOL));
-  assert(NEAR(mp3->V(), mp2->V(), settings::MODULE_P_V_ABSTOL));
+                        // REQUIRE_THAT(mp->I(), Catch::WithinAbs(Inew, tol));
+
+  REQUIRE_THAT(mp1->V(), WithinAbs(mp2->V(), settings::MODULE_P_V_ABSTOL));
+  REQUIRE_THAT(mp3->V(), WithinAbs(mp2->V(), settings::MODULE_P_V_ABSTOL));
 
   //!< time a CC time step
   Vini = mp->V();
   double dt = 5;
   mp->timeStep_CC(dt);
-  assert(std::abs(cp1->SOC() - (0.5 - 2 * dt / 3600.0 / cp1->Cap())) < tol); //!< the SOC must have increased (check just 1 cell out of all 7)
-  assert(mp->V() > Vini);
-  assert(NEAR(mp2->V(), mp3->V(), tol)); //!< submodules must have same voltage
-
-  return true;
+  REQUIRE_THAT(cp1->SOC(), WithinAbs((0.5 - 2 * dt / 3600.0 / cp1->Cap()), tol)); //!< the SOC must have increased (check just 1 cell out of all 7)
+  REQUIRE(mp->V() > Vini);
+  REQUIRE_THAT(mp2->V(), mp3->V(), tol);                                          //!< submodules must have same voltage
 }
 
-bool test_Hierarchical_cross_p()
+TEST_CASE("Hierarchical_cross_p", "[Module_p]")
 {
-  //!< test parallel module made out of series modules
-  //!< note: series modules must have same number of cells to get the same voltage
+  // Test parallel module made out of series modules
+  // Note: series modules must have same number of cells to get the same voltage
+
   double tol = settings::MODULE_P_I_ABSTOL;
   std::string ids[] = { "H1", "H2", "H3" };
   Deep_ptr<StorageUnit> SU1[] = { make<Cell_Bucket>(), make<Cell_Bucket>() };
@@ -477,8 +476,7 @@ bool test_Hierarchical_cross_p()
     make<Module_s>(ids[2], T, true, false, std::size(SU3), 1, 2)
   };
 
-
-  auto mp1 = dynamic_cast<Module_s *>(MU[0].get()); //!< pass through cool systems
+  auto mp1 = dynamic_cast<Module_s *>(MU[0].get()); // Pass through cool systems
   auto mp2 = dynamic_cast<Module_s *>(MU[1].get());
   auto mp3 = dynamic_cast<Module_s *>(MU[2].get());
 
@@ -486,37 +484,30 @@ bool test_Hierarchical_cross_p()
   mp2->setSUs(SU2, checkCells);
   mp3->setSUs(SU3, checkCells);
 
-  //!< make the hierarichical module
+  // Make the hierarichical module
   std::string n4 = "4";
   checkCells = true;
   auto mp = make<Module_p>(n4, T, true, true, 7, 1, 1);
   mp->setSUs(MU, checkCells, true);
   double Vini = mp->V();
-  assert(NEAR(Vini, mp1->V(), tol));
-  assert(std::abs(Vini - v5 * 2) < tol); //!< one module has 2 cells so voltage should split in 2
+  REQUIRE_THAT(Vini, WithinAbs(mp1->V(), tol));
+  REQUIRE_THAT(Vini, WithinAbs(v5 * 2, tol)); // One module has 2 cells so voltage should split in 2
 
-  //!< set a CC current
-  double Inew = -6; //!< should give about 2A per cell
+  // Set a CC current
+  double Inew = -6; // Should give about 2A per cell
   mp->setCurrent(Inew);
-  assert(NEAR(mp->I(), Inew, tol));
+  REQUIRE_THAT(mp->I(), WithinAbs(Inew, tol));
+  REQUIRE_THAT(mp1->I(), WithinAbs(-2, tol));       // m1 has two cells
+  REQUIRE_THAT(mp3->I(), WithinAbs(-2, tol));       // m3 has two cells
+  REQUIRE_THAT(mp1->V(), WithinAbs(mp3->V(), tol)); // Check voltage is equal
 
-  // assert(std::abs(cp3->I() + 2) < tol);
-  // assert(std::abs(cp6->I() + 2) < tol);
-  assert(std::abs(mp1->I() + 2) < tol);  //!< m1 has two cells
-  assert(std::abs(mp3->I() + 2) < tol);  //!< m3 has two cells
-  assert(NEAR(mp1->V(), mp3->V(), tol)); //!< check voltage is equal
-
-  //!< time a CC time step
+  // Time a CC time step
   Vini = mp->V();
   double dt = 5;
   mp->timeStep_CC(dt);
-  //  assert(std::abs(cp1->SOC() - (0.5 - 2 * dt / 3600.0 / cap1)) < tol); //!< the SOC must have increased (check just 1 cell out of all 7)
-  assert(mp->V() > Vini);
-  assert(NEAR(mp2->V(), mp3->V(), tol));
-  //!< submodules must have same voltage
-  //!< note: there is no check on sub-modules with different SOC but I assume that works since it works with sub-cells of different SOC
-
-  return true;
+  REQUIRE(mp->V() > Vini);
+  REQUIRE_THAT(mp2->V(), WithinAbs(mp3->V(), tol)); // Submodules must have same voltage
+                                                    // Note: there is no check on sub-modules with different SOC but I assume that works since it works with sub-cells of different SOC
 }
 
 TEMPLATE_TEST_CASE("test_copy_p", "[Module_p]", Cell_Bucket, Cell_ECM<1>, Cell_SPM)
@@ -628,7 +619,7 @@ bool test_equaliseV_timing(Deep_ptr<Module_p> &mp, Deep_ptr<StorageUnit> c[], in
   vlim = mp->Vmax() - lim;
   cyc.CC(-I, vlim, TIME_INF, dt, ndata, th); //!< CC charge
   vlim = mp->Vmin() + lim;
-  cyc.CC(I, vlim, TIME_INF, dt, ndata, th); //!< CC discharge
+  cyc.CC(I, vlim, TIME_INF, dt, ndata, th);  //!< CC discharge
 
   std::cout << "Finished CC cycle.\n";
 
@@ -647,8 +638,8 @@ bool test_equaliseV()
   deg.SEI_id.add_model(4); //!< chirstensen SEI growth
   deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
 
-  deg.CS_id.add_model(0); //!< no surface cracks
-  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+  deg.CS_id.add_model(0);  //!< no surface cracks
+  deg.CS_diffusion = 0;    //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
 
   deg.LAM_id.add_model(0); //!< no LAM
   deg.pl_id = 0;           //!< no litihium plating
