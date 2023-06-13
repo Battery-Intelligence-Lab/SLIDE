@@ -19,27 +19,29 @@
 using Catch::Matchers::WithinAbs;
 using namespace slide;
 
+constexpr double TOL_EQ = 1e-15;
+
 TEST_CASE("Test ECM constructors", "[CELL_ECM]")
 {
   Cell_ECM c1;
-  REQUIRE_THAT(c1.Cap(), WithinAbs(16, 1e-15));
-  REQUIRE_THAT(c1.Vmin(), WithinAbs(2.7, 1e-15));
-  REQUIRE_THAT(c1.Vmax(), WithinAbs(4.2, 1e-15));
-  REQUIRE_THAT(c1.I(), WithinAbs(0, 1e-15));
-  REQUIRE_THAT(c1.getIr(), WithinAbs(0, 1e-15));
-  REQUIRE_THAT(c1.SOC(), WithinAbs(0.5, 1e-15));
-  REQUIRE_THAT(c1.T(), WithinAbs(settings::T_ENV, 1e-15));
+  REQUIRE_THAT(c1.Cap(), WithinAbs(16, TOL_EQ));
+  REQUIRE_THAT(c1.Vmin(), WithinAbs(2.7, TOL_EQ));
+  REQUIRE_THAT(c1.Vmax(), WithinAbs(4.2, TOL_EQ));
+  REQUIRE_THAT(c1.I(), WithinAbs(0, TOL_EQ));
+  REQUIRE_THAT(c1.getIr(), WithinAbs(0, TOL_EQ));
+  REQUIRE_THAT(c1.SOC(), WithinAbs(0.5, TOL_EQ));
+  REQUIRE_THAT(c1.T(), WithinAbs(settings::T_ENV, TOL_EQ));
 
   double soc = 1;
   double cap = 5;
   Cell_ECM c2(cap, soc);
-  REQUIRE_THAT(c2.Cap(), WithinAbs(5, 1e-15));
-  REQUIRE_THAT(c2.Vmin(), WithinAbs(2.7, 1e-15));
-  REQUIRE_THAT(c2.Vmax(), WithinAbs(4.2, 1e-15));
-  REQUIRE_THAT(c2.I(), WithinAbs(0, 1e-15));
-  REQUIRE_THAT(c2.getIr(), WithinAbs(0, 1e-15));
-  REQUIRE_THAT(c2.SOC(), WithinAbs(1, 1e-15));
-  REQUIRE_THAT(c2.T(), WithinAbs(settings::T_ENV, 1e-15));
+  REQUIRE_THAT(c2.Cap(), WithinAbs(5, TOL_EQ));
+  REQUIRE_THAT(c2.Vmin(), WithinAbs(2.7, TOL_EQ));
+  REQUIRE_THAT(c2.Vmax(), WithinAbs(4.2, TOL_EQ));
+  REQUIRE_THAT(c2.I(), WithinAbs(0, TOL_EQ));
+  REQUIRE_THAT(c2.getIr(), WithinAbs(0, TOL_EQ));
+  REQUIRE_THAT(c2.SOC(), WithinAbs(1, TOL_EQ));
+  REQUIRE_THAT(c2.T(), WithinAbs(settings::T_ENV, TOL_EQ));
 }
 
 TEST_CASE("Test getting ECM states", "[CELL_ECM]")
@@ -48,10 +50,10 @@ TEST_CASE("Test getting ECM states", "[CELL_ECM]")
   std::vector<double> s;
 
   c1.getStates(s);
-  REQUIRE_THAT(s[State_ECM<1>::i_SOC], WithinAbs(0.5, 1e-15));           //!< soc
-  REQUIRE_THAT(s[State_ECM<1>::i_Ir], WithinAbs(0, 1e-15));              //!< Ir
-  REQUIRE_THAT(s[State_ECM<1>::i_T], WithinAbs(settings::T_ENV, 1e-15)); //!< T
-  REQUIRE_THAT(s[State_ECM<1>::i_I], WithinAbs(0, 1e-15));               //!< current
+  REQUIRE_THAT(s[State_ECM<1>::i_SOC], WithinAbs(0.5, TOL_EQ));           //!< soc
+  REQUIRE_THAT(s[State_ECM<1>::i_Ir], WithinAbs(0, TOL_EQ));              //!< Ir
+  REQUIRE_THAT(s[State_ECM<1>::i_T], WithinAbs(settings::T_ENV, TOL_EQ)); //!< T
+  REQUIRE_THAT(s[State_ECM<1>::i_I], WithinAbs(0, TOL_EQ));               //!< current
 }
 
 TEST_CASE("Test ECM getV", "[CELL_ECM]")
@@ -60,9 +62,9 @@ TEST_CASE("Test ECM getV", "[CELL_ECM]")
   Cell_ECM c1;
 
   //!< normal cell, should give no errors
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.15, TOL_EQ));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.15, TOL_EQ));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.15, TOL_EQ));
 
   //!< set to charging and check the voltage has increased
   c1.setCurrent(-1);
@@ -97,10 +99,10 @@ TEST_CASE("Test setting ECM states", "[CELL_ECM]")
 
   s.clear();
   c1.getStates(s);
-  REQUIRE_THAT(s[State_ECM<1>::i_SOC], WithinAbs(soc, 1e-15)); //!< soc
-  REQUIRE_THAT(s[State_ECM<1>::i_Ir], WithinAbs(ir, 1e-15));   //!< Ir
-  REQUIRE_THAT(s[State_ECM<1>::i_T], WithinAbs(t, 1e-15));     //!< T
-  REQUIRE_THAT(s[State_ECM<1>::i_I], WithinAbs(i, 1e-15));     //!< current
+  REQUIRE_THAT(s[State_ECM<1>::i_SOC], WithinAbs(soc, TOL_EQ)); //!< soc
+  REQUIRE_THAT(s[State_ECM<1>::i_Ir], WithinAbs(ir, TOL_EQ));   //!< Ir
+  REQUIRE_THAT(s[State_ECM<1>::i_T], WithinAbs(t, TOL_EQ));     //!< T
+  REQUIRE_THAT(s[State_ECM<1>::i_I], WithinAbs(i, TOL_EQ));     //!< current
 }
 
 TEST_CASE("Test ECM validStates", "[CELL_ECM]")

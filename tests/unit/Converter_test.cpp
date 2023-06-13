@@ -36,8 +36,8 @@ TEST_CASE("Test losses", "[Converter]")
           std::cout<<"V = "<<v/(15.0*20.0)<<", I = "<<I<<", loss = "<<loss<<" W or "<<relloss*100<<" %"<<endl;
 
           //!< check the losses are between 0 and 15 %
-          assert(relloss > 0);
-          assert(relloss < 0.15);											//!< even at 0 W input, the losses are about 1.5 kW due to constant terms (switching, losses on DC bus, etc)
+          REQUIRE(relloss > 0);
+          REQUIRE(relloss < 0.15);											//!< even at 0 W input, the losses are about 1.5 kW due to constant terms (switching, losses on DC bus, etc)
   }*/
 
   //!< print the efficiency for a 1C charge for a large battery (for 9p, 15s 20s)
@@ -81,4 +81,6 @@ TEST_CASE("Test losses", "[Converter]")
   v = 2.7 * 15 * 20;
   std::cout<<"Losses for the EFL battery at Vmin are "<<c.getLosses(v,I)<<" W or "<<c.getLosses(v,I)/(I*v)*100<<" %"<<endl;
   */
+
+  // #TODO activate the commented out parts.
 }
