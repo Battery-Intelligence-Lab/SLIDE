@@ -30,11 +30,3 @@ if(NOT TARGET Catch2::Catch2WithMain)
     URL "https://github.com/catchorg/Catch2/archive/refs/tags/v3.3.2.tar.gz"
   )
 endif()
-
-# Arrow library:
-CPMAddPackage(
-  NAME Arrow
-  URL "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/arrow-12.0.0/apache-arrow-12.0.0.tar.gz"
-  SOURCE_SUBDIR "cpp"
-  OPTIONS "xsimd_SOURCE BUNDLED"
-)
