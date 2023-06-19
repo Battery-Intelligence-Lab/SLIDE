@@ -204,7 +204,7 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       //!< get concentrations
 
       double cp[settings::nch + 2], cn[settings::nch + 2];
-      getC(cp, cn);
+      getC(cp, cn); // #TODO only cn[0] and cn[end] is used!
       //!< Add the effects of this model
       dcs += csparam.CS3alpha * sqr((cn[0] - cn[settings::nch + 1]) / Cmaxneg);
       //!< equations (8) + (21)
@@ -523,7 +523,7 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
   //!< get concentrations at each Chebyshev node
   //!< Due to symmetry, the concentration at the negative point is the same as the concentration of the positive point: c(-x) = c(x)
   double cp[nch + 2], cn[nch + 2]; //!< positive and negative nodes, [+surface .. inner .. centre]
-  getC(cp, cn);
+  getC(cp, cn);                    // #TODO can return directly 2 arrays.
 
   double CP[2 * nch + 3], CN[2 * nch + 3]; //!< concentrations at all nodes, [-surface .. inner .. centre .. inner .. +surface]
 

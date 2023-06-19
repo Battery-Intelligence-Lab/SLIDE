@@ -54,8 +54,8 @@ public:
   constexpr double Tmax() { return limits.Tmax; }
   constexpr double Tmin() { return limits.Tmin; }
 
-  double getVhigh() final { return V(); } //!< return the voltage of the cell with the highest voltage
-  double getVlow() final { return V(); }  //!< return the voltage of the cell with the lowest voltage
+  double getVhigh() override final { return V(); } //!< return the voltage of the cell with the highest voltage
+  double getVlow() override final { return V(); }  //!< return the voltage of the cell with the lowest voltage
 
   virtual Status setSOC(double SOCnew, bool checkV = true, bool print = true) = 0;
   virtual double SOC() = 0;
