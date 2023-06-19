@@ -13,4 +13,5 @@ target_sources(Cell_SPM
   Cell_SPM.hpp
 )
 target_include_directories(Cell_SPM PUBLIC .)
+target_link_libraries(Cell_SPM eigen)
  
