@@ -14,6 +14,13 @@ add_subdirectory(procedures)
 add_subdirectory(factories)
 add_subdirectory(settings)
 
+
+if (UNIX)
+  if (NOT APPLE)
+    set(PTHREADS "-pthread")
+  endif()
+endif()
+
 target_link_libraries(src
   PRIVATE
   cells
@@ -24,5 +31,5 @@ target_link_libraries(src
   procedures
   factories
   settings
- # pthread #-> For WSL.
+  ${PTHREADS} # -> for WSL
 )
