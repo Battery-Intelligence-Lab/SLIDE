@@ -13,6 +13,7 @@
 #include "../../types/matrix.hpp"
 #include "../../settings/settings.hpp"
 #include "../../utility/utility.hpp"
+#include <Eigen/Dense>
 
 #include <array>
 

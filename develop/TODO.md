@@ -40,9 +40,11 @@
 ### Current priority:
 - [ ] PTHREADS definition
 - [ ] inline namespaces for literals. 
+- [ ] Make Eigen-based calculations for Matrix-vector multiplications. 
+- [ ] Electrode-based calculations? 
 - [ ] Catch2 added for testing. 
 - [ ] cmake_minimum_required(VERSION 3.17) -> 3.21
-- [ ] CPM package manager is adtopted. 
+- [ ] CPM package manager is adopted. 
 - [ ] Renew matlab scripts to read results. 
 - [ ] Matio and parquet data types. 
 - [ ] In `test_specificDeg` in `Procedure_test.cpp` there is a weak cell.
