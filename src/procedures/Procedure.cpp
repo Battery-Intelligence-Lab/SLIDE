@@ -464,7 +464,7 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   //  open and clear whatever was there since we want to write the most recent stats only
 
   //!< do the main checkup, which writes the throughput, capacity and state of every cell
-  const size_t start = (typeid(*cells[0]) == typeid(Cell_SPM)) ? 2 * settings::nch : 0; // #TODO : Consider having different type of cells.
+  const size_t start = (typeid(*cells[0]) == typeid(Cell_SPM)) ? 2 * settings::nch : 0; // #TODO : Consider having different type of cells. #TODO expression with side effects will be evaluated despite being used as an operand to 'typeid' [-Wpotentially-evaluated-expression]
   //!< Write the throughput of each cell
 
   //!< If this is the first checkup, start by writing the cell IDs and cell-to-cell parameters

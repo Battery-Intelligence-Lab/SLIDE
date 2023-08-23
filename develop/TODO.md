@@ -22,7 +22,7 @@
   - [ ] gui_starter_library Jason Turner. 
   - [ ] clang-tidy 
   - [ ] codecov. 
-  - [ ] Doxygen. 
+  - [x] Doxygen. 
   - [ ] CPack
 
 

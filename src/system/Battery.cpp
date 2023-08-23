@@ -47,7 +47,7 @@ void Battery::setModule(Deep_ptr<Module> &&module)
   if (module->getCoolSystem() == nullptr) {
     std::cerr << "ERROR in Battery::setModule. Module " << module->getFullID() << " no coolsystem. Throwing 10.\n";
     throw 10;
-  } else if (typeid(*module->getCoolSystem()) == typeid(CoolSystem_HVAC)) {
+  } else if (typeid(*module->getCoolSystem()) == typeid(CoolSystem_HVAC)) { // #TODO expression with side effects will be evaluated despite being used as an operand to 'typeid' [-Wpotentially-evaluated-expression]
     std::cerr << "ERROR in Battery::setModule. Module " << module->getFullID()
               << " has an HVAC coolsystem so we cannot connect it to the battery. Throwing 10.\n";
     throw 10;

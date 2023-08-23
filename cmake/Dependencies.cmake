@@ -30,3 +30,20 @@ if(NOT TARGET Catch2::Catch2WithMain)
     URL "https://github.com/catchorg/Catch2/archive/refs/tags/v3.3.2.tar.gz"
   )
 endif()
+
+# # Glaze library:
+# CPMAddPackage(
+#   NAME glaze
+#   URL "https://github.com/stephenberry/glaze/archive/refs/tags/v1.3.4.tar.gz"
+# )
+
+include(FetchContent)
+
+FetchContent_Declare(
+  glaze
+  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
+  GIT_TAG main
+  GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(glaze)

@@ -161,7 +161,6 @@ Deep_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread
   //!< 9 strings in parallel -> 9*Ah = 115.699Ah
   return bat;
 
-  /*
   //!< Test some cycle ageing
   bool CV = false;
   double Vbal = 3.5;							//!< rebalance to 3.1V
@@ -169,6 +168,7 @@ Deep_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread
   Deep_ptr<Procedure> p(new Procedure(balance, Vbal, ndata, false));
   //p->useCaseAge(bat, coolControl);
   p->cycleAge(bat, CV);*/
+  return {}; // #TODO return bat;
 }
 
 Deep_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl)
