@@ -38,6 +38,7 @@
 
 
 ### Current priority:
+- [ ] DataFrame class is added for named columns.
 - [ ] Create Module_p_ApproxPI 
 - [ ] PTHREADS definition
 - [ ] inline namespaces for literals. 
