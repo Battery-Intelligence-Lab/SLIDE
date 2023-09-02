@@ -31,19 +31,17 @@ if(NOT TARGET Catch2::Catch2WithMain)
   )
 endif()
 
+
+# CPMAddPackage("gh:fmtlib/fmt#10.1.1") #fmt library
+# fmt library:
+CPMAddPackage(
+  NAME fmt
+  URL "https://github.com/fmtlib/fmt/archive/refs/tags/10.1.1.tar.gz"
+)
+
+
 # # Glaze library:
 # CPMAddPackage(
 #   NAME glaze
 #   URL "https://github.com/stephenberry/glaze/archive/refs/tags/v1.3.4.tar.gz"
 # )
-
-include(FetchContent)
-
-FetchContent_Declare(
-  glaze
-  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG main
-  GIT_SHALLOW TRUE
-)
-
-FetchContent_MakeAvailable(glaze)

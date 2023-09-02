@@ -16,6 +16,8 @@
 
 #include <Eigen/Dense>
 #include <range/v3/all.hpp>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <ctime>
 #include <thread>
@@ -24,8 +26,6 @@
 #include <random>
 #include <cmath>
 #include <iomanip>
-
-#include "glaze/glaze.hpp"
 
 struct my_struct
 {
@@ -42,28 +42,20 @@ int my_func()
    return p++;
 }
 
-template <>
-struct glz::meta<my_struct>
-{
-  using T = my_struct;
-  static constexpr auto value = object(
-    "i", &T::i,
-    "d", &T::d,
-    "hello", &T::hello,
-    "arr", &T::arr);
-};
-
 int main()
 {
-    std::cout << "GLZ test is working!\n";
-    std::array<my_struct,3> asd;
+    std::array<double,10> xarray{1,2,3,4,5,6,7,8,9,112};
 
-    auto ec = glz::write_file(asd, "./glaze_test.json", std::string{}); // writes file based on extension
+    fmt::print("Hello, {}!\n", "world");
+    fmt::print("{}\n", xarray);
+      // glz::write_file_csv(asd, "./glaze_test.csv");
 
-    auto a = glz::arr{1, "deneme", 2.0};
+    std::string s{ "hello" };
 
+    // output: h e l l o
+    ranges::for_each(s, [](char c) { std::cout << c << ' '; });
+    std::cout << '\n';
 
-    glz::write_file_csv(asd, "./glaze_test.csv");
 
     auto b = 3;
 
@@ -171,13 +163,6 @@ int main()
 
     auto numThreads = std::thread::hardware_concurrency(); //!<
     std::cout << "Available number of threads : " << numThreads << '\n';
-
-
-    std::string s{ "hello" };
-
-    // output: h e l l o
-    ranges::for_each(s, [](char c) { std::cout << c << ' '; });
-    std::cout << '\n';
 
 
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.

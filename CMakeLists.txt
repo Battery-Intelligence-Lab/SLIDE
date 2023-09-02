@@ -24,7 +24,8 @@ add_subdirectory(tests)
 
 include(cmake/Dependencies.cmake) # Include external projects
 
-target_link_libraries(src PUBLIC eigen range-v3 glaze::glaze) # Link dependencies to the src library.
+target_link_libraries(src PUBLIC eigen range-v3 fmt) # Link dependencies to the src library.
+# glaze::glaze  -> maybe in future. 
 
 add_executable(slide
   src/main.cpp

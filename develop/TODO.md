@@ -38,6 +38,7 @@
 
 
 ### Current priority:
+- [ ] Create Module_p_ApproxPI 
 - [ ] PTHREADS definition
 - [ ] inline namespaces for literals. 
 - [ ] Make Eigen-based calculations for Matrix-vector multiplications. 
