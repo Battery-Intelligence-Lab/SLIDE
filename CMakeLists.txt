@@ -8,6 +8,7 @@ project(SLIDE VERSION "3.0.0"
 
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
+include(cmake/Dependencies.cmake) # Include external projects
 
 # Link this 'library' to use the warnings specified in CompilerWarnings.cmake
 add_library(project_warnings INTERFACE)
@@ -21,8 +22,6 @@ add_subdirectory(src bin)
 
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
-
-include(cmake/Dependencies.cmake) # Include external projects
 
 target_link_libraries(src PUBLIC eigen range-v3 fmt) # Link dependencies to the src library.
 # glaze::glaze  -> maybe in future. 
