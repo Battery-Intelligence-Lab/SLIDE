@@ -299,7 +299,7 @@ void Procedure::storeThroughput(ThroughputData th, StorageUnit *su)
     convloss = b->getAndResetConvLosses() / 3600.0;
   }
 
-  throughput.push_back({ th.Ah(), th.Wh(), coolSystemLoad, convloss });
+  throughput.insert(throughput.end(), { th.Ah(), th.Wh(), coolSystemLoad, convloss });
 }
 
 void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, double Ahtot, int nrCycle, std::string pref)
@@ -621,24 +621,15 @@ void Procedure::writeThroughput(const std::string &SUID, double Ahtot)
   //!< Open the file
   std::string name = SUID + "_throughput.csv";
   std::ofstream file;
-  if (Ahtot == 0) {
+  
+  if (Ahtot == 0) 
     file.open(PathVar::results / name); //!< open from scratch, clear whatever was in the file before
-    file << "ID number" << ',' << "cells charge throughput" << ','
-         << "Cells energy throughput" << ','
-         << "total energy to operate the thermal management system" << ','
-         << "losses in the converter" << '\n';
-  } else
+  else
     file.open(PathVar::results / name, std::ios_base::app); //!< append to the existing file
 
-  //!< Write the data
-  for (const auto &th : throughput)
-    file << th.charge << ',' << th.energy << ','
-         << th.coolSystemLoad << ',' << th.convloss << '\n';
+  throughput.to_csv(file, Ahtot == 0);
 
-  //!< close the file
-  file.close();
-
-  //!< erase the vectors
-  throughput.clear();
+  file.close(); //!< close the file
+  throughput.clear(); //!< clear the vector
 }
 } // namespace slide

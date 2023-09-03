@@ -38,6 +38,7 @@
 
 
 ### Current priority:
+- [ ] Fix INTERFACE library problem in C++. Cannot include <DataFrame.hpp> and others! 
 - [ ] DataFrame class is added for named columns.
 - [ ] Create Module_p_ApproxPI 
 - [ ] PTHREADS definition
