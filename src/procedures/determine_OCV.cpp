@@ -17,7 +17,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 #include "determine_OCV.hpp"
 #include "../utility/utility.hpp"
@@ -772,42 +772,42 @@ void estimateOCVparameters() // #TODO this function is slow and hand-tuned. Chan
 
   //!< Append these parameters in the csv file where we had written the fitted parameters
   output.open(PathVar::results / nameparam, std::ios_base::app);
-  output << "cathode volume fraction ep" << ',' << ep << '\n';
-  output << "anode volume fraction en" << ',' << en << '\n';
-  output << "electrode surface ele_surf" << ',' << elec_surf << '\n';
-  output << "cathode thickness thickp" << ',' << thickp << '\n';
-  output << "anode thickness thickn" << ',' << thickn << '\n';
-  output << "cathode lithium fraction at 100% SOC" << ',' << fp[0] << '\n';
-  output << "anode lithium fraction at 100% SOC" << ',' << fn[0] << '\n';
-  output << "cathode lithium fraction at 50% SOC" << ',' << fp[1] << '\n';
-  output << "anode lithium fraction at 50% SOC" << ',' << fn[1] << '\n';
-  output << "cathode lithium fraction at 0% SOC" << ',' << fp[2] << '\n';
-  output << "anode lithium fraction at 0% SOC" << ',' << fn[2] << '\n';
-  output << "capacity of the cell in Ah" << ',' << cap << '\n';
-  output << "maximum voltage of the cell" << ',' << OCVcell.y[0] << '\n';
-  output << "minimum voltage of the cell" << ',' << OCVcell.y.back() << '\n';
-  output << "The error on the OCV curve with this fit is" << ',' << err << '\n';
+  output << "cathode volume fraction ep" << ',' << ep << '\n'
+         << "anode volume fraction en" << ',' << en << '\n'
+         << "electrode surface ele_surf" << ',' << elec_surf << '\n'
+         << "cathode thickness thickp" << ',' << thickp << '\n'
+         << "anode thickness thickn" << ',' << thickn << '\n'
+         << "cathode lithium fraction at 100% SOC" << ',' << fp[0] << '\n'
+         << "anode lithium fraction at 100% SOC" << ',' << fn[0] << '\n'
+         << "cathode lithium fraction at 50% SOC" << ',' << fp[1] << '\n'
+         << "anode lithium fraction at 50% SOC" << ',' << fn[1] << '\n'
+         << "cathode lithium fraction at 0% SOC" << ',' << fp[2] << '\n'
+         << "anode lithium fraction at 0% SOC" << ',' << fn[2] << '\n'
+         << "capacity of the cell in Ah" << ',' << cap << '\n'
+         << "maximum voltage of the cell" << ',' << OCVcell.y[0] << '\n'
+         << "minimum voltage of the cell" << ',' << OCVcell.y.back() << '\n'
+         << "The error on the OCV curve with this fit is" << ',' << err << '\n';
 
   //!< then note down the settings used to get this fit
-  output << '\n';
-  output << "Below are the settings which produced this result\n";
-  output << "maximum li-concentration in the cathode" << ',' << cmaxp << '\n';
-  output << "maximum li-concentration in the anode" << ',' << cmaxn << '\n';
-  output << "name of the file with the cathode OCV curve" << ',' << namepos << '\n';
-  output << "name of the file with the anode OCV curve" << ',' << nameneg << '\n';
-  output << "name of the file with the cell's OCV curve" << ',' << namecell << '\n';
-  output << "capacity of the cell" << ',' << cap << '\n';
+  output << '\n'
+         << "Below are the settings which produced this result\n"
+         << "maximum li-concentration in the cathode" << ',' << cmaxp << '\n'
+         << "maximum li-concentration in the anode" << ',' << cmaxn << '\n'
+         << "name of the file with the cathode OCV curve" << ',' << namepos << '\n'
+         << "name of the file with the anode OCV curve" << ',' << nameneg << '\n'
+         << "name of the file with the cell's OCV curve" << ',' << namecell << '\n'
+         << "capacity of the cell" << ',' << cap << '\n';
 
   //!< the search space
-  output << '\n';
-  output << "Below are the settings of the initial search space\n";
-  output << "relative step size in the search for active material" << ',' << step << '\n';
-  output << "relative minimum amount of active material" << ',' << AMmin << '\n';
-  output << "relative maximum amount of active material" << ',' << AMmax << '\n';
-  output << "step size in the search for the starting li-fraction" << ',' << sp_space.dstep() << '\n';
-  output << "minimum li-fraction" << ',' << 0.0 << '\n';
-  output << "maximum li-fraction" << ',' << 1.0 << '\n';
-  output << "number of levels in the search hierarchy" << ',' << hmax << '\n';
+  output << '\n'
+         << "Below are the settings of the initial search space\n"
+         << "relative step size in the search for active material" << ',' << step << '\n'
+         << "relative minimum amount of active material" << ',' << AMmin << '\n'
+         << "relative maximum amount of active material" << ',' << AMmax << '\n'
+         << "step size in the search for the starting li-fraction" << ',' << sp_space.dstep() << '\n'
+         << "minimum li-fraction" << ',' << 0.0 << '\n'
+         << "maximum li-fraction" << ',' << 1.0 << '\n'
+         << "number of levels in the search hierarchy" << ',' << hmax << '\n';
   output.close();
 }
 
@@ -820,10 +820,10 @@ void writeOCVParam(int h, const std::array<double, 4> &par)
   std::ofstream output; //!< write the parameters
   const auto na = "OCVFit_" + std::to_string(h) + "_param.csv";
   output.open(PathVar::results / na, std::ios_base::out);
-  output << "AMp" << ',' << par[0] << '\n';
-  output << "AMn" << ',' << par[1] << '\n';
-  output << "start pos" << ',' << par[2] << '\n';
-  output << "start neg" << ',' << par[3] << '\n';
+  output << "AMp" << ',' << par[0] << '\n'
+         << "AMn" << ',' << par[1] << '\n'
+         << "start pos" << ',' << par[2] << '\n'
+         << "start neg" << ',' << par[3] << '\n';
   output.close();
 }
 

@@ -4,10 +4,7 @@ add_library(cells "")
 add_subdirectory(Cell_SPM)
 
 target_sources(cells
-  PRIVATE
-  cell_util.cpp
   PUBLIC
-    cell_util.hpp
     cell_limits.hpp
   )
 

@@ -4,7 +4,7 @@
  * Histogram code to hold histogram data.
  *
  *  Created on: 14 Dec 2021
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once

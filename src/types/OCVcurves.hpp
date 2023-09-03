@@ -2,7 +2,7 @@
  * OCV_curves.hpp
  *
  *  Created on: 27 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once

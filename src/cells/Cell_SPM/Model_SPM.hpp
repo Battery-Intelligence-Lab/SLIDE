@@ -5,7 +5,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 #pragma once

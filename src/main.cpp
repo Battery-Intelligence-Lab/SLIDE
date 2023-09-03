@@ -6,7 +6,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 //!< Include header files
@@ -18,7 +18,6 @@
 #include <range/v3/all.hpp>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-
 
 
 #include <ctime>
@@ -141,17 +140,17 @@ int main()
   using namespace slide;
 
   auto c = make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
-  auto& st = c->getStateObj();
+  auto &st = c->getStateObj();
 
   std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  c->setCurrent(16); 
+  c->setCurrent(16);
   std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  c->timeStep_CC(1,60);
+  c->timeStep_CC(1, 60);
   std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
 
   Cycler cyc(c, "Cycler1");
 
-  ThroughputData th{}; 
+  ThroughputData th{};
   cyc.CC(-16, 4.2, 3600, 1, 1, th);
   std::cout << "\nAfter CC charge:\n";
   std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
@@ -163,7 +162,7 @@ int main()
 
   cyc.CCCV(16, 2.7, 5e-3, 1, 1, th);
   std::cout << "\nAfter CCCV discharge:\n";
-  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n"; 
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
 
   cyc.writeData();
   // // Cycler:
@@ -191,6 +190,8 @@ int main()
   // std::cout << "Ah: " << th.Ah() << " Wh: " << th.Wh() << " time: " << th.time() << '\n';
 
   // cyc.writeData();
+
+  estimateCharacterisation();
 
 
   //!< Examples:

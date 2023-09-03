@@ -5,7 +5,7 @@
  * It stores a pointer and an interval.
  *
  *  Created on: 05 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli
  */
 
 #pragma once

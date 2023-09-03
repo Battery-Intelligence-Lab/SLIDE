@@ -2,7 +2,7 @@
  * FixedData.hpp
  *
  *  Created on: 07 Feb 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once

@@ -17,12 +17,11 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 #include "../cells/cells.hpp"
 #include "determine_OCV.hpp"
-#include "CyclerOld.hpp"
 #include "Cycler.hpp"
 #include "determine_characterisation.hpp"
 #include "../utility/utility.hpp"

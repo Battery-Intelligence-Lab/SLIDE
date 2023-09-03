@@ -13,3 +13,4 @@
 #include "Procedure.hpp"
 #include "Cycler.hpp"
 #include "determine_OCV.hpp"
+#include "determine_characterisation.hpp"
