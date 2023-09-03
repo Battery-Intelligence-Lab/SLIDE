@@ -49,7 +49,7 @@ protected:
   ModuleThermalParam therm;
 
   //!< voltage
-  size_t Ncells;    //!< Number of cells this module contains.
+  size_t Ncells{};    //!< Number of cells this module contains.
   bool par{ true }; //!< if true, some functions will be calculated parallel using multithreaded computing
                     //!< data storage
 

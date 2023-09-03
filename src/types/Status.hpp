@@ -3,7 +3,7 @@
  *
  * A small class for error codes.
  *  Created on: 21 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once
