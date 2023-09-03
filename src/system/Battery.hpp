@@ -12,6 +12,7 @@
 #include "../cooling/CoolSystem_HVAC.hpp"
 #include "../power_conversion/Converter.hpp"
 #include "../types/data_storage/cell_data.hpp"
+#include "../types/DataFrame.hpp"
 
 #include <memory>
 #include <vector>
@@ -32,7 +33,13 @@ protected:
 
 #if DATASTORE_BATT > 1
   double timetot{ 0 }; //!< time so far [s]
-  BatteryData batData;
+  DataFrame<> batData{
+    "total time [s]",
+    "total current to the battery compartment [A]",
+    "total voltage of the battery compartment [V]",
+    "temperature of the battery container [K]",
+    "losses in the power electronic converter [W]"
+  };
 #endif
 
 public:
