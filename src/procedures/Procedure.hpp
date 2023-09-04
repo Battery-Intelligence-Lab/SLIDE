@@ -11,7 +11,6 @@
 #include "../cells/Cell.hpp"
 #include "../modules/Module.hpp"
 #include "../system/Battery.hpp"
-#include "../types/data_storage/cell_data.hpp"
 #include "../types/DataFrame.hpp"
 
 #include <vector>
@@ -36,7 +35,7 @@ protected:
                           "Cells energy throughput [Wh]",
                           "total energy to operate the thermal management system [Wh]",
                           "Converter losses [Wh]" };
-                
+
   void storeThroughput(ThroughputData th, StorageUnit *su);
 
 public:

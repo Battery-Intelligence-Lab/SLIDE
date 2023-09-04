@@ -409,40 +409,6 @@ void readOCVinput(const std::string &namepos, const std::string &nameneg, const 
   }
 }
 
-double calculateError(bool bound, slide::XYdata_vv &OCVcell, slide::XYdata_vv &OCVsim)
-{
-  /*
-   * Function to calculate the root mean square error between the OCV curve of the cell supplied by the user and the simulated OCV curve
-   *
-   * IN
-   * bound	boolean deciding what to do if the value of x is out of range of xdat for linear interpolation
-   * 			i.e. how to 'extend' OCVsim to the same capacity as OCVcell if OCVsim has a lower capacity
-   * 				if true, the value will be set to 0
-   * 				if false, the value will be set to the last point of OCVsim (e.g. 2.7)
-   * OCVcell 	OCV curve of the cell, 2 columns
-   * OCVsim 	simulated OCV curve, 2 columns
-   *
-   * OUT
-   * rmse		RMSE between both curves
-   */
-
-  double rmse = 0; //!< root mean square error
-
-  //!< loop through all data points
-  for (size_t i = 0; i < OCVcell.size(); i++) {
-    //!< Get the simulated OCV at the discharged charge of this point on the measured OCV curve of the cell
-    auto [Vsimi, status] = slide::linInt_noexcept(bound, OCVsim.x, OCVsim.y, OCVsim.size(), OCVcell.x[i]);
-    //!< if status is not 0 then the simulated voltage is already set to 0;
-
-    const double err = OCVcell.y[i] - Vsimi; //!< Calculate the error
-    rmse += err * err;                       //!< sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
-  }
-
-  //!< Calculate the RMSE
-  rmse = std::sqrt(rmse / OCVcell.size());
-  return rmse;
-}
-
 auto cost_OCV(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, const double AMp, const double AMn, double sp, double sn, const double cmaxp,
               const double cmaxn, const slide::XYdata_vv &OCVcell)
 {

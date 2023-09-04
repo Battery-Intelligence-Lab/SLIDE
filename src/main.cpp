@@ -36,6 +36,9 @@ int main()
    * and comment all the other lines in the blocks with FUNCTION CALLS (to comment in, add //!<in front of the lines)
    */
 
+  // estimateCharacterisation();
+
+
   //!< print that you start simulations
   //!< slide::tests::unit::test_all();
   //!< Make a clock to measure how long the simulation takes
@@ -190,8 +193,6 @@ int main()
   // std::cout << "Ah: " << th.Ah() << " Wh: " << th.Wh() << " time: " << th.time() << '\n';
 
   // cyc.writeData();
-
-  estimateCharacterisation();
 
 
   //!< Examples:

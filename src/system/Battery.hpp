@@ -11,7 +11,6 @@
 #include "../modules/Module.hpp"
 #include "../cooling/CoolSystem_HVAC.hpp"
 #include "../power_conversion/Converter.hpp"
-#include "../types/data_storage/cell_data.hpp"
 #include "../types/DataFrame.hpp"
 
 #include <memory>

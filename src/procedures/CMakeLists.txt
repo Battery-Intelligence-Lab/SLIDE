@@ -5,7 +5,7 @@ target_sources(procedures
   Procedure.cpp
   Cycler.cpp
   determine_OCV.cpp
-  determine_characterisation.cpp
+#  determine_characterisation.cpp
   #-------------------------
   Procedure.hpp
   Cycler.hpp

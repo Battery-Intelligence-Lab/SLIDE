@@ -2,14 +2,13 @@
  * CellDataStorage.hpp
  *
  *  Created on: 10 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once
 
-#include "../Histogram.hpp"
-#include "cell_data.hpp"
-#include "../../settings/enum_definitions.hpp"
+#include "../types/Histogram.hpp"
+#include "../settings/enum_definitions.hpp"
 
 #include <utility>
 #include <iostream>
@@ -63,13 +62,19 @@ struct CellDataStorage<settings::cellDataStorageLevel::storeTimeData>
   {
     const auto throughputs = cell.getThroughputs();
     // #TODO just write all states, throughputs will be included.
-    data.push_back(cell.I());
-    data.push_back(cell.V());
-    data.push_back(cell.SOC());
-    data.push_back(cell.T());
-    data.push_back(throughputs.time()); // time
-    data.push_back(throughputs.Ah());   // Ah
-    data.push_back(throughputs.Wh());   // Wh
+    data.assign(data.end(),
+                { cell.I(), cell.V(), cell.SOC(), cell.T(), throughputs.time(), throughputs.Ah(), throughputs.Wh() });
+  }
+};
+
+#include "CellDataWriter.hpp"
+
+template <settings::cellDataStorageLevel N>
+struct CellData : public CellDataStorage<N>
+{
+  auto writeData(auto &cell, const std::string &prefix)
+  {
+    CellDataWriter<N>::writeData(cell, prefix, *this);
   }
 };
 } // namespace slide

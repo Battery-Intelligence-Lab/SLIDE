@@ -55,6 +55,9 @@ constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeTimeData; //!< if 0, 
 
 constexpr auto DATASTORE_MODULE = moduleDataStorageLevel::noStorage; //!< See moduleDataStorageLevel for different options.
 
+constexpr static int N_cumulative = 3; // Number of cumulative variables, time, Ah, Wh.
+
+
 //!< constexpr int DATASTORE_MODULE = 0; //!< if 0, no module-level data is stored
 //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 //!< constexpr int DATASTORE_BATT = 0; //!< if 0, no module-level data is stored

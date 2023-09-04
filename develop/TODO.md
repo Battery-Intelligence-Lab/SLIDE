@@ -38,6 +38,8 @@
 
 
 ### Current priority:
+- [ ] Module_data is deleted but look for it and bring it back.
+- [ ] State always holds cumulative variables. 
 - [ ] Fix INTERFACE library problem in C++. Cannot include <DataFrame.hpp> and others! 
 - [ ] DataFrame class is added for named columns.
 - [ ] Create Module_p_ApproxPI 
@@ -46,8 +48,8 @@
 - [ ] Make Eigen-based calculations for Matrix-vector multiplications. 
 - [ ] Electrode-based calculations? 
 - [ ] Catch2 added for testing. 
-- [ ] cmake_minimum_required(VERSION 3.17) -> 3.21
-- [ ] CPM package manager is adopted. 
+- [x] cmake_minimum_required(VERSION 3.17) -> 3.21
+- [x] CPM package manager is adopted. 
 - [ ] Renew matlab scripts to read results. 
 - [ ] Matio and parquet data types. 
 - [ ] In `test_specificDeg` in `Procedure_test.cpp` there is a weak cell.

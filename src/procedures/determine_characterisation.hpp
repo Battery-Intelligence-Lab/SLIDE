@@ -16,6 +16,7 @@
 #include "Cycler.hpp"
 
 namespace slide {
+
 bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp,
               double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM &M,
               slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim);
@@ -36,6 +37,8 @@ void hierarchicalCharacterisationFit(int hmax, slide::FixedData<double> r_space,
                                      const struct OCVparam &ocvfit, double *err, std::array<double, 5> &par);
 
 void writeCharacterisationParam(int h, const std::array<double, 5> &par, double err);
+
+double calculateError(bool bound, slide::XYdata_vv &OCVcell, slide::XYdata_vv &OCVsim);
 
 void estimateCharacterisation();
 } // namespace slide

@@ -32,8 +32,6 @@ auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OC
                         const double cmaxp, const double cmaxn, double sp, double sn, double Vend, slide::XYdata_vv &OCV,
                         slide::XYdata_vv &OCVanode, slide::XYdata_vv &OCVcathode, double fp[], double fn[]);
 
-double calculateError(bool bound, slide::XYdata_vv &OCVcell, slide::XYdata_vv &OCVsim);
-
 void estimateOCVparameters();
 
 void writeOCVParam(int h, const std::array<double, 4> &par);

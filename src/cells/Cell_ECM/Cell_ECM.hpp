@@ -116,7 +116,7 @@ inline Cell_ECM<N_RC>::Cell_ECM()
   }
 
   OCV.check_is_fixed();
-  cellData.initialise(*this);
+  // cellData.initialise(*this);
 }
 
 /**

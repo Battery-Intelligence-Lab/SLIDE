@@ -297,8 +297,8 @@ double Cell_SPM::V()
     const auto OCV = (OCV_p - OCV_n + entropic_effect);
 
     const double Vnow = OCV + overpotential - getRdc() * I(); //
-    st.V() = Vnow; 
-    Vcell_valid = true;                            //!< we now have the most up to date value stored
+    st.V() = Vnow;
+    Vcell_valid = true; //!< we now have the most up to date value stored
   }
 
   return st.V();
@@ -349,7 +349,7 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   csparam.CS4Amax = 5 * getAnodeSurface(); //!< assume the maximum crack surface is 5 times the initial anode surface
 
-  cellData.initialise(*this);
+  // cellData.initialise(*this);
 }
 
 Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)

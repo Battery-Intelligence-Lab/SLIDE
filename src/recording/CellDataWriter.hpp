@@ -2,14 +2,14 @@
  * CellDataWriter.hpp
  *
  * Created on: 10 Apr 2022
- * Author(s): Jorn Reniers, Volkan Kumtepeli
+ * Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once
 
-#include "cell_data.hpp"
-#include "../../settings/enum_definitions.hpp"
-#include "../../utility/free_functions.hpp"
+#include "../settings/enum_definitions.hpp"
+#include "../utility/free_functions.hpp"
+#include "../types/Histogram.hpp"
 
 #include <string>
 #include <vector>
@@ -28,20 +28,9 @@ inline void writeData(std::ofstream &file, std::span<Histogram<>> histograms)
     file << hist << "\n\n";
 }
 
-
-inline void writeVarAndStates(std::ofstream &file, auto &cell)
-{
-  file << "States:,";                       // #TODO we need names for states.
-  for (const auto st_i : cell.viewStates()) // Time and Throughput data is written here if available.
-    file << st_i << ',';
-  file << "\n\n\n";
-}
-
 template <settings::cellDataStorageLevel N>
 void writeDataImpl(std::ofstream &file, auto &cell, auto &dataStorage)
 {
-  if constexpr (settings::data::writeCumulativeData)
-    writeVarAndStates(file, cell);
 
   if constexpr (N >= settings::cellDataStorageLevel::storeHistogramData)
     free::write_data(file, dataStorage.data, 7);

@@ -49,11 +49,11 @@ protected:
   ModuleThermalParam therm;
 
   //!< voltage
-  size_t Ncells{};    //!< Number of cells this module contains.
+  size_t Ncells{};  //!< Number of cells this module contains.
   bool par{ true }; //!< if true, some functions will be calculated parallel using multithreaded computing
                     //!< data storage
 
-  State<0, settings::data::N_CumulativeModule> st_module;
+  State<0> st_module;
   std::vector<double> data; //!< Time data
 
 
