@@ -47,7 +47,6 @@
 - [ ] inline namespaces for literals. 
 - [ ] Make Eigen-based calculations for Matrix-vector multiplications. 
 - [ ] Electrode-based calculations? 
-- [ ] Catch2 added for testing. 
 - [x] cmake_minimum_required(VERSION 3.17) -> 3.21
 - [x] CPM package manager is adopted. 
 - [ ] Renew matlab scripts to read results. 
