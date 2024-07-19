@@ -24,7 +24,6 @@ constexpr double TOL_EQ = 1e-15;
 TEST_CASE("Test losses", "[Converter]")
 {
   slide::Converter c;
-
   //!< print the efficiency for a 1C charge for a small cell
   double I = 16;
   double v, loss, relloss;
