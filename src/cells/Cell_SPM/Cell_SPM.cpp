@@ -213,14 +213,13 @@ double Cell_SPM::getOCV()
    */
 
   const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
+  const bool bound = true;                          //!< in linear interpolation, throw an error if you are out of the allowed range
 
   //!< Get the surface concentrations
   double cps, cns;
   const auto flag = getCSurf(cps, cns, verb);
   //!< Calculate the li-fraction (instead of the li-concentration)
-  const double zp_surf = (cps / Cmaxpos);
-  const double zn_surf = (cns / Cmaxneg);
-  const bool bound = true;                                              //!< in linear interpolation, throw an error if you are out of the allowed range
+  const double zp_surf{ cps / Cmaxpos }, zn_surf{ cns / Cmaxneg };
   const double dOCV = OCV_curves.dOCV_tot.interp(zp_surf, verb, bound); //!< entropic coefficient of the total cell voltage [V/K]
   const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, verb, bound); //!< anode potential [V]
   const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, verb, bound); //!< cathode potential [V]
@@ -598,21 +597,20 @@ void Cell_SPM::setC(double cp0, double cn0)
   //!< As explained, we know that there is one eigenvector corresponding to a uniform concentration
   //!< So we need to calculate only this one nonzero value for the (twice) transformed concentration
   //!< The location of the uniform eigenvector (which has a 0 eigenvalue) is written in M->Input[3]
+  std::fill(st.z().begin(), st.z().end(), 0); //!< Make the arrays for the (twice) transformed concentration with all zero
+
   const auto ind = static_cast<size_t>(M->Input[3]);
   double znu = 0; //!< (twice) transformed negative uniform concentration
   double zpu = 0; //!< (twice) transformed positive uniform concentration
 
   for (size_t i = 0; i < nch; i++) {
     //!< Do the first transformation, to u(i) = radius(i) * concentration = x(i) * R * concentration(i)
-    const auto uneg = cn * M->xch[i] * geo.Rn;
-    const auto upos = cp * M->xch[i] * geo.Rp;
+    const auto uneg = geo.Rn * cn * M->xch[i];
+    const auto upos = geo.Rp * cp * M->xch[i];
     //!< ---------------------------------------------------------------------------
     //!< loop to calculate the row of V * u corresponding to the uniform concentration
     znu += M->Vn[ind][i] * uneg;
     zpu += M->Vp[ind][i] * upos;
-
-    st.zp(i) = 0; //!< Make the arrays for the (twice) transformed concentration with all zero
-    st.zn(i) = 0; //!< except the ind which will be set soon.
   }
 
   st.zp(ind) = zpu;
@@ -646,7 +644,6 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
   csparam *= var_degSEI;
   lam_p *= var_degLAM;
   pl_p *= var_degSEI;
-
 
   //!< set the degradation ID and related settings
   deg_id = degid;
