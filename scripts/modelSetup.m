@@ -13,7 +13,7 @@ clear
 %% input parameters
 
 % Adding required folder / subfolder on the MATLAB path
-addpath(genpath('MatlabSetup'));
+addpath(genpath('../matlab'));
 
 % Input parameters, must be the same as in the C++ model
 nch = 5;            % Number of positive inner chebyshev nodes. 

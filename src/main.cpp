@@ -19,7 +19,7 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
-
+#include <numbers>
 #include <ctime>
 #include <thread>
 #include <array>
@@ -28,8 +28,146 @@
 #include <cmath>
 #include <iomanip>
 
+
+using namespace std;
+
+/**
+ * @brief Compute Chebyshev differentiation matrices.
+ * @param N Size of differentiation matrix.
+ * @param M Number of derivatives required (integer).
+ * @param x Vector to store Chebyshev nodes.
+ * @param DM 3D vector to store differentiation matrices.
+ */
+void chebdif(int N, int M, vector<double> &x, vector<vector<vector<double>>> &DM)
+{
+  using std::numbers::pi;
+  x.resize(N);
+  DM.resize(M, vector<vector<double>>(N, vector<double>(N, 0.0)));
+
+  // Identity matrix and logical identity matrix
+  vector<vector<double>> I(N, vector<double>(N, 0.0));
+  for (int i = 0; i < N; ++i) {
+    I[i][i] = 1.0;
+  }
+
+  int n1 = N / 2;
+  int n2 = (N + 1) / 2;
+  vector<int> k(N);
+  for (int i = 0; i < N; ++i) {
+    k[i] = i;
+  }
+
+  vector<double> th(N);
+  for (int i = 0; i < N; ++i) {
+    th[i] = k[i] * pi / (N - 1);
+  }
+
+  for (int i = 0; i < N; ++i) {
+    x[i] = sin(pi * (N - 1 - 2 * i) / (2 * (N - 1)));
+  }
+
+  vector<vector<double>> T(N, vector<double>(N));
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < N; ++j) {
+      T[i][j] = th[j] / 2.0;
+    }
+  }
+
+  vector<vector<double>> DX(N, vector<double>(N));
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < N; ++j) {
+      DX[i][j] = 2.0 * sin(T[i][j] + T[j]) * sin(T[i][j] - T[j]);
+    }
+  }
+
+  for (int i = 0; i < n1; ++i) {
+    for (int j = 0; j < N; ++j) {
+      DX[n1 + i][j] = -DX[n1 - 1 - i][N - 1 - j];
+    }
+  }
+
+  for (int i = 0; i < N; ++i) {
+    DX[i][i] = 1.0;
+  }
+
+  vector<vector<double>> C(N, vector<double>(N));
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < N; ++j) {
+      C[i][j] = pow(-1, k[i] + k[j]);
+    }
+  }
+
+  for (int i = 0; i < N; ++i) {
+    C[0][i] *= 2;
+    C[N - 1][i] *= 2;
+  }
+
+  for (int i = 0; i < N; ++i) {
+    C[i][0] /= 2;
+    C[i][N - 1] /= 2;
+  }
+
+  vector<vector<double>> Z(N, vector<double>(N));
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < N; ++j) {
+      Z[i][j] = 1.0 / DX[i][j];
+    }
+    Z[i][i] = 0.0;
+  }
+
+  vector<vector<double>> D = I;
+  for (int ell = 1; ell <= M; ++ell) {
+    vector<vector<double>> D_new(N, vector<double>(N));
+    for (int i = 0; i < N; ++i) {
+      for (int j = 0; j < N; ++j) {
+        double sum = 0.0;
+        for (int k = 0; k < N; ++k) {
+          sum += Z[i][k] * (C[i][k] * D[k][j] - D[i][k]);
+        }
+        D_new[i][j] = ell * sum;
+      }
+    }
+    for (int i = 0; i < N; ++i) {
+      D_new[i][i] = -accumulate(D_new[i].begin(), D_new[i].end(), 0.0);
+    }
+    DM[ell - 1] = D_new;
+    D = D_new;
+  }
+}
+
 int main()
 {
+
+  {
+    int N = 5; // Size of differentiation matrix.
+    int M = 2; // Number of derivatives required.
+
+    vector<double> x;
+    vector<vector<vector<double>>> DM;
+
+    chebdif(N, M, x, DM);
+
+    // Print results
+    cout << "Chebyshev nodes (x):" << endl;
+    for (double xi : x) {
+      cout << xi << " ";
+    }
+    cout << endl
+         << endl;
+
+    for (int ell = 0; ell < M; ++ell) {
+      cout << "Differentiation matrix DM[" << ell + 1 << "]:" << endl;
+      for (const auto &row : DM[ell]) {
+        for (double val : row) {
+          cout << val << " ";
+        }
+        cout << endl;
+      }
+      cout << endl;
+    }
+  }
+
+
   /*
    * This function decides what will be simulated.
    * In the code below, you have to uncomment the line which you want to execute (to uncomment, remove the //!<in front of the line)
@@ -196,7 +334,7 @@ int main()
 
 
   //!< Examples:
-  // slide::examples::drive_cycle_artemis();
+  //  slide::examples::drive_cycle_artemis();
   // slide::examples::GITT_test();
   //!< Benchmarks:
 
