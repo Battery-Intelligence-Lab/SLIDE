@@ -34,17 +34,17 @@
  * @brief Computes the matrices A, B, C, and D for the particle diffusion state-space model of the single particle model for each electrode.
  * @tparam Nch The number of Chebyshev nodes used to discretize the diffusion PDE in each particle.
  */
-template <int Nch>
+template <int nch>
 struct Model
 {
-  constexpr static auto N = Nch + 1;
+  constexpr static auto N = nch + 1;
   constexpr static auto M = 2 * N;
   Eigen::Index zero{};
-  Eigen::Matrix<double, Nch, Nch> Vn, Vp;
+  Eigen::Matrix<double, nch, nch> Vn, Vp;
   Eigen::Matrix<double, M + 1, M + 1> Q;
-  Eigen::Matrix<double, N, Nch> Cn, Cp;
-  Eigen::Vector<double, Nch> Ap, An, Bn, Bp, Dn, Dp, xch;
-  Eigen::Vector<double, N> Cc;
+  Eigen::Matrix<double, N, nch> Cn, Cp;
+  Eigen::Vector<double, nch> Ap, An, Bn, Bp, xch;
+  Eigen::Vector<double, N> Cc, Dn, Dp;
 };
 
 
@@ -102,16 +102,16 @@ Eigen::Matrix<double, N + 1, N + 1> cumsummat()
 }
 
 
-template <int Nch>
-Model<Nch> get_model_vk_slide_impl()
+template <int nch>
+Model<nch> get_model_vk_slide_impl()
 {
   using std::numbers::pi;
-  Model<Nch> model;
+  Model<nch> model;
 
   constexpr double Rn = 12.5e-6; // Anode solid particles' radius [m]
   constexpr double Rp = 8.5e-6;  // Cathode solid particles' radius [m]
 
-  constexpr int N = Nch + 1;
+  constexpr int N = nch + 1;
   constexpr int M = 2 * N;
   constexpr int Ncheb = M + 1;
   constexpr double dtheta = pi / (Ncheb - 1);
@@ -179,22 +179,22 @@ Model<Nch> get_model_vk_slide_impl()
 
   const Eigen::Matrix<double, N - 1, N - 1> A1 = A / (Rn * Rn);
   const Eigen::Matrix<double, N - 1, 1> B1 = B;
-  Eigen::Matrix<double, N, Nch> C1;
+  Eigen::Matrix<double, N, nch> C1;
 
   C1.row(0) = C / Rn;
-  C1.bottomRows(Nch) = xn.array().inverse().matrix().asDiagonal();
+  C1.bottomRows(nch) = xn.array().inverse().matrix().asDiagonal();
 
-  Eigen::Vector<double, Nch> D1 = Eigen::Vector<double, Nch>::Zero();
+  Eigen::Vector<double, N> D1 = Eigen::Vector<double, N>::Zero();
   D1(0) = Rn * D;
 
   const Eigen::Matrix<double, N - 1, N - 1> A3 = A / (Rp * Rp);
   const Eigen::Matrix<double, N - 1, 1> B3 = B;
-  Eigen::Matrix<double, N, Nch> C3;
+  Eigen::Matrix<double, N, nch> C3;
 
   C3.row(0) = C / Rp;
-  C3.bottomRows(Nch) = xp.array().inverse().matrix().asDiagonal();
+  C3.bottomRows(nch) = xp.array().inverse().matrix().asDiagonal();
 
-  Eigen::Vector<double, Nch> D3 = Eigen::Vector<double, Nch>::Zero();
+  Eigen::Vector<double, N> D3 = Eigen::Vector<double, N>::Zero();
   D3(0) = Rp * D;
 
   Eigen::EigenSolver<Eigen::Matrix<double, N - 1, N - 1>> es1(A1);

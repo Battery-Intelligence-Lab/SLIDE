@@ -24,6 +24,37 @@ namespace slide {
 //!< See the matlab script modelSetup.m
 //!< This class has 326 elements. So it should be allocated in heap once.
 
+template <int nch = settings::nch>
+struct Model_SPM2
+{
+  constexpr static auto N = nch + 1;
+  constexpr static auto M = 2 * N;
+
+  double Rn{ 12.5e-6 }; // Anode solid particles' radius [m]
+  double Rp{ 8.5e-6 };  // Cathode solid particles' radius [m]
+
+  Eigen::Index zero{};            // Location of the zero.
+  Eigen::Vector<double, nch> xch; //!< location of the Chebyshev nodes in the positive domain EXCLUDING centre and surface
+
+  //!< state space model
+  //	dzpos/dt = Ap*zpos + Bp*jp		time derivative of (transformed) concentration at the inner nodes
+  //	dzneg/dt = An*zneg + Bn*jn
+  //	cp = Cp*zpos + Dp*jp			actual concentration [mol m-3] of the nodes (surface, inner)
+  //!< 	cn = Cn*zpos + Dn*jn
+
+  Eigen::Vector<double, nch> Ap, An; //!< only main diagonal is non-zero, so only store those values
+  Eigen::Vector<double, nch> Bp, Bn;
+
+  Eigen::Matrix<double, N, nch> Cp, Cn;
+
+  Eigen::Vector<double, N> Cc, Dp, Dn; //!< matrix to get the concentration at the centre node
+
+  Eigen::Matrix<double, nch, nch> Vp, Vn; //!< inverse of the eigenvectors for the positive/negative electrode
+
+  Eigen::Matrix<double, M + 1, M + 1> Q; //!< Matrix for Chebyshev integration
+};
+
+
 struct Model_SPM
 {
   constexpr static auto nch = settings::nch;
