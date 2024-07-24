@@ -31,8 +31,8 @@ function model = get_model_vk_slide(nch)
 
 %-------------
 % Solid particles of the electrodes
-Rs1 = 12.5e-6; % Anode solid particles' radius [m]
-Rs3 =  8.5e-6; % Cathode solid particles' radius [m]
+Rn = 12.5e-6; % Anode solid particles' radius [m]
+Rp =  8.5e-6; % Cathode solid particles' radius [m]
 
 N = nch + 1; 
 M = 2*N;
@@ -48,8 +48,8 @@ dtheta = pi/(Ncheb-1);
 xm = sin((Ncheb-1:-2:1-Ncheb)'*dtheta/2);  %  Full domain [-R,R]->[-1,1]
 xr = xm(2:N); %  Half domain [ 0,R]->[ 0,1]
 
-xp = xr*Rs3;
-xn = xr*Rs1;
+xp = xr*Rp;
+xn = xr*Rn;
 
 
 % Computing the Chebyshev differentiation matrices
@@ -108,24 +108,24 @@ C = DN1(1,2:N)/(1-DN1(1,1));
 D = 1/(1-DN1(1,1));
 
 % Anode diffusion state-space model
-A1 = (1/Rs1^2)*A;
+A1 = (1/Rn^2)*A;
 B1 = B;
-C1 = vertcat( C/Rs1 , ...
+C1 = vertcat( C/Rn , ...
                     diag(1./xn ) ); 
 % Coordinate mapping functions: Mapping from the computational coordinates 
 % xc to the physical coordinates xp
 D1 = vertcat(...
-            Rs1*D , ...
+            Rn*D , ...
             zeros(N-1,1) );
 
 % Cathode diffusion state-space model
-A3 = (1/Rs3^2)*A;
+A3 = (1/Rp^2)*A;
 B3 = B;
 C3 = vertcat( ...
-            C/Rs3, ...
+            C/Rp, ...
             diag(1./xp) );
 D3 = vertcat( ...
-           	Rs3*D , ...
+           	Rp*D , ...
             zeros(N-1,1) );
 
 %% Transformation to eigenvector-basis z (instead of u)
@@ -173,5 +173,6 @@ D3 = vertcat( ...
     
 
     model.zer = zer;
+    model.nodes = xr;
 end
 

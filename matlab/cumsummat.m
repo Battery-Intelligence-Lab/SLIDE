@@ -78,9 +78,10 @@ function C = cd2cpm(N)
 % Three steps: Double the data around the circle, apply the DFT matrix,
 % and then take half the result with 0.5 factor at the ends.
 theta = (pi/N)*(0:2*N-1)';
-F = exp( -1i*theta*(0:2*N-1) );  % DFT matrix
+F = exp( -1i*theta*(0:2*N-1) );  % DFT matrix % Vk-comment: probably just take cos of the data which should be enough.
 rows = 1:N+1;  % output upper half only
 % Impose symmetries on data and coeffs.
 C = real( [ F(rows,N+1) F(rows,N:-1:2)+F(rows,N+2:2*N) F(rows,1) ] );
-C = C/N;  C([1 N+1],:) = 0.5*C([1 N+1],:);
+C = C/N; 
+C([1 N+1],:) = 0.5*C([1 N+1],:);
 end

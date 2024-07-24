@@ -15,6 +15,7 @@
 #include "../examples/examples.hpp"
 
 #include <Eigen/Dense>
+#include <Eigen/LU>
 #include <range/v3/all.hpp>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
@@ -27,145 +28,340 @@
 #include <random>
 #include <cmath>
 #include <iomanip>
-
-
-using namespace std;
+#include <complex>
 
 /**
- * @brief Compute Chebyshev differentiation matrices.
- * @param N Size of differentiation matrix.
- * @param M Number of derivatives required (integer).
- * @param x Vector to store Chebyshev nodes.
- * @param DM 3D vector to store differentiation matrices.
+ * @brief Computes the matrices A, B, C, and D for the particle diffusion state-space model of the single particle model for each electrode.
+ * @tparam Nch The number of Chebyshev nodes used to discretize the diffusion PDE in each particle.
  */
-void chebdif(int N, int M, vector<double> &x, vector<vector<vector<double>>> &DM)
+template <int Nch>
+struct Model
+{
+  int zero{};
+  Eigen::MatrixXd A1, B1, C1, D1;
+  Eigen::MatrixXd A3, B3, C3, D3;
+  Eigen::MatrixXd Vn, Vp;
+  Eigen::MatrixXd Bn, Bp, Cn, Cp, Dn, Dp, Cc, Q;
+  Eigen::VectorXd Ap, An;
+};
+
+
+/**
+ * @brief Computes the Chebyshev integration matrix.
+ * @param N The number of Chebyshev points.
+ * @return The matrix that maps function values at N Chebyshev points to values of the integral of the interpolating polynomial at those points.
+ */
+Eigen::MatrixXd cumsummat(int N)
 {
   using std::numbers::pi;
-  x.resize(N);
-  DM.resize(M, vector<vector<double>>(N, vector<double>(N, 0.0)));
+  Eigen::VectorXd arr = Eigen::VectorXd::LinSpaced(2 * N, 0, 2 * N - 1);
 
-  // Identity matrix and logical identity matrix
-  vector<vector<double>> I(N, vector<double>(N, 0.0));
-  for (int i = 0; i < N; ++i) {
-    I[i][i] = 1.0;
+  // Matrix mapping coeffs -> values.
+  Eigen::MatrixXd T = (((pi / N) * arr.head(N + 1) * arr.transpose().head(N + 1).rowwise().reverse())).array().cos().matrix().transpose();
+
+  Eigen::MatrixXd F_real = (((pi / N) * arr.head(N + 1) * arr.transpose())).array().cos().matrix();
+
+
+  std::ofstream abc{ "testFreal.txt", std::ios::out };
+
+
+  abc << "Freal: \n"
+      << F_real << '\n';
+
+
+  Eigen::MatrixXd Tinv(N + 1, N + 1); // Matrix mapping values -> coeffs.
+
+  Tinv.leftCols(1) = F_real.col(N) / N;
+  Tinv.rightCols(1) = F_real.col(0) / N;
+  Tinv.middleCols(1, N - 1) = (F_real.middleCols(1, N - 1).rowwise().reverse() + F_real.middleCols(N + 1, N - 1)) / N;
+
+  Tinv.row(0) /= 2.0;
+  Tinv.row(N) /= 2.0;
+
+
+  abc << "\nT: \n"
+      << T << '\n';
+
+
+  abc << "\nTinv: \n"
+      << Tinv << '\n';
+
+
+  // Matrix mapping coeffs -> integral coeffs. Note that the highest order term is truncated.
+  Eigen::VectorXd k = Eigen::VectorXd::LinSpaced(N, 1, N);
+  Eigen::VectorXd k2 = 2 * (k.array() - 1);
+  k2(0) = 1; // avoid divide by zero
+
+  Eigen::MatrixXd B = Eigen::MatrixXd::Zero(N + 1, N + 1);
+
+  for (int i = 1; i < N; ++i) // - diag(1./k2,1)
+  {
+    B(i, i + 1) = -1.0 / (2 * i);
+    if (i % 2 == 0) // neg.
+      B(0, i + 1) -= B(i, i + 1);
+    else
+      B(0, i + 1) += B(i, i + 1);
   }
 
-  int n1 = N / 2;
-  int n2 = (N + 1) / 2;
-  vector<int> k(N);
-  for (int i = 0; i < N; ++i) {
-    k[i] = i;
+  for (int i = 1; i <= N; ++i) // diag(1./(2*k),-1)
+  {
+    B(i, i - 1) = 1.0 / (2 * i);
+
+    if (i % 2 == 0) // positive.
+      B(0, i - 1) -= B(i, i - 1);
+    else
+      B(0, i - 1) += B(i, i - 1);
   }
 
-  vector<double> th(N);
-  for (int i = 0; i < N; ++i) {
-    th[i] = k[i] * pi / (N - 1);
-  }
+  B.col(0) *= 2;
 
-  for (int i = 0; i < N; ++i) {
-    x[i] = sin(pi * (N - 1 - 2 * i) / (2 * (N - 1)));
-  }
+  abc << "\nBBB: \n"
+      << B << '\n';
 
-  vector<vector<double>> T(N, vector<double>(N));
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < N; ++j) {
-      T[i][j] = th[j] / 2.0;
-    }
-  }
+  Eigen::MatrixXd Q = T * B * Tinv;
 
-  vector<vector<double>> DX(N, vector<double>(N));
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < N; ++j) {
-      DX[i][j] = 2.0 * sin(T[i][j] + T[j]) * sin(T[i][j] - T[j]);
-    }
-  }
+  Q.row(0).setZero();
 
-  for (int i = 0; i < n1; ++i) {
-    for (int j = 0; j < N; ++j) {
-      DX[n1 + i][j] = -DX[n1 - 1 - i][N - 1 - j];
-    }
-  }
+  abc << "\nQ: \n"
+      << Q << '\n';
 
-  for (int i = 0; i < N; ++i) {
-    DX[i][i] = 1.0;
-  }
 
-  vector<vector<double>> C(N, vector<double>(N));
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < N; ++j) {
-      C[i][j] = pow(-1, k[i] + k[j]);
-    }
-  }
-
-  for (int i = 0; i < N; ++i) {
-    C[0][i] *= 2;
-    C[N - 1][i] *= 2;
-  }
-
-  for (int i = 0; i < N; ++i) {
-    C[i][0] /= 2;
-    C[i][N - 1] /= 2;
-  }
-
-  vector<vector<double>> Z(N, vector<double>(N));
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < N; ++j) {
-      Z[i][j] = 1.0 / DX[i][j];
-    }
-    Z[i][i] = 0.0;
-  }
-
-  vector<vector<double>> D = I;
-  for (int ell = 1; ell <= M; ++ell) {
-    vector<vector<double>> D_new(N, vector<double>(N));
-    for (int i = 0; i < N; ++i) {
-      for (int j = 0; j < N; ++j) {
-        double sum = 0.0;
-        for (int k = 0; k < N; ++k) {
-          sum += Z[i][k] * (C[i][k] * D[k][j] - D[i][k]);
-        }
-        D_new[i][j] = ell * sum;
-      }
-    }
-    for (int i = 0; i < N; ++i) {
-      D_new[i][i] = -accumulate(D_new[i].begin(), D_new[i].end(), 0.0);
-    }
-    DM[ell - 1] = D_new;
-    D = D_new;
-  }
+  return Q;
 }
+
+
+template <int Nch>
+Model<Nch> get_model_vk_slide_impl()
+{
+  using std::numbers::pi;
+  Model<Nch> model;
+
+  constexpr double Rn = 12.5e-6; // Anode solid particles' radius [m]
+  constexpr double Rp = 8.5e-6;  // Cathode solid particles' radius [m]
+
+  constexpr int N = Nch + 1;
+  constexpr int M = 2 * N;
+  constexpr int Ncheb = M + 1;
+  constexpr double dtheta = pi / (Ncheb - 1);
+
+  // Computational coordinates (Chebyshev nodes)
+  Eigen::VectorXd xm(Ncheb);
+  for (int i = 0; i < Ncheb; ++i) {
+    xm(i) = std::sin((Ncheb - 1 - 2 * i) * dtheta / 2);
+  }
+
+  Eigen::VectorXd xr = xm.segment(1, N - 1);
+  Eigen::VectorXd xp = xr * Rp;
+  Eigen::VectorXd xn = xr * Rn;
+
+  std::cout << "xr:\n"
+            << xr << '\n';
+
+
+  // Computing the Chebyshev differentiation matrices
+  Eigen::MatrixXd D_vk = Eigen::MatrixXd::Identity(Ncheb, Ncheb);
+  for (int i = 0; i < Ncheb; ++i) {
+    double row_sum = 0;
+    for (int j = 0; j < Ncheb; ++j) {
+      if (i == j) continue;
+
+      const double DX_vk = std::cos(dtheta * i) - std::cos(dtheta * j);
+      double C_vk = 1;
+
+      if (i == 0 || i == Ncheb - 1) C_vk *= 2;
+      if (j == 0 || j == Ncheb - 1) C_vk /= 2;
+      if ((i + j) % 2 == 1) C_vk = -C_vk;
+
+      D_vk(i, j) = C_vk * D_vk(i, i) / DX_vk;
+      row_sum -= D_vk(i, j);
+    }
+    D_vk(i, i) = row_sum;
+  }
+
+  Eigen::MatrixXd DM1 = D_vk.row(0);
+
+  std::cout << "DM1:\n"
+            << DM1 << '\n';
+
+  int order = 2;
+  for (int i = 0; i < Ncheb; ++i) {
+    double row_sum = 0;
+    for (int j = 0; j < Ncheb; ++j) {
+      if (i == j) continue;
+
+      double DX_vk = std::cos(dtheta * i) - std::cos(dtheta * j);
+      double C_vk = 1;
+
+      if (i == 0 || i == Ncheb - 1) C_vk *= 2;
+      if (j == 0 || j == Ncheb - 1) C_vk /= 2;
+      if ((i + j) % 2 == 1) C_vk = -C_vk;
+
+      D_vk(i, j) = order * (C_vk * D_vk(i, i) - D_vk(i, j)) / DX_vk;
+      row_sum -= D_vk(i, j);
+    }
+    D_vk(i, i) = row_sum;
+  }
+
+  Eigen::MatrixXd DM2 = D_vk.topRows(N);
+  Eigen::MatrixXd DN2 = DM2.leftCols(N) - DM2.rightCols(N).rowwise().reverse();
+  Eigen::MatrixXd DN1 = DM1.leftCols(N) - DM1.rightCols(N).rowwise().reverse();
+
+  const double temp = (1 - DN1(0, 0));
+
+  Eigen::MatrixXd A = DN2.block(1, 1, N - 1, N - 1) + DN2.block(1, 0, N - 1, 1) * DN1.block(0, 1, 1, N - 1) / temp;
+  Eigen::MatrixXd B = DN2.block(1, 0, N - 1, 1) / temp;
+  Eigen::MatrixXd C = DN1.block(0, 1, 1, N - 1) / temp;
+  double D = 1.0 / temp;
+
+
+  std::cout << "A:\n"
+            << A << '\n';
+
+  std::cout << "B:\n"
+            << B << '\n';
+
+  std::cout << "C:\n"
+            << C << '\n';
+
+  model.A1 = A / (Rn * Rn);
+  model.B1 = B;
+  model.C1 = Eigen::MatrixXd(N, Nch);
+
+  model.C1.row(0) = C / Rn;
+  model.C1.bottomRows(Nch) = xn.array().inverse().matrix().asDiagonal();
+
+  model.D1 = Eigen::VectorXd::Zero(Nch);
+  model.D1(0) = Rn * D;
+
+
+  std::cout << "C1:\n"
+            << model.C1 << '\n';
+  std::cout << "D1:\n"
+            << model.D1 << '\n';
+
+
+  model.A3 = A / (Rp * Rp);
+  model.B3 = B;
+
+  model.C3 = Eigen::MatrixXd(N, Nch);
+
+  model.C3.row(0) = C / Rp;
+  model.C3.bottomRows(Nch) = xp.array().inverse().matrix().asDiagonal();
+
+
+  model.D3 = Eigen::VectorXd::Zero(Nch);
+  model.D3(0) = Rp * D;
+
+
+  std::cout << "C3:\n"
+            << model.C3 << '\n';
+  std::cout << "D3:\n"
+            << model.D3 << '\n';
+
+
+  Eigen::EigenSolver<Eigen::MatrixXd> es1(model.A1);
+  model.Vn = es1.eigenvectors().real();
+  model.An = es1.eigenvalues().real();
+  model.Bn = model.Vn.lu().solve(model.B1);
+  model.Cn = model.C1 * model.Vn;
+  model.Dn = model.D1;
+
+  std::cout << "Vn:\n"
+            << model.Vn << '\n';
+
+  std::cout << "An:\n"
+            << model.An << '\n';
+
+  std::cout << "Bn:\n"
+            << model.Bn << '\n';
+
+  std::cout << "Cn:\n"
+            << model.Cn << '\n';
+
+  Eigen::EigenSolver<Eigen::MatrixXd> es3(model.A3);
+  model.Vp = es3.eigenvectors().real();
+  model.Ap = es3.eigenvalues().real();
+  model.Bp = model.Vp.lu().solve(model.B3);
+  model.Cp = model.C3 * model.Vp;
+  model.Dp = model.D3;
+
+
+  std::cout << "Vp:\n"
+            << model.Vp << '\n';
+
+  std::cout << "Ap:\n"
+            << model.Ap << '\n';
+
+  std::cout << "Bp:\n"
+            << model.Bp << '\n';
+
+  std::cout << "Cp:\n"
+            << model.Cp << '\n';
+
+
+  model.Vp = model.Vp.inverse();
+  model.Vn = model.Vn.inverse();
+
+  std::cout << "Vp:\n"
+            << model.Vp << '\n';
+
+
+  std::cout << "Vn:\n"
+            << model.Vn << '\n';
+
+  Eigen::Index minIndex;
+  model.Ap.array().abs().minCoeff(&minIndex);
+
+  std::cout << "minIndex:\n"
+            << minIndex << '\n';
+
+  model.Ap(minIndex) = 0.0;
+  model.An(minIndex) = 0.0;
+
+  model.zero = minIndex;
+
+
+  std::cout << "Ap:\n"
+            << model.Ap << '\n';
+
+
+  model.Cc = DM1.leftCols(N) + DM1.rightCols(N).rowwise().reverse();
+
+  std::cout << "Cc:\n"
+            << model.Cc << '\n';
+
+  model.Q = cumsummat(M);
+
+  std::cout << "Q:\n"
+            << model.Q << '\n';
+
+  return model;
+}
+
 
 int main()
 {
 
-  {
-    int N = 5; // Size of differentiation matrix.
-    int M = 2; // Number of derivatives required.
+  constexpr int Nch = 5; // Example value
+  Model<Nch> model = get_model_vk_slide_impl<Nch>();
 
-    vector<double> x;
-    vector<vector<vector<double>>> DM;
+  // std::cout << "Anode A matrix:\n"
+  //           << model.A1 << "\n";
+  // std::cout << "Anode B matrix:\n"
+  //           << model.B1 << "\n";
+  // std::cout << "Anode C matrix:\n"
+  //           << model.C1 << "\n";
+  // std::cout << "Anode D matrix:\n"
+  //           << model.D1 << "\n";
 
-    chebdif(N, M, x, DM);
-
-    // Print results
-    cout << "Chebyshev nodes (x):" << endl;
-    for (double xi : x) {
-      cout << xi << " ";
-    }
-    cout << endl
-         << endl;
-
-    for (int ell = 0; ell < M; ++ell) {
-      cout << "Differentiation matrix DM[" << ell + 1 << "]:" << endl;
-      for (const auto &row : DM[ell]) {
-        for (double val : row) {
-          cout << val << " ";
-        }
-        cout << endl;
-      }
-      cout << endl;
-    }
-  }
+  // std::cout << "Cathode A matrix:\n"
+  //           << model.A3 << "\n";
+  // std::cout << "Cathode B matrix:\n"
+  //           << model.B3 << "\n";
+  // std::cout << "Cathode C matrix:\n"
+  //           << model.C3 << "\n";
+  // std::cout << "Cathode D matrix:\n"
+  //           << model.D3 << "\n";
 
 
   /*
@@ -278,34 +474,34 @@ int main()
 
 
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
-  using namespace slide;
+  // using namespace slide;
 
-  auto c = make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
-  auto &st = c->getStateObj();
+  // auto c = make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
+  // auto &st = c->getStateObj();
 
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  c->setCurrent(16);
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  c->timeStep_CC(1, 60);
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  // c->setCurrent(16);
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  // c->timeStep_CC(1, 60);
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
 
-  Cycler cyc(c, "Cycler1");
+  // Cycler cyc(c, "Cycler1");
 
-  ThroughputData th{};
-  cyc.CC(-16, 4.2, 3600, 1, 1, th);
-  std::cout << "\nAfter CC charge:\n";
-  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // ThroughputData th{};
+  // cyc.CC(-16, 4.2, 3600, 1, 1, th);
+  // std::cout << "\nAfter CC charge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
 
-  auto status = cyc.CV(4.2, 10e-3, 7200, 0.1, 1, th);
-  std::cout << "\nAfter CV charge:\n";
-  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
-  std::cout << getStatusMessage(status) << "\n";
+  // auto status = cyc.CV(4.2, 10e-3, 7200, 0.1, 1, th);
+  // std::cout << "\nAfter CV charge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << getStatusMessage(status) << "\n";
 
-  cyc.CCCV(16, 2.7, 5e-3, 1, 1, th);
-  std::cout << "\nAfter CCCV discharge:\n";
-  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // cyc.CCCV(16, 2.7, 5e-3, 1, 1, th);
+  // std::cout << "\nAfter CCCV discharge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
 
-  cyc.writeData();
+  // cyc.writeData();
   // // Cycler:
 
   // Cycler cyc(c, "Cycler2");
