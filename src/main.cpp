@@ -37,12 +37,14 @@
 template <int Nch>
 struct Model
 {
+  constexpr static auto N = Nch + 1;
+  constexpr static auto M = 2 * N;
   int zero{};
-  Eigen::MatrixXd A1, B1, C1, D1;
-  Eigen::MatrixXd A3, B3, C3, D3;
-  Eigen::MatrixXd Vn, Vp;
-  Eigen::MatrixXd Bn, Bp, Cn, Cp, Dn, Dp, Cc, Q;
-  Eigen::VectorXd Ap, An;
+  Eigen::Matrix<double, Nch, Nch> Vn, Vp;
+  Eigen::Matrix<double, M + 1, M + 1> Q;
+  Eigen::Matrix<double, N, Nch> Cn, Cp;
+  Eigen::Vector<double, Nch> Ap, An, Bn, Bp, Dn, Dp;
+  Eigen::Vector<double, N> Cc;
 };
 
 
@@ -51,25 +53,23 @@ struct Model
  * @param N The number of Chebyshev points.
  * @return The matrix that maps function values at N Chebyshev points to values of the integral of the interpolating polynomial at those points.
  */
-Eigen::MatrixXd cumsummat(int N)
+template <int N>
+Eigen::Matrix<double, N + 1, N + 1> cumsummat()
 {
   using std::numbers::pi;
-  Eigen::VectorXd arr = Eigen::VectorXd::LinSpaced(2 * N, 0, 2 * N - 1);
+  Eigen::Vector<double, 2 * N> arr = Eigen::Vector<double, 2 * N>::LinSpaced(2 * N, 0, 2 * N - 1);
 
   // Matrix mapping coeffs -> values.
-  Eigen::MatrixXd T = (((pi / N) * arr.head(N + 1) * arr.transpose().head(N + 1).rowwise().reverse())).array().cos().matrix().transpose();
-
-  Eigen::MatrixXd F_real = (((pi / N) * arr.head(N + 1) * arr.transpose())).array().cos().matrix();
-
+  Eigen::Matrix<double, N + 1, N + 1> T = (((pi / N) * arr.head(N + 1) * arr.transpose().head(N + 1).rowwise().reverse())).array().cos().matrix().transpose();
+  Eigen::Matrix<double, N + 1, 2 * N> F_real = (((pi / N) * arr.head(N + 1) * arr.transpose())).array().cos().matrix();
 
   std::ofstream abc{ "testFreal.txt", std::ios::out };
-
 
   abc << "Freal: \n"
       << F_real << '\n';
 
 
-  Eigen::MatrixXd Tinv(N + 1, N + 1); // Matrix mapping values -> coeffs.
+  Eigen::Matrix<double, N + 1, N + 1> Tinv; // Matrix mapping values -> coeffs.
 
   Tinv.leftCols(1) = F_real.col(N) / N;
   Tinv.rightCols(1) = F_real.col(0) / N;
@@ -78,22 +78,14 @@ Eigen::MatrixXd cumsummat(int N)
   Tinv.row(0) /= 2.0;
   Tinv.row(N) /= 2.0;
 
-
   abc << "\nT: \n"
       << T << '\n';
-
 
   abc << "\nTinv: \n"
       << Tinv << '\n';
 
-
   // Matrix mapping coeffs -> integral coeffs. Note that the highest order term is truncated.
-  Eigen::VectorXd k = Eigen::VectorXd::LinSpaced(N, 1, N);
-  Eigen::VectorXd k2 = 2 * (k.array() - 1);
-  k2(0) = 1; // avoid divide by zero
-
-  Eigen::MatrixXd B = Eigen::MatrixXd::Zero(N + 1, N + 1);
-
+  Eigen::Matrix<double, N + 1, N + 1> B = Eigen::Matrix<double, N + 1, N + 1>::Zero();
   for (int i = 1; i < N; ++i) // - diag(1./k2,1)
   {
     B(i, i + 1) = -1.0 / (2 * i);
@@ -118,13 +110,12 @@ Eigen::MatrixXd cumsummat(int N)
   abc << "\nBBB: \n"
       << B << '\n';
 
-  Eigen::MatrixXd Q = T * B * Tinv;
+  Eigen::Matrix<double, N + 1, N + 1> Q = T * B * Tinv;
 
   Q.row(0).setZero();
 
   abc << "\nQ: \n"
       << Q << '\n';
-
 
   return Q;
 }
@@ -145,195 +136,113 @@ Model<Nch> get_model_vk_slide_impl()
   constexpr double dtheta = pi / (Ncheb - 1);
 
   // Computational coordinates (Chebyshev nodes)
-  Eigen::VectorXd xm(Ncheb);
-  for (int i = 0; i < Ncheb; ++i) {
+  Eigen::Vector<double, Ncheb> xm;
+  for (int i = 0; i < Ncheb; ++i)
     xm(i) = std::sin((Ncheb - 1 - 2 * i) * dtheta / 2);
-  }
 
-  Eigen::VectorXd xr = xm.segment(1, N - 1);
-  Eigen::VectorXd xp = xr * Rp;
-  Eigen::VectorXd xn = xr * Rn;
-
-  std::cout << "xr:\n"
-            << xr << '\n';
-
+  Eigen::Vector<double, N - 1> xr = xm.segment<N - 1>(1);
+  Eigen::Vector<double, N - 1> xp = xr * Rp;
+  Eigen::Vector<double, N - 1> xn = xr * Rn;
 
   // Computing the Chebyshev differentiation matrices
-  Eigen::MatrixXd D_vk = Eigen::MatrixXd::Identity(Ncheb, Ncheb);
+  Eigen::Matrix<double, Ncheb, Ncheb> D_vk = Eigen::Matrix<double, Ncheb, Ncheb>::Identity();
   for (int i = 0; i < Ncheb; ++i) {
     double row_sum = 0;
     for (int j = 0; j < Ncheb; ++j) {
       if (i == j) continue;
 
-      const double DX_vk = std::cos(dtheta * i) - std::cos(dtheta * j);
+      const double DX = std::cos(dtheta * i) - std::cos(dtheta * j);
       double C_vk = 1;
 
       if (i == 0 || i == Ncheb - 1) C_vk *= 2;
       if (j == 0 || j == Ncheb - 1) C_vk /= 2;
       if ((i + j) % 2 == 1) C_vk = -C_vk;
 
-      D_vk(i, j) = C_vk * D_vk(i, i) / DX_vk;
+      D_vk(i, j) = C_vk * D_vk(i, i) / DX;
       row_sum -= D_vk(i, j);
     }
     D_vk(i, i) = row_sum;
   }
 
-  Eigen::MatrixXd DM1 = D_vk.row(0);
+  Eigen::RowVector<double, Ncheb> DM1 = D_vk.row(0);
 
-  std::cout << "DM1:\n"
-            << DM1 << '\n';
-
-  int order = 2;
+  constexpr int order = 2;
   for (int i = 0; i < Ncheb; ++i) {
     double row_sum = 0;
     for (int j = 0; j < Ncheb; ++j) {
       if (i == j) continue;
 
-      double DX_vk = std::cos(dtheta * i) - std::cos(dtheta * j);
+      const double DX = std::cos(dtheta * i) - std::cos(dtheta * j);
       double C_vk = 1;
 
       if (i == 0 || i == Ncheb - 1) C_vk *= 2;
       if (j == 0 || j == Ncheb - 1) C_vk /= 2;
       if ((i + j) % 2 == 1) C_vk = -C_vk;
 
-      D_vk(i, j) = order * (C_vk * D_vk(i, i) - D_vk(i, j)) / DX_vk;
+      D_vk(i, j) = order * (C_vk * D_vk(i, i) - D_vk(i, j)) / DX;
       row_sum -= D_vk(i, j);
     }
     D_vk(i, i) = row_sum;
   }
 
-  Eigen::MatrixXd DM2 = D_vk.topRows(N);
-  Eigen::MatrixXd DN2 = DM2.leftCols(N) - DM2.rightCols(N).rowwise().reverse();
-  Eigen::MatrixXd DN1 = DM1.leftCols(N) - DM1.rightCols(N).rowwise().reverse();
+  Eigen::Matrix<double, N, Ncheb> DM2 = D_vk.topRows(N);
+  Eigen::Matrix<double, N, N> DN2 = DM2.leftCols(N) - DM2.rightCols(N).rowwise().reverse();
+  Eigen::RowVector<double, N> DN1 = DM1.leftCols(N) - DM1.rightCols(N).rowwise().reverse();
 
   const double temp = (1 - DN1(0, 0));
 
-  Eigen::MatrixXd A = DN2.block(1, 1, N - 1, N - 1) + DN2.block(1, 0, N - 1, 1) * DN1.block(0, 1, 1, N - 1) / temp;
-  Eigen::MatrixXd B = DN2.block(1, 0, N - 1, 1) / temp;
-  Eigen::MatrixXd C = DN1.block(0, 1, 1, N - 1) / temp;
+  Eigen::Matrix<double, N - 1, N - 1> A = DN2.block<N - 1, N - 1>(1, 1) + DN2.block<N - 1, 1>(1, 0) * DN1.block<1, N - 1>(0, 1) / temp;
+  Eigen::Matrix<double, N - 1, 1> B = DN2.block<N - 1, 1>(1, 0) / temp;
+  Eigen::Matrix<double, 1, N - 1> C = DN1.block<1, N - 1>(0, 1) / temp;
   double D = 1.0 / temp;
 
+  Eigen::Matrix<double, N - 1, N - 1> A1 = A / (Rn * Rn);
+  Eigen::Matrix<double, N - 1, 1> B1 = B;
+  Eigen::Matrix<double, N, Nch> C1;
 
-  std::cout << "A:\n"
-            << A << '\n';
+  C1.row(0) = C / Rn;
+  C1.bottomRows(Nch) = xn.array().inverse().matrix().asDiagonal();
 
-  std::cout << "B:\n"
-            << B << '\n';
+  Eigen::Vector<double, Nch> D1 = Eigen::Vector<double, Nch>::Zero();
+  D1(0) = Rn * D;
 
-  std::cout << "C:\n"
-            << C << '\n';
+  Eigen::Matrix<double, N - 1, N - 1> A3 = A / (Rp * Rp);
+  Eigen::Matrix<double, N - 1, 1> B3 = B;
+  Eigen::Matrix<double, N, Nch> C3;
 
-  model.A1 = A / (Rn * Rn);
-  model.B1 = B;
-  model.C1 = Eigen::MatrixXd(N, Nch);
+  C3.row(0) = C / Rp;
+  C3.bottomRows(Nch) = xp.array().inverse().matrix().asDiagonal();
 
-  model.C1.row(0) = C / Rn;
-  model.C1.bottomRows(Nch) = xn.array().inverse().matrix().asDiagonal();
+  Eigen::Vector<double, Nch> D3 = Eigen::Vector<double, Nch>::Zero();
+  D3(0) = Rp * D;
 
-  model.D1 = Eigen::VectorXd::Zero(Nch);
-  model.D1(0) = Rn * D;
-
-
-  std::cout << "C1:\n"
-            << model.C1 << '\n';
-  std::cout << "D1:\n"
-            << model.D1 << '\n';
-
-
-  model.A3 = A / (Rp * Rp);
-  model.B3 = B;
-
-  model.C3 = Eigen::MatrixXd(N, Nch);
-
-  model.C3.row(0) = C / Rp;
-  model.C3.bottomRows(Nch) = xp.array().inverse().matrix().asDiagonal();
-
-
-  model.D3 = Eigen::VectorXd::Zero(Nch);
-  model.D3(0) = Rp * D;
-
-
-  std::cout << "C3:\n"
-            << model.C3 << '\n';
-  std::cout << "D3:\n"
-            << model.D3 << '\n';
-
-
-  Eigen::EigenSolver<Eigen::MatrixXd> es1(model.A1);
+  Eigen::EigenSolver<Eigen::Matrix<double, N - 1, N - 1>> es1(A1);
   model.Vn = es1.eigenvectors().real();
   model.An = es1.eigenvalues().real();
-  model.Bn = model.Vn.lu().solve(model.B1);
-  model.Cn = model.C1 * model.Vn;
-  model.Dn = model.D1;
+  model.Bn = model.Vn.lu().solve(B1);
+  model.Cn = C1 * model.Vn;
+  model.Dn = D1;
 
-  std::cout << "Vn:\n"
-            << model.Vn << '\n';
-
-  std::cout << "An:\n"
-            << model.An << '\n';
-
-  std::cout << "Bn:\n"
-            << model.Bn << '\n';
-
-  std::cout << "Cn:\n"
-            << model.Cn << '\n';
-
-  Eigen::EigenSolver<Eigen::MatrixXd> es3(model.A3);
+  Eigen::EigenSolver<Eigen::Matrix<double, N - 1, N - 1>> es3(A3);
   model.Vp = es3.eigenvectors().real();
   model.Ap = es3.eigenvalues().real();
-  model.Bp = model.Vp.lu().solve(model.B3);
-  model.Cp = model.C3 * model.Vp;
-  model.Dp = model.D3;
-
-
-  std::cout << "Vp:\n"
-            << model.Vp << '\n';
-
-  std::cout << "Ap:\n"
-            << model.Ap << '\n';
-
-  std::cout << "Bp:\n"
-            << model.Bp << '\n';
-
-  std::cout << "Cp:\n"
-            << model.Cp << '\n';
-
+  model.Bp = model.Vp.lu().solve(B3);
+  model.Cp = C3 * model.Vp;
+  model.Dp = D3;
 
   model.Vp = model.Vp.inverse();
   model.Vn = model.Vn.inverse();
 
-  std::cout << "Vp:\n"
-            << model.Vp << '\n';
-
-
-  std::cout << "Vn:\n"
-            << model.Vn << '\n';
-
   Eigen::Index minIndex;
   model.Ap.array().abs().minCoeff(&minIndex);
-
-  std::cout << "minIndex:\n"
-            << minIndex << '\n';
 
   model.Ap(minIndex) = 0.0;
   model.An(minIndex) = 0.0;
 
   model.zero = minIndex;
 
-
-  std::cout << "Ap:\n"
-            << model.Ap << '\n';
-
-
   model.Cc = DM1.leftCols(N) + DM1.rightCols(N).rowwise().reverse();
-
-  std::cout << "Cc:\n"
-            << model.Cc << '\n';
-
-  model.Q = cumsummat(M);
-
-  std::cout << "Q:\n"
-            << model.Q << '\n';
+  model.Q = cumsummat<M>();
 
   return model;
 }
