@@ -43,7 +43,7 @@ struct Model
   Eigen::Matrix<double, Nch, Nch> Vn, Vp;
   Eigen::Matrix<double, M + 1, M + 1> Q;
   Eigen::Matrix<double, N, Nch> Cn, Cp;
-  Eigen::Vector<double, Nch> Ap, An, Bn, Bp, Dn, Dp;
+  Eigen::Vector<double, Nch> Ap, An, Bn, Bp, Dn, Dp, xch;
   Eigen::Vector<double, N> Cc;
 };
 
@@ -121,9 +121,9 @@ Model<Nch> get_model_vk_slide_impl()
   for (int i = 0; i < Ncheb; ++i)
     xm(i) = std::sin((Ncheb - 1 - 2 * i) * dtheta / 2);
 
-  const Eigen::Vector<double, N - 1> xr = xm.segment<N - 1>(1);
-  const Eigen::Vector<double, N - 1> xp = xr * Rp;
-  const Eigen::Vector<double, N - 1> xn = xr * Rn;
+  model.xch = xm.segment<N - 1>(1);
+  const Eigen::Vector<double, N - 1> xp = model.xch * Rp;
+  const Eigen::Vector<double, N - 1> xn = model.xch * Rn;
 
   // Computing the Chebyshev differentiation matrices
   Eigen::Matrix<double, Ncheb, Ncheb> D_vk = Eigen::Matrix<double, Ncheb, Ncheb>::Identity();

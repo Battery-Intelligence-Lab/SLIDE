@@ -23,6 +23,7 @@ namespace slide {
 //!< Define a structure with the matrices of the spatial discretisation of the solid diffusion PDE
 //!< See the matlab script modelSetup.m
 //!< This class has 326 elements. So it should be allocated in heap once.
+
 struct Model_SPM
 {
   constexpr static auto nch = settings::nch;
