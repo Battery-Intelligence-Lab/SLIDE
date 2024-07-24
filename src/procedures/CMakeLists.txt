@@ -14,4 +14,4 @@ target_sources(procedures
 )
 
 target_include_directories(procedures PUBLIC .)
-target_link_libraries(procedures PUBLIC types)
+target_link_libraries(procedures PUBLIC types cells modules system)

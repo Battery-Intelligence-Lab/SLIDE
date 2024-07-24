@@ -14,6 +14,9 @@
 #include "../../settings/settings.hpp"
 #include "../../utility/utility.hpp"
 
+#include <Eigen/Dense>
+#include <Eigen/LU>
+
 #include <array>
 
 namespace slide {

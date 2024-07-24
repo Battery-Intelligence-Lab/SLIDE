@@ -11,7 +11,8 @@ target_sources(Cell_SPM
   Cell_SPM_diffusion.cpp
   PUBLIC
   Cell_SPM.hpp
+  Model_SPM.hpp
 )
 target_include_directories(Cell_SPM PUBLIC .)
-target_link_libraries(Cell_SPM eigen)
+target_link_libraries(Cell_SPM PUBLIC Eigen3::Eigen)
  

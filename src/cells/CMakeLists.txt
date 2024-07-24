@@ -6,6 +6,7 @@ add_subdirectory(Cell_SPM)
 target_sources(cells
   PUBLIC
     cell_limits.hpp
+    cells.hpp
   )
 
 target_include_directories(cells  PUBLIC .)
