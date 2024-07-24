@@ -39,7 +39,7 @@ struct Model
 {
   constexpr static auto N = Nch + 1;
   constexpr static auto M = 2 * N;
-  int zero{};
+  Eigen::Index zero{};
   Eigen::Matrix<double, Nch, Nch> Vn, Vp;
   Eigen::Matrix<double, M + 1, M + 1> Q;
   Eigen::Matrix<double, N, Nch> Cn, Cp;
@@ -62,13 +62,6 @@ Eigen::Matrix<double, N + 1, N + 1> cumsummat()
   // Matrix mapping coeffs -> values.
   Eigen::Matrix<double, N + 1, N + 1> T = (((pi / N) * arr.head(N + 1) * arr.transpose().head(N + 1).rowwise().reverse())).array().cos().matrix().transpose();
   Eigen::Matrix<double, N + 1, 2 * N> F_real = (((pi / N) * arr.head(N + 1) * arr.transpose())).array().cos().matrix();
-
-  std::ofstream abc{ "testFreal.txt", std::ios::out };
-
-  abc << "Freal: \n"
-      << F_real << '\n';
-
-
   Eigen::Matrix<double, N + 1, N + 1> Tinv; // Matrix mapping values -> coeffs.
 
   Tinv.leftCols(1) = F_real.col(N) / N;
@@ -77,12 +70,6 @@ Eigen::Matrix<double, N + 1, N + 1> cumsummat()
 
   Tinv.row(0) /= 2.0;
   Tinv.row(N) /= 2.0;
-
-  abc << "\nT: \n"
-      << T << '\n';
-
-  abc << "\nTinv: \n"
-      << Tinv << '\n';
 
   // Matrix mapping coeffs -> integral coeffs. Note that the highest order term is truncated.
   Eigen::Matrix<double, N + 1, N + 1> B = Eigen::Matrix<double, N + 1, N + 1>::Zero();
@@ -107,15 +94,9 @@ Eigen::Matrix<double, N + 1, N + 1> cumsummat()
 
   B.col(0) *= 2;
 
-  abc << "\nBBB: \n"
-      << B << '\n';
-
   Eigen::Matrix<double, N + 1, N + 1> Q = T * B * Tinv;
 
   Q.row(0).setZero();
-
-  abc << "\nQ: \n"
-      << Q << '\n';
 
   return Q;
 }
@@ -140,9 +121,9 @@ Model<Nch> get_model_vk_slide_impl()
   for (int i = 0; i < Ncheb; ++i)
     xm(i) = std::sin((Ncheb - 1 - 2 * i) * dtheta / 2);
 
-  Eigen::Vector<double, N - 1> xr = xm.segment<N - 1>(1);
-  Eigen::Vector<double, N - 1> xp = xr * Rp;
-  Eigen::Vector<double, N - 1> xn = xr * Rn;
+  const Eigen::Vector<double, N - 1> xr = xm.segment<N - 1>(1);
+  const Eigen::Vector<double, N - 1> xp = xr * Rp;
+  const Eigen::Vector<double, N - 1> xn = xr * Rn;
 
   // Computing the Chebyshev differentiation matrices
   Eigen::Matrix<double, Ncheb, Ncheb> D_vk = Eigen::Matrix<double, Ncheb, Ncheb>::Identity();
@@ -185,19 +166,19 @@ Model<Nch> get_model_vk_slide_impl()
     D_vk(i, i) = row_sum;
   }
 
-  Eigen::Matrix<double, N, Ncheb> DM2 = D_vk.topRows(N);
-  Eigen::Matrix<double, N, N> DN2 = DM2.leftCols(N) - DM2.rightCols(N).rowwise().reverse();
-  Eigen::RowVector<double, N> DN1 = DM1.leftCols(N) - DM1.rightCols(N).rowwise().reverse();
+  const Eigen::Matrix<double, N, Ncheb> DM2 = D_vk.topRows(N);
+  const Eigen::Matrix<double, N, N> DN2 = DM2.leftCols(N) - DM2.rightCols(N).rowwise().reverse();
+  const Eigen::RowVector<double, N> DN1 = DM1.leftCols(N) - DM1.rightCols(N).rowwise().reverse();
 
   const double temp = (1 - DN1(0, 0));
 
-  Eigen::Matrix<double, N - 1, N - 1> A = DN2.block<N - 1, N - 1>(1, 1) + DN2.block<N - 1, 1>(1, 0) * DN1.block<1, N - 1>(0, 1) / temp;
-  Eigen::Matrix<double, N - 1, 1> B = DN2.block<N - 1, 1>(1, 0) / temp;
-  Eigen::Matrix<double, 1, N - 1> C = DN1.block<1, N - 1>(0, 1) / temp;
-  double D = 1.0 / temp;
+  const Eigen::Matrix<double, N - 1, N - 1> A = DN2.block<N - 1, N - 1>(1, 1) + DN2.block<N - 1, 1>(1, 0) * DN1.block<1, N - 1>(0, 1) / temp;
+  const Eigen::Matrix<double, N - 1, 1> B = DN2.block<N - 1, 1>(1, 0) / temp;
+  const Eigen::Matrix<double, 1, N - 1> C = DN1.block<1, N - 1>(0, 1) / temp;
+  const double D = 1.0 / temp;
 
-  Eigen::Matrix<double, N - 1, N - 1> A1 = A / (Rn * Rn);
-  Eigen::Matrix<double, N - 1, 1> B1 = B;
+  const Eigen::Matrix<double, N - 1, N - 1> A1 = A / (Rn * Rn);
+  const Eigen::Matrix<double, N - 1, 1> B1 = B;
   Eigen::Matrix<double, N, Nch> C1;
 
   C1.row(0) = C / Rn;
@@ -206,8 +187,8 @@ Model<Nch> get_model_vk_slide_impl()
   Eigen::Vector<double, Nch> D1 = Eigen::Vector<double, Nch>::Zero();
   D1(0) = Rn * D;
 
-  Eigen::Matrix<double, N - 1, N - 1> A3 = A / (Rp * Rp);
-  Eigen::Matrix<double, N - 1, 1> B3 = B;
+  const Eigen::Matrix<double, N - 1, N - 1> A3 = A / (Rp * Rp);
+  const Eigen::Matrix<double, N - 1, 1> B3 = B;
   Eigen::Matrix<double, N, Nch> C3;
 
   C3.row(0) = C / Rp;
@@ -233,13 +214,10 @@ Model<Nch> get_model_vk_slide_impl()
   model.Vp = model.Vp.inverse();
   model.Vn = model.Vn.inverse();
 
-  Eigen::Index minIndex;
-  model.Ap.array().abs().minCoeff(&minIndex);
+  model.Ap.array().abs().minCoeff(&model.zero);
 
-  model.Ap(minIndex) = 0.0;
-  model.An(minIndex) = 0.0;
-
-  model.zero = minIndex;
+  model.Ap(model.zero) = 0.0;
+  model.An(model.zero) = 0.0;
 
   model.Cc = DM1.leftCols(N) + DM1.rightCols(N).rowwise().reverse();
   model.Q = cumsummat<M>();
@@ -253,25 +231,6 @@ int main()
 
   constexpr int Nch = 5; // Example value
   Model<Nch> model = get_model_vk_slide_impl<Nch>();
-
-  // std::cout << "Anode A matrix:\n"
-  //           << model.A1 << "\n";
-  // std::cout << "Anode B matrix:\n"
-  //           << model.B1 << "\n";
-  // std::cout << "Anode C matrix:\n"
-  //           << model.C1 << "\n";
-  // std::cout << "Anode D matrix:\n"
-  //           << model.D1 << "\n";
-
-  // std::cout << "Cathode A matrix:\n"
-  //           << model.A3 << "\n";
-  // std::cout << "Cathode B matrix:\n"
-  //           << model.B3 << "\n";
-  // std::cout << "Cathode C matrix:\n"
-  //           << model.C3 << "\n";
-  // std::cout << "Cathode D matrix:\n"
-  //           << model.D3 << "\n";
-
 
   /*
    * This function decides what will be simulated.
