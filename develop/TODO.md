@@ -35,6 +35,7 @@
 - [x] sp - sn question 
 - [x] cps - cns question: dOCV_neg and dOCV_tot are taking zp_surf as input due to our data. Very important. 
 - [ ] Should capacity check also contain a CV phase? 
+- [ ] Chebyshev discretisation only works for nch = 5. Need to see why.
 
 
 ### Current priority:
