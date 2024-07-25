@@ -30,7 +30,7 @@
 #include <algorithm>
 
 namespace slide {
-bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM &M,
+bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM<> &M,
               slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim)
 {
   /*
@@ -138,7 +138,7 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
     //!< if we haven't finished the cycle, try again with a smaller time step
     if (!finished) //!< now we are still in the loop which decreases the time step, so you will try again
       dt /= 10.0;  //!< and the original battery state will be restored at the start of the loop, so the illegal battery state will be 'forgotten'
-  }                //!< end loop to decrease the integration time step
+  } //!< end loop to decrease the integration time step
 
   //!< *********************************************************** 3 output ***********************************************************************
 
@@ -152,7 +152,7 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
   return true; //!< Simulation was successful.
 }
 
-void CCCV(double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct Model_SPM *M,
+void CCCV(double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct Model_SPM<> *M,
           slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim)
 {
   /*

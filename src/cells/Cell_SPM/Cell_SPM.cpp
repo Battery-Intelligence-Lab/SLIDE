@@ -178,11 +178,11 @@ void Cell_SPM::getC(double cp[], double cn[]) noexcept
   {                                    //!< loop to calculate at each surface + inner node
     double cpt{ 0 }, cnt{ 0 };
     for (unsigned j = 0; j < nch; j++) {
-      cpt += M->Cp[i][j] * st.zp(j);
-      cnt += M->Cn[i][j] * st.zn(j);
+      cpt += M->Cp(i, j) * st.zp(j);
+      cnt += M->Cn(i, j) * st.zn(j);
     }
-    cp[i] = cpt + M->Dp[i] * jp / Dpt;
-    cn[i] = cnt + M->Dn[i] * jn / Dnt;
+    cp[i] = cpt + M->Dp(i) * jp / Dpt;
+    cn[i] = cnt + M->Dn(i) * jn / Dnt;
   }
 
   //!< Calculate the concentration at centre node using the boundary condition (the concentration gradient at the centre has to be 0 due to symmetry)
@@ -190,8 +190,8 @@ void Cell_SPM::getC(double cp[], double cn[]) noexcept
   //!< cn_centre = -1/2 (M->Cc[:]*cn +jn*Rn/Dnt)
   double cpt{ 0 }, cnt{ 0 };
   for (size_t i = 0; i < nch + 1; i++) {
-    cpt += M->Cc[i] * cp[i];
-    cnt += M->Cc[i] * cn[i];
+    cpt += M->Cc(i) * cp[i];
+    cnt += M->Cc(i) * cn[i];
   }
   cp[nch + 1] = (-1.0 / 2.0) * (cpt + jp * geo.Rp / Dpt);
   cn[nch + 1] = (-1.0 / 2.0) * (cnt + jn * geo.Rn / Dnt);
@@ -599,22 +599,21 @@ void Cell_SPM::setC(double cp0, double cn0)
   //!< The location of the uniform eigenvector (which has a 0 eigenvalue) is written in M->Input[3]
   std::fill(st.z().begin(), st.z().end(), 0); //!< Make the arrays for the (twice) transformed concentration with all zero
 
-  const auto ind = static_cast<size_t>(M->Input[3]);
   double znu = 0; //!< (twice) transformed negative uniform concentration
   double zpu = 0; //!< (twice) transformed positive uniform concentration
 
   for (size_t i = 0; i < nch; i++) {
     //!< Do the first transformation, to u(i) = radius(i) * concentration = x(i) * R * concentration(i)
-    const auto uneg = geo.Rn * cn * M->xch[i];
-    const auto upos = geo.Rp * cp * M->xch[i];
+    const auto uneg = geo.Rn * cn * M->xch(i);
+    const auto upos = geo.Rp * cp * M->xch(i);
     //!< ---------------------------------------------------------------------------
     //!< loop to calculate the row of V * u corresponding to the uniform concentration
-    znu += M->Vn[ind][i] * uneg;
-    zpu += M->Vp[ind][i] * upos;
+    znu += M->Vn(M->zero, i) * uneg;
+    zpu += M->Vp(M->zero, i) * upos;
   }
 
-  st.zp(ind) = zpu;
-  st.zn(ind) = znu;
+  st.zp(M->zero) = zpu;
+  st.zn(M->zero) = znu;
 
   //!< Set the cell current to 0 to reflect the boundary condition for a fully uniform concentration
   st.I() = 0; //!< #TODO we do not do this.
@@ -662,39 +661,13 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
 
 void Cell_SPM::checkModelparam()
 {
-  //!< check if the inputs to the MATLAB code are the same as the ones here in the C++ code
-  //!< input:
-  //!< 		M->Input[0] has to be the same as nch (defined in State.hpp)
-  //!< 		M->Input[1] has to be the same as Rp (defined earlier in this constructor)
-  //!< 		M->Input[2] has to be the same as Rn (defined earlier in this constructor)
-  //!< 		M->input[3] has to give the location of the 0 eigenvalue
-
-  using settings::nch;
-  const bool Mnch = (M->Input[0] - nch) / M->Input[0] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
-  if (Mnch)
-    std::cerr << "ERROR in Cell_SPM the value of nch used in the MATLAB script " << M->Input[0]
-              << " is not the same as the value of nch used in the c++ code " << nch << ".\n";
-
-  const bool Mrp = (M->Input[1] - geo.Rp) / M->Input[1] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
+  const bool Mrp = (M->Rp - geo.Rp) / M->Rp > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Mrp)
-    std::cerr << "ERROR in Cell_SPM the value of Rp used in the MATLAB script " << M->Input[1]
+    std::cerr << "ERROR in Cell_SPM the value of Rp used in the MATLAB script " << M->Rp
               << " is not the same as the value of Rp used in the c++ code " << geo.Rp << ".\n";
-  const bool Mrn = (M->Input[2] - geo.Rn) / M->Input[2] > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
+  const bool Mrn = (M->Rn - geo.Rn) / M->Rn > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
   if (Mrn)
-    std::cerr << "ERROR in Cell_SPM the value of Rn used in the MATLAB script " << M->Input[2]
+    std::cerr << "ERROR in Cell_SPM the value of Rn used in the MATLAB script " << M->Rn
               << " is not the same as the value of Rn used in the c++ code " << geo.Rn << ".\n";
-  const auto a = static_cast<int>(M->Input[3]);
-  const bool Meig = std::abs(M->An[a]) > 1e-10 || std::abs(M->Ap[a]) > 1e-10; //!< allow a relative difference of e-10 due to numerical errors
-  if (Meig)
-    std::cerr << "ERROR in Cell_SPM the row of the 0-eigenvalue is " << M->Input[3]
-              << " but that row has a positive eigenvalue of " << M->Ap[a] << " and negative eigenvalue of " << M->An[a] << ". They are not 0.\n";
-  if (Mnch || Mrp || Mrn || Meig) {
-    std::cout << "The MATLAB script modelSetup.m produces matrices used by the C++ code for the discretisation of the solid diffusion equation."
-                 " MATLAB needs some input parameters, such as the number of nodes and the radius of the particles. These parameters are specified on top of the MATLAB scripts."
-                 " These values are also defined in the C++ code. Of course, both values have to be the same."
-                 " It turned out this was not the case, so you either have to change the values in the MATLAB script or the ones in the C++ code."
-                 " We are throwing an error.\n";
-    throw 110;
-  }
 }
 } // namespace slide

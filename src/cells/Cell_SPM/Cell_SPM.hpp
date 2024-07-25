@@ -106,7 +106,7 @@ protected:                 //!< protected such that child classes can access the
   param::PLparam pl_p;  //!< structure with the fitting parameters of the different plating models
 
   //!< Matrices for spatial discretisation of the solid diffusion model
-  Model_SPM *M{ Model_SPM::makeModel() };
+  Model_SPM<settings::nch> *M{ Model_SPM<settings::nch>::makeModel() };
 
   //!< OCV curves
   OCVcurves OCV_curves;
@@ -153,7 +153,7 @@ public:
 
   Cell_SPM(); //!< Default constructor.
 
-  Cell_SPM(Model_SPM *M_ptr) : M(M_ptr) {}
+  Cell_SPM(Model_SPM<settings::nch> *M_ptr) : M(M_ptr) {}
 
   //!< getters
   double T() noexcept override { return st.T(); }   //!< returns the uniform battery temperature in [K]

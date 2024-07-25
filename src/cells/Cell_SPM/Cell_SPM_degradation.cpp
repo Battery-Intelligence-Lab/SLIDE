@@ -564,8 +564,8 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
     //!< calculate the matrix-vector product for row i as you would do it by hand:
     //!< F(i) = sum(Q(i,j)*C(j)*x(j)^2*R^3, j=0..2*nch+2)
     for (size_t j = 0; j < 2 * nch + 3; j++) {    //!< loop through the columns to calculate the sum
-      Fp[i] += M->Q[i][j] * CP[j] * sqr(xtot[j]); //!< 		Q(i,j)*C(j)*x(j)^2
-      Fn[i] += M->Q[i][j] * CN[j] * sqr(xtot[j]);
+      Fp[i] += M->Q(i, j) * CP[j] * sqr(xtot[j]); //!< 		Q(i,j)*C(j)*x(j)^2
+      Fn[i] += M->Q(i, j) * CN[j] * sqr(xtot[j]);
     }
   }
 

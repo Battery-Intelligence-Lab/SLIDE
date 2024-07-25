@@ -27,15 +27,15 @@ std::pair<double, double> Cell_SPM::calcSurfaceConcentration(double jp, double j
   //!< 	cp_surf = M->Cp[0][:] * zp[:] + M->Dp*jp/Dpt
   double cp_surf = 0;
   for (size_t j = 0; j < nch; j++)
-    cp_surf += M->Cp[0][j] * st.zp(j);
-  cp_surf += M->Dp[0] * jp / Dpt;
+    cp_surf += M->Cp(0, j) * st.zp(j);
+  cp_surf += M->Dp(0) * jp / Dpt;
 
   //!< Calculate the surface concentration at the negative particle
   //!< 	cn_surf = M->Cn[0][:] * zn[:] + M->Dn*jn/Dnt
   double cn_surf = 0;
   for (size_t j = 0; j < nch; j++)
-    cn_surf += M->Cn[0][j] * st.zn(j);
-  cn_surf += M->Dn[0] * jn / Dnt;
+    cn_surf += M->Cn(0, j) * st.zn(j);
+  cn_surf += M->Dn(0) * jn / Dnt;
 
   return std::make_pair(cp_surf, cn_surf);
 }
