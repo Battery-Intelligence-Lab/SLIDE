@@ -18,6 +18,7 @@
 #include "constants.hpp"
 #include "slide_paths.hpp"
 #include "tolerances.hpp"
+#include "macros.hpp"
 
 namespace slide::settings::cool //!< Cooling System Settings.
 {
