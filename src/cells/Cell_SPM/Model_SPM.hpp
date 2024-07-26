@@ -10,21 +10,19 @@
 
 #pragma once
 
-#include "../../types/matrix.hpp"
 #include "../../settings/settings.hpp"
-#include "../../utility/utility.hpp"
 
 #include <Eigen/Dense>
 #include <Eigen/LU>
 
 #include <array>
 #include <numbers>
+#include <fstream>
 
 namespace slide {
 //!< Define a structure with the matrices of the spatial discretisation of the solid diffusion PDE
 //!< See the matlab script modelSetup.m
 //!< This class has 326 elements. So it should be allocated in heap once.
-
 
 /**
  * @brief Computes the Chebyshev integration matrix.
@@ -228,5 +226,54 @@ Eigen::Matrix<double, N + 1, N + 1> cumsummat()
 
   return Q;
 }
+
+template <int nch>
+void testwriteChebyshevModel()
+{
+  std::ofstream file{ "testChebyshev.txt", std::ios::out };
+
+  auto &model = *Model_SPM::makeModel();
+
+
+  file << "xch: \n"
+       << model.xch << "\n\n"
+
+       << "An: \n"
+       << model.An << "\n\n"
+
+       << "Bn: \n"
+       << model.Bn << "\n\n"
+
+       << "Cn: \n"
+       << model.Cn << "\n\n"
+
+       << "Dn: \n"
+       << model.Dn << "\n\n"
+
+       << "Ap: \n"
+       << model.Ap << "\n\n"
+
+       << "Bp: \n"
+       << model.Bp << "\n\n"
+
+       << "Cp: \n"
+       << model.Cp << "\n\n"
+
+       << "Dp: \n"
+       << model.Dp << "\n\n"
+
+       << "Vn: \n"
+       << model.Vn << "\n\n"
+
+       << "Vp: \n"
+       << model.Vp << "\n\n"
+
+       << "Q: \n"
+       << model.Q << "\n\n"
+
+       << "Cc: \n"
+       << model.Cc << "\n\n";
+}
+
 
 } // namespace slide
