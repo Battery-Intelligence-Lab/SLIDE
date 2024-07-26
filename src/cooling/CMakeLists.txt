@@ -19,3 +19,4 @@ target_sources(cooling
   )
 
 target_include_directories(cooling PUBLIC .)
+target_link_libraries(cooling PRIVATE settings)

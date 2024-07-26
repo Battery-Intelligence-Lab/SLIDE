@@ -8,10 +8,12 @@ target_sources(factories
     makeBattery.hpp
   )
 
-target_include_directories(factories  PUBLIC .)
+target_include_directories(factories PUBLIC .)
 
 target_link_libraries(factories
 PRIVATE
   cells
   modules
+  procedures
+  settings
 )

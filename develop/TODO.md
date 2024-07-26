@@ -133,6 +133,7 @@
 - [ ] setSUs and assigning unique pointers then testing individually is very difficult. Clearly a design problem.
 - [ ] getNSUs may slow down time to time. 
 - [ ] std::vector<double> Iolds in Module_p.cpp
+- [ ] Use just one memory allocation, dynamically allocated memory space for Model_SPM. 
 
 
 ### From SLIDE v2: 

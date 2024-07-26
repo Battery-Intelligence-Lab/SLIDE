@@ -13,4 +13,4 @@ target_sources(modules
   )
 
 target_include_directories(modules PUBLIC .)
-target_link_libraries(modules PUBLIC cooling cells Eigen3::Eigen)
+target_link_libraries(modules PUBLIC cooling cells settings Eigen3::Eigen)

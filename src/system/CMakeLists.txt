@@ -9,4 +9,4 @@ target_sources(system
   )
 
 target_include_directories(system PUBLIC .)
-target_link_libraries(system PRIVATE power_conversion)
+target_link_libraries(system PRIVATE power_conversion settings)

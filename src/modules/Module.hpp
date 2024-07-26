@@ -10,7 +10,7 @@
 #include "../StorageUnit.hpp"
 #include "../cooling/cooling.hpp"
 #include "../types/State.hpp"
-#include "../settings/settings.hpp"
+#include "settings.hpp"
 #include "../utility/utility.hpp"
 
 

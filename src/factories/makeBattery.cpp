@@ -8,12 +8,9 @@
 #include "makeBattery.hpp"
 
 #include "cells.hpp"
-#include "../modules/Module_s.hpp"
-#include "../modules/Module_p.hpp"
-#include "../procedures/Cycler.hpp"
-#include "../procedures/Procedure.hpp"
-// #include "unit_tests.hpp"
-#include "../settings/settings.hpp"
+#include "modules.hpp"
+#include "procedures.hpp"
+#include "settings.hpp"
 
 #include <cmath>
 #include <random>
