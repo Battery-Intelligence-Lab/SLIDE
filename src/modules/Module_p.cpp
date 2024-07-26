@@ -390,7 +390,7 @@ void Module_p::timeStep_CC(double dt, int nstep)
     //!< If there is no parent, assume we update T every nstep*dt. So update the temperature now
     if (!parent) {
       //!< double check that we have an HVAC coolsystem (see constructor)
-      if (typeid(*getCoolSystem()) != typeid(CoolSystem_HVAC)) {
+      if (typeid(*getCoolSystem()) != typeid(CoolSystem_HVAC)) { // #TODO expression with side effects will be evaluated despite being used as an operand to 'typeid' [-Wpotentially-evaluated-expression]
         std::cerr << "ERROR in module_p::timeStep_CC in module " << getFullID() << ". this is a top-level"
                   << "module but does not have an HVAC coolsystem for active cooling with the environment.\n";
         throw 14;

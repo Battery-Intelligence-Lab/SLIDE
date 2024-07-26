@@ -17,12 +17,10 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 #include "../cells/cells.hpp"
-#include "determine_OCV.hpp"
-#include "CyclerOld.hpp"
 #include "Cycler.hpp"
 #include "determine_characterisation.hpp"
 #include "../utility/utility.hpp"
@@ -32,7 +30,7 @@
 #include <algorithm>
 
 namespace slide {
-bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM &M,
+bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM<> &M,
               slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim)
 {
   /*
@@ -61,19 +59,6 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
    */
 
   //!< *********************************************************** 1 variables ***********************************************************************
-  int verbose = 0; //!< integer deciding how verbose the simulation should be
-                   //!< The higher the number, the more output there is.
-                   //!< Recommended value is 1, only use higher value for debugging
-                   //!< From 4 (and above) there will be too much info printed to follow what is going on, but this might be useful for debugging to find where the error is and why it is happening
-                   //!< 	0 	almost no messages are printed, only in case of critical errors related to illegal parameters
-                   //!< 	1 	error messages are printed in case of critical errors which might crash the simulation
-                   //!< 	2 	all error messages are printed, whether the simulation can recover from the errors or not
-                   //!< 	3 	on top of the output from 2, a message is printed every time a function in the CyclerOld and BasicCycler is started and terminated
-                   //!< 	4 	on top of the output from 3, the high-level flow of the program in the CyclerOld is printed (e.g. 'we are going to discharge the cell')
-                   //!< 	5 	on top of the output from 4, the low-level flow of the program in the BasicCycler is printed (e.g. 'in time step 101, the voltage is 3.65V')
-                   //!< 	6 	on top of the output from 5, we also print details of the nonlinear search for the current needed to do a CV phase
-                   //!< 	7 	on top of the output from 6, a message is printed every time a function in the Cell is started and terminated
-
   //!< Check all parameters are positive
   if (Dp <= 0 || Dn <= 0 || kp <= 0 || kn <= 0 || R < 0)
     return false;
@@ -81,25 +66,24 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
   c1.setCharacterisationParam(Dp, Dn, kp, kn, R);
 
   //!< time steps
-  double dt = 2.0;      //!< time step for cycling [s]
-  double Istep = 0.1;   //!< current step for ramping, indicating how fast the current can change per 'ramp time step', [A s-1]
-  double tstep = 0.001; //!< time step for ramping [s]
-                        //!< the current can change at Istep/tstep, so currently 0.1A per 1 ms.
+  double dt = 2.0; //!< time step for cycling [s]
+                   //!< the current can change at Istep/tstep, so currently 0.1A per 1 ms.
 
   //!< variables
-  const auto s = c1.getStates(); //!< initial state of the cell, used to recover after an error
-  std::span<const double> s_span{ s };
+  const auto s = c1.getStateObj(); //!< initial state of the cell, used to recover after an error
 
-  double Ccut2 = 0.05;                              //!< Crate for the cutoff current when bringing the cell to the initial state (i.e. charge the cell first before you simulate the CCCV discharge)
-  double Vset;                                      //!< voltage at which the CCCV cycle should end (i.e. the minimum voltage if you are simulating a discharge)
-  bool blockDegradation = true;                     //!< don't account for degradation while doing the cycles
-  std::string ID = "CharacterisationFit";           //!< identification std::string for the CyclerOld
-  int timeCycleData = -1;                           //!< time interval at which cycling data has to be recorded [s]
-                                                    //!< <0 means no folder is created and no data is stored
-                                                    //!< 	0 means no data is recorded but a folder is still created for later use
-                                                    //!<  >0 means data is recorded approximately every so many seconds
-  CyclerOld cycler(c1, ID, verbose, timeCycleData); //!< Make the CyclerOld
-  double ahi, whi, timei;                           //!< feedback variables we don't need
+  double Ccut2 = 0.05;                    //!< Crate for the cutoff current when bringing the cell to the initial state (i.e. charge the cell first before you simulate the CCCV discharge)
+  double Vset;                            //!< voltage at which the CCCV cycle should end (i.e. the minimum voltage if you are simulating a discharge)
+  bool blockDegradation = true;           //!< don't account for degradation while doing the cycles
+  std::string ID = "CharacterisationFit"; //!< identification std::string for the CyclerOld
+  int timeCycleData = -1;                 //!< time interval at which cycling data has to be recorded [s]
+                                          //!< <0 means no folder is created and no data is stored
+                                          //!< 	0 means no data is recorded but a folder is still created for later use
+                                          //!<  >0 means data is recorded approximately every so many seconds
+
+  Cycler cycler(&c1, ID);
+  ThroughputData th{};       //!< feedback variables we don't need
+  const auto cap = c1.Cap(); // Capacity.
 
   //!< *********************************************************** 2 (dis)charge ***********************************************************************
 
@@ -113,9 +97,6 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
   //!< loop to decrease the integration time step (dt)
   for (int i = 0; i < 2 && !finished; i++) {
     //!< Set the ramping time steps to their normal value
-    Istep = 0.1;   //!< current step for ramping
-    tstep = 0.001; //!< time step for ramping
-
     //!< loop to decrease the time steps for ramping
     for (int j = 0; j < 2 && !finished; j++) {
 
@@ -123,24 +104,24 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
       try {
 
         //!< restore the original battery state in case an error occurred earlier in the loop
-        c1.setStates(s_span, false, false); //!< Does not throw.
-        //!< c1.setRamping(Istep, tstep);			//!< Does not throw.
-        cycler.setCyclingDataTimeResolution(0); //!< don't collect cycling data during the charging //!< Does not throw. (anymore)
+        c1.setStateObj(s); //!< Does not throw.
+                           //!< don't collect cycling data during the charging //!< Does not throw. (anymore)
+        // cycler.setCyclingDataTimeResolution(0);  #TODO instead of nth_data set it as a timeResolution or better take defaults.
 
         //!< Bring the cell to the correct soc before simulating the (dis)charge
         if (Crate > 0) { //!< simulate a discharge
           //!< first fully charge the cell to the maximum voltage at 1C
-          cycler.CC_V_CV_I(1, ocvfit.Vmax, Ccut2, dt, blockDegradation, &ahi, &whi, &timei);
+          cycler.CCCV(cap, ocvfit.Vmax, Ccut2, dt, 0, th);
           Vset = ocvfit.Vmin;
         } else { //!< simulate a charge
           //!< first fully discharge the cell to the minimum voltage at 1C
-          cycler.CC_V_CV_I(1, ocvfit.Vmin, Ccut2, dt, blockDegradation, &ahi, &whi, &timei);
+          cycler.CCCV(cap, ocvfit.Vmin, Ccut2, dt, 0, th);
           Vset = ocvfit.Vmax;
         }
 
         //!< simulate the CC CV (dis)charge
-        cycler.setCyclingDataTimeResolution(dt); //!< collect cycling data of every time step
-        cycler.CC_V_CV_I(std::abs(Crate), Vset, Ccut, dt, blockDegradation, &ahi, &whi, &timei);
+        // cycler.setCyclingDataTimeResolution(dt); //!< collect cycling data of every time step
+        cycler.CCCV(Crate * cap, Vset, Ccut, dt, 1, th); // #TODO should throw here?
 
         //!< If we get here, no errors were thrown and we can leave the loop
         finished = true; //!< indicate we have finished the simulation
@@ -157,11 +138,11 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
     //!< if we haven't finished the cycle, try again with a smaller time step
     if (!finished) //!< now we are still in the loop which decreases the time step, so you will try again
       dt /= 10.0;  //!< and the original battery state will be restored at the start of the loop, so the illegal battery state will be 'forgotten'
-  }                //!< end loop to decrease the integration time step
+  } //!< end loop to decrease the integration time step
 
   //!< *********************************************************** 3 output ***********************************************************************
 
-  if (!finished || ahi == 0)
+  if (!finished || th.Ah() == 0)
     return false; //!< the simulation wasn't successful. This happens if 'finished' is still false or if ahi == 0 i.e. no charge could be discharged
 
   //!< Get the cell voltage from the simulated (dis)charge from the CyclerOld
@@ -171,7 +152,7 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
   return true; //!< Simulation was successful.
 }
 
-void CCCV(double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct Model_SPM *M,
+void CCCV(double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct Model_SPM<> *M,
           slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim)
 {
   /*
@@ -763,5 +744,40 @@ void writeCharacterisationParam(int h, const std::array<double, 5> &par, double 
          << "kn" << ',' << kn << '\n'
          << "total RMSE" << ',' << err << '\n';
   output.close();
+}
+
+
+double calculateError(bool bound, slide::XYdata_vv &OCVcell, slide::XYdata_vv &OCVsim)
+{
+  /*
+   * Function to calculate the root mean square error between the OCV curve of the cell supplied by the user and the simulated OCV curve
+   *
+   * IN
+   * bound	boolean deciding what to do if the value of x is out of range of xdat for linear interpolation
+   * 			i.e. how to 'extend' OCVsim to the same capacity as OCVcell if OCVsim has a lower capacity
+   * 				if true, the value will be set to 0
+   * 				if false, the value will be set to the last point of OCVsim (e.g. 2.7)
+   * OCVcell 	OCV curve of the cell, 2 columns
+   * OCVsim 	simulated OCV curve, 2 columns
+   *
+   * OUT
+   * rmse		RMSE between both curves
+   */
+
+  double rmse = 0; //!< root mean square error
+
+  //!< loop through all data points
+  for (size_t i = 0; i < OCVcell.size(); i++) {
+    //!< Get the simulated OCV at the discharged charge of this point on the measured OCV curve of the cell
+    auto [Vsimi, status] = slide::linInt_noexcept(bound, OCVsim.x, OCVsim.y, OCVsim.size(), OCVcell.x[i]);
+    //!< if status is not 0 then the simulated voltage is already set to 0;
+
+    const double err = OCVcell.y[i] - Vsimi; //!< Calculate the error
+    rmse += err * err;                       //!< sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
+  }
+
+  //!< Calculate the RMSE
+  rmse = std::sqrt(rmse / OCVcell.size());
+  return rmse;
 }
 } // namespace slide

@@ -2,7 +2,7 @@ option (SLIDE_ENABLE_COVERAGE "Enable coverage reporting for GCC or Clang" OFF)
 # Setup macro for coverage testing for GCC or Clang
 macro(add_executable_with_coverage_and_test TARGET_NAME CPP_FILE_NAME)
     add_executable(${TARGET_NAME} ${CPP_FILE_NAME})
-    target_link_libraries(${TARGET_NAME} PRIVATE src)
+    target_link_libraries(${TARGET_NAME} PRIVATE src Catch2::Catch2WithMain)
     add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} WORKING_DIRECTORY bin)
     if (SLIDE_ENABLE_COVERAGE)
         if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")

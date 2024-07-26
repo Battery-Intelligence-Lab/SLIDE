@@ -4,7 +4,7 @@
  * to include available cells headers.
  *
  *  Created on: 19 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli, Jorn Reniers
  *
  */
 

@@ -7,13 +7,10 @@
 
 #include "makeBattery.hpp"
 
-#include "../cells/cells.hpp"
-#include "../modules/Module_s.hpp"
-#include "../modules/Module_p.hpp"
-#include "../procedures/Cycler.hpp"
-#include "../procedures/Procedure.hpp"
-// #include "unit_tests.hpp"
-#include "../settings/settings.hpp"
+#include "cells.hpp"
+#include "modules.hpp"
+#include "procedures.hpp"
+#include "settings.hpp"
 
 #include <cmath>
 #include <random>
@@ -85,7 +82,7 @@ Deep_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread
   deg.LAM_id.add_model(0); //!< no LAM
   deg.pl_id = 0; //!< no litihium plating
 
- 	//!< Generalised degradation model
+        //!< Generalised degradation model
   deg.SEI_id.add_model(1); //!< kinetic SEI
   deg.SEI_id.add_model(2); //!< diffusion SEI
   deg.SEI_porosity = 0; //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
@@ -161,7 +158,6 @@ Deep_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread
   //!< 9 strings in parallel -> 9*Ah = 115.699Ah
   return bat;
 
-  /*
   //!< Test some cycle ageing
   bool CV = false;
   double Vbal = 3.5;							//!< rebalance to 3.1V
@@ -169,6 +165,7 @@ Deep_ptr<StorageUnit> makeBattery(bool balance, bool capSpread, bool RcellSpread
   Deep_ptr<Procedure> p(new Procedure(balance, Vbal, ndata, false));
   //p->useCaseAge(bat, coolControl);
   p->cycleAge(bat, CV);*/
+  return {}; // #TODO return bat;
 }
 
 Deep_ptr<StorageUnit> makeBattery2(bool balance, bool capSpread, bool RcellSpread, bool degrateSpread, bool contactR, int coolControl)
@@ -397,7 +394,7 @@ Deep_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool RcellSpread,
           }
           CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
           Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
-        }                        //!< loop to make cells connected in parallel in modules
+        } //!< loop to make cells connected in parallel in modules
 
         //!< put the cells in parallel to the lowest-level module
         auto mip = make<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
@@ -406,7 +403,7 @@ Deep_ptr<StorageUnit> makeBattery_EPFL_smaller(bool capSpread, bool RcellSpread,
         mip->setRcontact(Rc4);
         CinsM[ics] = std::move(mip);
         Rc3[ics] = Rc_s_cells; //!< in series module, so every cell has a resistance of Rc
-      }                        //!< loop to make the parallel-connected cells which goes in series to make one module
+      } //!< loop to make the parallel-connected cells which goes in series to make one module
 
       //!< assemble the cells in series for the
       auto modulei = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
@@ -536,7 +533,7 @@ Deep_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, bool de
           }
           CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
           Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
-        }                        //!< loop to make cells connected in parallel in modules
+        } //!< loop to make cells connected in parallel in modules
 
         //!< put the cells in parallel to the lowest-level module
         auto mip = make<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
@@ -545,7 +542,7 @@ Deep_ptr<StorageUnit> makeBattery_EPFL(bool capSpread, bool RcellSpread, bool de
         mip->setRcontact(Rc4);
         CinsM[ics] = std::move(mip);
         Rc3[ics] = Rc_s_cells; //!< in series module, so every cell has a resistance of Rc
-      }                        //!< loop to make the parallel-connected cells which goes in series to make one module
+      } //!< loop to make the parallel-connected cells which goes in series to make one module
 
       //!< assemble the cells in series for the
       auto modulei = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
@@ -672,7 +669,7 @@ Deep_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, bool de
           }
           CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
           Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
-        }                        //!< loop to make cells connected in parallel in modules
+        } //!< loop to make cells connected in parallel in modules
 
         //!< put the cells in parallel to the lowest-level module
         auto mip = make<Module_p>("p" + std::to_string(ics), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem
@@ -681,7 +678,7 @@ Deep_ptr<StorageUnit> makeBattery_Test(bool capSpread, bool RcellSpread, bool de
         mip->setRcontact(Rc4);
         CinsM[ics] = std::move(mip);
         Rc3[ics] = Rc_s_cells; //!< in series module, so every cell has a resistance of Rc
-      }                        //!< loop to make the parallel-connected cells which goes in series to make one module
+      } //!< loop to make the parallel-connected cells which goes in series to make one module
 
       //!< assemble the cells in series for the
       auto modulei = make<Module_s>("s" + std::to_string(is), T_ENV, true, false, ncp * ncs, coolControl, 0); //!< single-threaded, conventional coolsystem
@@ -805,7 +802,7 @@ Deep_ptr<StorageUnit> makeBattery_TestParallel(bool capSpread, bool RcellSpread,
     }
     CinpM[icp] = make<Cell_SPM>("cell" + std::to_string(icp), deg, capf, Rf, degf, degflam);
     Rc4[icp] = Rc_p_cells; //!< in parallel module, all branches have same R
-  }                        //!< loop to make cells connected in parallel in modules
+  } //!< loop to make cells connected in parallel in modules
 
   //!< put the cells in parallel to the lowest-level module
   auto mip = make<Module_p>("p" + std::to_string(0), T_ENV, true, false, ncp, coolControl, 2); //!< print warning messages, single-threaded, pass through coolsystem

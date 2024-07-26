@@ -11,7 +11,7 @@
 #include "../cells/Cell.hpp"
 #include "../modules/Module.hpp"
 #include "../system/Battery.hpp"
-#include "../types/data_storage/cell_data.hpp"
+#include "../types/DataFrame.hpp"
 
 #include <vector>
 #include <iostream>
@@ -27,7 +27,15 @@ protected:
   int ndata{ 0 };
   double balance_voltage{ 3.65 };
 
-  std::vector<ProcedureThroughputData> throughput;
+  //!< the charge throughput of every (dis)charge
+  //!< the energy throughput of every (dis)charge
+  //!< the energy [Wh] required to run the cooling system of the battery in every cycle
+  //!< the energy losses in the power electronic converter [Wh] in every cycle
+  DataFrame<> throughput{ "Cells charge throughput [Ah]",
+                          "Cells energy throughput [Wh]",
+                          "total energy to operate the thermal management system [Wh]",
+                          "Converter losses [Wh]" };
+
   void storeThroughput(ThroughputData th, StorageUnit *su);
 
 public:

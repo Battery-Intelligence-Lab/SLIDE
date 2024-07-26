@@ -1,10 +1,14 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.21)
 
 add_library(src STATIC
             paperCode.cpp)
 
+
+target_include_directories(src PUBLIC .)
+
 #add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../")
 
+add_subdirectory(types)
 add_subdirectory(cells)
 add_subdirectory(modules)
 add_subdirectory(cooling)
@@ -13,9 +17,17 @@ add_subdirectory(system)
 add_subdirectory(procedures)
 add_subdirectory(factories)
 add_subdirectory(settings)
+add_subdirectory(utility)
+
+
+if (UNIX)
+  if (NOT APPLE)
+    set(PTHREADS "-pthread")
+  endif()
+endif()
 
 target_link_libraries(src
-  PRIVATE
+  PUBLIC
   cells
   modules
   cooling
@@ -24,5 +36,7 @@ target_link_libraries(src
   procedures
   factories
   settings
- # pthread #-> For WSL.
+  types
+  utility
+  ${PTHREADS} # -> for WSL
 )

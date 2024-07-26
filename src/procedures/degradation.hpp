@@ -8,7 +8,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 #pragma once
@@ -21,7 +21,7 @@
 #include <fstream>
 #include <cassert>
 #include <memory>
-//#include <thread>
+// #include <thread>
 
 //!< Definitions of custom datatypes:
 struct CycleAgeingConfig
@@ -83,19 +83,19 @@ struct ProfileAgeingConfig
 };
 
 //!< Auxiliary functions for multi-threaded simulations
-void Calendar_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one calendar ageing experiment
+void Calendar_one(const struct slide::Model_SPM<> &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one calendar ageing experiment
                   double V, double Ti, int Time, int mode, int timeCycleData, int timeCheck, struct checkUpProcedure &proc, std::string name);
-void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, double Vma, double Vmi, //!< simulate one cycle ageing experiment
+void Cycle_one(const struct slide::Model_SPM<> &M, const struct DEG_ID &degid, int cellType, int verbose, double Vma, double Vmi, //!< simulate one cycle ageing experiment
                double Ccha, bool CVcha, double Icutcha, double Cdis, bool CVdis, double Icutdis, double Ti, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, std::string name);
-void Profile_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, std::string profName, int n, int limit, //!< simulate one drive cycle ageing experiment
+void Profile_one(const struct slide::Model_SPM<> &M, const struct DEG_ID &degid, int cellType, int verbose, std::string profName, int n, int limit, //!< simulate one drive cycle ageing experiment
                  double Vma, double Vmi, double Ti, int timeCycleData, int nrProfiles, int nrCap, struct checkUpProcedure &proc, std::string name);
 
 //!< Degradation experiments
-void CycleAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);    //!< simulate a range of cycle ageing experiments (different temperatures, SOC windows, currents)
-void CalendarAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose); //!< simulate a range of calendar ageing experiments (different temperatures, SOC levels)
-void ProfileAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);  //!< simulate a range of drive cycle experiments (different cycles, different temperatures, etc.)
+void CycleAgeing(const struct slide::Model_SPM<> &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);    //!< simulate a range of cycle ageing experiments (different temperatures, SOC windows, currents)
+void CalendarAgeing(const struct slide::Model_SPM<> &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose); //!< simulate a range of calendar ageing experiments (different temperatures, SOC levels)
+void ProfileAgeing(const struct slide::Model_SPM<> &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose);  //!< simulate a range of drive cycle experiments (different cycles, different temperatures, etc.)
 
 //!< Configuration struct for above-given functions.
 
-void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one cycle ageing experiment
+void Cycle_one(const struct slide::Model_SPM<> &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one cycle ageing experiment
                const struct CycleAgeingConfig &cycAgConfig, bool CVcha, double Icutcha, bool CVdis, double Icutdis, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, const std::string &pref);

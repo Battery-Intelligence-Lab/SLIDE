@@ -80,6 +80,7 @@ function(set_project_warnings project_name)
       /wd4273 # QtAlignedMalloc, inconsistent DLL linkage
       /wd4324 # structure was padded due to declspec(align())
       /wd4503 # decorated name length exceeded, name was truncated
+      /Zc:preprocessor 
   )
   
   if(MSVC)

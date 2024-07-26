@@ -117,6 +117,6 @@ Deep_ptr<T> make_Deep_ptr(Args &&...args)
 /// @param ...args
 /// @return
 template <typename T, typename... Args>
-Deep_ptr<T> make(Args &&...args) { return Deep_ptr<T>(new T(std::forward<Args>(args)...)); }
+Deep_ptr<T> make(Args &&...args) { return Deep_ptr<T>(new T(std::forward<Args>(args)...)); } // #TODO implicit conversion loses integer precision: 'const unsigned long long' to 'int' [-Wshorten-64-to-32]
 
 } // namespace slide

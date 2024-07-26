@@ -7,7 +7,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 #pragma once
@@ -26,12 +26,12 @@ class Cell_KokamNMC : public Cell_SPM
 {
 public:
   //!< constructors
-  Cell_KokamNMC(Model_SPM *, int verbosei);
-  Cell_KokamNMC(Model_SPM *, DEG_ID &, int verbosei);
+  Cell_KokamNMC(Model_SPM<> *, int verbosei);
+  Cell_KokamNMC(Model_SPM<> *, DEG_ID &, int verbosei);
 };
 
 
-inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
+inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM<> *MM, int verbosei)
   : Cell_SPM(OCVcurves::makeOCVcurves(cellType::KokamNMC))
 {
   /*
@@ -207,7 +207,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *MM, int verbosei)
     sparam.s_lares = sparam.s_lares || cs_id == 1;
 }
 
-inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM *M_, DEG_ID &deg_id_, int verbosei) : Cell_KokamNMC(M_, verbosei)
+inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM<> *M_, DEG_ID &deg_id_, int verbosei) : Cell_KokamNMC(M_, verbosei)
 {
   /*
    * constructor to initialise the degradation parameters

@@ -12,7 +12,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 #pragma once
@@ -106,7 +106,7 @@ protected:                 //!< protected such that child classes can access the
   param::PLparam pl_p;  //!< structure with the fitting parameters of the different plating models
 
   //!< Matrices for spatial discretisation of the solid diffusion model
-  Model_SPM *M{ Model_SPM::makeModel() };
+  Model_SPM<settings::nch> *M{ Model_SPM<settings::nch>::makeModel() };
 
   //!< OCV curves
   OCVcurves OCV_curves;
@@ -153,7 +153,7 @@ public:
 
   Cell_SPM(); //!< Default constructor.
 
-  Cell_SPM(Model_SPM *M_ptr) : M(M_ptr) {}
+  Cell_SPM(Model_SPM<settings::nch> *M_ptr) : M(M_ptr) {}
 
   //!< getters
   double T() noexcept override { return st.T(); }   //!< returns the uniform battery temperature in [K]
@@ -163,7 +163,7 @@ public:
   Status setSOC(double SOCnew, bool checkV = true, bool print = true) override;
 
   auto &getStateObj() { return st; }
-  auto setStateObj(State_SPM &st_new)
+  auto setStateObj(const State_SPM &st_new)
   {
     st = st_new;
     Vcell_valid = false;
@@ -233,7 +233,7 @@ public:
   //!< {
   //!< 	slide::validState(st, s_ini);
   //!< }
-  ThroughputData getThroughputs() override { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
 
   void overwriteCharacterisationStates(double Dpi, double Dni, double ri)
   {

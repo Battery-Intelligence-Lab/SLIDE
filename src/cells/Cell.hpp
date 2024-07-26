@@ -11,9 +11,10 @@
 #include "../settings/settings.hpp"
 #include "../StorageUnit.hpp"
 #include "../types/Histogram.hpp"
-#include "../types/data_storage/CellData.hpp"
+// #include "../recording/CellDataStorage.hpp"
 #include "../types/Status.hpp"
 #include "../utility/utility.hpp"
+#include "../types/State.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -34,7 +35,7 @@ class Cell : public StorageUnit
 protected:
   double capNom{ 16 }; //!< capacity [Ah].
 
-  CellData<settings::DATASTORE_CELL> cellData; //!< Cell data storage.
+  // CellData<settings::DATASTORE_CELL> cellData; //!< Cell data storage.
 
 public:
   constexpr static CellLimits limits{ defaultCellLimits }; // Default cell limits. #TODO make it changable.
@@ -54,8 +55,8 @@ public:
   constexpr double Tmax() { return limits.Tmax; }
   constexpr double Tmin() { return limits.Tmin; }
 
-  double getVhigh() final { return V(); } //!< return the voltage of the cell with the highest voltage
-  double getVlow() final { return V(); }  //!< return the voltage of the cell with the lowest voltage
+  double getVhigh() override final { return V(); } //!< return the voltage of the cell with the highest voltage
+  double getVlow() override final { return V(); }  //!< return the voltage of the cell with the lowest voltage
 
   virtual Status setSOC(double SOCnew, bool checkV = true, bool print = true) = 0;
   virtual double SOC() = 0;
@@ -99,8 +100,8 @@ public:
   }
 
   //!< dataStorage
-  virtual void storeData() override { cellData.storeData(*this); }                                  //!< Add another data point in the array.
-  virtual void writeData(const std::string &prefix) override { cellData.writeData(*this, prefix); } // #TODO *this may be Cell not actual type.
+  virtual void storeData() override {}                          //!< cellData.storeData(*this); Add another data point in the array.
+  virtual void writeData(const std::string &prefix) override {} // cellData.writeData(*this, prefix); #TODO *this may be Cell not actual type.
 
   virtual ThroughputData getThroughputs() { return {}; }
 

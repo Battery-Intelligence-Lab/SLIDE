@@ -8,7 +8,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 #pragma once
@@ -18,6 +18,7 @@
 #include "constants.hpp"
 #include "slide_paths.hpp"
 #include "tolerances.hpp"
+#include "macros.hpp"
 
 namespace slide::settings::cool //!< Cooling System Settings.
 {
@@ -54,6 +55,9 @@ constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeTimeData; //!< if 0, 
 
 
 constexpr auto DATASTORE_MODULE = moduleDataStorageLevel::noStorage; //!< See moduleDataStorageLevel for different options.
+
+constexpr static int N_cumulative = 3; // Number of cumulative variables, time, Ah, Wh.
+
 
 //!< constexpr int DATASTORE_MODULE = 0; //!< if 0, no module-level data is stored
 //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)

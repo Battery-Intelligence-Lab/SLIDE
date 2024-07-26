@@ -8,7 +8,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 //!< Include header files
@@ -17,7 +17,7 @@
 #include "cell_user.hpp"
 #include "../utility/utility.hpp"
 
-void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one cycle ageing experiment
+void Cycle_one(const struct slide::Model_SPM<> &M, const struct DEG_ID &degid, int cellType, int verbose, //!< simulate one cycle ageing experiment
                const struct CycleAgeingConfig &cycAgConfig, bool CVcha, double Icutcha, bool CVdis, double Icutdis, int timeCycleData, int nrCycles, int nrCap, struct checkUpProcedure &proc, const std::string &pref)
 {
   Cycle_one(M, degid, cellType, verbose, cycAgConfig.Vma, cycAgConfig.Vmi, //!< simulate one cycle ageing experiment
@@ -35,7 +35,7 @@ void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int
             cycAgConfig.get_name(pref));
 }
 
-void Calendar_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose,
+void Calendar_one(const struct slide::Model_SPM<> &M, const struct DEG_ID &degid, int cellType, int verbose,
                   double V, double Ti, int Time, int mode, int timeCycleData, int timeCheck, struct checkUpProcedure &proc, std::string name)
 {
   /*
@@ -134,7 +134,7 @@ void Calendar_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, 
   }
 }
 
-void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, double Vma, double Vmi,
+void Cycle_one(const struct slide::Model_SPM<> &M, const struct DEG_ID &degid, int cellType, int verbose, double Vma, double Vmi,
                double Ccha, bool CVcha, double Ccutcha, double Cdis, bool CVdis, double Ccutdis, double Ti, int timeCycleData,
                int nrCycles, int nrCap, struct checkUpProcedure &proc, std::string name)
 {
@@ -237,7 +237,7 @@ void Cycle_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int
   }
 }
 
-void Profile_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, int cellType, int verbose, std::string profName, int n, int limit,
+void Profile_one(const struct slide::Model_SPM<> &M, const struct DEG_ID &degid, int cellType, int verbose, std::string profName, int n, int limit,
                  double Vma, double Vmi, double Ti, int timeCycleData, int nrProfiles, int nrCap, struct checkUpProcedure &proc, std::string name)
 {
   /*
@@ -335,7 +335,7 @@ void Profile_one(const struct slide::Model_SPM &M, const struct DEG_ID &degid, i
   }
 }
 
-void CycleAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose)
+void CycleAgeing(const struct slide::Model_SPM<> &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose)
 {
   /*
    * Function to simulate a selection of cycle ageing experiments.
@@ -491,7 +491,7 @@ void CycleAgeing(const struct slide::Model_SPM &M, std::string pref, const struc
   slide::run(task_indv, cycleAgConfigVec.size()); //!< Runs individual simulation in parallel or sequential depending on settings.
 }
 
-void CalendarAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose)
+void CalendarAgeing(const struct slide::Model_SPM<> &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose)
 {
   /*
    * Function to simulate a selection of calendar ageing experiments.
@@ -623,7 +623,7 @@ void CalendarAgeing(const struct slide::Model_SPM &M, std::string pref, const st
   slide::run(task_indv, calAgConfig.size());
 }
 
-void ProfileAgeing(const struct slide::Model_SPM &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose)
+void ProfileAgeing(const struct slide::Model_SPM<> &M, std::string pref, const struct DEG_ID &degid, int cellType, int verbose)
 {
   /*
    * Function to simulate a selection of drive cycle ageing experiments.

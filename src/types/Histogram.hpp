@@ -4,7 +4,7 @@
  * Histogram code to hold histogram data.
  *
  *  Created on: 14 Dec 2021
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once
@@ -31,7 +31,7 @@ class Histogram
 {
   std::vector<size_t> bins;
   Tdata x_min{}, x_max{}, dx{ 1 };
-  int Nbins;
+  int Nbins{};
 
 public:
   Histogram() = default;
@@ -55,6 +55,8 @@ public:
     i = std::max(0, std::min(i, ssize - 1)); // #TODO what happens if container is empty?
     bins[i]++;
   }
+
+  constexpr void push_back(Tdata x) noexcept { add(x); } // For compatability with vector
 
   std::span<const size_t> viewBinValues() const noexcept { return bins; }
 

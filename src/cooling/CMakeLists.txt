@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.21)
 add_library(cooling STATIC)
 
 target_sources(cooling
@@ -19,3 +19,4 @@ target_sources(cooling
   )
 
 target_include_directories(cooling PUBLIC .)
+target_link_libraries(cooling PRIVATE settings)

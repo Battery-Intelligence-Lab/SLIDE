@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.21)
 add_library(modules STATIC)
 
 target_sources(modules
@@ -13,4 +13,4 @@ target_sources(modules
   )
 
 target_include_directories(modules PUBLIC .)
-target_link_libraries(modules PRIVATE cooling eigen)
+target_link_libraries(modules PUBLIC cooling cells settings Eigen3::Eigen)

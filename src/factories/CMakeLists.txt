@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.21)
 add_library(factories STATIC)
 
 target_sources(factories
@@ -8,10 +8,12 @@ target_sources(factories
     makeBattery.hpp
   )
 
-target_include_directories(factories  PUBLIC .)
+target_include_directories(factories PUBLIC .)
 
 target_link_libraries(factories
 PRIVATE
   cells
   modules
+  procedures
+  settings
 )

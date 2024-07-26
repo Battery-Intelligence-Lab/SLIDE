@@ -7,11 +7,12 @@
 #include "Procedure.hpp"
 #include "procedure_util.hpp"
 #include "Cycler.hpp"
-#include "../cells/cells.hpp"
-#include "../modules/modules.hpp"
-#include "../system/Battery.hpp"
+#include "cells.hpp"
+#include "modules.hpp"
+#include "Battery.hpp"
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
+#include "../types/State.hpp"
 
 #include <cmath>
 #include <random>
@@ -111,11 +112,11 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
     if (testCV) {
       //!< reset in case error in CC and Ah gets not changed (without reset it would keep its old value)
       succ = cyc.CV(su->V(), Ilim, TIME_INF, dt, ndata, th); // #TODO su->V() because if an individual cell is not good then cannot use Vlim.
-      
+
       if (succ == Status::Vmin_violation)
         std::cout << "In CycleAge when CV discharging in cycle "
                   << i << " one of the cells reached minimum voltage. Stopping CV.\n";
-      else if (!isCurrentLimitReached(succ)) {                    //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
+      else if (!isCurrentLimitReached(succ)) { //!< #TODO -> if diagnostic on the individual cell limits are respected. Otherwise system level.
         std::cout << "Error in CycleAge when CV discharging in cycle " << i << ", stop cycling.\n";
         break;
       }
@@ -299,7 +300,7 @@ void Procedure::storeThroughput(ThroughputData th, StorageUnit *su)
     convloss = b->getAndResetConvLosses() / 3600.0;
   }
 
-  throughput.push_back({ th.Ah(), th.Wh(), coolSystemLoad, convloss });
+  throughput.insert(throughput.end(), { th.Ah(), th.Wh(), coolSystemLoad, convloss });
 }
 
 void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, double Ahtot, int nrCycle, std::string pref)
@@ -464,7 +465,7 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   //  open and clear whatever was there since we want to write the most recent stats only
 
   //!< do the main checkup, which writes the throughput, capacity and state of every cell
-  const size_t start = (typeid(*cells[0]) == typeid(Cell_SPM)) ? 2 * settings::nch : 0; // #TODO : Consider having different type of cells.
+  const size_t start = (typeid(*cells[0]) == typeid(Cell_SPM)) ? 2 * settings::nch : 0; // #TODO : Consider having different type of cells. #TODO expression with side effects will be evaluated despite being used as an operand to 'typeid' [-Wpotentially-evaluated-expression]
   //!< Write the throughput of each cell
 
   //!< If this is the first checkup, start by writing the cell IDs and cell-to-cell parameters
@@ -621,24 +622,15 @@ void Procedure::writeThroughput(const std::string &SUID, double Ahtot)
   //!< Open the file
   std::string name = SUID + "_throughput.csv";
   std::ofstream file;
-  if (Ahtot == 0) {
+
+  if (Ahtot == 0)
     file.open(PathVar::results / name); //!< open from scratch, clear whatever was in the file before
-    file << "ID number" << ',' << "cells charge throughput" << ','
-         << "Cells energy throughput" << ','
-         << "total energy to operate the thermal management system" << ','
-         << "losses in the converter" << '\n';
-  } else
+  else
     file.open(PathVar::results / name, std::ios_base::app); //!< append to the existing file
 
-  //!< Write the data
-  for (const auto &th : throughput)
-    file << th.charge << ',' << th.energy << ','
-         << th.coolSystemLoad << ',' << th.convloss << '\n';
+  throughput.to_csv(file, Ahtot == 0);
 
-  //!< close the file
-  file.close();
-
-  //!< erase the vectors
-  throughput.clear();
+  file.close();       //!< close the file
+  throughput.clear(); //!< clear the vector
 }
 } // namespace slide

@@ -6,7 +6,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 //!< Include header files
@@ -15,7 +15,12 @@
 #include "../examples/examples.hpp"
 
 #include <Eigen/Dense>
+#include <Eigen/LU>
+#include <range/v3/all.hpp>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
+#include <numbers>
 #include <ctime>
 #include <thread>
 #include <array>
@@ -23,6 +28,7 @@
 #include <random>
 #include <cmath>
 #include <iomanip>
+#include <complex>
 
 int main()
 {
@@ -31,6 +37,9 @@ int main()
    * In the code below, you have to uncomment the line which you want to execute (to uncomment, remove the //!<in front of the line)
    * and comment all the other lines in the blocks with FUNCTION CALLS (to comment in, add //!<in front of the lines)
    */
+
+  // estimateCharacterisation();
+
 
   //!< print that you start simulations
   //!< slide::tests::unit::test_all();
@@ -109,16 +118,16 @@ int main()
    * 							ref: Yang, Leng, Zhang, Ge, Wang, Journal of Power Sources 360, 2017
    */
   //!< For now, assume we want to include 'Pinson&Bazant'-SEI growth, 'Delacourt'-LAM, 'Kindermann'-LAM and 'Yang'-lithium plating
-  // slide::DEG_ID deg;
-  // deg.SEI_id.add_model(2); //!< Pinson & Bazant SEI growth
-  // deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
+  slide::DEG_ID deg;
+  deg.SEI_id.add_model(2); //!< Pinson & Bazant SEI growth
+  deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
 
-  // deg.CS_id.add_model(0); //!< no surface cracks
-  // deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+  deg.CS_id.add_model(0); //!< no surface cracks
+  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
 
-  // //!< there are 2 LAM models (Delacourt and Kindermann)
-  // deg.LAM_id.add_model(2); //!< Delacourt LAM
-  // deg.LAM_id.add_model(3); //!< Kindermann LAM
+  //!< there are 2 LAM models (Delacourt and Kindermann)
+  deg.LAM_id.add_model(2); //!< Delacourt LAM
+  deg.LAM_id.add_model(3); //!< Kindermann LAM
 
   // deg.pl_id = 1; //!< Yang lithium plating
 
@@ -135,58 +144,61 @@ int main()
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
   using namespace slide;
 
+  auto c = make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
+  auto &st = c->getStateObj();
 
-  // Faulty cell states: 
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  c->setCurrent(16);
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  c->timeStep_CC(1, 60);
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
 
-  State_SPM x{
-    -15.950544669620738,
-    4.0265871021272126,
-    288,
-    2.3601089020693992e-07,
-    8233.477205555042,
-    6.9874556761358278e-05,
-    7.2646733944036753e-05,
-    0.5,
-    0.1714825063416803,
-    176470.58823529413,
-    41155.801522012749,
-    0.054684000000000003,
-    8e-14,
-    7.0000000000000005e-14,
-    0,
-    -0.00071884481888485864,
-    0.0010179278144536172,
-    0.0016499601477618058,
-    0.4651064708295708,
-    0.0041711433999959326,
-    -0.009917198554945255,
-    0.0069262684015680758,
-    0.0039342668286108089,
-    0.083918490539113932,
-    0.0034129070925795761,
-    0.0027344910673888032,
-    0.0027344910673888032,
-    0.00022706041898853458,
-    0.52960584843957548,
-    5625524,
-    21243.270566294344,
-    79183.909378556258
-  };
+  Cycler cyc(c, "Cycler1");
+
+  ThroughputData th{};
+  cyc.CC(-16, 4.2, 3600, 1, 1, th);
+  std::cout << "\nAfter CC charge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+
+  auto status = cyc.CV(4.2, 10e-3, 7200, 0.1, 1, th);
+  std::cout << "\nAfter CV charge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  std::cout << getStatusMessage(status) << "\n";
+
+  cyc.CCCV(16, 2.7, 5e-3, 1, 1, th);
+  std::cout << "\nAfter CCCV discharge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+
+  cyc.writeData();
+  // // Cycler:
+
+  // Cycler cyc(c, "Cycler2");
+  // ThroughputData th{};
+  // cyc.CC(-16, 4.2, 3600, 1, 1, th);
+
+  // std::cout << "\nAfter CC charge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << "Ah: " << th.Ah() << " Wh: " << th.Wh() << " time: " << th.time() << '\n';
+
+  // auto status = cyc.CV(4.2, 10e-3, 7200, 1, 1, th);
+
+  // std::cout << "Why did CV stopped is: " << getStatusMessage(status) << '\n';
+  // std::cout << "\nAfter CV charge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << "Ah: " << th.Ah() << " Wh: " << th.Wh() << " time: " << th.time() << '\n';
 
 
+  // auto status2 = cyc.CCCV(16, 2.7, 5e-3, 0.5, 1, th);
+  // std::cout << "Why did CCCV stopped is: " << getStatusMessage(status2) << '\n';
+  // std::cout << "\nAfter CCCV discharge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << "Ah: " << th.Ah() << " Wh: " << th.Wh() << " time: " << th.time() << '\n';
 
-  auto spm = Cell_SPM();
+  // cyc.writeData();
 
-  spm.getStateObj() = x;
-
-  for(int i=0; i<100; i++)
-  {
-    auto V = spm.V();
-    spm.timeStep_CC(2,1);
-  }
 
   //!< Examples:
-  // slide::examples::drive_cycle_artemis();
+  //  slide::examples::drive_cycle_artemis();
   // slide::examples::GITT_test();
   //!< Benchmarks:
 
@@ -199,8 +211,8 @@ int main()
   // slide::benchmarks::run_LP_case_LargePack();
 
   // MATLAB ECM benchmarks:
-  slide::benchmarks::run_Cell_Bucket_single_default_pulse();
-  slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
+  // slide::benchmarks::run_Cell_Bucket_single_default_pulse();
+  // slide::benchmarks::run_Cell_Bucket_single_default_CCCV();
 
   // slide::benchmarks::run_Cell_ECM_single_default_pulse();
   // slide::benchmarks::run_Cell_ECM_single_default_CCCV();

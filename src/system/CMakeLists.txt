@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.21)
 add_library(system STATIC)
 
 target_sources(system
@@ -9,4 +9,4 @@ target_sources(system
   )
 
 target_include_directories(system PUBLIC .)
-target_link_libraries(system PRIVATE power_conversion)
+target_link_libraries(system PRIVATE power_conversion settings)

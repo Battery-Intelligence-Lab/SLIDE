@@ -16,13 +16,13 @@
   - [ ] There are classes with completely capital? Which one? 
   - [ ] SUNDIALS is pretty quick. 
   - [ ] Automated tests against PyBAMM 
-  - [ ] Catch2 library for testing. 
+  - [x] Catch2 library for testing. 
   - [ ] Snapshot testing. 
   - [ ] Template projects in OxRSE template-project-cpp
   - [ ] gui_starter_library Jason Turner. 
   - [ ] clang-tidy 
   - [ ] codecov. 
-  - [ ] Doxygen. 
+  - [x] Doxygen. 
   - [ ] CPack
 
 
@@ -35,10 +35,23 @@
 - [x] sp - sn question 
 - [x] cps - cns question: dOCV_neg and dOCV_tot are taking zp_surf as input due to our data. Very important. 
 - [ ] Should capacity check also contain a CV phase? 
+- [ ] Chebyshev discretisation only works for nch = 5. Need to see why.
 
 
 ### Current priority:
-
+- [ ] Module_data is deleted but look for it and bring it back.
+- [ ] State always holds cumulative variables. 
+- [ ] Fix INTERFACE library problem in C++. Cannot include <DataFrame.hpp> and others! 
+- [ ] DataFrame class is added for named columns.
+- [ ] Create Module_p_ApproxPI 
+- [ ] PTHREADS definition
+- [ ] inline namespaces for literals. 
+- [ ] Make Eigen-based calculations for Matrix-vector multiplications. 
+- [ ] Electrode-based calculations? 
+- [x] cmake_minimum_required(VERSION 3.17) -> 3.21
+- [x] CPM package manager is adopted. 
+- [ ] Renew matlab scripts to read results. 
+- [ ] Matio and parquet data types. 
 - [ ] In `test_specificDeg` in `Procedure_test.cpp` there is a weak cell.
 - [ ] What to do if one of the series cells reach maximum voltage? 
 - [ ] CCCV for ageing CV should be done with the remaining voltage. 
@@ -120,6 +133,7 @@
 - [ ] setSUs and assigning unique pointers then testing individually is very difficult. Clearly a design problem.
 - [ ] getNSUs may slow down time to time. 
 - [ ] std::vector<double> Iolds in Module_p.cpp
+- [ ] Use just one memory allocation, dynamically allocated memory space for Model_SPM. 
 
 
 ### From SLIDE v2: 

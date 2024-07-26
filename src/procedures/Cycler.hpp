@@ -8,13 +8,17 @@
 #pragma once
 
 #include "../StorageUnit.hpp"
-#include "../types/data_storage/cell_data.hpp"
+#include "../types/State.hpp"
 
 #include <string>
 #include <memory>
 #include <span>
 
 namespace slide {
+
+// Forward declarations:
+
+// -------------------
 class Cycler
 {
 private:

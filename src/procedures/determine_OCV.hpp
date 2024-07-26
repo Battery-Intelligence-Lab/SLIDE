@@ -5,7 +5,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  *
  *  Created on: 19 Dec 2019
  *  Author(s): Jorn Reniers, Volkan Kumtepeli
@@ -31,8 +31,6 @@ void discharge(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, doubl
 auto discharge_noexcept(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, double cap, const double AMp, const double AMn,
                         const double cmaxp, const double cmaxn, double sp, double sn, double Vend, slide::XYdata_vv &OCV,
                         slide::XYdata_vv &OCVanode, slide::XYdata_vv &OCVcathode, double fp[], double fn[]);
-
-double calculateError(bool bound, slide::XYdata_vv &OCVcell, slide::XYdata_vv &OCVsim);
 
 void estimateOCVparameters();
 

@@ -47,7 +47,7 @@ void Battery::setModule(Deep_ptr<Module> &&module)
   if (module->getCoolSystem() == nullptr) {
     std::cerr << "ERROR in Battery::setModule. Module " << module->getFullID() << " no coolsystem. Throwing 10.\n";
     throw 10;
-  } else if (typeid(*module->getCoolSystem()) == typeid(CoolSystem_HVAC)) {
+  } else if (typeid(*module->getCoolSystem()) == typeid(CoolSystem_HVAC)) { // #TODO expression with side effects will be evaluated despite being used as an operand to 'typeid' [-Wpotentially-evaluated-expression]
     std::cerr << "ERROR in Battery::setModule. Module " << module->getFullID()
               << " has an HVAC coolsystem so we cannot connect it to the battery. Throwing 10.\n";
     throw 10;
@@ -232,7 +232,7 @@ void Battery::storeData()
 //!< store local data
 #if DATASTORE_BATT == 2
   //!< add a new point in all the arrays
-  batData.push_back({ I(), V(), T(), conv->getLosses(V(), I()), timetot });
+  batData.insert(batData.end(), { I(), V(), T(), conv->getLosses(V(), I()), timetot });
 #endif
 }
 void Battery::writeData(const std::string &prefix)
@@ -255,16 +255,12 @@ void Battery::writeData(const std::string &prefix)
   file.open(name, std::ios_base::app);
 
   if (!file.is_open()) {
-    std::cerr << "ERROR in Cell::writeData, could not open file " << name << '\n';
+    std::cerr << "ERROR in Battery::writeData, could not open file " << name << '\n';
     throw 11;
   }
 
-  for (const auto &d : batData)
-    file << d.Timetot << ',' << d.Icells << ',' << d.Vcells
-         << ',' << d.Tbatt << ',' << d.convloss << '\n';
-
+  batData.to_csv(file);
   file.close();
-
   batData.clear(); //!< reset
 #endif
 }

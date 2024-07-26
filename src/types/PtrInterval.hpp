@@ -3,7 +3,7 @@
  * PtrInterval.hpp
  *
  *  Created on: 27 May 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+ *   Author(s): Volkan Kumtepeli, Jorn Reniers
  */
 
 #pragma once
@@ -13,7 +13,7 @@
 #include <span>
 #include <iterator>
 
-//#include <type_traits>
+// #include <type_traits>
 
 namespace slide {
 template <typename T>

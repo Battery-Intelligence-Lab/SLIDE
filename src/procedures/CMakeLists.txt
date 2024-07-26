@@ -5,10 +5,13 @@ target_sources(procedures
   Procedure.cpp
   Cycler.cpp
   determine_OCV.cpp
-  PUBLIC
+#  determine_characterisation.cpp
+  #-------------------------
   Procedure.hpp
   Cycler.hpp
   determine_OCV.hpp
+  determine_characterisation.hpp
 )
 
 target_include_directories(procedures PUBLIC .)
+target_link_libraries(procedures PUBLIC types cells modules system)

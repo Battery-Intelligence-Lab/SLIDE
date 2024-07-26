@@ -5,7 +5,7 @@
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENCE.txt for more information.
+ * See the licence file LICENSE for more information.
  */
 
 #include "Cell_SPM.hpp"
@@ -45,11 +45,11 @@ void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
 
   //!< Calculate the effect of the main li-reaction on the (transformed) concentration
   for (size_t j = 0; j < nch; j++)
-    d_st.zp(j) = (Dpt * M->Ap[j] * st.zp(j) + M->Bp[j] * jp); //!< dz/dt = D * A * z + B * j
+    d_st.zp(j) = (Dpt * M->Ap(j) * st.zp(j) + M->Bp(j) * jp); //!< dz/dt = D * A * z + B * j
 
   //!< loop for each row of the matrix-vector product A * z
   for (size_t j = 0; j < nch; j++)                            //!< A is diagonal, so the array M->A has only the diagonal elements
-    d_st.zn(j) = (Dnt * M->An[j] * st.zn(j) + M->Bn[j] * jn); //!< dz/dt = D * A * z + B * j
+    d_st.zn(j) = (Dnt * M->An(j) * st.zn(j) + M->Bn(j) * jn); //!< dz/dt = D * A * z + B * j
 
   d_st.SOC() += -I() / (Cap() * 3600); //!< dSOC state of charge
 }
@@ -199,7 +199,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
 
   //!< Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + isei/nF)
   for (size_t j = 0; j < nch; j++)
-    dznsei[j] = (M->Bn[j] * isei / (nsei * F));
+    dznsei[j] = (M->Bn(j) * isei / (nsei * F));
 
   //!< crack growth leading to additional exposed surface area
   double isei_multiplyer; //!< relative increase in isei due to additional SEI growth on the extra exposed surface area [-]
@@ -213,7 +213,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   //!< (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + isei/nF + isei_CS/nF)
   const double isei_CS = isei * isei_multiplyer; //!< extra SEI side reaction current density due to the crack surface area [A m-2]
   for (int j = 0; j < nch; j++)
-    dznsei_CS[j] = (M->Bn[j] * isei_CS / (nsei * F));
+    dznsei_CS[j] = (M->Bn(j) * isei_CS / (nsei * F));
 
   //!< loss of active material LAM
   double dthickp, dthickn, dap, dan, dep, den; //!< change in geometric parameters describing the amount of active material
@@ -226,7 +226,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
 
   //!< Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + ipl/nF)
   for (size_t j = 0; j < nch; j++)
-    dzn_pl[j] = (M->Bn[j] * ipl / (npl * F)); //!< #TODO (npl * F) division is unnecessary it is already multiple in the function.
+    dzn_pl[j] = (M->Bn(j) * ipl / (npl * F)); //!< #TODO (npl * F) division is unnecessary it is already multiple in the function.
 
   //!< output
   for (size_t j = 0; j < nch; j++)                           //!< dzp += 0 //!< dzp should be added from diffusion function

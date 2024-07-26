@@ -17,7 +17,7 @@
 #include <span>
 
 namespace slide {
-class State_SPM : public State<29> //!< #TODO how can we make this so it takes 29=N_states from enum?
+class State_SPM : public State<19 + 2 * settings::nch> //!< #TODO how can we make this so it takes 29=N_states from enum?
 {
 public:
   constexpr static auto nch = settings::nch;

@@ -4,25 +4,22 @@
 %
 % Copyright (c) 2019, The Chancellor, Masters and Scholars of the University 
 % of Oxford, VITO nv, and the 'Slide' Developers.
-% See the licence file LICENCE.txt for more information.
+% See the licence file LICENSE for more information.
 
-clc
-close all
-clear
-
+clear; clc; close all;
 %% input parameters
 
 % Adding required folder / subfolder on the MATLAB path
-addpath(genpath('MatlabSetup'));
+addpath(genpath('../matlab'));
 
 % Input parameters, must be the same as in the C++ model
-nch = 5;            % Number of positive inner chebyshev nodes. 
+nch = 10;           % Number of positive inner chebyshev nodes. 
 Rp = 8.5*10^(-6);   % radius of the positive particle
 Rn = 1.25*10^(-5);  % radius of the negative particle
   
 N = nch + 1;        % number of positive chebyshev points including the surface node
                     % but excluding the centre node (and the negative half)
-M = 2*N+1;         % total number of nodes, including the negative half and centre nodes
+M = 2*N+1;          % total number of nodes, including the negative half and centre nodes
 
 %% Get the location of the nodes
 xm = chebdif(M,0);
