@@ -5,7 +5,7 @@
  *   Author(s): Jorn Reniers
  */
 
-#include "../../src/slide.hpp"
+#include "slide.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>

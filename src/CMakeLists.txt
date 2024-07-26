@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.21)
 add_library(src STATIC
             paperCode.cpp)
 
+
+target_include_directories(src PUBLIC .)
+
 #add_definitions(-DSLIDE_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../")
 
 add_subdirectory(types)
