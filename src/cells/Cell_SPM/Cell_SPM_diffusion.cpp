@@ -50,8 +50,8 @@ std::pair<double, double> Cell_SPM::calcOverPotential(double cps, double cns, do
   const double kpt = kp * std::exp(kp_T * ArrheniusCoeff); //!< Rate constant at the positive electrode at the cell's temperature [m s-1]
   const double knt = kn * std::exp(kn_T * ArrheniusCoeff); //!< Rate constant at the negative electrode at the cell's temperature [m s-1]
 
-  //!< Calculate the overpotential using the Bulter-Volmer equation
-  //!< if alpha is 0.5, the Bulter-Volmer relation can be inverted to eta = 2RT / (nF) asinh(x)
+  //!< Calculate the overpotential using the Butler-Volmer equation
+  //!< if alpha is 0.5, the Butler-Volmer relation can be inverted to eta = 2RT / (nF) asinh(x)
   //!< and asinh(x) = ln(x + sqrt(1+x^2) -> to asinh(x) function.
   const double i0p = kpt * n * F * std::sqrt(C_elec * cps * (Cmaxpos - cps)); //!< exchange current density of the positive electrode
   const double i0n = knt * n * F * std::sqrt(C_elec * cns * (Cmaxneg - cns)); //!< exchange current density of the negative electrode
