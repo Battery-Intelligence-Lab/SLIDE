@@ -204,6 +204,7 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
   return StatusNow; // #TODO add some voltage/current etc. Also return max iter condition!!!!
 }
 
+// NİLSU
 Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 {
   /*

@@ -25,10 +25,10 @@ public:
     : Module(ID_, Ti, print, pari, Ncells_, coolControl, cooltype) {}
 
   //!< the voltage limits are the most constraining limits of all cells ie the highest Vmin of SUs is the Vmin of the module
-  double Vmin() const override { return transform_max(SUs, free::get_Vmin<SU_t>); }
-  double VMIN() const override { return transform_max(SUs, free::get_VMIN<SU_t>); }
-  double Vmax() const override { return transform_min(SUs, free::get_Vmax<SU_t>); }
-  double VMAX() const override { return transform_min(SUs, free::get_VMAX<SU_t>); }
+  double Vmin() const override { return transform_max(SUs, free::get_Vmin<SU_t>); } // soft limit
+  double VMIN() const override { return transform_max(SUs, free::get_VMIN<SU_t>); } // hard limit
+  double Vmax() const override { return transform_min(SUs, free::get_Vmax<SU_t>); } // soft limit
+  double VMAX() const override { return transform_min(SUs, free::get_VMAX<SU_t>); } // hard limit: to stop the simulation completely
 
   double I() const override { return transform_sum(SUs, free::get_I<SU_t>); }     //!< the current is the sum  of the current of each cell. Returns 0 if empty.
   double Cap() const override { return transform_sum(SUs, free::get_Cap<SU_t>); } //!< module capacity (sum of cells)
