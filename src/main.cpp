@@ -144,7 +144,9 @@ int main()
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
   using namespace slide;
 
-  auto c = make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
+  auto test = Cell_ECM<1>("myCell", 30, 0.5, 0.001, std::array<double, 1>{ 0.001 }, std::array<double, 1>{ 1 }); // make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
+
+  auto c = &test;
   auto &st = c->getStateObj();
 
   std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
@@ -156,16 +158,17 @@ int main()
   Cycler cyc(c, "Cycler1");
 
   ThroughputData th{};
-  cyc.CC(-16, 4.2, 3600, 1, 1, th);
+  double dt = 0.01;
+  cyc.CC(-16, 4.2, 3600, dt, 1, th);
   std::cout << "\nAfter CC charge:\n";
   std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
 
-  auto status = cyc.CV(4.2, 10e-3, 7200, 0.1, 1, th);
+  auto status = cyc.CV(c->Vmax(), 10e-3, 7200, dt, 1, th);
   std::cout << "\nAfter CV charge:\n";
   std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
   std::cout << getStatusMessage(status) << "\n";
 
-  cyc.CCCV(16, 2.7, 5e-3, 1, 1, th);
+  cyc.CCCV(16, c->Vmin(), 5e-3, dt, 1, th);
   std::cout << "\nAfter CCCV discharge:\n";
   std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
 

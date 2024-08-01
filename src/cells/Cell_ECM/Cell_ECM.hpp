@@ -34,7 +34,7 @@ protected:
 
   std::array<double, N_RC> Rp{}, inv_tau{}; // inv_tau = 1/(RC). All initialised zero.
   // double Rp{ 15.8e-3 }, Cp{ 38e3 }; //!< parallel resistance and capacitance
-  XYdata_ff OCV;      //!< SOC vs voltage curve.
+  XYdata_vv OCV;      //!< SOC vs voltage curve.
   double Rdc{ 2e-3 }; //!< DC resistance [Ohm]
 
 public:
@@ -101,8 +101,8 @@ inline Cell_ECM<N_RC>::Cell_ECM()
   ID = "Cell_ECM_" + std::to_string(N_RC) + "_";
   capNom = 16;
   /// OCV curve, dummy linear curve with 3 points from 2.0V to 4.4V
-  OCV.x = slide::linspace_fix(0.0, 1.0, 3);
-  OCV.y = slide::linspace_fix(VMIN(), VMAX(), 3);
+  OCV.x = { -0.1, 0.0, 1.0, 1.1 };
+  OCV.y = { VMIN(), Vmin(), Vmax(), VMAX() };
 
   if constexpr (N_RC >= 1) {
     constexpr double Cp0 = 38e3; // first parallel capacitance

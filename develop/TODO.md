@@ -39,6 +39,7 @@
 
 
 ### Current priority:
+- [ ] In Cell_ECM model, time step should be less than the smallest tau, otherwise it will oscillate. 
 - [ ] Module_data is deleted but look for it and bring it back.
 - [ ] State always holds cumulative variables. 
 - [ ] Fix INTERFACE library problem in C++. Cannot include <DataFrame.hpp> and others! 

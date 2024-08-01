@@ -9,6 +9,7 @@
 
 #include "../settings/settings.hpp"
 #include "../utility/utility.hpp"
+#include "../cells/cells.hpp"
 
 #include <Eigen/Dense>
 
@@ -337,6 +338,7 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   if constexpr (settings::printNumIterations)
     if (iter > 5) std::cout << "setCurrent iterations: " << iter << std::endl;
+
 
   // #TODO set old currents back here!
   return StatusNow;
