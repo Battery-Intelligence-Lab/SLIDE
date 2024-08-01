@@ -206,7 +206,7 @@ int main()
   //!< Benchmarks:
 
   // slide::benchmarks::run_Cell_Bucket();
-  // slide::benchmarks::run_Cell_ECM();
+  slide::benchmarks::run_Cell_ECM();
   // slide::benchmarks::run_Cell_SPM_1(1);
   // slide::benchmarks::run_Cell_SPM_2(1);
   // slide::benchmarks::run_LP_case_SmallPack();
@@ -223,7 +223,7 @@ int main()
   // slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
   // slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
 
-  // slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
+  slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
 
   // slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
 

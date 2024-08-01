@@ -123,7 +123,7 @@ inline void run_Cell_ECM_parallel_3_default_pulse()
   };
 
   auto module = Module_p("Par3", T_ENV, true, false, std::size(cs), 1, 1);
-  module.setSUs(cs, false);
+  module.setSUs(cs, false); // set storage unit
 
   module.setBlockDegAndTherm(true);
 
