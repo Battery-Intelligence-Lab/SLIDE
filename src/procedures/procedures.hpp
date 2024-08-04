@@ -1,11 +1,10 @@
-/*
- * procedures.hpp
- *
- * to include available procedure headers.
- *
- *  Created on: 20 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+
+/**
+ * @file procedures.hpp
+ * @brief include available procedure headers.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 20 Jun 2022
  */
 
 #pragma once

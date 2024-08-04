@@ -1,8 +1,9 @@
-/*
- * Module_base.cpp
- *
- *  Created on: 29 Nov 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Module.cpp
+ * @brief Module base class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 29 Nov 2019
  */
 
 #include "Module.hpp"

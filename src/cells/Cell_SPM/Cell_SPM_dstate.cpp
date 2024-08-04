@@ -164,8 +164,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   auto [cps, cns] = calcSurfaceConcentration(jp, jn, Dpt, Dnt);
 
   //!< check if the surface concentration is within the allowed range
-  //!< 	0 < cp < Cmaxpos
-  //!< 	0 < cn < Cmaxneg
+  //!< 	0 < cp (cn) < Cmaxpos (Cmaxneg)
   if (cps <= 0 || cns <= 0 || cps >= Cmaxpos || cns >= Cmaxneg) //!< Do not delete if you cannot ensure zp/zn between 0-1
   {
     if (print) {

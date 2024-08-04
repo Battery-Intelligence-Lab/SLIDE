@@ -1,14 +1,14 @@
-/*
- * determineOCV.hpp
- *
- * Header file for the functions used to find the parameters which will match a measured OCV curve of a cell
+/**
+ * @file determineOCV.hpp
+ * @brief Header file for the functions used to find the parameters which will match a measured OCV curve of a cell
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 19 Dec 2019
+ * @details
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
  * See the licence file LICENSE for more information.
- *
- *  Created on: 19 Dec 2019
- *  Author(s): Jorn Reniers, Volkan Kumtepeli
  */
 
 #pragma once

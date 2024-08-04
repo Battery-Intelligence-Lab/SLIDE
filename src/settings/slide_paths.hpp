@@ -1,13 +1,8 @@
-/*
- * slide_paths.hpp
- *
- * Author : Volkan Kumtepeli
- *
- * Defines constants to be used in the program.
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file slide_paths.hpp
+ * @brief Defines paths to be used in the program.
+ * @author Volkan Kumtepeli
+ * @date 3 Mar 2020
  */
 
 #pragma once

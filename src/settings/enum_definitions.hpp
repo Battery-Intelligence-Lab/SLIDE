@@ -1,8 +1,9 @@
-/*
- * enum_definitions.hpp
- *
- *  Created on: 10 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file enum_definitions.hpp
+ * @brief Defines enums for different settings.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 10 Apr 2022
  */
 
 #pragma once

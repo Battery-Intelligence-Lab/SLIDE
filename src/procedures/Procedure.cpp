@@ -1,9 +1,11 @@
-/*
- * Procedure.cpp
- *
- * Created on: 3 Mar 2020
- *  Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Procedure.hpp
+ * @brief Procedure class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 3 Mar 2020
  */
+
 #include "Procedure.hpp"
 #include "procedure_util.hpp"
 #include "Cycler.hpp"

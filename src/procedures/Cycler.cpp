@@ -1,3 +1,10 @@
+/**
+ * @file Cycler.cpp
+ * @brief Cycler class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 19 Dec 2019
+ */
 /*
  * Cycler.cpp
  *

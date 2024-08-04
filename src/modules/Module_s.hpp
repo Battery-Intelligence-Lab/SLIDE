@@ -1,10 +1,9 @@
-/*
- * Module_base_s.hpp
- *
- * series-connected base Module
- *
- *  Created on: 9 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Module_s.hpp
+ * @brief series-connected Module
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 9 Dec 2019
  */
 
 #pragma once

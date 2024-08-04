@@ -1,7 +1,10 @@
-/*
- * determine_characterisation.cpp
- *
- * The functions below can be used to fit the 'rate parameters' or 'characterisation parameters' of a cell at one temperature (currently 25 degrees):
+/**
+ * @file determine_characterisation.cpp
+ * @brief Header file for the functions used to find the parameters which will match measured CCCV cycles.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2019
+ * @details The functions below can be used to fit the 'rate parameters' or 'characterisation parameters' of a cell at one temperature (currently 25 degrees):
  * 		diffusion constants (Dp and Dn)
  * 		rate constants of the main li-insertion reaction (kp and kn)
  * 		DC resistance of the cell (r)
