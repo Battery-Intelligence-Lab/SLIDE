@@ -1,8 +1,9 @@
-/*
- * OCV_curves.hpp
- *
- *  Created on: 27 Jun 2022
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file OCV_curves.hpp
+ * @brief Example estimation functions.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 27 Jun 2022
  */
 
 #pragma once

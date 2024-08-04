@@ -1,8 +1,8 @@
-/*
- * FixedData.hpp
- *
- *  Created on: 07 Feb 2022
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file FixedData.hpp
+ * @brief Class to hold fixed data.
+ * @author Volkan Kumtepeli
+ * @date 07 Feb 2022
  */
 
 #pragma once

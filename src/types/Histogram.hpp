@@ -1,10 +1,9 @@
-/*
- * Histogram.hpp
- *
- * Histogram code to hold histogram data.
- *
- *  Created on: 14 Dec 2021
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file Histogram.hpp
+ * @brief Histogram code to hold histogram data.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 14 Dec 2021
  */
 
 #pragma once

@@ -1,10 +1,9 @@
-/*
- * State.hpp
- *
- * Generic State class to hold time, Ah, Wh.
- *
- *  Created on: 02 Sep 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file State.hpp
+ * @brief Generic State class to hold time, Ah, Wh.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 02 Sep 2022
  */
 
 #pragma once

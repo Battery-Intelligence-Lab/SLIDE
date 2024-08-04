@@ -1,12 +1,10 @@
-/*
- * timing.hpp
- *
- * Some utility functions for timing.
-
- *  Created on: 16 Oct 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file timing.hpp
+ * @brief Some utility functions for timing.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 16 Oct 2022
  */
-
 
 #pragma once
 
@@ -14,7 +12,6 @@
 #include <iostream>
 #include <cmath>
 #include <chrono>
-
 
 namespace slide {
 struct Clock

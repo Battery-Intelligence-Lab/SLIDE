@@ -1,8 +1,9 @@
-/*
- * Cell_ECM.hpp
- *
- *  Created on: 17 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Cell_ECM.hpp
+ * @brief ECM cell.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 17 Dec 2019
  */
 
 #pragma once

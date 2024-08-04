@@ -1,10 +1,8 @@
-/*
- * estimation.hpp
- *
- * Example estimation functions;
- *
- * Created on: 09 Nov 2022
- * Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file estimation.hpp
+ * @brief Example estimation functions.
+ * @author Volkan Kumtepeli
+ * @date 09 Nov 2022
  */
 
 #pragma once

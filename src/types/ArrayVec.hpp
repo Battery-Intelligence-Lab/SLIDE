@@ -1,10 +1,8 @@
-/*
- * ArrayVec.hpp
- *
- *  A small class to store variable size arrays
- *  Created on: 05 Apr 2022
- *  //!< not working yet.
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file ArrayVec.hpp
+ * @brief A small class to store variable size arrays. Not working yet.
+ * @author Volkan Kumtepeli
+ * @date 05 Apr 2022
  */
 
 #pragma once

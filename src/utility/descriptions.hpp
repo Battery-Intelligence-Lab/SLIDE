@@ -1,10 +1,9 @@
-/*
- * get description of variables.cpp
- *
- * Free functions to help to write everything shorter.
- *
- * Created on: 05 Apr 2022
- *  Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file descriptions.hpp
+ * @brief get description of variables
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 05 Apr 2022
  */
 
 #pragma once

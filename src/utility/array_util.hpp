@@ -1,12 +1,9 @@
-/*
- * array_util.cpp
- *
- * Array operations to make summing/subtracting arrays easier.
- *
- * Created on: 04 Jan 2023
- *  Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file array_util.hpp
+ * @brief Array operations to make summing/subtracting arrays easier.
+ * @author Volkan Kumtepeli, Jorn Reniers
+ * @date 04 Jan 2023
  */
-
 
 #pragma once
 

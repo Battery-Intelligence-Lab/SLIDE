@@ -1,9 +1,8 @@
-/*
- * units.hpp
- *
- * Definition of different units
- *  Created on: 30 Jun 2022
- *   Author(s): Volkan Kumtepeli
+/**
+ * @file units.hpp
+ * @brief Definition of different units.
+ * @author Volkan Kumtepeli
+ * @date 30 Jun 2022
  */
 
 #pragma once
@@ -32,8 +31,8 @@ inline namespace literals {
   constexpr inline double C_to_Kelvin(auto Celsius) { return static_cast<double>(PhyConst::Kelvin + Celsius); } // #TODO check if it better to have auto or double
   constexpr inline double K_to_Celsius(auto Kelvin) { return static_cast<double>(Kelvin - PhyConst::Kelvin); }
 
-  constexpr inline double operator""_degC(long double d) { return C_to_Kelvin(d); }             //!< degrees Celsius
-  constexpr inline double operator""_K(long double d) { return static_cast<double>(d); }        //!< Kelvins
+  constexpr inline double operator""_degC(long double d) { return C_to_Kelvin(d); }      //!< degrees Celsius
+  constexpr inline double operator""_K(long double d) { return static_cast<double>(d); } //!< Kelvins
 
   constexpr inline double operator""_degC(unsigned long long d) { return C_to_Kelvin(d); }      //!< degrees Celsius
   constexpr inline double operator""_K(unsigned long long d) { return static_cast<double>(d); } //!< Kelvins

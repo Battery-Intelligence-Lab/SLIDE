@@ -1,4 +1,9 @@
-
+/**
+ * @file SmallVector.hpp
+ * @brief Small vector class.
+ * @author Volkan Kumtepeli
+ * @date 08 Aug 2022
+ */
 
 #pragma once
 

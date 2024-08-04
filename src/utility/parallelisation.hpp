@@ -1,12 +1,10 @@
-/*
- * parallelisation.hpp
- *
- * Some utility functions for parallelisation.
-
- *  Created on: 16 Oct 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file parallelisation.hpp
+ * @brief Some utility functions for parallelisation.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 16 Oct 2022
  */
-
 
 #pragma once
 

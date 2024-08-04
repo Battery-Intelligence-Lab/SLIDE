@@ -1,10 +1,8 @@
-/*
- * DataFrame.hpp
- *
- * Basic data frame class to keep named data.
- *
- *  Created on: 02 Sep 2023
- *   Author(s): Volkan Kumtepeli
+/**
+ * @file DataFrame.hpp
+ * @brief Basic data frame class to keep named data.
+ * @author Volkan Kumtepeli
+ * @date 02 Sep 2023
  */
 
 #pragma once
