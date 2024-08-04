@@ -1,3 +1,11 @@
+/**
+ * @file ReadCSVfiles.hpp
+ * @brief functions for reading csv files into arrays and matrices.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 09 Nov 2022
+ */
+
 /*
  * ReadCSVfiles.hpp
  *
@@ -9,6 +17,8 @@
  */
 
 #pragma once
+
+#include "io_util.hpp"
 
 #include "../../types/matrix.hpp"
 #include "../util_debug.hpp"
@@ -23,7 +33,7 @@
 #include <span>
 #include <cstring> //!< -> for memcpy
 
-namespace slide {
+namespace slide::io {
 template <typename Tpath>
 std::string getFileContents(const Tpath &name)
 {
@@ -97,17 +107,6 @@ void loadCSV_1col(const Tpath &name, std::array<T, ROW> &x)
   slide::Matrix<T, ROW, 1> temp;
   loadCSV_mat(name, temp);
   std::memcpy(&x, &temp, sizeof temp);
-}
-
-inline void ignoreBOM(std::ifstream &in)
-{
-  char c = '.';
-
-  do {
-    in >> c;
-  } while (c < 45); //!< Ignore byte order mark (BOM) at the beginning
-
-  in.putback(c);
 }
 
 template <typename Tpath, typename Tx, typename Ty>
