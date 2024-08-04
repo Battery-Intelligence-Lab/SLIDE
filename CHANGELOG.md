@@ -40,6 +40,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * `getIndex` is removed
 * remainder for integers are eliminated. 
 * `i` in Cycler::rest is removed. 
+* `M_PI` constant defined. 
 
 ### slide_pack changes: 
 * `(verbose_gl > v_noncrit_gl)`  ->  `(settings::verbose >= printLevel::printNonCrit)`
@@ -60,6 +61,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * Most functions now use smart pointers. 
 * Template / auto parameter deduction is used. 
 * `Cell_Bucket` class is removed now `Cell_ECM` class with `0` RC pairs can be used as `Cell_Bucket`.
+* Units such as `degC` are added so you can write `25.0_degC` instead of `Kelvin + 25.0`.
 
 ## Dependencies
 * `Eigen` library is added for matrix operations. 

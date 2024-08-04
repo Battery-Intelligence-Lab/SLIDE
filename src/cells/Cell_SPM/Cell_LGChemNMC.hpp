@@ -69,8 +69,8 @@ inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
   //               //!< now changing the current takes 0.01 second per A
 
   //!< thermal parameters
-  T_ref = PhyConst::Kelvin + 25;
-  T_env = PhyConst::Kelvin + 25;
+  T_ref = 25.0_degC;
+  T_env = 25.0_degC;
   Qch = 40; //!< 40 is representative for a cell on a shelf without forced cooling
   rho = 1626;
   Cp = 750;

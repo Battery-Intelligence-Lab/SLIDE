@@ -29,7 +29,6 @@ void Converter::setPower(double Pn)
 
 double Converter::getLosses(double Vin, double Iin)
 {
-  using PhyConst::pi;
   /*
    * function to calculate the losses of the converter [W]
    * Note that even as the input power goes to 0, the losses won't go below 1.5 kW due to the switching losses and losses on the DC bar and in the filter
@@ -112,14 +111,14 @@ double Converter::getLosses(double Vin, double Iin)
   //!< double Iac = Idc * Vdc / Vac;		 //!< current on the AC side (ignoring losses)
 
   //!< filter
-  constexpr double R = 13.6e-3;                              //!< Value from Schimpe (for resistance of grid interface)
-  constexpr double Cdc = 3e-3;                               //!< DC link capacitance
-  constexpr double dV = 1;                                   //!< DC ripple voltage, wild guess since I can't find a value #TODO if is correct?
-  constexpr double Rg = 13.6e-3;                             //!< value from Schimpe (resistance to grid)
-  constexpr double Ri = 13.6e-3;                             //!< value from Schimpe (resistance to inverter)
-  constexpr double FIL_cdc = R * sqr(2 * pi * f * Cdc * dV); //!< losses in capacitor on DC bus
-  const double FIL_lg = 3 * Rg * sqr(Idc);                   //!< losses in L at the output of the inverter
-  const double FIL_lb = Ri * sqr(Iin);                       //!< losses in L at the input of the rectifier
+  constexpr double R = 13.6e-3;                                //!< Value from Schimpe (for resistance of grid interface)
+  constexpr double Cdc = 3e-3;                                 //!< DC link capacitance
+  constexpr double dV = 1;                                     //!< DC ripple voltage, wild guess since I can't find a value #TODO if is correct?
+  constexpr double Rg = 13.6e-3;                               //!< value from Schimpe (resistance to grid)
+  constexpr double Ri = 13.6e-3;                               //!< value from Schimpe (resistance to inverter)
+  constexpr double FIL_cdc = R * sqr(2 * M_PI * f * Cdc * dV); //!< losses in capacitor on DC bus
+  const double FIL_lg = 3 * Rg * sqr(Idc);                     //!< losses in L at the output of the inverter
+  const double FIL_lb = Ri * sqr(Iin);                         //!< losses in L at the input of the rectifier
 
   //!< total losses
   DC_cond = std::abs(DC_cond); //!< ensure all have same sign (some I^2, others I so if I < 0 they would have opposite sign)

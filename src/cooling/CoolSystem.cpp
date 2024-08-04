@@ -67,12 +67,12 @@ CoolSystem::CoolSystem()
 
   flowrate = settings::cool::flowrate_perCell * n_modules; //!< #TODO Why multiply with Module NSUs_MAX;
   fluid_V = V_perCell * n_modules;
-  control_strategy = 1;                      //!< #TODO -> magic number to enum.
-  control_onoff_Ton = PhyConst::Kelvin + 35; //!< on/off control: go on at 35 degrees
+  control_strategy = 1;          //!< #TODO -> magic number to enum.
+  control_onoff_Ton = 35.0_degC; //!< on/off control: go on at 35 degrees
   const auto t1 = settings::T_ENV + 5;
   control_onoff_Toff = std::max(25.0_degC, t1); //!< on/off control: go off at 25 degrees, or 5 degrees above environmental temperature
   control_onoff_flr = flowrate;
-  control_prop_T = PhyConst::Kelvin + 25;
+  control_prop_T = 25.0_degC;
   control_prop_gain = 1.0 / (control_onoff_Ton - control_prop_T); //!< 1 at the T where the on/off control would go on
 
   //!< Data storage
@@ -111,7 +111,7 @@ void CoolSystem::setT(double Tnew)
 {
 
   //!< Check the new temperature is valid
-  if (Tnew < PhyConst::Kelvin || Tnew > PhyConst::Kelvin + 75.0 || std::isnan(Tnew)) {
+  if (Tnew < PhyConst::Kelvin || Tnew > 75.0_degC || std::isnan(Tnew)) {
     if constexpr (settings::printBool::printCrit)
       std::cerr << "ERROR in CoolSystem::setT, the new temperature of "
                 << Tnew << " is outside the allowed range from (273+0) K to (273+75) K.\n";

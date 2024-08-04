@@ -526,7 +526,7 @@ void estimateCharacterisation()
   //!< *********************************************************** 1 USER INPUT ***********************************************************************
 
   //!< Specify the characterisation tests for which data is available
-  double Tref = PhyConst::Kelvin + 25; //!< Temperature at which the characterisation should be done [K]
+  double Tref = 25_degC; //!< Temperature at which the characterisation should be done [K]
 
   std::string names[] = { "Characterisation_0.2C_CC_discharge.csv",
                           "Characterisation_0.5C_CC_discharge.csv",
@@ -602,7 +602,7 @@ void estimateCharacterisation()
 
   for (size_t i = 0; i < nCCCV; i++) { //!< loop to read the voltage profile of each cycle
 
-    slide::loadCSV_2col(PathVar::data / names[i], Vdata_all[i].x, Vdata_all[i].y); //!< read the csv file with the voltage profile
+    slide::io::loadCSV_2col(PathVar::data / names[i], Vdata_all[i].x, Vdata_all[i].y); //!< read the csv file with the voltage profile
 
     //!< check the data is in the correct format
     const bool val = validOCV(checkRange, Vdata_all[i]); //!< boolean indicating if the data is in the correct format
