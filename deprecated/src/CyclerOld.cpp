@@ -690,7 +690,7 @@ void CyclerOld::checkUp_pulse(bool blockDegradation, const std::string &profileN
   try {
     if constexpr (printBool::printCyclerHighLevel)
       std::cout << "CyclerOld::checkUp_pulse is reading the current profile.\n";
-    slide::loadCSV_2col(PathVar::data / profileName, I, T); //!< read the file
+    slide::io::loadCSV_2col(PathVar::data / profileName, I, T); //!< read the file
   } catch (int e) {
     //!< std::cout << "Throw test: " << 54 << '\n';
     if constexpr (printBool::printCrit)
@@ -1045,8 +1045,8 @@ void CyclerOld::cycleAgeing(double dt, double Vma, double Vmi, double Ccha, bool
 
       final = false; //!< skip the final check-up
       break;         //!< stop cycling
-    }                //!< end try-catch block
-  }                  //!< end loop to cycle the cell
+    } //!< end try-catch block
+  } //!< end loop to cycle the cell
 
   //!<*********************************************************** 4 final check-up ***********************************************************************
 
@@ -1341,7 +1341,7 @@ void CyclerOld::profileAgeing(const std::string &nameI, int limit, double Vma, d
 
   static thread_local std::vector<double> I(length), T(length); //!< arrays to store the current profile as doubles
   try {
-    slide::loadCSV_2col(PathVar::data / nameI, I, T); //!< read the file
+    slide::io::loadCSV_2col(PathVar::data / nameI, I, T); //!< read the file
   } catch (int e) {
     //!< std::cout << "Throw test: " << 67 << '\n';
     std::cout << "error in CyclerOld::profileAgeing when reading the file with the current profile called "

@@ -1,10 +1,8 @@
-/*
- * drive_cycles.hpp
- *
- *  Example drive cycle applications
- *
- *  Created on: 02 Nov 2022
- *   Author(s): Volkan Kumtepeli
+/**
+ * @file drive_cycles.cpp
+ * @brief Example drive cycle applications.
+ * @author Volkan Kumtepeli
+ * @date 02 Nov 2022
  */
 
 #pragma once
@@ -247,7 +245,7 @@ inline void drive_cycle_artemis()
   }
 
   DynamicMatrix<double> profile;
-  loadCSV_Ncol(PathVar::data / profile_path, profile);
+  io::loadCSV_Ncol(PathVar::data / profile_path, profile);
 
   // Set the characterisation parameters of the cell to the ones given as input to this function
   auto experiment = [&](std::string name) {
