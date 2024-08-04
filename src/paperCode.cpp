@@ -1,12 +1,15 @@
-/*
- * paperCode.cpp
- *
- * Created on: 9 Jul 2020
- *  Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file paperCode.cpp
+ * @brief Code to create the system in the Digital twin paper.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 9 Jul 2020
+ * @details Reniers, Jorn M., and David A. Howey. "Digital twin of a MWh-scale grid battery system for efficiency and degradation analysis."
+ * Applied Energy 336 (2023): 120774.
+ * @link https://doi.org/10.1016/j.apenergy.2023.120774
  */
 
 #include "slide.hpp"
-#include "paperCode.hpp"
 
 #include <cmath>
 #include <random>
@@ -14,7 +17,8 @@
 #include <iostream>
 #include <fstream>
 
-namespace slide::paperCode::paper2022 {
+using namespace slide;
+
 void Vequalisation_Rdc(double Rdc)
 {
   /*
@@ -374,4 +378,16 @@ void degradation_thermal()
   auto su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
   degrade(*su);
 }
-} // namespace slide::paperCode::paper2022
+
+int main()
+{
+  // Here are the different functions to run to generate
+  // the results in the Digital twin paper. You can uncomment the
+  // relevant function accordingly.
+
+  // Vequalisation();
+  // thermalModel();
+  // degradation_1cell();
+  // degradation_variations();
+  // degradation_thermal();
+}
