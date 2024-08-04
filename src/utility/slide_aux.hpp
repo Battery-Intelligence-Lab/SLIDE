@@ -1,15 +1,9 @@
-/*
- * slide_aux.hpp
- *
- * Auxillary classes and functions. So the code is less verbose.
- *
- * A cycler implements check-up procedures and degradation procedures.
- * The data from the check-up procedures is written in csv files in the same subfolder as where the cycling data of a cell is written (see BasicCycler.cpp).
- * There is one file per 'type' of check-up (capacity measurement, OCV measurement, CCCV cycles and a pulse discharge).
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file slide_aux.hpp
+ * @brief Auxillary classes and functions. So the code is less verbose.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 8 Aug 2022
  */
 
 #pragma once
@@ -26,23 +20,23 @@
 #include <functional>
 #include <cmath>
 #include <filesystem>
+#include <algorithm>
 
 namespace slide {
-template <typename StoredClass, int N>
-struct DataStore
-{
-  //!< Will be filled in future.
-};
 
 template <int N, typename T> //!< Takes vector or array:
 double norm_sq(const T &x)
 {
   if constexpr (N < -1)
-    throw 12345;
-  else if (N == -1)
-    throw 12344; //!< Infinite norm
-  else if (N == 0)
-    throw 333456; //!< 0 norm
+    throw "N cannot be less than -1";
+  else if (N == -1) //!< Infinite norm
+    return *std::max_element(x.begin(), x.end(), [](auto a, auto b) {
+      return std::abs(a) < std::abs(b);
+    });
+  else if (N == 0) //!< 0 norm
+    return std::count_if(x.begin(), x.end(), [](auto a) {
+      return std::abs(a) > 1e-15;
+    });
   else {
     double sum = 0;
     for (const auto &x_i : x)
@@ -50,7 +44,6 @@ double norm_sq(const T &x)
 
     return sum;
   }
-  throw 345789; //!< This should not happen.
 }
 
 template <int N, typename T> //!< Takes vector or array:
