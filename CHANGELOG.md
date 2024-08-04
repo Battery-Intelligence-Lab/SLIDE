@@ -7,13 +7,22 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 <br/><br/>
 # SLIDE v3.0.0 (aka slide-pack)
 
-## New features
+## New features and important updates
+* Chebyshev discretisation is moved from MATLAB to C++ code. 
+* Unit testing is added in continuous development cycle. 
 
 
 ### Battery pack simulation support is added
 * SLIDE is merged with slide-pack. Now, SLIDE is now now capable of simulation large battery packs.
 
+### Performance updates
+* `slide::Model_SPM` -> `slide::Model_SPM*`  and `makeModel()` speeded up the performance from 34 seconds to 12 seconds. 18900x326 double = 47 MB RAM is also saved.
+* Removed file reading when individually creating cells! 30 seconds speed-up for creating EPFL system.
+
 ### Other updates
+* `getDaiStress` is simplified by removing unnecessary R multiplication and division. 
+* More Doxygen comments are added. 
+* `paperCode.hpp` is deleted. `paperCode.cpp` is made an executable.
 * Different battery cell types: Cell_Bucket, Cell_ECM and Cell_PbA are added. 
 * [CHANGELOG.md](https://github.com/davidhowey/SLIDE/blob/master/CHANGELOG.md) is added. 
 * `*.CMake` files are added for a better build. 
@@ -27,23 +36,44 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * `NULL` -> `nullptr`
 * `shared_ptr` classes are turned to `unique_ptr`. Copying `shared_ptr` is eliminated. 
 * print arguments for some functions are removed (e.g., `V(bool print), getOCV(bool print)`)
+* `cube` and `sqr` functions added for utility. 
+* `getIndex` is removed
+* remainder for integers are eliminated. 
+* `i` in Cycler::rest is removed. 
 
+### slide_pack changes: 
+* `(verbose_gl > v_noncrit_gl)`  ->  `(settings::verbose >= printLevel::printNonCrit)`
+* `(verbose_gl >= v_crit_gl)`   -> `(settings::verbose >= printLevel::printCrit)`
 
 ### C++20 upgrades
 * `std::span` for state assignments. `XYdata_ss` for span. 
-
 
 ## Notable Bug-fixes
 * `if(abs(Ii < 0.1))` in Cycler. 
 * Typo `bockDegAndTherm` is fixed. 
 
+### Small bug fixes:
+* `dt / 3600.0;` should be `dti / 3600.0;` and converted. 
+
 ## API changes
+* `TIME_INF` variable is created for no time limit in cycling. 
 * Most functions now use smart pointers. 
 * Template / auto parameter deduction is used. 
+* `Cell_Bucket` class is removed now `Cell_ECM` class with `0` RC pairs can be used as `Cell_Bucket`.
 
 ## Dependencies
-  * We require at least CMake 3.17.
-  * Now a compiler with C++20 support is required. 
+* `Eigen` library is added for matrix operations. 
+* `Catch2` library is added for testing and.
+
+* We require at least CMake 3.21.
+* Now a compiler with C++20 support is required. 
+
+## Build system
+* `CPM` package manager is added.
+* `OBJECT` libraries are being used for subfolders instead of `STATIC` libraries. 
+* Added many warnings. 
+* `CTest` for testing. 
+
 
 <br/><br/>
 # SLIDE v2

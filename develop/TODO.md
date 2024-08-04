@@ -49,8 +49,6 @@
 - [ ] inline namespaces for literals. 
 - [ ] Make Eigen-based calculations for Matrix-vector multiplications. 
 - [ ] Electrode-based calculations? 
-- [x] cmake_minimum_required(VERSION 3.17) -> 3.21
-- [x] CPM package manager is adopted. 
 - [ ] Renew matlab scripts to read results. 
 - [ ] Matio and parquet data types. 
 - [ ] In `test_specificDeg` in `Procedure_test.cpp` there is a weak cell.
@@ -106,23 +104,17 @@
   - [x] checkUp_getCells and checkUp_getModules are deleted and replaced with visitors. 
   - [ ] Reduce dynamic pointer cast in Procedure and let Polymorphism work. 
   - [ ] Capacity checking protocol in Procedure::CheckUp is removed.  
-- [x] TIME_INF is created for a large time value. 
-- [x] getDaiStress is simplified by removing unnecessary R multiplication and division. 
 - [ ] State classes should have const members. 
 - [ ] Make more methods const : Vmin(), Vmax(), VMIN(), VMAX(), Cap()
 - [ ] Stressparam vs. classes may encapsulate calculating some things. 
-- [x] cube and sqr functions added for utility. 
 - [ ] Module requires number of cells to construct which is unnecessary. 
 - [ ] Cycler CV is not working???? CCCV works if it does not have current beforehand it does not work... 
 - [ ] Create a small class config for limits reached. It should have CheckLimits.
 - [ ] Some variables like ncheck and nbal were defined double but they are int. 
 - [ ] Instead of taking unique_ptr or raw ptr, functions should take object references. 
 - [ ] Literal operators for units are being added. 
-- [ ] Add CTest support for tests
 - [ ] Add static analysers: include-what-you-use, valgrind, etc. 
-- [ ] Doxygen integration - adapting commenting style. 
 - [ ] CPack and installation improvements. 
-- [ ] Figure out why OBJECT libraries cause linker error. We converted everything to STATIC
 - [ ] Check #CHECK and #TODO tags in the code.  
 - [ ] Add variable data storage (Vk is working on)
   - [ ] Create enum for storable data. 
@@ -142,7 +134,6 @@
 - [ ] Convert strings in function parameters to string references. 
 - [ ] Also add a particular data type for data, so warmstart and interpolators can be hold. 
 - [ ] Inline small functions. 
-
 - [ ] Why does getstates call the setstates twice?
 - [ ] Convert if(x<x_min); if(x>x_max) to   if (x<x_min) else if (x>x_max); So less loop. 
 - [ ] Use more initializer lists: 
@@ -171,7 +162,6 @@
 - [ ] Why estimateOCVparameters() cannot find any parameters? 
 - [ ] for (int ap = 0; ap < nAMstep / 3 + 1; ap++) in determine_OCV.cpp with ap3 = 3 * ap + 2 means  nAMstep+2 steps. is it correct? 
 - [ ] Look at .m files for problems like _SOC. 
-- [ ] Write unit tests.
 - [ ] For starting and terminating things. 
 - [ ] Automatise SOC -> OCV conversion (see: for other cells the user has to derive the conversion from the OCV curve)
 - [ ] Write parser for cycling things. 
@@ -218,10 +208,7 @@ slide_pack integration:
 - [ ] StorageUnit parent shared_pointer -> raw poiner. 
 - [x] Module shared_ptr<StorageUnit> SUs[MODULE_NSUs_MAX] -> vector.
 - [ ] Rcontact is removed from Module and it will be moved into Module_s and Module_p
-- [ ] (verbose_gl > v_noncrit_gl)  ->  (settings::verbose >= printLevel::printNonCrit) 
-- [ ] (verbose_gl >= v_crit_gl)   (settings::verbose >= printLevel::printCrit)
 - [ ] #if DATA_STORE is being removed and module is now a template. 
-- [x] getIndex seems to be useless. 
 - [ ] getting Vmax everytime is a problem. 
 - [ ] getNstates is not needed. It is only used for checking sizes and it won't be needed. 
 - [ ] Use default instead of empty destructor. 
@@ -311,16 +298,13 @@ slide_pack integration:
 		 * So this function will write all zeros if called with a copy of the SU   -> is this a bug or feature? 
 
 - [x] for setSUs and validSUs span is used. 
-- [ ] We are reading file lots of times when individually creating cells! In release mode it takes 30 seconds. 
-  - [x] slide::Model_SPM -> slide::Model_SPM*  and makeModel();  from 34 seconds to 12 seconds.  18900x326 double = 47 MB RAM is also saved.
-  - [ ] OCVcurves -> OCVcurves*   12 seconds to 0.22 seconds. Do not forget things otherwise than NMC. 
+- [ ] OCVcurves -> OCVcurves*   12 seconds to 0.22 seconds. Do not forget things otherwise than NMC. 
 - [ ] Benchmarking?
   - [ ] Now EPFL battery 1 hour timestep CC is like 2 seconds for and 3.5 with ageing. 
 - [ ] su->getIndex() in Cycler is not necessary. Cycler should keep its index. 
 - [ ] Why cycler CC is much slower then time step CC ? 
 - [ ] Not necessary constants to remove:
   - [ ] CELL_NCH, CELL_NOCV_MAX
-- [x] remainder for integers are eliminated. 
 - [x] storeData() pattern is removed.  
 - [ ] Ncells for module is created.
 - [ ] etacell_valid -> is removed. Should be checked in future if it really matters for performance. 
@@ -328,8 +312,6 @@ slide_pack integration:
 - [x] removing getVi for series module. and getSUVoltages for all. 
 - [ ] Consider making test functions friend and getVi protected. 
 - [ ] "HVAC coolsystem for active cooling with the environment" obligation should be  removed. 
-- [ ] Minor updates: 
-  - [x] i in Cycler::rest is removed. 
 - [ ] VMAX and VMIN in modules calculated VMAX and VMIN by summing then checks if each cells has a violation. That would give the same result. 
 - [ ] We need to have constant values for VMIN, VMAX for all SUs which are initialised at beginning. 
 - [ ] #CHECK how module calculates isCharging? 
@@ -351,7 +333,6 @@ slide_pack integration:
 - [x] SmallVector is added. DegArray is now derived from SmallVector.
 - [x] double Rdc is removed from Cell.hpp
 - [ ] Memoize Cap. 
-- [x] Bugfix: dt / 3600.0;  should be dti / 3600.0;
 - [x] if (succ != 1) after CV phase is changed with more meaningful limit reaching condition. 
 - [ ] Change const string& with string_view.
 - [ ] Why do we cheeck Vini in Cycler::setCurrent? 
