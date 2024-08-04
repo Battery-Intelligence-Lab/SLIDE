@@ -5,12 +5,6 @@
  * @author Volkan Kumtepeli
  * @date 19 Dec 2019
  */
-/*
- * Cycler.cpp
- *
- *  Created on: 19 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- */
 
 #include "Cycler.hpp"
 #include "../settings/settings.hpp"
