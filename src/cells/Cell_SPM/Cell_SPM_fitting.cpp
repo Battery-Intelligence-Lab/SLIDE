@@ -1,13 +1,9 @@
-/*
- * CellFit.cpp
- *
- * This cell is used to fit the cycling parameters of a cell to data.
- * It is done by the functions in determineCharacterisation.cpp
- * This cell should never be used by other functions (e.g. it should never be used for degradation simulations)
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file Cell_SPM_fitting.cpp
+ * @brief Fitting functions for Cell_SPM class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2021
  */
 
 #include "Cell_SPM.hpp"

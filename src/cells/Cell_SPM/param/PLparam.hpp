@@ -1,11 +1,9 @@
-/*
- * PLparam.hpp
- *
- *
- *
- *  Created on: 28 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file PLparam.hpp
+ * @brief Lithium plating parameters class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 28 Jun 2022
  */
 
 #pragma once

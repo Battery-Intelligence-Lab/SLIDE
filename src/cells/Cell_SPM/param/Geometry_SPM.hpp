@@ -1,11 +1,9 @@
-/*
- * Geometry_SPM.hpp
- *
- *
- *
- *  Created on: 28 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file Geometry_SPM.hpp
+ * @brief Geometry class for SPM.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 28 Jun 2022
  */
 
 #pragma once

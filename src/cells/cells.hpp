@@ -1,11 +1,9 @@
-/*
- * cells.hpp
- *
- * to include available cells headers.
- *
- *  Created on: 19 Jun 2022
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
- *
+/**
+ * @file cells.hpp
+ * @brief includes available cells headers.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 19 Jun 2022
  */
 
 #pragma once

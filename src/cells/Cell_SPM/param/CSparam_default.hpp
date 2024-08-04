@@ -1,12 +1,11 @@
-/*
- * CSparam_default.hpp
- *
- *
- *
- *  Created on: 28 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file CSparam_default.hpp
+ * @brief Default CS parameters.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 28 Jun 2022
  */
+
 #pragma once
 
 #include "CSparam.hpp"

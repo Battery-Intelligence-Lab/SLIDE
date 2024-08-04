@@ -1,13 +1,12 @@
-/*
- * Cell_LGChemNMC.cpp
- *
- * One of the child classes that implements a real cell.
- * The cycling parameters are for a high energy 18650 NMC cell manufactured by LG Chem.
+/**
+ * @file Cell_KokamNMC.cpp
+ * @brief Cell_KokamNMC
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2021
+ * @details  One of the child classes of Cell which implements a real cell.
+ * The cycling parameters are for a high power 18650 NMC cell manufactured by LG Chem.
  * The degradation parameters are set such that each mechanism clearly affects the battery life (which is not the case in reality).
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
  */
 
 #include "Cell_SPM.hpp"

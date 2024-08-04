@@ -1,11 +1,9 @@
-/*
- * SEIparam.hpp
- *
- *
- *
- *  Created on: 28 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file SEIparam.hpp
+ * @brief SEI parameters class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 28 Jun 2022
  */
 
 #pragma once

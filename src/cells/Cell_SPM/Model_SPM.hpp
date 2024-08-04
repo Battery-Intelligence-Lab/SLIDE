@@ -1,11 +1,9 @@
-/*
- * Model_SPM.hpp
- *
- * Defines a struct to store the matrices for the spatial discretisation of the solid diffusion PDE
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file Model_SPM.hpp
+ * @brief  Defines a struct to store the matrices for the spatial discretisation of the solid diffusion PDE
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2021
  */
 
 #pragma once

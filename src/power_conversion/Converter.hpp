@@ -1,11 +1,10 @@
-/*
- * Converter.hpp
- *
- * Class for a power electronic converter.
- * Based on paper from Patsios: two-stage converter (variable DC / fixed DC and fixed DC to fixed AC)
- *
- *  Created on: 10 Jun 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Converter.hpp
+ * @brief Power electronic converter class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 10 Jun 2020
+ * @details Based on paper from Patsios: two-stage converter (variable DC / fixed DC and fixed DC to fixed AC)
  */
 
 #pragma once

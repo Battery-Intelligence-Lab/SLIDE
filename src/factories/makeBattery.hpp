@@ -1,8 +1,9 @@
-/*
- * Battery.h
- *
- *  Created on: 2 Mar 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file makeBattery.hpp
+ * @brief Battery factory function
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 02 Mar 2020
  */
 
 #pragma once

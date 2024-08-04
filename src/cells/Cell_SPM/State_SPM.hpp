@@ -1,10 +1,9 @@
-/*
- * State_SPM.hpp
- *
- * Implements a class State which defines the state-variables of a cell for the state-space model formulation
- *
- *  Created on: 12 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file State_SPM.hpp
+ * @brief  Implements a class State which defines the state-variables of a cell for the state-space model formulation
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 12 Apr 2022
  */
 
 #pragma once

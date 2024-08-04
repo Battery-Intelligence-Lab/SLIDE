@@ -1,7 +1,8 @@
-/** \file DEG_ID.hpp
- *  \brief Defines a structure for handling degradation models.
- *  \author Jorn Reniers, Volkan Kumtepeli
- *  \date 12 May 2022
+/** @file DEG_ID.hpp
+ *  @brief Defines a structure for handling degradation models.
+ *  @author Jorn Reniers
+ *  @author Volkan Kumtepeli
+ *  @date 12 May 2022
  */
 
 #pragma once
