@@ -20,6 +20,7 @@
 
 
 #include "io/read_CSVfiles.hpp"
+#include "io/binary_format.hpp"
 
 // Types:
 #include "../types/Deep_ptr.hpp"

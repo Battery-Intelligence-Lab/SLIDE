@@ -14,3 +14,4 @@
 #include "drive_cycles.hpp"
 #include "estimation.hpp"
 #include "cell_tests.hpp"
+#include "module_tests.hpp"

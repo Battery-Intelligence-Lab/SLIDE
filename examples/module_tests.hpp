@@ -24,7 +24,6 @@ void module_p_ECM()
   double Rc = 0.01;
   constexpr double tol = 0.0001;
 
-
   using cell_type = Cell_ECM<1>;
 
   std::vector<Module_p::SU_t> cs;
@@ -53,9 +52,14 @@ void module_p_ECM()
 
   ThroughputData th{};
   double dt = 0.01;
+  std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
+
+
   cyc.CC(-16, 4.2, 3600, dt, 1, th);
 
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
+
+  cyc.writeData();
 }
 
 } // namespace slide::examples

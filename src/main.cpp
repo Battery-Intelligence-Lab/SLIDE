@@ -29,9 +29,49 @@
 #include <cmath>
 #include <iomanip>
 #include <complex>
+#include <bit>
 
 int main()
 {
+
+  std::vector<std::string> header{ "Voltage [V]", "Current [A]", "State of charge [%]", "Temperature [K]" };
+  std::vector<double> tst;
+
+  constexpr size_t NNN = 1000000;
+
+  for (size_t i = 0; i < (NNN * header.size()); i++)
+    tst.push_back(i * 0.1 * 3.141256786);
+  {
+    slide::Clock clk;
+    slide::io::binary_writer(std::string("mydata.slide"), tst, header);
+    std::cout << clk << '\n';
+  }
+
+  {
+    std::ofstream out{ "mydata.csv", std::ios::out };
+    out << std::fixed << std::setprecision(12);
+    slide::Clock clk;
+    for (int i = 0; i < header.size(); i++) {
+      if (i != 0) out << ',';
+      out << header[i];
+    }
+    out << '\n';
+
+
+    for (int i = 0; i < tst.size(); i++) {
+      if (i != 0) {
+        if (i % header.size() == 0)
+          out << '\n';
+        else
+          out << ',';
+      }
+
+      out << tst[i];
+    }
+    std::cout << clk << '\n';
+    out.close();
+  }
+
   /*
    * This function decides what will be simulated.
    * In the code below, you have to uncomment the line which you want to execute (to uncomment, remove the //!<in front of the line)
@@ -140,39 +180,40 @@ int main()
   auto numThreads = std::thread::hardware_concurrency(); //!<
   std::cout << "Available number of threads : " << numThreads << '\n';
 
+  slide::examples::module_p_ECM();
 
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
-  using namespace slide;
+  // using namespace slide;
 
-  auto test = Cell_ECM<1>("myCell", 30, 0.5, 0.001, std::array<double, 1>{ 0.001 }, std::array<double, 1>{ 1 }); // make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
+  // auto test = Cell_ECM<1>("myCell", 30, 0.5, 0.001, std::array<double, 1>{ 0.001 }, std::array<double, 1>{ 1 }); // make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
 
-  auto c = &test;
-  auto &st = c->getStateObj();
+  // auto c = &test;
+  // auto &st = c->getStateObj();
 
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  c->setCurrent(16);
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  c->timeStep_CC(1, 60);
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  // c->setCurrent(16);
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  // c->timeStep_CC(1, 60);
+  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
 
-  Cycler cyc(c, "Cycler1");
+  // Cycler cyc(c, "Cycler1");
 
-  ThroughputData th{};
-  double dt = 0.01;
-  cyc.CC(-16, 4.2, 3600, dt, 1, th);
-  std::cout << "\nAfter CC charge:\n";
-  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // ThroughputData th{};
+  // double dt = 0.01;
+  // cyc.CC(-16, 4.2, 3600, dt, 1, th);
+  // std::cout << "\nAfter CC charge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
 
-  auto status = cyc.CV(c->Vmax(), 10e-3, 7200, dt, 1, th);
-  std::cout << "\nAfter CV charge:\n";
-  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
-  std::cout << getStatusMessage(status) << "\n";
+  // auto status = cyc.CV(c->Vmax(), 10e-3, 7200, dt, 1, th);
+  // std::cout << "\nAfter CV charge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // std::cout << getStatusMessage(status) << "\n";
 
-  cyc.CCCV(16, c->Vmin(), 5e-3, dt, 1, th);
-  std::cout << "\nAfter CCCV discharge:\n";
-  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  // cyc.CCCV(16, c->Vmin(), 5e-3, dt, 1, th);
+  // std::cout << "\nAfter CCCV discharge:\n";
+  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
 
-  cyc.writeData();
+  // cyc.writeData();
   // // Cycler:
 
   // Cycler cyc(c, "Cycler2");
@@ -206,7 +247,7 @@ int main()
   //!< Benchmarks:
 
   // slide::benchmarks::run_Cell_Bucket();
-  slide::benchmarks::run_Cell_ECM();
+  // slide::benchmarks::run_Cell_ECM();
   // slide::benchmarks::run_Cell_SPM_1(1);
   // slide::benchmarks::run_Cell_SPM_2(1);
   // slide::benchmarks::run_LP_case_SmallPack();
@@ -223,7 +264,7 @@ int main()
   // slide::benchmarks::run_Cell_ECM_2_RC_single_default_pulse();
   // slide::benchmarks::run_Cell_ECM_2_RC_single_default_CCCV();
 
-  slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
+  // slide::benchmarks::run_Cell_ECM_parallel_3_default_pulse();
 
   // slide::benchmarks::run_Cell_ECM_parallel_3_default_CCCV();
 
