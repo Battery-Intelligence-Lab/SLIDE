@@ -19,7 +19,7 @@ inline void run_Cell_ECM_single_default_pulse()
 {
   // Benchmark with default parameters:
   std::string ID = "Cell_ECM_single_default_pulse"; // + std::to_string(Crate) + '_'
-  auto c = Cell_ECM();
+  auto c = Cell_ECM<>();
   c.setBlockDegAndTherm(true);
 
   ThroughputData th{};
