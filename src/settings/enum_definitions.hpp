@@ -8,8 +8,10 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace slide::settings {
-enum printLevel {
+enum printLevel : uint_fast8_t {
   printCrit = 1,           //!< threshold of verbose of when to print error messages for critical errors
   printNonCrit,            //!< threshold of verbose of when to print error messages for noncritical errors
   printCyclerFunctions,    //!< threshold of verbose of when to print the start and end of functions of the BasicCycler
@@ -18,14 +20,16 @@ enum printLevel {
   printfindCVcurrentDetail //!< threshold of verbose of when to print the details of how the current for the CV phase is found
 };
 
-enum class cellDataStorageLevel {
+enum class CellDataStorageLevel : int_fast8_t {
+  storeHistogramData = -1,
   noStorage = 0,
   storeCumulativeData,
-  storeHistogramData,
+  storeIVT,
+  storeMostStates,
   storeTimeData
 };
 
-enum class moduleDataStorageLevel {
+enum class moduleDataStorageLevel : int_fast8_t {
   noStorage = 0,
   storeCumulativeData,
   storeTimeData

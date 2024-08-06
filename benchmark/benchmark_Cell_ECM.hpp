@@ -114,12 +114,12 @@ inline void run_Cell_ECM_parallel_3_default_pulse()
   double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
   constexpr double Cp0 = 38e3; // first parallel capacitance
   constexpr double Rp0 = 15.8e-3;
-  std::array<double, 1> Rp_{ Rp0 }, inv_tau{ 1.0 / (Rp0 * Cp0) };
+  std::array<Cell_ECM<1>::R_C_pair, 1> rc_pair_array{ { Rp0, Cp0 } };
 
   Deep_ptr<StorageUnit> cs[3] = {
-    make<Cell_ECM<1>>("1", capin, SOCin, 1e-3, Rp_, inv_tau),
-    make<Cell_ECM<1>>("2", capin, SOCin, Rdc_, Rp_, inv_tau),
-    make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, Rp_, inv_tau)
+    make<Cell_ECM<1>>("1", capin, SOCin, 1e-3, rc_pair_array),
+    make<Cell_ECM<1>>("2", capin, SOCin, Rdc_, rc_pair_array),
+    make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, rc_pair_array)
   };
 
   auto module = Module_p("Par3", T_ENV, true, false, std::size(cs), 1, 1);
@@ -151,12 +151,12 @@ inline void run_Cell_ECM_parallel_3_default_CCCV()
   double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
   constexpr double Cp0 = 38e3; // first parallel capacitance
   constexpr double Rp0 = 15.8e-3;
-  std::array<double, 1> Rp_{ Rp0 }, inv_tau{ 1.0 / (Rp0 * Cp0) };
+  std::array<Cell_ECM<1>::R_C_pair, 1> rc_pair_array{ { Rp0, Cp0 } };
 
   Deep_ptr<StorageUnit> cs[] = {
-    make<Cell_ECM<1>>("1", capin, SOCin, 1e-3, Rp_, inv_tau),
-    make<Cell_ECM<1>>("2", capin, SOCin, 3e-3, Rp_, inv_tau),
-    make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, Rp_, inv_tau)
+    make<Cell_ECM<1>>("1", capin, SOCin, 1e-3, rc_pair_array),
+    make<Cell_ECM<1>>("2", capin, SOCin, 3e-3, rc_pair_array),
+    make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, rc_pair_array)
   };
 
   auto module = Module_p("Par3", T_ENV, true, false, std::size(cs), 1, 1);
@@ -188,14 +188,14 @@ inline void run_Cell_ECM_parallel_3_withRcontact_CCCV()
   double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
   constexpr double Cp0 = 38e3; // first parallel capacitance
   constexpr double Rp0 = 15.8e-3;
-  std::array<double, 1> Rp_{ Rp0 }, inv_tau{ 1.0 / (Rp0 * Cp0) };
+  std::array<Cell_ECM<1>::R_C_pair, 1> rc_pair_array{ { Rp0, Cp0 } };
 
   std::vector<double> Rcontact{ 0.5e-3, 1e-3, 0.7e-3 };
 
   Deep_ptr<StorageUnit> cs[3] = {
-    make<Cell_ECM<1>>("1", capin, SOCin, 1e-3, Rp_, inv_tau),
-    make<Cell_ECM<1>>("2", capin, SOCin, 3e-3, Rp_, inv_tau),
-    make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, Rp_, inv_tau)
+    make<Cell_ECM<1>>("1", capin, SOCin, 1e-3, rc_pair_array),
+    make<Cell_ECM<1>>("2", capin, SOCin, 3e-3, rc_pair_array),
+    make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, rc_pair_array)
   };
 
   auto module = Module_p("Par3", T_ENV, true, false, std::size(cs), 1, 1);
@@ -229,15 +229,15 @@ inline void run_Cell_ECM_series_3_withRcontact_CCCV()
   double capin{ 16 }, SOCin{ 0.5 }, Rdc_{ 2e-3 };
   constexpr double Cp0 = 38e3; // first parallel capacitance
   constexpr double Rp0 = 15.8e-3;
-  std::array<double, 1> Rp_{ Rp0 }, inv_tau{ 1.0 / (Rp0 * Cp0) };
+  std::array<Cell_ECM<1>::R_C_pair, 1> rc_pair_array{ { Rp0, Cp0 } };
 
   std::vector<double> Rcontact{ 0.5e-3, 1e-3, 0.7e-3 };
 
 
   Deep_ptr<StorageUnit> cs[3] = {
-    make<Cell_ECM<1>>("1", capin, SOCin, 1e-3, Rp_, inv_tau),
-    make<Cell_ECM<1>>("2", capin, SOCin, 3e-3, Rp_, inv_tau),
-    make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, Rp_, inv_tau)
+    make<Cell_ECM<1>>("1", capin, SOCin, 1e-3, rc_pair_array),
+    make<Cell_ECM<1>>("2", capin, SOCin, 3e-3, rc_pair_array),
+    make<Cell_ECM<1>>("3", capin, SOCin, Rdc_, rc_pair_array)
   };
 
   auto module = Module_s("Ser3", T_ENV, true, false, std::size(cs), 1, 1);

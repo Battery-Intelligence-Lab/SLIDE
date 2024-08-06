@@ -63,6 +63,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * `Cell_Bucket` class is removed now `Cell_ECM` class with `0` RC pairs can be used as `Cell_Bucket`.
 * Units such as `degC` are added so you can write `25.0_degC` instead of `Kelvin + 25.0`.
 * `io` namespace is added. 
+* `Cell_ECM::R_C_pair` and `Cell_ECM::R_Tau_pair` classes are added for passing parameters. 
 
 ## Dependencies
 * `Eigen` library is added for matrix operations. 

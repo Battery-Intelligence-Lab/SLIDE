@@ -15,6 +15,7 @@
 #include "../types/Status.hpp"
 #include "../utility/utility.hpp"
 #include "../types/State.hpp"
+#include "../types/DataFrame.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -38,6 +39,9 @@ protected:
   // CellData<settings::DATASTORE_CELL> cellData; //!< Cell data storage.
 
 public:
+  settings::CellDataStorageLevel dataStorageLevel{ settings::CellDataStorageLevel::storeMostStates };
+  DataFrame<double> timeData{};
+
   constexpr static CellLimits limits{ defaultCellLimits }; // Default cell limits. #TODO make it changable.
 
   Cell() : StorageUnit("cell") {}

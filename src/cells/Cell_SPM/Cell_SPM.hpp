@@ -224,7 +224,7 @@ public:
   //!< {
   //!< 	slide::validState(st, s_ini);
   //!< }
-  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() override { return { st.time(), st.Ah(), st.Wh() }; }
 
   void overwriteCharacterisationStates(double Dpi, double Dni, double ri)
   {

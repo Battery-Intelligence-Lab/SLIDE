@@ -136,7 +136,7 @@ void Procedure::cycleAge(StorageUnit *su, int Ncycle, int Ncheck, int Nbal, bool
   checkMod(su);                 //!< check-up of the modules
 
   //!< push a write such that if cells still have cycling data, this is written
-  if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeTimeData)
+  if constexpr (settings::DATASTORE_CELL == settings::CellDataStorageLevel::storeTimeData)
     su->writeData(pref); //!< only do if cycling data. Usage statistics are written by the checkup
 }
 
@@ -273,7 +273,7 @@ void Procedure::useCaseAge(StorageUnit *su, int cool)
   checkMod(su);                 //!< check-up of the modules
 
   //!< push a write such that if cells still have cycling data, this is written
-  if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeTimeData)
+  if constexpr (settings::DATASTORE_CELL == settings::CellDataStorageLevel::storeTimeData)
     su->writeData(pref); //!< only do if cycling data. Usage statistics are written by the checkup
 }
 
@@ -348,7 +348,7 @@ void Procedure::balanceCheckup(StorageUnit *su, bool balance, bool checkup, doub
   //!< do a capacity checkup in a separate thread
   if (checkup) {
     //!< push a write such that if cells still have cycling data, this is written
-    if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeTimeData)
+    if constexpr (settings::DATASTORE_CELL == settings::CellDataStorageLevel::storeTimeData)
       if (Ahtot > 0) {
         su->writeData(pref); //!< only do if cycling data. Usage statistics are written by the checkup
         try {
@@ -462,7 +462,7 @@ void Procedure::checkUp(StorageUnit *su, double Ah, int nrCycle)
   visit_SUs(su, copyCells);
 
   //!< write the usage stats of all cells in a separate document
-  // if constexpr (settings::DATASTORE_CELL == settings::cellDataStorageLevel::storeHistogramData)
+  // if constexpr (settings::DATASTORE_CELL == settings::CellDataStorageLevel::storeHistogramData)
   //  #TODO normally we were writing cell stats here but not necessary I think.
   //  open and clear whatever was there since we want to write the most recent stats only
 

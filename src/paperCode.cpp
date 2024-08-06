@@ -86,7 +86,7 @@ void Vequalisation_Rdc(double Rdc)
 void Vequalisation()
 {
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeTimeData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeTimeData)
     std::cerr << "Warning in paperCode::Vequalisation, we want to write data to "
                  "test the cell's behaviour but the global variable CYCLER_STORE_CELL "
                  "is not 2 so no data will be stored.\n";
@@ -108,7 +108,7 @@ void thermalModel()
   //!< use exactly the same code as for V equalisation, but with Rcontact = 0 and the global setting correctly
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeTimeData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeTimeData)
     std::cerr << "Warning in paperCode::thermalModel, we want to write data to "
                  "test the cell's behaviour but the global variable CYCLER_STORE_CELL "
                  "is not 2 so no data will be stored.\n";
@@ -206,7 +206,7 @@ void degradation_1cell()
    */
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeHistogramData)
     std::cerr << "Warning in paperCode::degradation_1cell, we want to do a "
                  "degradation simulation but the global variable CYCLER_STORE_CELL "
                  "is not 1 so no data or too much data will be stored.\n";
@@ -255,7 +255,7 @@ void degradation_electricalModel()
    */
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeHistogramData)
     std::cerr << "Warning in paperCode::degradation_electricalModel, we want to "
                  "do a degradation simulation but the global variable CYCLER_STORE_CELL "
                  "is not 1 so no data or too much data will be stored.\n";
@@ -296,7 +296,7 @@ void degradation_variations()
    */
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeHistogramData)
     std::cerr << "Warning in paperCode::degradation_variations, we want to do "
                  "a degradation simulation but the global variable CYCLER_STORE_CELL "
                  "is not 1 so no data or too much data will be stored.\n";
@@ -358,7 +358,7 @@ void degradation_thermal()
    */
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeHistogramData)
     std::cerr << "Warning in paperCode::degradation_thermal, we want to do a "
                  "degradation simulation but the global variable CYCLER_STORE_CELL "
                  "is not 1 so no data or too much data will be stored.\n";

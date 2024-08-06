@@ -39,6 +39,7 @@
 
 
 ### Current priority:
+- [ ] Voltage should be inside the states, so it is a discrete algebraic state. 
 - [ ] make overpotential etap etan removable. So an voltage model is needed. 
 - [ ] In Cell_ECM model, time step should be less than the smallest tau, otherwise it will oscillate. 
 - [ ] Module_data is deleted but look for it and bring it back.

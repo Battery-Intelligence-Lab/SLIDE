@@ -41,35 +41,18 @@ int main()
 
   for (size_t i = 0; i < (NNN * header.size()); i++)
     tst.push_back(i * 0.1 * 3.141256786);
+
+  slide::DataFrame<double> df;
+  df.header = header;
+  df.insert(df.end(), tst.begin(), tst.end());
+
+  df.to_binary("mydf.slide");
+
+
   {
     slide::Clock clk;
     slide::io::binary_writer(std::string("mydata.slide"), tst, header);
     std::cout << clk << '\n';
-  }
-
-  {
-    std::ofstream out{ "mydata.csv", std::ios::out };
-    out << std::fixed << std::setprecision(12);
-    slide::Clock clk;
-    for (int i = 0; i < header.size(); i++) {
-      if (i != 0) out << ',';
-      out << header[i];
-    }
-    out << '\n';
-
-
-    for (int i = 0; i < tst.size(); i++) {
-      if (i != 0) {
-        if (i % header.size() == 0)
-          out << '\n';
-        else
-          out << ',';
-      }
-
-      out << tst[i];
-    }
-    std::cout << clk << '\n';
-    out.close();
   }
 
   /*

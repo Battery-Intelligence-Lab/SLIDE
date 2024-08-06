@@ -28,16 +28,16 @@ inline void writeData(std::ofstream &file, std::span<Histogram<>> histograms)
     file << hist << "\n\n";
 }
 
-template <settings::cellDataStorageLevel N>
+template <settings::CellDataStorageLevel N>
 void writeDataImpl(std::ofstream &file, auto &cell, auto &dataStorage)
 {
 
-  if constexpr (N >= settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (N >= settings::CellDataStorageLevel::storeHistogramData)
     free::write_data(file, dataStorage.data, 7);
   //!< else write nothing.
 }
 
-template <settings::cellDataStorageLevel N>
+template <settings::CellDataStorageLevel N>
 struct CellDataWriter
 {
   /*

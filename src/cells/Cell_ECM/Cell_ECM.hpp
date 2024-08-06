@@ -8,10 +8,10 @@
 
 #pragma once
 
+#include "../../settings/settings.hpp"
 #include "../Cell.hpp"
 #include "State_ECM.hpp"
 #include "../../utility/utility.hpp"
-#include "../../settings/settings.hpp"
 
 #include <cstring>
 #include <cassert>
@@ -22,59 +22,61 @@
 #include <cmath>
 #include <algorithm>
 #include <array>
+#include <span>
 
 namespace slide {
 
 template <size_t N_RC = 1>
 class Cell_ECM : public Cell
 {
+public:
+  struct R_C_pair
+  {
+    double R{ 1 }, C{ 1 };
+  };
+
+  struct R_Tau_pair
+  {
+    double R{ 1 }, Tau{ 1 };
+  };
+
+
+private:
+  void createDFheaders();
 
 protected:
   State_ECM<N_RC> st{ settings::T_ENV, 0.5 }; //!< States T, SOC, , I, Ir, ... ;
   //!< parameters:
 
-  std::array<double, N_RC> Rp{}, inv_tau{}; // inv_tau = 1/(RC). All initialised zero.
-  // double Rp{ 15.8e-3 }, Cp{ 38e3 }; //!< parallel resistance and capacitance
-  XYdata_vv OCV;      //!< SOC vs voltage curve.
-  double Rdc{ 2e-3 }; //!< DC resistance [Ohm]
+  std::array<double, N_RC> Rp{ 1 }, Tau{ 100 }; // Tau = 1/(RC). All initialised zero.
+  XYdata_vv OCV;                                //!< SOC vs voltage curve.
+  double Rdc{ 2e-3 };                           //!< DC resistance [Ohm]
 
 public:
   Cell_ECM();
   Cell_ECM(double capin, double SOCin);
-  Cell_ECM(double capin, double SOCin, double Rdc_, std::array<double, N_RC> Rp_, std::array<double, N_RC> inv_tau_);
+  Cell_ECM(double capin, double SOCin, double Rdc_, std::span<R_C_pair> R_C_pair_spn);
+  Cell_ECM(std::string IDi, double capin, double SOCin, double Rdc_, std::span<R_C_pair> R_C_pair_spn);
+  Cell_ECM(double capin, double SOCin, double Rdc_, std::span<R_Tau_pair> R_Tau_pair_spn);
+  Cell_ECM(std::string IDi, double capin, double SOCin, double Rdc_, std::span<R_Tau_pair> R_Tau_pair_spn);
+  Cell_ECM(std::string IDi, double capin, double SOCin);
+  Cell_ECM(std::string IDi);
 
-  Cell_ECM(std::string IDi, double capin, double SOCin, double Rdc_, std::array<double, N_RC> Rp_, std::array<double, N_RC> inv_tau_)
-    : Cell_ECM(capin, SOCin, Rdc_, Rp_, inv_tau_)
-  {
-    ID = std::move(IDi);
-  }
-
-
-  Cell_ECM(std::string IDi, double capin, double SOCin)
-    : Cell_ECM(capin, SOCin)
-  {
-    ID = std::move(IDi);
-  }
-
-  Cell_ECM(std::string IDi) : Cell_ECM() { ID = std::move(IDi); }
-
-  inline double I() const override { return st.I(); }
-  inline double getIr() { return st.Ir(); } //!< current through the parallel resistance
-  inline double SOC() override { return st.SOC(); }
-  inline double T() override { return st.T(); }
+  double I() const override { return st.I(); }
+  double getIr() const { return st.Ir(); } //!< current through the parallel resistance
+  double SOC() override { return st.SOC(); }
+  double T() override { return st.T(); }
 
   //!< overwrite from Cell
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }
-
   auto &getStateObj() { return st; }
-
   double V() override; //!< crit is an optional argument
-  Status setStates(setStates_t s, bool checkStates = true, bool print = true) override;
+  Status setStates(setStates_t s, bool checkV = true, bool print = true) override;
 
   double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
   double getThotSpot() override { return T(); }
-  double getThermalSurface() override { return 0; };                                        //!< Not implemented?
+  double getThermalSurface() override { return 0; };                                        //!< #TODO Not implemented?
   double getOCV() override { return OCV.interp(st.SOC(), settings::printBool::printCrit); } // Linear interpolation #TODO add a OCV model.
 
   Status setSOC(double SOCnew, bool checkV = true, bool print = true) override;
@@ -87,6 +89,9 @@ public:
   void timeStep_CC(double dt, int steps = 1) override;
 
   ThroughputData getThroughputs() override { return { st.time(), st.Ah(), st.Wh() }; }
+
+  void storeData() override;
+  void writeData(const std::string &prefix) override;
 
   Cell_ECM<N_RC> *copy() override { return new Cell_ECM<N_RC>(*this); }
 };
@@ -101,22 +106,24 @@ inline Cell_ECM<N_RC>::Cell_ECM()
 {
   ID = "Cell_ECM_" + std::to_string(N_RC) + "_";
   capNom = 16;
-  /// OCV curve, dummy linear curve with 3 points from 2.0V to 4.4V
-  OCV.x = { -0.1, 0.0, 1.0, 1.1 };
+  OCV.x = { -0.1, 0.0, 1.0, 1.1 }; /// OCV curve, dummy linear curve with 3 points from 2.0V to 4.4V
   OCV.y = { VMIN(), Vmin(), Vmax(), VMAX() };
 
   if constexpr (N_RC >= 1) {
     constexpr double Cp0 = 38e3; // first parallel capacitance
     Rp[0] = 15.8e-3;             // fist parallel (polarisation) resistance default value.
-    inv_tau[0] = 1.0 / (Rp[0] * Cp0);
+    Tau[0] = (Rp[0] * Cp0);
   }
 
   if constexpr (N_RC == 2) {
     Rp[1] = 2.5e-3; // second parallel (polarisation) resistance default value.
-    inv_tau[1] = 1.0 / 100.0;
+    Tau[1] = 100.0;
   }
 
   OCV.check_is_fixed();
+
+  createDFheaders();
+
   // cellData.initialise(*this);
 }
 
@@ -145,13 +152,63 @@ inline Cell_ECM<N_RC>::Cell_ECM(double capin, double SOCin) : Cell_ECM()
  */
 template <size_t N_RC>
 inline Cell_ECM<N_RC>::Cell_ECM(double capin, double SOCin, double Rdc_,
-                                std::array<double, N_RC> Rp_,
-                                std::array<double, N_RC> inv_tau_)
+                                std::span<R_C_pair> spn)
   : Cell_ECM(capin, SOCin)
 {
   Rdc = Rdc_;
-  Rp = Rp_;
-  inv_tau = inv_tau_;
+
+  size_t i{};
+  for (auto [Rp_, Cp_] : spn) {
+    Rp[i] = Rp_;
+    Tau[i] = Rp_ * Cp_;
+    i++;
+  }
+}
+
+template <size_t N_RC>
+inline Cell_ECM<N_RC>::Cell_ECM(double capin, double SOCin, double Rdc_,
+                                std::span<R_Tau_pair> spn)
+  : Cell_ECM(capin, SOCin)
+{
+  Rdc = Rdc_;
+
+  size_t i{};
+  for (auto [Rp_, Tau_] : spn) {
+    Rp[i] = Rp_;
+    Tau[i] = Tau_;
+    i++;
+  }
+}
+
+
+template <size_t N_RC>
+inline Cell_ECM<N_RC>::Cell_ECM(std::string IDi, double capin, double SOCin, double Rdc_,
+                                std::span<R_C_pair> spn)
+  : Cell_ECM(capin, SOCin, Rdc_, spn)
+{
+  ID = std::move(IDi);
+}
+
+template <size_t N_RC>
+inline Cell_ECM<N_RC>::Cell_ECM(std::string IDi, double capin, double SOCin, double Rdc_,
+                                std::span<R_Tau_pair> spn)
+  : Cell_ECM(capin, SOCin, Rdc_, spn)
+{
+  ID = std::move(IDi);
+}
+
+template <size_t N_RC>
+inline Cell_ECM<N_RC>::Cell_ECM(std::string IDi, double capin, double SOCin)
+  : Cell_ECM(capin, SOCin)
+{
+  ID = std::move(IDi);
+}
+
+template <size_t N_RC>
+inline Cell_ECM<N_RC>::Cell_ECM(std::string IDi)
+  : Cell_ECM()
+{
+  ID = std::move(IDi);
 }
 
 
@@ -346,7 +403,7 @@ inline void Cell_ECM<N_RC>::timeStep_CC(double dt, int nstep)
     st.SOC() -= dAh / Cap();
 
     for (size_t i{}; i < N_RC; i++) // dIr/dt = (I - Ir)/(RC)
-      st.Ir(i) += dt * inv_tau[i] * (st.I() - st.Ir(i));
+      st.Ir(i) += dt * (st.I() - st.Ir(i)) / Tau[i];
 
     //!< increase the cumulative variables of this cell
     if constexpr (settings::data::storeCumulativeData) {
@@ -356,6 +413,36 @@ inline void Cell_ECM<N_RC>::timeStep_CC(double dt, int nstep)
     }
   }
 }
+
+
+template <size_t N_RC>
+void Cell_ECM<N_RC>::createDFheaders()
+{
+  if (dataStorageLevel == settings::CellDataStorageLevel::storeMostStates) {
+    timeData = DataFrame<double>{ "Voltage [V]", "Temperature [K]", "SOC [-]", "Current [A]", "time [s]", "Current throughput [Ah]", "Energy throughput [Wh]" };
+  } else {
+    throw "dataStorageLevel other than storeMostStates is not implemented yet!\n";
+  }
+}
+
+template <size_t N_RC>
+void Cell_ECM<N_RC>::storeData()
+{
+  if (dataStorageLevel == settings::CellDataStorageLevel::storeMostStates) {
+    timeData.insert(timeData.end(), { V(), T(), SOC(), I(), st.time(), st.Ah(), st.Wh() });
+  } else {
+    throw "dataStorageLevel other than storeMostStates is not implemented yet!\n";
+  }
+}
+
+template <size_t N_RC>
+void Cell_ECM<N_RC>::writeData(const std::string &prefix)
+{
+
+  auto path = PathVar::results / (prefix + "_" + getFullID() + ".slide");
+  timeData.to_binary(path);
+}
+
 
 using Cell_Bucket = Cell_ECM<0>;
 

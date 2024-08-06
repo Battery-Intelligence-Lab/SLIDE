@@ -14,6 +14,8 @@
 #include <fstream>
 #include <vector>
 #include <cstring>
+#include <string_view>
+#include <filesystem>
 
 namespace slide::io {
 
@@ -37,8 +39,8 @@ constexpr char getDataType()
   }
 }
 
-template <typename T_name, typename T_vec, typename T_header>
-void binary_writer(T_name &&name, T_vec &data, T_header &header,
+template <typename T_vec, typename T_header>
+void binary_writer(std::filesystem::path pth, T_vec &data, T_header &header,
                    std::ios_base::openmode mode = std::ios::out)
 {
   //!< Create metadata:
@@ -47,7 +49,7 @@ void binary_writer(T_name &&name, T_vec &data, T_header &header,
   const char dType = getDataType<typename T_vec::value_type>();
   const char dSize = static_cast<char>(sizeof(typename T_vec::value_type));
 
-  std::ofstream out{ name, mode | std::ios::binary }; //!< Open file
+  std::ofstream out(pth, mode | std::ios::binary); //!< Open file
 
   out << version << isLittleEndian << dType << dSize; ///!< Write metadata
 
