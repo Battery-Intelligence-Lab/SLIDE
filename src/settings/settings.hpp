@@ -1,14 +1,9 @@
-/*
- * settings.hpp
- *
- * Created on: 3 Mar 2020
- *  Author(s): Jorn Reniers, Volkan Kumtepeli
- *
- * Defines constants to be used in the program.
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file settings.hpp
+ * @brief Defines settings to be used in the program.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 3 Mar 2020
  */
 
 #pragma once
@@ -49,9 +44,9 @@ constexpr bool overwrite_data = true; //!< if this is false then folder overwrit
 //!< Data storage  //!< from slidepack
 constexpr int DATASTORE_NHIST = 100; //!< length of the arrays with the histograms (if 1)
 
-constexpr auto DATASTORE_CELL = cellDataStorageLevel::storeTimeData; //!< if 0, no cell-level data is stored
-                                                                     //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
-                                                                     //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
+constexpr auto DATASTORE_CELL = CellDataStorageLevel::storeMostStates; //!< if 0, no cell-level data is stored
+                                                                       //!< if 1, statistics about I, V and T are stored, as well as overall utilisation (throughput)
+                                                                       //!< if 2, current, voltage, temperature, soc is stored at every time step, as well as overall utilisation (throughput)
 
 
 constexpr auto DATASTORE_MODULE = moduleDataStorageLevel::noStorage; //!< See moduleDataStorageLevel for different options.
@@ -70,6 +65,8 @@ constexpr int DATASTORE_COOL = 0; //!< if 0, no data is stored
 constexpr int MODULE_NSUs_MAX = 100; //!< #TODO eliminate but recursive static does not solve the situation since it is recursive.
                                      //!< maximum number of cells in a base module
                                      //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
+
+constexpr int N_RC_MAX = 3; //!< Maximum RC pairs in Cell_ECM.
 
 constexpr double T_ENV = 15.0_degC; //!< environmental temperature
 

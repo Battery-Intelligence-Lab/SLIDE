@@ -1,8 +1,9 @@
-/*
- * Battery.cpp
- *
- *  Created on: 11 Jun 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Battery.cpp
+ * @brief Battery class files
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 11 Jun 2020
  */
 
 #include "Battery.hpp"
@@ -157,7 +158,7 @@ double Battery::thermalModel(int Nneighb, double Tneighb[], double Kneighb[], do
     //!< cout<<"Battery thermal balance: Qcells = "<<Qcells<<", converter "<<conv->getLosses(cells->V(), cells->I())*tim<<" resutling in new T "<<Tbatt<<" for battery power "<<cells->V()*cells->I()<<endl;
 
     //!< Check the new temperature is valid
-    if (Tbatt < PhyConst::Kelvin || Tbatt > PhyConst::Kelvin + 75.0 || std::isnan(Tbatt)) //!< #TODO -> 75.0 is magical number.
+    if (Tbatt < 0.0_degC || Tbatt > 75.0_degC || std::isnan(Tbatt)) //!< #TODO -> 75.0 is magical number.
     {
       if constexpr (settings::printBool::printCrit)
         std::cerr << "ERROR in Battery::thermalModel for battery " << getFullID() << ", the new temperature of "

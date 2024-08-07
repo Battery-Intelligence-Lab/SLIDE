@@ -1,10 +1,9 @@
-/*
- * Module_s.cpp
- *
- * series-connected base Module
- *
- *  Created on: 9 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Module_s.cpp
+ * @brief series-connected Module
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 9 Dec 2019
  */
 
 #include "Module_s.hpp"
@@ -84,7 +83,7 @@ Status Module_s::setCurrent(double Inew, bool checkV, bool print)
   bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
 
   //!< Set the current, if checkVi this also gets the cell voltages
-  const double Iold{I()};
+  const double Iold{ I() };
   auto StatusNow = Status::Success;
 
   for (int i = 0; i < getNSUs(); i++) {

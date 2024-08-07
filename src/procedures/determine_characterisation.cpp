@@ -1,7 +1,10 @@
-/*
- * determine_characterisation.cpp
- *
- * The functions below can be used to fit the 'rate parameters' or 'characterisation parameters' of a cell at one temperature (currently 25 degrees):
+/**
+ * @file determine_characterisation.cpp
+ * @brief Header file for the functions used to find the parameters which will match measured CCCV cycles.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2019
+ * @details The functions below can be used to fit the 'rate parameters' or 'characterisation parameters' of a cell at one temperature (currently 25 degrees):
  * 		diffusion constants (Dp and Dn)
  * 		rate constants of the main li-insertion reaction (kp and kn)
  * 		DC resistance of the cell (r)
@@ -526,7 +529,7 @@ void estimateCharacterisation()
   //!< *********************************************************** 1 USER INPUT ***********************************************************************
 
   //!< Specify the characterisation tests for which data is available
-  double Tref = PhyConst::Kelvin + 25; //!< Temperature at which the characterisation should be done [K]
+  double Tref = 25_degC; //!< Temperature at which the characterisation should be done [K]
 
   std::string names[] = { "Characterisation_0.2C_CC_discharge.csv",
                           "Characterisation_0.5C_CC_discharge.csv",
@@ -602,7 +605,7 @@ void estimateCharacterisation()
 
   for (size_t i = 0; i < nCCCV; i++) { //!< loop to read the voltage profile of each cycle
 
-    slide::loadCSV_2col(PathVar::data / names[i], Vdata_all[i].x, Vdata_all[i].y); //!< read the csv file with the voltage profile
+    slide::io::loadCSV_2col(PathVar::data / names[i], Vdata_all[i].x, Vdata_all[i].y); //!< read the csv file with the voltage profile
 
     //!< check the data is in the correct format
     const bool val = validOCV(checkRange, Vdata_all[i]); //!< boolean indicating if the data is in the correct format

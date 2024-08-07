@@ -2250,17 +2250,17 @@ int BasicCycler::followI(int nI, const std::vector<double> &I, const std::vector
   }
 
   //!<*********************************************************** 1 read the current profile & variables ***********************************************************************
-  double dt;                                               //!< time step to be used for this step in the profile [sec]
-  const bool Tlow = c.getTenv() < (PhyConst::Kelvin + 45); //!< boolean indicating if the environmental temperature is below 45 degrees
-  slide::State s;                                          //!< state of the battery
-  double Iprev;                                            //!< current in the previous time step
-  double ah, wh;                                           //!< capacity/energy discharged during this step in the profile [Ah]/[Wh]
-  double tt;                                               //!< time spent during this step in the profile [sec]
-  int vlim;                                                //!< integer indicating why the CC phase finished
-  double ahtot{ 0 }, whtot{ 0 };                           //!< charge/energy throughput up to this step in the profile [Ah]/[Wh]
-  double tttot = 0;                                        //!< cumulative time up to this step in the profile [sec]
-  bool vminlim{ false }, vmaxlim{ false };                 //!< boolean to indicate if the minimum/maximum voltage limit was hit
-  bool verr = false;                                       //!< boolean to indicate if an unknown error occurred
+  double dt;                                 //!< time step to be used for this step in the profile [sec]
+  const bool Tlow = c.getTenv() < 45.0_degC; //!< boolean indicating if the environmental temperature is below 45 degrees
+  slide::State s;                            //!< state of the battery
+  double Iprev;                              //!< current in the previous time step
+  double ah, wh;                             //!< capacity/energy discharged during this step in the profile [Ah]/[Wh]
+  double tt;                                 //!< time spent during this step in the profile [sec]
+  int vlim;                                  //!< integer indicating why the CC phase finished
+  double ahtot{ 0 }, whtot{ 0 };             //!< charge/energy throughput up to this step in the profile [Ah]/[Wh]
+  double tttot = 0;                          //!< cumulative time up to this step in the profile [sec]
+  bool vminlim{ false }, vmaxlim{ false };   //!< boolean to indicate if the minimum/maximum voltage limit was hit
+  bool verr = false;                         //!< boolean to indicate if an unknown error occurred
 
   //!<****************************************************** 2 loop through the profile ***********************************************************************
 
@@ -2405,7 +2405,7 @@ int BasicCycler::followI(int nI, const std::string &nameI, bool blockDegradation
   //!< Read the current profile
   static thread_local std::vector<double> I(nI), T(nI);
   try {
-    slide::loadCSV_2col(PathVar::data / nameI, I, T, nI); //!< read the file
+    slide::io::loadCSV_2col(PathVar::data / nameI, I, T, nI); //!< read the file
   } catch (int e) {
     //!< std::cout << "Throw test: " << 30 << '\n';
     std::cout << "error in BasicCycler::followI when reading the file with the current profile called "

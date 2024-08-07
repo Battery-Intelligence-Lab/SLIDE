@@ -1,8 +1,9 @@
-/*
- * Battery.hpp
- *
- *  Created on: 11 Jun 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Battery.hpp
+ * @brief Battery class files
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 11 Jun 2020
  */
 
 #pragma once

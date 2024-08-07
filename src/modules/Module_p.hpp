@@ -1,8 +1,9 @@
-/*
- * Module_p.hpp
- *
- *  Created on: 18 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Module_p.hpp
+ * @brief parallel-connected Module
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 18 Dec 2019
  */
 
 #pragma once

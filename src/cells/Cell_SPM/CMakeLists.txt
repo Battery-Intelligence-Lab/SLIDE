@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-add_library(Cell_SPM STATIC)
+add_library(Cell_SPM OBJECT)
 
 target_sources(Cell_SPM
   PRIVATE

@@ -1,8 +1,9 @@
-/*
- * Module.hpp
- *
- *  Created on: 29 Nov 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Module.hpp
+ * @brief Module base class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 29 Nov 2019
  */
 
 #pragma once
@@ -12,7 +13,6 @@
 #include "../types/State.hpp"
 #include "settings.hpp"
 #include "../utility/utility.hpp"
-
 
 #include <vector>
 #include <cstdlib>

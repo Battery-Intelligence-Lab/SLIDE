@@ -1,8 +1,9 @@
-/*
- * cell_limits.hpp
- *
- *  Created on: 07 Feb 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file cell_limits.hpp
+ * @brief  Limits for cell
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 07 Feb 2022
  */
 
 #pragma once

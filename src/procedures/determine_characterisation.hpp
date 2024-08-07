@@ -1,8 +1,10 @@
-/*
- * determine_characterisation.hpp
- *
- * Header file for the functions used to find the parameters which will match measured CCCV cycles.
- * This are the diffusion constants, rate constants and DC resistance.
+/**
+ * @file determine_characterisation.hpp
+ * @brief Header file for the functions used to find the parameters which will match measured CCCV cycles.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2019
+ * @details This are the diffusion constants, rate constants and DC resistance.
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
  * of Oxford, VITO nv, and the 'Slide' Developers.
@@ -18,11 +20,11 @@
 namespace slide {
 
 bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, double Dn, double kp,
-              double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM<>&M,
+              double kn, double R, const struct OCVparam &ocvfit, const struct slide::Model_SPM<> &M,
               slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim);
 
 void CCCV(double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit,
-          const struct slide::Model_SPM<>&M, slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim);
+          const struct slide::Model_SPM<> &M, slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim);
 
 void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::FixedData<double> Dp_space, slide::FixedData<double> Dn_space,
                          slide::FixedData<double> kp_space, slide::FixedData<double> kn_space,

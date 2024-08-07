@@ -1,3 +1,9 @@
+---
+layout: default
+title: Guideline
+nav_order: 2
+---
+
 # Contributing to SLIDE
 
 We welcome pull requests from the community in order to improve and grow
@@ -9,6 +15,10 @@ You may find list of all contributors in [develop/contributors.md](develop/contr
 Code convention is given in [develop/conventions.md](develop/conventions.md).
 
 An itemised TODO list is given in [develop/TODO.md](develop/TODO.md).
+
+## Opening issues
+
+We use GitHub issues to track all bugs and features. Feel free to open an issue if you encounter any problems or have suggestions for improvements. If an issue has been closed but you believe it still needs attention, please re-open it.
 
 ## Pull Requests Process
 
@@ -29,3 +39,12 @@ Links to profile pages below, which includes email contact info
 ## Past Developers
 
 - Jorn M. Reniers
+
+## Learning Material
+
+### Introduction to Git and GitHub
+
+- Ensure you have a [GitHub account](https://github.com/signup/free).
+- Learn Git:
+  - GitHub Help: [Good Resources for Learning Git and GitHub][good-git-resources]
+- [GitHub Flow Guide](https://guides.github.com/introduction/flow/): Step-by-step instructions for GitHub Flow

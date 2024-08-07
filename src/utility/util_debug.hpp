@@ -1,8 +1,9 @@
-/*
- * util_debug.hpp
- *
- *  Created on: 24 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file util_debug.hpp
+ * @brief Debugging functions.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 24 Jun 2022
  */
 
 #pragma once

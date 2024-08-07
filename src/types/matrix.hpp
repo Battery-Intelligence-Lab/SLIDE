@@ -1,11 +1,8 @@
-/*
- * matrix.hpp
- *
- * matrix data type
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file matrix.hpp
+ * @brief matrix data type
+ * @author Volkan Kumtepeli
+ * @date 08 Aug 2022
  */
 
 #pragma once

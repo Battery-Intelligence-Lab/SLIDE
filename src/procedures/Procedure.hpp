@@ -1,8 +1,9 @@
-/*
- * Procedure.hpp
- *
- *  Created on: 3 Mar 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Procedure.hpp
+ * @brief Procedure class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 3 Mar 2020
  */
 
 #pragma once

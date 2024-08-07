@@ -1,11 +1,9 @@
-/*
- * Cell_SPM_dstate.cpp
- *
- * Implements the functions for the parent class of the Cells
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file Cell_SPM_dstate.cpp
+ * @brief State transition functions for Cell_SPM class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2021
  */
 
 #include "Cell_SPM.hpp"
@@ -166,8 +164,7 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   auto [cps, cns] = calcSurfaceConcentration(jp, jn, Dpt, Dnt);
 
   //!< check if the surface concentration is within the allowed range
-  //!< 	0 < cp < Cmaxpos
-  //!< 	0 < cn < Cmaxneg
+  //!< 	0 < cp (cn) < Cmaxpos (Cmaxneg)
   if (cps <= 0 || cns <= 0 || cps >= Cmaxpos || cns >= Cmaxneg) //!< Do not delete if you cannot ensure zp/zn between 0-1
   {
     if (print) {

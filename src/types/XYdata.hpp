@@ -1,8 +1,9 @@
-/*
- * XYdata.hpp
- *
- *  Created on: 07 Feb 2022
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file XYdata.hpp
+ * @brief A class for holding x-y data.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 07 Feb 2022
  */
 
 #pragma once
@@ -76,7 +77,7 @@ public:
   template <typename Tpath>
   void setCurve(Tpath &&path)
   {
-    loadCSV_2col(path, x, y);
+    io::loadCSV_2col(path, x, y);
     check_is_fixed();
   }
 };
@@ -90,7 +91,7 @@ template <typename Tpath>
 void loadCSV_2col(Tpath &&name, slide::XYdata_vv &data, int n = 0)
 {
   //!< slide::XYdata_vv overload.
-  loadCSV_2col(name, data.x, data.y, n);
+  io::loadCSV_2col(name, data.x, data.y, n);
 }
 
 } // namespace slide

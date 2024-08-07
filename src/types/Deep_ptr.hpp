@@ -1,15 +1,14 @@
-/*
- * Deep_ptr.hpp
- *
- * A pointer class, that deep copies itself when it is copied.
+/**
+ * @file Deep_ptr.hpp
+ * @brief A pointer class, that deep copies itself when it is copied.
+ * @author Volkan Kumtepeli
+ * @date 05 Nov 2022
+ * @details A pointer class, that deep copies itself when it is copied.
  * Otherwise, adding a unique_ptr member inside a class deletes the
  * default copy constructor.
  *
  * Code is adapted from: https://www.reddit.com/r/cpp_questions/comments/avr9op/specialize_a_copy_constructor_for_unique_ptr/
  * Accessed 2022-11-05
- *
- * Created on: 05 Nov 2022
- * Author(s): Volkan Kumtepeli
  */
 
 #pragma once

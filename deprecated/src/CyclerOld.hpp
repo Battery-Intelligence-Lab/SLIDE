@@ -58,7 +58,7 @@ struct checkUpProcedure
     try {
       if constexpr (settings::printBool::printCyclerHighLevel)
         std::cout << "checkUpProcedure::set_profileName is reading the current profile.\n";
-      slide::loadCSV_2col(PathVar::data / profileName, I, T); //!< read the file
+      slide::io::loadCSV_2col(PathVar::data / profileName, I, T); //!< read the file
     } catch (int e) {
       //!< std::cout << "Throw test: " << 74 << '\n';
       if constexpr (settings::printBool::printCrit)

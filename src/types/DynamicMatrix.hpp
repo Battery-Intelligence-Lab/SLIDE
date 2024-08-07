@@ -1,8 +1,8 @@
-/*
- * DynamicMatrix.hpp
- *
- *  Created on: 14 Jul 2022
- *   Author(s): Volkan Kumtepeli
+/**
+ * @file DynamicMatrix.hpp
+ * @brief A matrix class.
+ * @author Volkan Kumtepeli
+ * @date 14 Jul 2022
  */
 
 #pragma once

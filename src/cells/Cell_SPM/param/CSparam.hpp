@@ -1,12 +1,11 @@
-/*
- * CSparam.hpp
- *
- *
- *
- *  Created on: 28 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file CSparam.hpp
+ * @brief CS parameter class
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 28 Jun 2022
  */
+
 #pragma once
 
 namespace slide::param {

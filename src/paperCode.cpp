@@ -1,12 +1,15 @@
-/*
- * paperCode.cpp
- *
- * Created on: 9 Jul 2020
- *  Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file paperCode.cpp
+ * @brief Code to create the system in the Digital twin paper.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 9 Jul 2020
+ * @details Reniers, Jorn M., and David A. Howey. "Digital twin of a MWh-scale grid battery system for efficiency and degradation analysis."
+ * Applied Energy 336 (2023): 120774.
+ * @link https://doi.org/10.1016/j.apenergy.2023.120774
  */
 
 #include "slide.hpp"
-#include "paperCode.hpp"
 
 #include <cmath>
 #include <random>
@@ -14,7 +17,8 @@
 #include <iostream>
 #include <fstream>
 
-namespace slide::paperCode::paper2022 {
+using namespace slide;
+
 void Vequalisation_Rdc(double Rdc)
 {
   /*
@@ -82,7 +86,7 @@ void Vequalisation_Rdc(double Rdc)
 void Vequalisation()
 {
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeTimeData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeTimeData)
     std::cerr << "Warning in paperCode::Vequalisation, we want to write data to "
                  "test the cell's behaviour but the global variable CYCLER_STORE_CELL "
                  "is not 2 so no data will be stored.\n";
@@ -104,7 +108,7 @@ void thermalModel()
   //!< use exactly the same code as for V equalisation, but with Rcontact = 0 and the global setting correctly
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeTimeData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeTimeData)
     std::cerr << "Warning in paperCode::thermalModel, we want to write data to "
                  "test the cell's behaviour but the global variable CYCLER_STORE_CELL "
                  "is not 2 so no data will be stored.\n";
@@ -202,7 +206,7 @@ void degradation_1cell()
    */
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeHistogramData)
     std::cerr << "Warning in paperCode::degradation_1cell, we want to do a "
                  "degradation simulation but the global variable CYCLER_STORE_CELL "
                  "is not 1 so no data or too much data will be stored.\n";
@@ -251,7 +255,7 @@ void degradation_electricalModel()
    */
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeHistogramData)
     std::cerr << "Warning in paperCode::degradation_electricalModel, we want to "
                  "do a degradation simulation but the global variable CYCLER_STORE_CELL "
                  "is not 1 so no data or too much data will be stored.\n";
@@ -292,7 +296,7 @@ void degradation_variations()
    */
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeHistogramData)
     std::cerr << "Warning in paperCode::degradation_variations, we want to do "
                  "a degradation simulation but the global variable CYCLER_STORE_CELL "
                  "is not 1 so no data or too much data will be stored.\n";
@@ -354,7 +358,7 @@ void degradation_thermal()
    */
 
   //!< ensure the global settings are appropriately
-  if constexpr (settings::DATASTORE_CELL != settings::cellDataStorageLevel::storeHistogramData)
+  if constexpr (settings::DATASTORE_CELL != settings::CellDataStorageLevel::storeHistogramData)
     std::cerr << "Warning in paperCode::degradation_thermal, we want to do a "
                  "degradation simulation but the global variable CYCLER_STORE_CELL "
                  "is not 1 so no data or too much data will be stored.\n";
@@ -374,4 +378,16 @@ void degradation_thermal()
   auto su = makeBattery_EPFL(capspread, Rcellspread, degratespread, contactR, coolControl, IDaddition, 1);
   degrade(*su);
 }
-} // namespace slide::paperCode::paper2022
+
+int main()
+{
+  // Here are the different functions to run to generate
+  // the results in the Digital twin paper. You can uncomment the
+  // relevant function accordingly.
+
+  // Vequalisation();
+  // thermalModel();
+  // degradation_1cell();
+  // degradation_variations();
+  // degradation_thermal();
+}

@@ -1,13 +1,14 @@
-/*
- * procedure_util.hpp
- *
- *  Created on: 08 Mar 2023
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file procedure_util.hpp
+ * @brief Utility functions for procedures
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 08 Mar 2023
  */
 
 #pragma once
 
-#include "../system/Battery.hpp"
+#include "Battery.hpp"
 
 namespace slide {
 inline void visit_SUs(StorageUnit *su, auto &&fn)

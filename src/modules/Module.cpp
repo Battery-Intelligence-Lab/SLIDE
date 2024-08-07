@@ -1,8 +1,9 @@
-/*
- * Module_base.cpp
- *
- *  Created on: 29 Nov 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Module.cpp
+ * @brief Module base class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 29 Nov 2019
  */
 
 #include "Module.hpp"
@@ -237,7 +238,7 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
   } //!< end loop to set the cell states
 
   //!< set the module temperature
-  assert(s[0] >= PhyConst::Kelvin); //!< #TODO here we are checking but should we?
+  assert(s[0] >= 0.0_degC); //!< #TODO here we are checking but should we?
   setT(s[0]);
   s = s.last(s.size() - 1);
 
@@ -425,7 +426,7 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
     therm.time = 0;
 
     //!< Check the new temperature is valid
-    if (Tcool_new < PhyConst::Kelvin || Tcool_new > PhyConst::Kelvin + 75.0 || std::isnan(Tcool_new)) {
+    if (Tcool_new < 0.0_degC || Tcool_new > 75.0_degC || std::isnan(Tcool_new)) {
       if constexpr (settings::printBool::printCrit) {
         std::cerr << "ERROR in Module::thermalModel of SU " << getFullID() << ", the new temperature of " << Tcool_new << " is outside the allowed range from (273+0) K to (273+75) K";
         std::cerr << ". The time since the last time this function was called is " << tim << '\n';
@@ -436,7 +437,7 @@ double Module::thermalModel_coupled(int Nneighbours, double Tneighbours[], doubl
     //!< return the new cooling temperature
     return Tcool_new;
 
-  }    //!< if(tim != 0)
+  } //!< if(tim != 0)
   else //!< no time has passed -> no heat generated -> just return present temperature
     return T();
 }

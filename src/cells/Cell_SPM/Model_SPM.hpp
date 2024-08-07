@@ -1,11 +1,9 @@
-/*
- * Model_SPM.hpp
- *
- * Defines a struct to store the matrices for the spatial discretisation of the solid diffusion PDE
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file Model_SPM.hpp
+ * @brief  Defines a struct to store the matrices for the spatial discretisation of the solid diffusion PDE
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2021
  */
 
 #pragma once
@@ -66,7 +64,7 @@ struct Model_SPM
     for (int i = 0; i < Ncheb; ++i)
       xm(i) = std::sin((Ncheb - 1 - 2 * i) * dtheta / 2);
 
-    xch = xm.segment<N - 1>(1);
+    xch = xm.template segment<N - 1>(1);
     const Eigen::Vector<double, N - 1> xp = xch * Rp;
     const Eigen::Vector<double, N - 1> xn = xch * Rn;
 
@@ -117,9 +115,9 @@ struct Model_SPM
 
     const double temp = (1 - DN1(0, 0));
 
-    const Eigen::Matrix<double, N - 1, N - 1> A = DN2.block<N - 1, N - 1>(1, 1) + DN2.block<N - 1, 1>(1, 0) * DN1.block<1, N - 1>(0, 1) / temp;
-    const Eigen::Matrix<double, N - 1, 1> B = DN2.block<N - 1, 1>(1, 0) / temp;
-    const Eigen::Matrix<double, 1, N - 1> C = DN1.block<1, N - 1>(0, 1) / temp;
+    const Eigen::Matrix<double, N - 1, N - 1> A = DN2.template block<N - 1, N - 1>(1, 1) + DN2.template block<N - 1, 1>(1, 0) * DN1.template block<1, N - 1>(0, 1) / temp;
+    const Eigen::Matrix<double, N - 1, 1> B = DN2.template block<N - 1, 1>(1, 0) / temp;
+    const Eigen::Matrix<double, 1, N - 1> C = DN1.template block<1, N - 1>(0, 1) / temp;
     const double D = 1.0 / temp;
 
     const Eigen::Matrix<double, N - 1, N - 1> A1 = A / (Rn * Rn);
@@ -169,7 +167,7 @@ struct Model_SPM
 
   static Model_SPM *makeModel() //!< #TODO make other type of models possible.
   {
-    static Model_SPM model;
+    static Model_SPM<> model;
     return &model;
   }
 };
@@ -232,7 +230,7 @@ void testwriteChebyshevModel()
 {
   std::ofstream file{ "testChebyshev.txt", std::ios::out };
 
-  auto &model = *Model_SPM::makeModel();
+  auto &model = *Model_SPM<nch>::makeModel();
 
 
   file << "xch: \n"

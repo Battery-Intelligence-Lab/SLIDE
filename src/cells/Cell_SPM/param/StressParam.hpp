@@ -1,11 +1,9 @@
-/*
- * StressParam.hpp
- *
- *
- *
- *  Created on: 28 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file StressParam.hpp
+ * @brief Stress parameters class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 28 Jun 2022
  */
 
 #pragma once

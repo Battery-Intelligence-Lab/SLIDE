@@ -1,6 +1,12 @@
-#pragma once
+/**
+ * @file param_default.hpp
+ * @brief default parameter values.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 10 Jul 2022
+ */
 
-//!< This file is for default parameter values.
+#pragma once
 
 #include "SEIparam_default.hpp"
 #include "LAMparam_default.hpp"

@@ -1,10 +1,9 @@
-/*
- * VecState.hpp
- *
- * A small class for allocating states.
- * It stores a pointer and an interval.
- *  Created on: 05 Apr 2022
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file VecState.hpp
+ * @brief A small class for allocating states.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 05 Apr 2022
  */
 
 #pragma once
@@ -33,7 +32,7 @@ public:
     }
   };
 
-  VecStates() : VecStates(0){};
+  VecStates() : VecStates(0) {};
 
   //!< auto begin() { return std::begin(*root) + beg; }
   //!< auto end() { return std::begin(*root) + en; }

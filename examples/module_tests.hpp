@@ -22,8 +22,6 @@ void module_p_ECM()
   // Make a module with N cells and a contact resistance
   constexpr int Ncells = 3;
   double Rc = 0.01;
-  constexpr double tol = 0.0001;
-
 
   using cell_type = Cell_ECM<1>;
 
@@ -31,7 +29,7 @@ void module_p_ECM()
   std::vector<double> Rcs{};
 
   for (int i{}; i < Ncells; i++) {
-    cs.push_back(make<cell_type>());
+    cs.push_back(make<cell_type>("cell" + std::to_string(i)));
     Rcs.push_back(Rc);
   }
 
@@ -53,9 +51,14 @@ void module_p_ECM()
 
   ThroughputData th{};
   double dt = 0.01;
+  std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
+
+
   cyc.CC(-16, 4.2, 3600, dt, 1, th);
 
-  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
+
+  cyc.writeData();
 }
 
 } // namespace slide::examples

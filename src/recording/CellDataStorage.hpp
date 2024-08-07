@@ -17,7 +17,7 @@
 
 namespace slide {
 
-template <settings::cellDataStorageLevel N>
+template <settings::CellDataStorageLevel N>
 struct CellDataStorage
 {
   template <typename Cell_t>
@@ -28,7 +28,7 @@ struct CellDataStorage
 };
 
 template <>
-struct CellDataStorage<settings::cellDataStorageLevel::storeHistogramData> //!< Store as histogram.
+struct CellDataStorage<settings::CellDataStorageLevel::storeHistogramData> //!< Store as histogram.
 {
   std::array<Histogram<>, 3> data;
 
@@ -50,7 +50,7 @@ struct CellDataStorage<settings::cellDataStorageLevel::storeHistogramData> //!< 
 };
 
 template <>
-struct CellDataStorage<settings::cellDataStorageLevel::storeTimeData>
+struct CellDataStorage<settings::CellDataStorageLevel::storeTimeData>
 {
   std::vector<double> data; //!< Common data
 
@@ -69,7 +69,7 @@ struct CellDataStorage<settings::cellDataStorageLevel::storeTimeData>
 
 #include "CellDataWriter.hpp"
 
-template <settings::cellDataStorageLevel N>
+template <settings::CellDataStorageLevel N>
 struct CellData : public CellDataStorage<N>
 {
   auto writeData(auto &cell, const std::string &prefix)

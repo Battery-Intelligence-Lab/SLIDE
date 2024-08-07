@@ -1,15 +1,9 @@
-/*
- * utility.hpp
- *
- * All utility functions. So the code is less verbose.
- *
- * A cycler implements check-up procedures and degradation procedures.
- * The data from the check-up procedures is written in csv files in the same subfolder as where the cycling data of a cell is written (see BasicCycler.cpp).
- * There is one file per 'type' of check-up (capacity measurement, OCV measurement, CCCV cycles and a pulse discharge).
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file utility.hpp
+ * @brief All utility functions.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 8 Aug 2022
  */
 
 #pragma once
@@ -26,7 +20,7 @@
 
 
 #include "io/read_CSVfiles.hpp"
+#include "io/binary_format.hpp"
 
 // Types:
-
 #include "../types/Deep_ptr.hpp"

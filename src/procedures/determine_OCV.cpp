@@ -1,9 +1,10 @@
-/*
- * determineOCV.cpp
- *
- * The functions below can be used to find parameters relating to the OCV of a cell if a measured OCV curve is supplied.
- *
- * As input, the user has to supply the electrode OCV curves and the cell OCV curve.
+/**
+ * @file determineOCV.cpp
+ * @brief The functions below can be used to find parameters relating to the OCV of a cell if a measured OCV curve is supplied.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 19 Dec 2019
+ * @details As input, the user has to supply the electrode OCV curves and the cell OCV curve.
  * See readOCVinput()
  *
  * Then the functions below calculate
@@ -19,6 +20,7 @@
  * of Oxford, VITO nv, and the 'Slide' Developers.
  * See the licence file LICENSE for more information.
  */
+
 #include "determine_OCV.hpp"
 #include "../utility/utility.hpp"
 #include "../settings/settings.hpp"

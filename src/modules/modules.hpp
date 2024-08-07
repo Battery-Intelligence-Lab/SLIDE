@@ -1,13 +1,10 @@
-/*
- * modules.hpp
- *
- * to include available module headers.
- *
- *  Created on: 20 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file modules.hpp
+ * @brief include available module headers.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 20 Jun 2022
  */
-
 
 #pragma once
 

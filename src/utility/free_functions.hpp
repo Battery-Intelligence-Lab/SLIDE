@@ -1,10 +1,9 @@
-/*
- * free_functions.cpp
- *
- * Free functions to help to write everything shorter.
- *
- *  Created on: 05 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file free_functions.hpp
+ * @brief Free functions to help to write everything shorter.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 05 Apr 2022
  */
 
 #pragma once

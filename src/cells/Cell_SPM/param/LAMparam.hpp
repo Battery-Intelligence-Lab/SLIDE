@@ -1,11 +1,9 @@
-/*
- * LAMparam.hpp
- *
- *
- *
- *  Created on: 28 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file LAMparam.hpp
+ * @brief LAM parameters class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 28 Jun 2022
  */
 
 #pragma once

@@ -1,10 +1,9 @@
-/*
- * slide_algorithms.cpp
- *
- * Some algorithms to make easier frequently used operations:
- *
- *  Created on: 24 Oct 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file slide_algorithms.hpp
+ * @brief Some algorithms to make easier frequently used operations.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 24 Oct 2022
  */
 
 #pragma once

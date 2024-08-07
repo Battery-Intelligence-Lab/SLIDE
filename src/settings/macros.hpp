@@ -1,13 +1,9 @@
-/*
- * macros.hpp
- *
- * Created on: 26 Jul 2024
- *  Author(s): Volkan Kumtepeli
- *
- * Defines macros, especially used for external libraries.
- *
+/**
+ * @file macros.hpp
+ * @brief Defines macros, especially used for external libraries.
+ * @author Volkan Kumtepeli
+ * @date 26 Jul 2024
  */
-
 
 // Default of this is __forceinline but we use __inline to make compilation faster at the moment.
 // Probably better to make it __forceinline in final build. #TODO Make this SLIDE_DEVELOPER_MODE dependent macro.

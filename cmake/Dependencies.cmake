@@ -20,21 +20,12 @@ target_include_directories(range-v3 SYSTEM INTERFACE ${range-v3_SOURCE_DIR}/incl
 if(NOT TARGET Catch2::Catch2WithMain)
   CPMAddPackage(
     NAME Catch2
-    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v3.3.2.tar.gz"
+    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v3.6.0.tar.gz"
   )
 endif()
 
-
-# CPMAddPackage("gh:fmtlib/fmt#10.1.1") #fmt library
 # fmt library:
 CPMAddPackage(
   NAME fmt
-  URL "https://github.com/fmtlib/fmt/archive/refs/tags/10.1.1.tar.gz"
+  URL "https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz"
 )
-
-
-# # Glaze library:
-# CPMAddPackage(
-#   NAME glaze
-#   URL "https://github.com/stephenberry/glaze/archive/refs/tags/v1.3.4.tar.gz"
-# )

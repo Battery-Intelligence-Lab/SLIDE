@@ -1,9 +1,12 @@
-/*
- * Degradation.hpp
- *
- * Header file for the degradation simulations.
+/**
+ * @file degradation.hpp
+ * @brief Degradation functions
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2019
+ * @details Implements simulations for degradation experiments where multiple cells undergo similar degradation experiments but with different parameters (e.g. different temperatures, voltage windows, C rates, etc).
  * The exact degradation procedures are defined in the Cycler.
- * In the functions defined here, the functions from the Cycler are called various times with slightly different parameters (e.g. different temperatures, C rates, etc).
+ * In the functions defined here, the functions from the Cycler are called various times with slightly different parameters.
  * As such, we can simulate the effect the different parameters have on battery degradation
  *
  * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University

@@ -1,11 +1,9 @@
-/*
- * LAMparam_default.hpp
- *
- *
- *
- *  Created on: 28 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file LAMparam_default.hpp
+ * @brief Default LAM parameters
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 28 Jun 2022
  */
 
 #pragma once

@@ -1,11 +1,9 @@
-/*
- * parameters_SPM.hpp
- *
- * to include available cells headers.
- *
- *  Created on: 19 Jun 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+/**
+ * @file parameters_SPM.hpp
+ * @brief to include parameters for SPM.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 19 Jun 2022
  */
 
 #pragma once

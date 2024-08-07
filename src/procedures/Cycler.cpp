@@ -1,8 +1,9 @@
-/*
- * Cycler.cpp
- *
- *  Created on: 19 Dec 2019
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file Cycler.cpp
+ * @brief Cycler class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 19 Dec 2019
  */
 
 #include "Cycler.hpp"

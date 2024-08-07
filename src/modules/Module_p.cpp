@@ -1,7 +1,8 @@
 /**
  * @file Module_p.cpp
- * @brief Implementation of parallel module class.
- * @author Jorn Reniers, Volkan Kumtepeli
+ * @brief parallel-connected Module
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
  * @date 18 Dec 2019
  */
 

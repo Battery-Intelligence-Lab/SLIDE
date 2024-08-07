@@ -1,11 +1,9 @@
-/*
- * Interval.hpp
- *
- * A small class for returning non-owning view of some storages.
+/**
+ * @file Interval.hpp
+ * @brief A small class for returning non-owning view of some storages.
  * It stores a pointer and an interval.
- *
- *  Created on: 05 Apr 2022
- *   Author(s): Volkan Kumtepeli
+ * @author Volkan Kumtepeli
+ * @date 05 Apr 2022
  */
 
 #pragma once

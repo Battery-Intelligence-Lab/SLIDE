@@ -40,3 +40,6 @@ target_link_libraries(src
   utility
   ${PTHREADS} # -> for WSL
 )
+
+add_executable(papercode paperCode.cpp)
+target_link_libraries(papercode src)

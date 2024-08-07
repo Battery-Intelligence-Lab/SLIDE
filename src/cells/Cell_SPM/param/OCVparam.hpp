@@ -1,7 +1,9 @@
-/*
- * OCVparam.hpp
- *  Created on: 10 Jul 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file OCVparam.hpp
+ * @brief OCV parameter class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 10 Jul 2022
  */
 
 #pragma once

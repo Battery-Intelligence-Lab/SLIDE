@@ -1,9 +1,8 @@
-
-/*
- * PtrInterval.hpp
- *
- *  Created on: 27 May 2022
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file PtrInterval.hpp
+ * @brief Pointer interval class.
+ * @author Volkan Kumtepeli
+ * @date 27 May 2022
  */
 
 #pragma once
@@ -12,8 +11,6 @@
 #include <array>
 #include <span>
 #include <iterator>
-
-// #include <type_traits>
 
 namespace slide {
 template <typename T>

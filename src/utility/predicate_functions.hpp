@@ -1,10 +1,9 @@
-/*
- * predicate_functions.cpp
- *
- * Predicate functions to help to write everything shorter.
- *
- *  Created on: 07 Apr 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file predicate_functions.hpp
+ * @brief Predicate functions to help to write everything shorter.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 07 Apr 2022
  */
 
 #pragma once

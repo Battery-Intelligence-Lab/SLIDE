@@ -1,9 +1,9 @@
-/*
- * Status.hpp
- *
- * A small class for error codes.
- *  Created on: 21 Jun 2022
- *   Author(s): Volkan Kumtepeli, Jorn Reniers
+/**
+ * @file Status.hpp
+ * @brief Generic State class to hold time, Ah, Wh.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 21 Jun 2022
  */
 
 #pragma once

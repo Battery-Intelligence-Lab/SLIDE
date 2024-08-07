@@ -1,13 +1,9 @@
-/*
- * tolerances.hpp
- *
- * Author : Jorn Reniers, Volkan Kumtepeli
- *
- * Defines constants to be used in the program.
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file tolerances.hpp
+ * @brief Tolerance values used in the software
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 3 Mar 2020
  */
 
 #pragma once

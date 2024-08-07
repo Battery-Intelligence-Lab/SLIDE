@@ -1,18 +1,9 @@
-/*
- * Cell_SPM.hpp
- *
- * Header file for the parent Class for all Cells.
- *
- * It also defines a number of structs:
- * 		DEG_ID 		settings about which degradation models should be used for the simulations
- * 		SEIparam 	fitting parameters of the various models for SEI growth
- * 		CSparam 	fitting parameters of the various models for crach growth on the surface of the electrodes
- * 		LAMparam 	fitting parameters of the various models for loss of active material
- * 		PLparam 	fitting parameters of the various models for lithium plating
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
+/**
+ * @file Cell_SPM.hpp
+ * @brief Header file for Cell_SPM class
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 2021
  */
 
 #pragma once
@@ -233,7 +224,7 @@ public:
   //!< {
   //!< 	slide::validState(st, s_ini);
   //!< }
-  ThroughputData getThroughputs() { return { st.time(), st.Ah(), st.Wh() }; }
+  ThroughputData getThroughputs() override { return { st.time(), st.Ah(), st.Wh() }; }
 
   void overwriteCharacterisationStates(double Dpi, double Dni, double ri)
   {
