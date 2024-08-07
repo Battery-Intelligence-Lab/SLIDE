@@ -9,4 +9,5 @@ target_link_libraries(parallel_model
   src
   project_warnings
   project_options
+  Boost::boost
 )

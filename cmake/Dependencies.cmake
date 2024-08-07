@@ -12,6 +12,7 @@ CPMAddPackage(
 )
 
 include(eigen)
+include(boost)
 
 add_library(range-v3 INTERFACE)
 target_include_directories(range-v3 SYSTEM INTERFACE ${range-v3_SOURCE_DIR}/include)
@@ -29,3 +30,5 @@ CPMAddPackage(
   NAME fmt
   URL "https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz"
 )
+
+
