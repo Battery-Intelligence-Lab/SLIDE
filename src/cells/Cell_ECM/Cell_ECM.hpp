@@ -48,7 +48,7 @@ protected:
   State_ECM<N_RC> st{ settings::T_ENV, 0.5 }; //!< States T, SOC, , I, Ir, ... ;
   //!< parameters:
 
-  std::array<double, N_RC> Rp{ 1 }, Tau{ 100 }; // Tau = 1/(RC). All initialised zero.
+  std::array<double, N_RC> Rp{}, Tau{}; // Tau = 1/(RC). All initialised zero.
   XYdata_vv OCV;                                //!< SOC vs voltage curve.
   double Rdc{ 2e-3 };                           //!< DC resistance [Ohm]
 

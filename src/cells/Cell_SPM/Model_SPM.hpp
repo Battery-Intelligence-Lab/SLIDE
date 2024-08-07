@@ -230,7 +230,7 @@ void testwriteChebyshevModel()
 {
   std::ofstream file{ "testChebyshev.txt", std::ios::out };
 
-  auto &model = *Model_SPM::makeModel();
+  auto &model = *Model_SPM<nch>::makeModel();
 
 
   file << "xch: \n"
