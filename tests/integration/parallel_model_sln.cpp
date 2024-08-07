@@ -8,8 +8,11 @@
  */
 
 
-#include <iostream>
+#include <slide.hpp>
+#include <boost/numeric/odeint.hpp>
 #include <Eigen/Dense>
+
+#include <iostream>
 #include <random>
 #include <sstream>
 #include <string>
@@ -18,25 +21,14 @@
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
-#include <slide.hpp>
 #include <chrono>
-#include <boost/numeric/odeint.hpp>
-
-// using namespace std; // bu yerine fonksiyonun içine ekle
-// using namespace Eigen;
 
 // Global variable to store i_branch values
 Eigen::MatrixXd i_branch_store;
 
 using namespace boost::numeric;
 
-typedef Eigen::VectorXd state_type;
-
-void harmonic_oscillator(const state_type &x, state_type &dxdt, double t)
-{
-  dxdt[0] = x[1];
-  dxdt[1] = -x[0];
-}
+typedef std::vector<double> state_type;
 
 double ocv_eval(const std::vector<double> &ocv_coefs, double z)
 {
@@ -205,28 +197,36 @@ Eigen::VectorXd parallel_model_no_mat_inverse(double t, const Eigen::VectorXd &x
   return xdot;
 }
 
-void parallel_model_dae5(double t, const Eigen::VectorXd &x, double I, const Eigen::MatrixXd &A11, const Eigen::MatrixXd &A12, const Eigen::MatrixXd &A21, const Eigen::MatrixXd &A22, const std::vector<double> &ocv_coefs, const Eigen::VectorXd &R, const Eigen::VectorXd &r, Eigen::VectorXd &xdot)
+void parallel_model_dae5(double t, const state_type &x_std, double I, const Eigen::MatrixXd &A11, const Eigen::MatrixXd &A12, const Eigen::MatrixXd &A21, const Eigen::MatrixXd &A22, const std::vector<double> &ocv_coefs, const Eigen::VectorXd &R, const Eigen::VectorXd &r, state_type &xdot_std)
 {
-  std::cout << "x : " << x << std::endl;
+
+  constexpr bool printDebug = false;
+
+  Eigen::Map<const Eigen::VectorXd> x(x_std.data(), x_std.size());
+  Eigen::Map<Eigen::VectorXd> xdot(xdot_std.data(), xdot_std.size());
+
+  if (printDebug)
+    std::cout << "x : " << x.transpose() << std::endl;
 
 
   int n = x.size() / 2;
-  Eigen::VectorXd SOC(n), OCV_branch(n), w(n), v_mod(n);
+  static Eigen::VectorXd OCV_branch(n), w(n), v_mod(n);
 
   for (int i = 0; i < n; ++i) {
-    SOC(i) = x(2 * i);
-    OCV_branch(i) = ocv_eval(ocv_coefs, SOC(i));
+    const auto SOC = x(2 * i);
+    OCV_branch(i) = ocv_eval(ocv_coefs, SOC);
     w(i) = x(2 * i + 1);
     v_mod(i) = OCV_branch(i) + w(i);
   }
 
-  std::cout << "SOC : " << SOC << std::endl;
-  std::cout << "v_mod : " << v_mod << std::endl;
-  std::cout << "w : " << w << std::endl;
-  std::cout << "OCV_branch : " << OCV_branch << std::endl;
+  if (printDebug) {
+    std::cout << "v_mod : " << v_mod.transpose() << std::endl;
+    std::cout << "w : " << w.transpose() << std::endl;
+    std::cout << "OCV_branch : " << OCV_branch.transpose() << std::endl;
+  }
 
 
-  Eigen::VectorXd i_branch(n), theta(n), rho(n);
+  static Eigen::VectorXd i_branch(n), theta(n), rho(n);
   theta(0) = 0;
   rho(0) = 0;
 
@@ -235,8 +235,10 @@ void parallel_model_dae5(double t, const Eigen::VectorXd &x, double I, const Eig
     rho(i) = 1 / r(i - 1);
   }
 
-  std::cout << "theta : " << theta << std::endl;
-  std::cout << "rho : " << rho << std::endl;
+  if (printDebug) {
+    std::cout << "theta : " << theta.transpose() << std::endl;
+    std::cout << "rho : " << rho.transpose() << std::endl;
+  }
 
 
   double cn = 1.0;
@@ -248,10 +250,12 @@ void parallel_model_dae5(double t, const Eigen::VectorXd &x, double I, const Eig
     cn += prod_theta;
   }
 
-  std::cout << "cn : " << cn << std::endl;
+  if (printDebug)
+    std::cout << "cn : " << cn << std::endl;
 
 
-  Eigen::VectorXd f = Eigen::VectorXd::Zero(n);
+  static Eigen::VectorXd f(n);
+  f.fill(0);
 
   for (int j = 0; j < n - 1; ++j) {
     f(j) = rho(j + 1) * (v_mod(j + 1) - v_mod(j));
@@ -264,21 +268,22 @@ void parallel_model_dae5(double t, const Eigen::VectorXd &x, double I, const Eig
     }
   }
   f(n - 1) = rho(n - 1) * (v_mod(n - 1) - v_mod(n - 2));
-  std::cout << "f : " << f << std::endl;
+
+  if (printDebug)
+    std::cout << "f : " << f.transpose() << std::endl;
 
   i_branch(n - 1) = (I - f.sum()) / cn;
 
-  for (int j = n - 2; j >= 0; --j) {
+  for (int j = n - 2; j >= 0; --j)
     i_branch(j) = theta(j + 1) * i_branch(j + 1) + rho(j + 1) * (v_mod(j + 1) - v_mod(j));
-  }
 
   i_branch_store = i_branch; // Store i_branch globally
   xdot = A11 * x + A12 * i_branch;
 
-  std::cout << "i_branch : " << i_branch << std::endl;
-
-
-  std::cout << "xdot : " << xdot << std::endl;
+  if (printDebug) {
+    std::cout << "i_branch : " << i_branch.transpose() << std::endl;
+    std::cout << "xdot : " << xdot.transpose() << std::endl;
+  }
 }
 
 
@@ -310,7 +315,7 @@ int main()
 
   // Model parameters
   // int n_par = 100; // The number of cells in parallel
-  int n_par = 3; // for testing
+  int n_par = 50; // for testing
 
   double capacitance_Ah = capacitance_Ah_all[bat_select_num - 1];
   double capacitance = 3600 * capacitance_Ah;
@@ -364,10 +369,9 @@ int main()
   // std::cout << "x0:\n" << x0 << std::endl;
   // std::cout << "tspan:\n" << tspan << std::endl;
 
-  Eigen::VectorXd x0 = Eigen::VectorXd::Constant(2 * n_par, 0.2);
-  for (int j = 0; j < n_par; ++j) {
-    x0(2 * j + 1) = 0;
-  }
+  state_type x0(2 * n_par, 0.2);
+  for (int j = 0; j < n_par; ++j)
+    x0[2 * j + 1] = 0;
 
   double t_f = 0.6 * 3600 / C_rate;
   int num_points = 100; // need to explicitly specify the number of points because there is no default value (MATLAB default = 100)
@@ -384,15 +388,32 @@ int main()
   // std::cout << "xdot_dae:\n" << xdot2 << std::endl;
 
   // Use the Runge-Kutta Cash-Karp method (similar to MATLAB's ode45)
-  odeint::runge_kutta_cash_karp54<state_type> stepper;
+  odeint::runge_kutta_dopri5<state_type> stepper;
 
   // Integrate the ODE from t=0 to t=10 with step size 0.1
-  double t_start = 0.0, t_end = 10.0, dt = 0.1;
-  auto myODE = [&](auto &x, auto &dxdt, double t) {
+  double t_start = 0.0, t_end = 4 * 3600.0, dt = 0.1;
+  auto myODE = [&](const auto &x, auto &dxdt, double t) {
     parallel_model_dae5(t, x, I, A11, A12, A21, A22, ocv_coefs, R, r, dxdt);
   };
 
-  odeint::integrate_adaptive(odeint::make_controlled(1.0e-12, 1.0e-12, stepper), myODE, x0, t_start, t_end, dt);
+
+  // Observer to print the state
+  struct Results
+  {
+    std::vector<double> res;
+
+    void operator()(const state_type &x, double t)
+    {
+
+      res.push_back(t);
+      res.insert(res.end(), x.begin(), x.end());
+    }
+  };
+
+  Results myresults;
+  myresults.res.reserve(100000);
+
+  odeint::integrate_adaptive(odeint::make_controlled(1.0e-12, 1.0e-12, stepper), myODE, x0, t_start, t_end, dt, myresults);
 
 
   // ...........
