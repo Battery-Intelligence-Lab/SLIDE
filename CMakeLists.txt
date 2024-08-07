@@ -57,16 +57,16 @@ if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
   endif()
 endif()
 
-# # enable cache system
-# include(cmake/Cache.cmake)
+# enable cache system
+include(cmake/Cache.cmake)
 
 # standard compiler warnings
 include(cmake/CompilerWarnings.cmake)
 set_project_warnings(project_warnings)
 
 # # sanitizer options if supported by compiler
-# include(cmake/Sanitizers.cmake)
-# enable_sanitizers(project_options)
+include(sanitizers)
+add_sanitizers(project_options)
 
 # enable doxygen
 # include(cmake/Doxygen.cmake)

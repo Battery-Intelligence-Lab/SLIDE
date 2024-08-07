@@ -1,4 +1,4 @@
-# Obtained: https://github.com/polyfem/polysolve/tree/main/cmake/recipes
+# Obtained: https://github.com/polc:\Users\engs2321\Downloads\onetbb.cmakeyfem/polysolve/tree/main/cmake/recipes
 # Copyright 2021 Adobe. All rights reserved.
 # This file is licensed to you under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License. You may obtain a copy
@@ -20,8 +20,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 set(OLD_CMAKE_POSITION_INDEPENDENT_CODE ${CMAKE_POSITION_INDEPENDENT_CODE})
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(BOOST_URL "https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.bz2" CACHE STRING "Boost download URL")
-set(BOOST_URL_SHA256 "6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e" CACHE STRING "Boost download URL SHA256 checksum")
+set(BOOST_URL "https://archives.boost.io/release/1.85.0/source/boost_1_85_0.7z" CACHE STRING "Boost download URL")
+set(BOOST_URL_SHA256 "16d16b9658753117c1434e5450c5eac194957f4b6d0b390b9d07900d37c115a4" CACHE STRING "Boost download URL SHA256 checksum")
 
 include(CPM)
 CPMAddPackage(
