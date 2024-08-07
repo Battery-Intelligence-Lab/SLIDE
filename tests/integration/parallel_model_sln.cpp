@@ -389,8 +389,7 @@ int main()
   // Integrate the ODE from t=0 to t=10 with step size 0.1
   double t_start = 0.0, t_end = 10.0, dt = 0.1;
   auto myODE = [&](auto &x, auto &dxdt, double t) {
-    auto a = dxdt.size();
-    a parallel_model_dae5(t, x, I, A11, A12, A21, A22, ocv_coefs, R, r, dxdt);
+    parallel_model_dae5(t, x, I, A11, A12, A21, A22, ocv_coefs, R, r, dxdt);
   };
 
   odeint::integrate_adaptive(odeint::make_controlled(1.0e-12, 1.0e-12, stepper), myODE, x0, t_start, t_end, dt);
