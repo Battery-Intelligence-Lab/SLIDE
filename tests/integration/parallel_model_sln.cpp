@@ -19,9 +19,13 @@
 #include <ctime>
 #include <fstream>
 #include <slide.hpp>
+#include <chrono>
 
 // using namespace std; // bu yerine fonksiyonun içine ekle
-using namespace Eigen;
+// using namespace Eigen;
+
+// Global variable to store i_branch values
+Eigen::MatrixXd i_branch_store;
 
 double ocv_eval(const std::vector<double> &ocv_coefs, double z) {
     double ocv = 0.0;
@@ -157,6 +161,7 @@ Eigen::VectorXd parallel_model(double t, const Eigen::VectorXd &x, double I, con
     phi << -delta_v, -I;
 
     Eigen::VectorXd i_branch = -A22 * phi;
+    i_branch_store = i_branch; // Store i_branch globally
     Eigen::VectorXd xdot = A11 * x + A12 * (-A22 * phi);
     return xdot;
 }
@@ -182,6 +187,7 @@ Eigen::VectorXd parallel_model_no_mat_inverse(double t, const Eigen::VectorXd &x
     phi << -delta_v, -I;
 
     Eigen::VectorXd i_branch = -A22 * phi;
+    i_branch_store = i_branch; // Store i_branch globally
     Eigen::VectorXd xdot = A11 * x + A12 * (-m * phi);
     return xdot;
 }
@@ -235,6 +241,7 @@ Eigen::VectorXd parallel_model_dae5(double t, const Eigen::VectorXd &x, double I
         i_branch(j) = theta(j + 1) * i_branch(j + 1) + rho(j + 1) * (v_mod(j + 1) - v_mod(j));
     }
 
+    i_branch_store = i_branch; // Store i_branch globally
     xdot = A11 * x + A12 * i_branch;
     return xdot;
 }
@@ -329,6 +336,7 @@ int main()
     int num_points = 100; // need to explicitly specify the number of points because there is no default value (MATLAB default = 100) 
     Eigen::VectorXd tspan = Eigen::VectorXd::LinSpaced(num_points, 0, t_f);
 
+    auto start = std::chrono::high_resolution_clock::now();
     // Call the functions
     //Eigen::VectorXd xdot_inv = parallel_model(t, x, I, A11, A12, A21, A22, ocv_coefs);
     //Eigen::VectorXd xdot_m = parallel_model_no_mat_inverse(t, x, I, A11, A12, A21, A22, ocv_coefs, m);
@@ -337,6 +345,48 @@ int main()
     //std::cout << "xdot_inv:\n" << xdot1 << std::endl;
     //std::cout << "xdot_m:\n" << xdot2 << std::endl;
     //std::cout << "xdot_dae:\n" << xdot2 << std::endl;
+
+    // ...........
+    // ODE SOLVER
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_dae = end - start;
+    std::cout << "DAE5 computation took: " << time_dae.count() << " seconds" << std::endl;
+
+    Eigen::MatrixXd i_branch_values = i_branch_store; 
+    std::cout << "i_branch_values:\n" << i_branch_values << std::endl;
+
+    //x_ode = x_ode_2;
+    //t_ode = t_ode_2;
+
+    /*int size_t = x_ode.rows();
+    Eigen::MatrixXd z_ode(size_t, n_par), w_ode(size_t, n_par);
+    for (int i = 0; i < n_par; ++i) {
+        z_ode.col(i) = x_ode.col(2 * i);
+        w_ode.col(i) = x_ode.col(2 * i + 1);
+    }
+
+    int nT = tspan.size();
+    Eigen::MatrixXd i_branch(n_par, nT);
+    Eigen::VectorXd phi(n_par), phi_init(n_par - 1);
+
+    Eigen::MatrixXd OCV_ode(nT, n_par), volts(nT, n_par);
+    Eigen::VectorXd current_sum(nT);
+
+    for (int j = 0; j < nT; ++j) {
+        for (int i = 0; i < n_par; ++i) {
+            OCV_ode(j, i) = ocv_eval(ocv_coefs, z_ode(j, i));
+            volts(j, i) = OCV_ode(j, i) + w_ode(j, i);
+        }
+
+        for (int i = 1; i < n_par; ++i) {
+            phi_init(i - 1) = volts(j, i) - volts(j, 0);
+        }
+        phi << I, phi_init;
+
+        i_branch.col(j) = A22.inverse() * phi; // Get the current going into each parallel branch
+        current_sum(j) = i_branch.col(j).sum() / I;
+    }      
+    */ // the commented out part is for battery behaviour analysis might be unnecessary for SLIDE
 
   return 0;
 }
