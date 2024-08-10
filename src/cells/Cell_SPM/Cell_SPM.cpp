@@ -319,8 +319,8 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
   st.LLI() = 0;                   //!< lost lithium. Start with 0 so we can keep track of how much li we lose while cycling the cell
   st.Dp() = 8e-14;                //!< diffusion constant of the cathode at reference temperature
   st.Dn() = 7e-14;                //!< diffusion constant of the anode at reference temperature
-  st.thickp() = 70e-6;            //!< thickness of the positive electrode
-  st.thickn() = 73.5e-6;          //!< thickness of the negative electrode
+  st.thickp() = 86.87357e-6;      //!< thickness of the positive electrode
+  st.thickn() = 74.883947e-6;     //!< thickness of the negative electrode
   st.ep() = 0.5;                  //!< volume fraction of active material in the cathode
   st.en() = 0.5;                  //!< volume fraction of active material in the anode
   st.ap() = 3 * st.ep() / geo.Rp; //!< effective surface area of the cathode, the 'real' surface area is the product of the effective surface area (a) with the electrode volume (elec_surf * thick)
@@ -335,10 +335,14 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   st.delta_pl() = 0; //!< thickness of the plated lithium layer. You can start with 0 here
 
-  constexpr double fp = 0.689332; //!< 0.689332 lithium fraction in the cathode at 50% soc (3.68136 V) [-]
-  constexpr double fn = 0.479283; //!< 0.479283 lithium fraction in the anode at 50% soc (3.68136 V) [-]
-  setC(fp, fn);
-  st.SOC() = 0.5; //!< Since fp and fn are set at 50%.
+  const double SOCset = 0.5;
+
+  st.SOC() = SOCset; //!< Since fp and fn are set at 50%.
+
+  const auto xp_now = xp_0 + SOCset * (xp_100 - xp_0);
+  const auto xn_now = xn_0 + SOCset * (xn_100 - xn_0);
+
+  setC(xp_now, xn_now);
 
   s_ini = st; //!< set the states, with a random value for the concentration
 

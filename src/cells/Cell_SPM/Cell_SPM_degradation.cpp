@@ -479,6 +479,92 @@ double Cell_SPM::LiPlating(double OCVnt, double etan)
   }
 }
 
+
+double Cell_SPM::calculateIntegral()
+{
+  // Calculates lithium inside electrodes, taken from Dai stress.
+
+  using settings::nch, std::pow;
+
+  //!< Get the locations of the Chebyshev nodes
+  double xp[nch + 2]; //!< location (x-value) of the positive Chebyshev nodes
+
+  xp[0] = 1;
+  std::copy(M->xch.begin(), M->xch.end(), &xp[1]);
+  xp[nch + 1] = 0;
+
+  double xtot[2 * nch + 3];    //!< location (x-value) of the positive and negative Chebyshev nodes [-surface .. centre .. +surface]
+  xtot[nch + 1] = xp[nch + 1]; //!< centre node
+
+  for (size_t i = 0; i < nch + 1; i++) {
+    xtot[i] = -xp[i];                //!< negative nodes
+    xtot[nch + 2 + i] = xp[nch - i]; //!< positive nodes
+  }
+
+  //!< get concentrations at each Chebyshev node
+  //!< Due to symmetry, the concentration at the negative point is the same as the concentration of the positive point: c(-x) = c(x)
+  double cp[nch + 2], cn[nch + 2]; //!< positive and negative nodes, [+surface .. inner .. centre]
+  getC(cp, cn);                    // #TODO can return directly 2 arrays.
+
+  double CP[2 * nch + 3], CN[2 * nch + 3]; //!< concentrations at all nodes, [-surface .. inner .. centre .. inner .. +surface]
+
+  CP[nch + 1] = cp[nch + 1]; //!< cathode centre node
+  CN[nch + 1] = cn[nch + 1]; //!< anode centre node
+
+  for (size_t i = 0; i < nch + 1; i++) {
+    CP[i] = cp[i];                 //!< cathode negative points
+    CN[i] = cn[i];                 //!< anode negative points
+    CP[nch + 2 + i] = cp[nch - i]; //!< cathode positive points
+    CN[nch + 2 + i] = cn[nch - i]; //!< anode positive points
+  }
+
+  //!< The formula's to calculate the stress have integrals.
+  //!< Integrals of Chebyshev points can be calculated using the Q-matrix in the state space struct (M)
+  //!< The integral from the negative surface to node i is given by row i of the product Q*f
+  //!< 		with Q the Chebyshev integration matrix
+  //!< 			 f the value of the function you want to integrate, evaluated at every node
+  //!< All integrals have to start from the negative surface (because you must cover the entire Chebyshev domain)
+  //!< 	so if you need the integral of a function f from the centre (x = 0) to a positive point in the sphere (x = i)
+  //!< 		int(f, x = 0 .. i) = int(f, x=-1 .. i) - int(f, x=-1 .. 0)
+  //!< E.g. to get the integral of the positive li-concentration from the centre until the 4th positive Chebyshev node:
+  //!< 		F = Q * CP 				[-surface .. centre .. +surface]
+  //!< 		int(c(x), x = 0 .. i(4)) = int(c(x), x=-1 .. i(4)) - int(c(x), x=-1 .. 0)
+  //!< 							  	 = F[nch + 1 + 4] 		   - F[nch+1]
+  //!< 		(remember that the centre node is at [nch+1])
+
+  //!< Calculate the matrix-vector product of the required functions as given in the paper by Dai et al. (concentration * radius^2)
+  //!< we need to remember the transformation of variables from x (-1<x<1) to r (-R<r<R)
+  //!< 		int( c * r^2 dr) = int(c * (x*R)^2 * d(R*x)) = int(c x^2 R^3 dx)
+  //!< so the matrix-vector product we need is F = Q * (concentration * x^2 * R^3)
+
+  //!< Note: since Fp (Fn) is multiplied by Rp^3 (Rn^3) then divided by them they are eliminated to remove numerical problems.
+
+  std::array<double, 2 * nch + 3> Fp{}, Fn{}; //!< arrays with the product for the positive and negative electrode
+  for (size_t i = 0; i < 2 * nch + 3; i++)    //!< loop for each row (one row = one node)
+  {
+    //!< calculate the matrix-vector product for row i as you would do it by hand:
+    //!< F(i) = sum(Q(i,j)*C(j)*x(j)^2*R^3, j=0..2*nch+2)
+    for (size_t j = 0; j < 2 * nch + 3; j++) {    //!< loop through the columns to calculate the sum
+      Fp[i] += M->Q(i, j) * CP[j] * sqr(xtot[j]); //!< 		Q(i,j)*C(j)*x(j)^2
+      Fn[i] += M->Q(i, j) * CN[j] * sqr(xtot[j]);
+    }
+  }
+
+  //!< Calculate the integral from the centre to the positive surface, which is a constant present in all equations
+  const double ap = Fp[2 * nch + 2] - Fp[nch + 1]; //!< int( cp*r^2, r=0..Rp ) // Note r^3 is eliminated!
+  const double an = Fn[2 * nch + 2] - Fn[nch + 1]; //!< int( cn*r^2, r=0..Rn )
+
+  // See bizeray2015lithium  -- Lithium-ion battery thermal-electrochemical model-based state
+  // estimation using orthogonal collocation and a modified extended
+  // Kalman filter, for Eqs. 29--30 for detailed explanation. #TODO -> improve this.
+  const double SOC_p = (3 * ap / Cmaxpos - xp_0) / (xp_100 - xp_0);
+  const double SOC_n = (3 * an / Cmaxneg - xn_0) / (xn_100 - xn_0);
+
+  const double SOCcal = (SOC_p + SOC_n) / 2;
+  return SOCcal;
+}
+
+
 void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_r_p, sigma_type &sigma_r_n, sigma_type &sigma_t_p, sigma_type &sigma_t_n, sigma_type &sigma_h_p, sigma_type &sigma_h_n) noexcept
 {
   /*

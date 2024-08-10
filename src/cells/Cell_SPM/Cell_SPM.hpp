@@ -64,6 +64,8 @@ protected:                 //!< protected such that child classes can access the
   double rho{ 1626 }; //!< density of the battery
   double Cp{ 750 };   //!< thermal capacity of the battery #TODO = units missing.
 
+  double xp_0{ 0.983999588653496 }, xp_100{ 0.400145394039564 }, xn_0{ 0.029397569380507 }, xn_100{ 0.932469496648387 }; // Lithium fractions at 0 to 100 percent.
+
   //!< Geometric parameters
   param::Geometry_SPM geo{};
   //!< other geometric parameters are part of State because they can change over the battery's lifetime
@@ -240,6 +242,7 @@ public:
     s_ini.overwriteGeometricStates(thickpi, thickni, epi, eni, api, ani);
   }
 
+  double calculateIntegral();
   //!< time integration
   //!< void integratorStep(bool print, double dti, bool blockDegradation); //!< step forward in time using specified numerical integrator
 
@@ -263,7 +266,7 @@ public:
   double getOCV() override;
   Status setStates(setStates_t sSpan, bool checkV, bool print) override;
   bool validStates(bool print = true) override;
-  inline double SOC() override { return st.SOC(); }
+  inline double SOC() override { return calculateIntegral(); }
   void timeStep_CC(double dt, int steps = 1) override;
 
   Cell_SPM *copy() override { return new Cell_SPM(*this); }

@@ -49,7 +49,7 @@ void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
   for (size_t j = 0; j < nch; j++)                            //!< A is diagonal, so the array M->A has only the diagonal elements
     d_st.zn(j) = (Dnt * M->An(j) * st.zn(j) + M->Bn(j) * jn); //!< dz/dt = D * A * z + B * j
 
-  d_st.SOC() += -I() / (Cap() * 3600); //!< dSOC state of charge
+  // d_st.SOC() -= i_app / Cmaxpos; //!< #TODO there must be an expression to calculate this.
 }
 
 void Cell_SPM::dState_thermal(bool print, double &dQgen)

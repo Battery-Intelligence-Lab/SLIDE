@@ -8,7 +8,7 @@
 
 
 ### Code-review by Martin Robinson: 
-  - [ ] It is both a library and application in between. 
+  - [x] It is both a library and application in between. -> library
   - [ ] One way: have a config file model file and options. 
   - [ ] Brady: Julia wrapper? 
   - [ ] Martin: Lot more Python audience. 
@@ -21,7 +21,7 @@
   - [ ] Template projects in OxRSE template-project-cpp
   - [ ] gui_starter_library Jason Turner. 
   - [ ] clang-tidy 
-  - [ ] codecov. 
+  - [x] codecov. 
   - [x] Doxygen. 
   - [ ] CPack
 
@@ -39,6 +39,7 @@
 
 
 ### Current priority:
+- [ ] Make the modules writable to JSON files nested. 
 - [ ] Voltage should be inside the states, so it is a discrete algebraic state. 
 - [ ] make overpotential etap etan removable. So an voltage model is needed. 
 - [ ] In Cell_ECM model, time step should be less than the smallest tau, otherwise it will oscillate. 
@@ -59,12 +60,10 @@
 - [ ] Battery class distributes current equally between each module. We can insert Schimpe-style optimisation if we could integrate a current distribution algorithm. 
 - [ ] Vmodule and Vmodule_valid are removed but it could be useful for series module. 
 - [ ] Problem compiling with MSVC vs Clang whereas Clang is 3x faster. Are we really enabling vectorisation and/or sse2/avx etc.? Make sure all optimisations are on for all compilers. 
-- [ ] Eigen is included! Remove unnecessary folders. 
 - [ ] Why CV controls voltage limit? It seems unnecessary. 
 - [x] Cycler `getSafetyVmin` and `getSafetyVmax` are removed for redundancy and expensiveness.
 - [x] Cycler `initialise` is removed now constructor is used. 
 - [x] nOnce scaling is being removed; it will be added in future if necessary. 
-- [x] Unnecessary printing statements with `prdet` is removed to reduce cluttering. 
 - [x] check_safety seems useless since VMAX and VMIN are check. Therefore being removed. 
 - [x] regulate diagnostic variable: if diagnostic on the individual cell limits are respected. Otherwise system level. Diagnostic is removed and now we act on individual cell limits. 
 - [ ] T_MODEL and T_ENV etc. should not be constants!!!!
@@ -79,7 +78,6 @@
 - [ ] redistributeCurrent_new and other iterative algorithms require many iterations (up to 2500)!
 - [ ] test_Cycler_CoolSystem passes only when T_MODEL==2
 - [x] Some tests were hard-coded for Cell_type which has been changed to template.
-- [x] operator[] is added to Module class to reach SUs. 
 - [ ] getNSUs() -> size() so module size should be number of SUs.
 - [x] Module_p::getRtot() check for contact resistances is removed for simplification. 
 - [ ] Why do we need getRtot? Only for algorithms? Maybe getThevenin would be better. 
@@ -90,15 +88,10 @@
 - [x] Previously Module_p was calculating the mean voltage; since voltage of all cells were not reliable; however it is not needed. Also it was wrong causing 3.6 to 3.58 voltage difference! Now, it is SUs[0]->V() - I() * Rcontact[0];
 - [x] redistributeCurrent inside rebalance is deleted since it should not be required since all have same voltage. It will be eliminated completely soon. 
 - [ ] setVoltage function is being added for a better CV period. 
-- [x] "#if TIMING" is removed, profiler should be used if needed. 
-- [x] "setI_iterative" is removed. 
 - [ ] redistributeCurrent() -> PI Control does not work well causing high error in current. 
 - [ ] Add snapshot tests for 
 - [ ] SOC/Temperature dependent RC pairs for ECM. 
-- [x] Making Cell_ECM template to remove Cell_Bucket.
-- [x] Bugfix: ECM had - in the equation, corrected. 
 - [ ] Fixed data function argument should be reconsidered! 
-- [ ] Status member functions like  status.good()
 - [ ] It should be decided if we throw an error in interpolation or not for testing invalid states. 
 - [ ] Consider using std::variant for some data types. 
 - [ ] Procedure: 
@@ -114,7 +107,6 @@
 - [ ] Create a small class config for limits reached. It should have CheckLimits.
 - [ ] Some variables like ncheck and nbal were defined double but they are int. 
 - [ ] Instead of taking unique_ptr or raw ptr, functions should take object references. 
-- [ ] Literal operators for units are being added. 
 - [ ] Add static analysers: include-what-you-use, valgrind, etc. 
 - [ ] CPack and installation improvements. 
 - [ ] Check #CHECK and #TODO tags in the code.  
@@ -161,14 +153,11 @@
 - [ ] Make validState() bool not void.
 - [ ] Write for loop to simplify validState
 - [ ] To make OCVcurves std::array, they have to appear on derived classes. 
-- [ ] Why estimateOCVparameters() cannot find any parameters? 
 - [ ] for (int ap = 0; ap < nAMstep / 3 + 1; ap++) in determine_OCV.cpp with ap3 = 3 * ap + 2 means  nAMstep+2 steps. is it correct? 
 - [ ] Look at .m files for problems like _SOC. 
-- [ ] For starting and terminating things. 
 - [ ] Automatise SOC -> OCV conversion (see: for other cells the user has to derive the conversion from the OCV curve)
 - [ ] Write parser for cycling things. 
 - [ ] In parallel, output texts are mixed. Write a string stream to pass. 
-- [ ] Use actual error classes and predefine errors. 
 - [ ] Python and MATLAB interfaces. 
 - [ ] Can we use __func__ to substitute function names in some warnings? 
 - [ ] Cell::setVlimits does not control VMIN < VMAX. 
@@ -202,9 +191,6 @@ So they are one step ahead of ocvpi, ocvni and V. Is it a bug? Or is it saving e
 - [ ] determineOCV is still inefficient, we may reduce search space lot more by looking at the sp and sn requirements. 
 - [ ] Explation function for all classes? 
 
-slide_pack integration:
-- [x] SPMModel.h, SPMModel.cpp
-
 ### slide_pack changes: 
 - [x] Cycler.CC was charging a bit if already satisfied voltage limit is given.
 - [ ] StorageUnit parent shared_pointer -> raw poiner. 
@@ -221,7 +207,6 @@ slide_pack integration:
 - [ ] Factory methods. 
 - [ ] Add MSVC things 
 - [ ] Can we make ID static since it is same in all classes? Do we change? Look at it 
-- [ ] StorateUnit -> StorageUnit
 - [ ] getSUTemperatures in Module creates unnecessary storage then -> getSUTemperature(i).
 - [ ] typeid(*SUs[i]) == typeid(Module) || typeid(*SUs[i]) == typeid(slide::Module_p) || typeid(*SUs[i]) == typeid(Module_s) -> is not good dynamic_pointer_cast already gives nullptr. 
 - [ ] All shared pointers are converted to unique pointers. 
@@ -255,12 +240,9 @@ slide_pack integration:
 -   [ ] via small vector optimisation. 
 -   [ ] via unique_ptr(T[]). Use span for getting 
 - [ ] Larger member variables should defined first in classes due to padding.
-- [ ] use #include `<source_location>` to simplify error/warning/explanation messages.
+- [ ] use #include `<source_location>` to simplify error/warning/explanation messages. Unfortunately it is not supported by compilers so 
 - [ ] Delegated constructors? 
 - [ ] Make this 'verb' things compile time things!!!!
-- [ ] do not put get to everything   getV() -> V(),  getT() -> T()
-- [ ] getVcheck -> checkV. 
-- [x] isCharging() -> I() < 0  and isDischarging() -> I() > 0 are added to enforce consistent current representation. 
 - [ ] setI should not return voltage, setI should not throw for no reason.
 - [ ] why setI returns voltage? it should not. It is also not used anywhere. 
 - [ ] setI -> setCurrent
@@ -287,8 +269,6 @@ slide_pack integration:
 - [ ] Use template functions instead of repeating st dependent but same functions. 
 - [ ] setCurrent output is set to int. 
 - [ ] Multiple CMakeLists is created which also allows me to find more path errors.
-- [x] Geometry_SPM is created. 
-- [ ] DEG_ID variables are changed from int to uint_fast8_t -> 144 byte to 36 byte size reduction. We also need to improve print function.
 - [ ] DegArray is added to DEG_ID to remove deg_id.SEI_n > deg_id.len type of controls at each step.
 - [ ] Degradation ID's should be enums. 
 - [ ] Cannot use const with DEG_ID
@@ -310,7 +290,6 @@ slide_pack integration:
 - [x] storeData() pattern is removed.  
 - [ ] Ncells for module is created.
 - [ ] etacell_valid -> is removed. Should be checked in future if it really matters for performance. 
-- [x] Subfolders should also include linker options. 
 - [x] removing getVi for series module. and getSUVoltages for all. 
 - [ ] Consider making test functions friend and getVi protected. 
 - [ ] "HVAC coolsystem for active cooling with the environment" obligation should be  removed. 
@@ -333,45 +312,37 @@ slide_pack integration:
 - [ ] #CHECK getVi for parallel. 
 - 
 - [x] SmallVector is added. DegArray is now derived from SmallVector.
-- [x] double Rdc is removed from Cell.hpp
 - [ ] Memoize Cap. 
 - [x] if (succ != 1) after CV phase is changed with more meaningful limit reaching condition. 
 - [ ] Change const string& with string_view.
 - [ ] Why do we cheeck Vini in Cycler::setCurrent? 
 - [ ] Reached Voltage limit for CC and reached current limit for CV were both same  = 1 so we distinguised. 
 - [ ] Should we include entropic effect in OCV or not? 
-- [ ] SOC -> why do we use columb counting? 
 - [ ] Definitely create a file type to compactly save files and retrieve. 
 - [ ] Remove Error IDs.xlsx 
 - [ ] "${CMAKE_CURRENT_LIST_DIR}/" is mostly eliminated since it is not needed in newer CMake versions. 
-- [ ] "develop" folder is added for developer-related matters. 
-- [ ] License files of individual libraries are moved into the corresponding folders. 
 - [ ] tests folder is created and unit tests are moved into that folder. 
 - [ ] separator variables in checkUp functions seem to be unnecessary; therefore, removing. 
 - [ ] Changing constructor delegation. Module_p and Module_s constructors are combined. 
 - [ ] ID should be unique. 
-- [ ] Module functions are being combined. 
 - [ ] std::algorithms and free functions for modules.
   - [ ] transform_sum is added. 
 - [ ] storeData(getNcells()) pattern is not good. 
 - [x] getVariations() is deleted since it is not necessary to hold these variables inside cells. 
-- [x] For some reason slide-pack had different LAM parameters (new fitting?). I will test the difference. Because: there are different set of fitting data.
 - [ ] Cell_SPM should not hold all ageing model parameters. 
 - [ ] Determine sn and AMp from boundary conditions. They are very sensitive. 
 
-### C++20 changes (yay!):
-- [x] std::span for state assignments. 
+### Boost changes:
+- [ ] Boost is started to being integrated. 
 
 ### Some new ideas to implement: 
 - [ ] For XY data read to vector but then create a specific-sized data structure with all heap allocated as if make_shared.
 - [ ] begin and end functions for StorageUnit to traverse the children. 
 - [ ] Classes to hold static vector of their elements for make_X;
 - [ ] Constructor chaining. 
-- [ ] Free functions to call member functions. 
-- [ ] Status class to hold error codes. 
 - [ ] std variant with regular pointer and unique pointer OR a boolean to indicate deleter. 
 - [ ] Cycler kind of things should be able to take things other than SU pointer. A template pointer could make things faster. But let's see. 
-- [ ] Making SLIDE a header-only library for easy compilation. (Maybe use a proper CMake config?)
+- [ ] Making SLIDE a header-only library for easy compilation. (Maybe use a proper CMake config?). I think that is not possible as it would increase compilation times substantially, so only the small parts needs to be header only will be header only. 
   - [x] Cell, Cell_Bucket, Cell_ECM: Instead of increase in *.exe, there is a decrease. 80 kB -> 77 kB
   - [x] Model_SPM, State_SPM. 
   - [x] interpolation.cpp, read_CSVfiles.cpp, slide_aux.cpp, util.cpp, util_error.cpp -> 77 kB -> 76 kB
@@ -382,7 +353,8 @@ slide_pack integration:
 - [ ] Configure clang-format, cmake-format etc. 
 
 ### Developer changes: 
-- [ ] CMake folder and some files are added. 
+- [ ] Fix CMake files!
+- [ ] Ccache is not working. 
 
 ### JOSS: 
 - [ ] Added JOSS folder and Github workflow. 

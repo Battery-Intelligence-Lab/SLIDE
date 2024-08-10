@@ -10,6 +10,9 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 ## New features and important updates
 * Chebyshev discretisation is moved from MATLAB to C++ code. 
 * Unit testing is added in continuous development cycle. 
+* SOC calculation in `Cell_SPM` is changed with lithium fractions instead of coloumb counting. 
+* SLIDE and SLIDE-pack has different LAM parameters as they use different set of fitting data.
+* `copy()` method is added to all classes to clone the class. 
 
 
 ### Battery pack simulation support is added
@@ -18,6 +21,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 ### Performance updates
 * `slide::Model_SPM` -> `slide::Model_SPM*`  and `makeModel()` speeded up the performance from 34 seconds to 12 seconds. 18900x326 double = 47 MB RAM is also saved.
 * Removed file reading when individually creating cells! 30 seconds speed-up for creating EPFL system.
+* `DEG_ID` variables are changed from `int` to `uint_fast8_t` -> 144 byte to 36 byte size reduction.
 
 ### Other updates
 * `getDaiStress` is simplified by removing unnecessary R multiplication and division. 
@@ -41,10 +45,18 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * remainder for integers are eliminated. 
 * `i` in Cycler::rest is removed. 
 * `M_PI` constant defined. 
+* `double Rdc` is removed from `Cell.hpp`
+* Free functions to call member functions under `free` namespace.
+* `develop` folder is added for developer-related matters.
+* Unnecessary printing statements with `prdet` is removed to reduce cluttering. 
+
 
 ### slide_pack changes: 
 * `(verbose_gl > v_noncrit_gl)`  ->  `(settings::verbose >= printLevel::printNonCrit)`
 * `(verbose_gl >= v_crit_gl)`   -> `(settings::verbose >= printLevel::printCrit)`
+* Module functions are combined.
+* `#if TIMING` is removed, profiler should be used if needed. 
+* `StorateUnit` -> `StorageUnit`
 
 ### C++20 upgrades
 * `std::span` for state assignments. `XYdata_ss` for span. 
@@ -52,6 +64,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 ## Notable Bug-fixes
 * `if(abs(Ii < 0.1))` in Cycler. 
 * Typo `bockDegAndTherm` is fixed. 
+* `Cell_ECM` had `-` in the equation, corrected
 
 ### Small bug fixes:
 * `dt / 3600.0;` should be `dti / 3600.0;` and converted. 
@@ -61,9 +74,17 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * Most functions now use smart pointers. 
 * Template / auto parameter deduction is used. 
 * `Cell_Bucket` class is removed now `Cell_ECM` class with `0` RC pairs can be used as `Cell_Bucket`.
-* Units such as `degC` are added so you can write `25.0_degC` instead of `Kelvin + 25.0`.
+* Literal operators for units such as `degC` are added so you can write `25.0_degC` instead of `Kelvin + 25.0`.
 * `io` namespace is added. 
 * `Cell_ECM::R_C_pair` and `Cell_ECM::R_Tau_pair` classes are added for passing parameters. 
+* isCharging() -> I() < 0  and isDischarging() -> I() > 0 are added to enforce consistent current direction representation. 
+* `Status` class is created to hold error codes. They have member functions like  `status.good()` to test if the operation successful. 
+* `setI_iterative` is removed. 
+* Unnecessary `get` is removed from getters: `getV()` ->` V()`,  `getT()` -> `T()`, `getVcheck()` -> `checkV()`.
+* `Geometry_SPM` class is created. 
+* `operator[]` is added to `Module` class to reach SUs. 
+
+
 
 ## Dependencies
 * `Eigen` library is added for matrix operations. 
@@ -77,6 +98,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * `OBJECT` libraries are being used for subfolders instead of `STATIC` libraries. 
 * Added many warnings. 
 * `CTest` for testing. 
+* Subfolders now includes linker options. 
 
 
 <br/><br/>
