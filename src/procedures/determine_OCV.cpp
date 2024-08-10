@@ -424,7 +424,7 @@ auto cost_OCV(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, const 
 
   const auto Vend = OCVcell.y.back();
 
-  double sqr_err = 0; //!< square error
+  double abs_err = 0; //!< absolute error
   double v = 0;       //!< Simulation OCV.
 
   for (size_t i = 0; i < OCVcell.size(); i++) {
@@ -456,12 +456,12 @@ auto cost_OCV(const slide::XYdata_vv &OCVp, const slide::XYdata_vv &OCVn, const 
     }
 
     const double err = OCVcell.y[i] - v; //!< Calculate the error
-    sqr_err += err * err;                //!< sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
+    abs_err += std::abs(err);            //!< sum ( (Vcell[i] - Vsim[i])^2, i=0..ncell )
 
     end = v <= Vend || sp < 0 || sp > 1 || sn < 0 || sn > 1;
   }
 
-  return sqr_err;
+  return abs_err;
 }
 
 void fitAMnAndStartingPoints(int hierarchy, int ap, double AMp, slide::FixedData<double> AMn_space, slide::FixedData<double> sp_space,
@@ -507,7 +507,7 @@ void fitAMnAndStartingPoints(int hierarchy, int ap, double AMp, slide::FixedData
       }
 
   //!< Return the minimum error
-  *err = std::sqrt(errmin / OCVcell.size()); //!< RMSE error.
+  *err = errmin / static_cast<double>(OCVcell.size()); //!< absolute error.
 }
 
 auto hierarchicalOCVfit(int hmax, slide::FixedData<double> AMp_space, slide::FixedData<double> AMn_space, slide::FixedData<double> sp_space,
@@ -676,8 +676,8 @@ void estimateOCVparameters() // #TODO this function is slow and hand-tuned. Chan
   constexpr double AMmin = 1;   //!< the minimum amount of active material is 0, actually should not be zero since it is a divisor.
 
   //!< Define the search space for the initial lithium fractions at each electrode
-  auto sp_space = slide::linspace_fix(0.38, 0.4, 51); //!< From 0 to 1 lithium fraction 5% increase of the lithium fraction
-  auto sn_space = slide::linspace_fix(0.55, 0.58, 51);
+  auto sp_space = slide::linspace_fix(0.01, 0.5, 51); //!< From 0 to 1 lithium fraction 5% increase of the lithium fraction
+  auto sn_space = slide::linspace_fix(0.5, 1, 51);
 
   //!< Define the search space for the amount of active material on each electrode
   auto AMp_space = slide::linspace_fix(AMmin * AMp_guess, AMmax * AMp_guess, 100); //!< From 0 to 5x of guessed active material with 10% steps.

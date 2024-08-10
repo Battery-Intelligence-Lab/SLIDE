@@ -5,7 +5,7 @@
 This changelog contains a non-exhaustive list of new features and notable bug-fixes (not all bug-fixes will be listed). 
 
 <br/><br/>
-# SLIDE v3.0.0 (aka slide-pack)
+# SLIDE v3.0.0 (aka slide-pack merged into SLIDE)
 
 ## New features and important updates
 * Chebyshev discretisation is moved from MATLAB to C++ code. 
@@ -13,7 +13,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * SOC calculation in `Cell_SPM` is changed with lithium fractions instead of coloumb counting. 
 * SLIDE and SLIDE-pack has different LAM parameters as they use different set of fitting data.
 * `copy()` method is added to all classes to clone the class. 
-
+* `determine_OCV` functions now use absolute error which gives a better estimation of initial lithium fractions. 
 
 ### Battery pack simulation support is added
 * SLIDE is merged with slide-pack. Now, SLIDE is now now capable of simulation large battery packs.

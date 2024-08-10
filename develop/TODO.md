@@ -39,6 +39,7 @@
 
 
 ### Current priority:
+- [ ] Integrate NLopt for determineOCV optimisation. 
 - [ ] Make the modules writable to JSON files nested. 
 - [ ] Voltage should be inside the states, so it is a discrete algebraic state. 
 - [ ] make overpotential etap etan removable. So an voltage model is needed. 
