@@ -23,9 +23,6 @@
 #include <fstream>
 #include <chrono>
 
-// Global variable to store i_branch values
-Eigen::MatrixXd i_branch_store;
-
 using namespace boost::numeric;
 
 typedef std::vector<double> state_type;
@@ -165,7 +162,6 @@ Eigen::VectorXd parallel_model(double t, const Eigen::VectorXd &x, double I, con
   phi << -delta_v, -I;
 
   Eigen::VectorXd i_branch = -A22 * phi;
-  i_branch_store = i_branch; // Store i_branch globally
   Eigen::VectorXd xdot = A11 * x + A12 * (-A22 * phi);
   return xdot;
 }
@@ -192,12 +188,11 @@ Eigen::VectorXd parallel_model_no_mat_inverse(double t, const Eigen::VectorXd &x
   phi << -delta_v, -I;
 
   Eigen::VectorXd i_branch = -A22 * phi;
-  i_branch_store = i_branch; // Store i_branch globally
   Eigen::VectorXd xdot = A11 * x + A12 * (-m * phi);
   return xdot;
 }
 
-void parallel_model_dae5(double t, const state_type &x_std, double I, const Eigen::MatrixXd &A11, const Eigen::MatrixXd &A12, const Eigen::MatrixXd &A21, const Eigen::MatrixXd &A22, const std::vector<double> &ocv_coefs, const Eigen::VectorXd &R, const Eigen::VectorXd &r, state_type &xdot_std)
+void parallel_model_dae5(double t, const state_type &x_std, double I, const Eigen::MatrixXd &A11, const Eigen::MatrixXd &A12, const Eigen::MatrixXd &A21, const Eigen::MatrixXd &A22, const std::vector<double> &ocv_coefs, const Eigen::VectorXd &R, const Eigen::VectorXd &r, state_type &xdot_std, Eigen::VectorXd &i_branch)
 {
 
   constexpr bool printDebug = false;
@@ -226,7 +221,8 @@ void parallel_model_dae5(double t, const state_type &x_std, double I, const Eige
   }
 
 
-  static Eigen::VectorXd i_branch(n), theta(n), rho(n);
+  //static Eigen::VectorXd i_branch(n)
+  static Eigen::VectorXd  theta(n), rho(n);
   theta(0) = 0;
   rho(0) = 0;
 
@@ -277,7 +273,6 @@ void parallel_model_dae5(double t, const state_type &x_std, double I, const Eige
   for (int j = n - 2; j >= 0; --j)
     i_branch(j) = theta(j + 1) * i_branch(j + 1) + rho(j + 1) * (v_mod(j + 1) - v_mod(j));
 
-  i_branch_store = i_branch; // Store i_branch globally
   xdot = A11 * x + A12 * i_branch;
 
   if (printDebug) {
@@ -315,7 +310,7 @@ int main()
 
   // Model parameters
   // int n_par = 100; // The number of cells in parallel
-  int n_par = 50; // for testing
+  int n_par = 10; // for testing
 
   double capacitance_Ah = capacitance_Ah_all[bat_select_num - 1];
   double capacitance = 3600 * capacitance_Ah;
@@ -390,12 +385,12 @@ int main()
   // Use the Runge-Kutta Cash-Karp method (similar to MATLAB's ode45)
   odeint::runge_kutta_dopri5<state_type> stepper;
 
+  Eigen::VectorXd i_branch(n_par);
   // Integrate the ODE from t=0 to t=10 with step size 0.1
   double t_start = 0.0, t_end = 4 * 3600.0, dt = 0.1;
   auto myODE = [&](const auto &x, auto &dxdt, double t) {
-    parallel_model_dae5(t, x, I, A11, A12, A21, A22, ocv_coefs, R, r, dxdt);
+    parallel_model_dae5(t, x, I, A11, A12, A21, A22, ocv_coefs, R, r, dxdt, i_branch);
   };
-
 
   // Observer to print the state
   struct Results
@@ -416,15 +411,14 @@ int main()
   odeint::integrate_adaptive(odeint::make_controlled(1.0e-12, 1.0e-12, stepper), myODE, x0, t_start, t_end, dt, myresults);
 
 
-  // ...........
-  // ODE SOLVER
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> time_dae = end - start;
   std::cout << "DAE5 computation took: " << time_dae.count() << " seconds" << std::endl;
 
-  Eigen::MatrixXd i_branch_values = i_branch_store;
-  std::cout << "i_branch_values:\n"
-            << i_branch_values << std::endl;
+  Eigen::VectorXd i_branch_values = i_branch;
+  std::cout << "i_branch_values:\n" << i_branch_values << std::endl;
+  
+  //std::cout << "i_branch_values:\n" << i_branch.transpose() << std::endl;
 
   // x_ode = x_ode_2;
   // t_ode = t_ode_2;
