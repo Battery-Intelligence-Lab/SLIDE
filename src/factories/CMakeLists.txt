@@ -1,17 +1,16 @@
 cmake_minimum_required(VERSION 3.21)
-add_library(factories STATIC)
+add_library(factories OBJECT)
 
 target_sources(factories
-  PRIVATE
-    makeBattery.cpp
   PUBLIC
+    makeBattery.cpp
     makeBattery.hpp
   )
 
 target_include_directories(factories PUBLIC .)
 
 target_link_libraries(factories
-PRIVATE
+PUBLIC
   cells
   modules
   procedures

@@ -1,12 +1,11 @@
 cmake_minimum_required(VERSION 3.21)
-add_library(system STATIC)
+add_library(system OBJECT)
 
 target_sources(system
-  PRIVATE
-    Battery.cpp
   PUBLIC
+    Battery.cpp
     Battery.hpp
   )
 
 target_include_directories(system PUBLIC .)
-target_link_libraries(system PRIVATE power_conversion settings)
+target_link_libraries(system PUBLIC power_conversion settings)

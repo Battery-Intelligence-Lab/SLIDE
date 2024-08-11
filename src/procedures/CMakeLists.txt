@@ -1,4 +1,4 @@
-add_library(procedures STATIC)
+add_library(procedures OBJECT)
 
 target_sources(procedures
   PUBLIC
