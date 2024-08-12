@@ -157,10 +157,12 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
   for (const auto cs_id : deg_id.CS_id) {
     //!< a switch to calculate the effect according to model i
     switch (cs_id) {
-    case 0: //!< no surface cracks
+    case 0: {
+      //!< no surface cracks
       break;
-    case 1: //!< Laresgoiti's stress and crack growth model (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
-            //!< this model calculates crack growth due to temporal variations in the li-concentration
+    }
+    case 1: { //!< Laresgoiti's stress and crack growth model (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
+              //!< this model calculates crack growth due to temporal variations in the li-concentration
       //!< check the calculated stress values are up to date
       if (!sparam.s_lares_update) {
         std::cerr << "ERROR in Cell_SPM::CS. The stress values for Laresgoiti's stress model are not updated. Throwing an error.\n";
@@ -181,10 +183,11 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       //!< 			such that if the crack surface area is the same as the initial electrode surface area, we double isei
       ism += st.CS() / ASn; //!< increase SEI growth proportionally the crack surface
       break;
-    case 2: //!< Laresgoiti's crack growth model (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
-            //!< but with stress model from Dai, Cai, White, Journal of Power sources 247, 2014
-            //!< instead of Laresgoiti's stress from figure 5
-            //!< this model calculates crack growth due to spatial (Dai) and temporal (Laresgoiti) variations in the li-concentration
+    }
+    case 2: { //!< Laresgoiti's crack growth model (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
+              //!< but with stress model from Dai, Cai, White, Journal of Power sources 247, 2014
+              //!< instead of Laresgoiti's stress from figure 5
+              //!< this model calculates crack growth due to spatial (Dai) and temporal (Laresgoiti) variations in the li-concentration
       //!< ensure the stress values are up to date
       if (!sparam.s_dai_update) {
         std::cerr << "ERROR in Cell_SPM::CS. The stress values for Dai's stress model are not updated. Throwing an error.\n";
@@ -197,20 +200,20 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       //!< equations (22)+ (27) from the paper but with Dai's stress
       ism += st.CS() / ASn; //!< increase SEI growth proportionally the crack surface
       break;
-    case 3: //!< model by Deshpande & Bernardi,Journal of the Electrochemical Society 164 (2), 2017
-            //!< this model is adapted to calculate crack growth due to spatial variations in the li-concentration
-      //!< get concentrations
+    }
+    case 3: { //!< model by Deshpande & Bernardi,Journal of the Electrochemical Society 164 (2), 2017
+              //!< this model is adapted to calculate crack growth due to spatial variations in the li-concentration
 
-      double cp[settings::nch + 2], cn[settings::nch + 2];
-      getC(cp, cn); // #TODO only cn[0] and cn[end] is used!
+      const auto cn = getC(neg); //!< get concentrations
       //!< Add the effects of this model
-      dcs += csparam.CS3alpha * sqr((cn[0] - cn[settings::nch + 1]) / Cmaxneg);
+      dcs += csparam.CS3alpha * sqr((cn[0] - cn[settings::nch + 1]) / electrode[neg].Cmax);
       //!< equations (8) + (21)
       //!< Note that eqn (8) refers to the change with respect to time while here we use the spatial variation
       //!< This makes the model capture more of the spatial variation in stress
       //!< Laresgoiti's model already accounted for temporal variation, so simply use that if you are interested in temporal rather than spatial variation
       ism += st.CS() / ASn; //!< increase SEI growth proportionally the crack surface
       break;
+    }
     case 4: {
       //!< model from Barai, Smith, Chen, Kim, Mukherjee, Journal of the Electrochemical Society 162 (9), 2015
       //!< equation (1a): CS = Amax(1 - exp(-m * Ah)) with m a fitting parameter and Ah the charge throughput up to now
@@ -225,23 +228,24 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       //!< Add the effects of this model
       dcs += csparam.CS4alpha * (Amax - st.CS()) * std::abs(I()); //!< see above, with m = csparam.CS4
       ism += st.CS() / ASn;                                       //!< increase SEI growth proportionally the crack surface
-    } break;
+      break;
+    }
     case 5: {
       //!< model from Ekstrom and Lindbergh, Journal of the Electrochemical Society 162 (6), 2015
       //!< overpotential for the crack-side-reaction = overpotential for the SEI reaction
       const double etasei = (OCVnt + etan - OCVsei + rsei * st.delta() * I()); //!< overpotential [V], equation (6)
 
       //!< get surface concentration
-      double cps, cns;
-      getCSurf(cps, cns, true); //!< get the surface lithium concentration //!< #TODO only cns is used.
+      DPair cs;
+      getCSurf(cs, true); //!< get the surface lithium concentration //!< #TODO only cns is used.
 
       double kcr; //!< rate constant for the side reaction
       //!< Calculate the rate constant, equation (11) with an Arrhenius relation for the temperature (which wasn't considered by Ekstrom)
       if (isDischarging())
         kcr = 0;
-      else if (cns / Cmaxneg < 0.3)
+      else if (cs[neg] / electrode[neg].Cmax < 0.3)
         kcr = 2 * csparam.CS5k * exp(csparam.CS5k_T / Rg * (1 / T_ref - 1 / st.T()));
-      else if (cns / Cmaxneg < 0.7)
+      else if (cs[neg] / electrode[neg].Cmax < 0.7)
         kcr = 0;
       else
         kcr = csparam.CS5k * exp(csparam.CS5k_T / Rg * (1 / T_ref - 1 / st.T()));
@@ -249,8 +253,8 @@ void Cell_SPM::CS(double OCVnt, double etan, double *isei_multiplyer, double *dC
       //!< Add the effects of this model
       dcs += nsei * F * kcr * exp(-alphasei * nsei * F / (Rg * st.T()) * etasei); //!< equation (9)
       ism += st.CS() / ASn;                                                       //!< increase SEI growth proportionally the crack surface
-
-    } break;
+      break;
+    }
     default: //!< unknown degradation model
       std::cerr << "ERROR in Cell_SPM::CS, unknown crack growth model with identifier "
                 << cs_id << ". Only values 0 to 5 are allowed. Throw an error.\n";
@@ -351,9 +355,9 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
     switch (lam_id) {
     case 0: //!< no LAM
       break;
-    case 1: //!< Stress model from Dai, Cai, White, Journal of Power sources 247, 2014
-            //!< LAM equation similar to CS equation from Laresgoiti
-            //!< (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
+    case 1: { //!< Stress model from Dai, Cai, White, Journal of Power sources 247, 2014
+              //!< LAM equation similar to CS equation from Laresgoiti
+              //!< (Laresgoiti, Kablitz, Ecker, Sauer, Journal of Power Sources 300, 2015)
       //!< ensure the stress values are up to date
       if (!sparam.s_dai_update) {
         std::cerr << "ERROR in Cell_SPM::LAM. The stress values for Dai's stress model are not updated. Throwing an error.\n";
@@ -373,10 +377,14 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
       //!< 	so divide by total time (dt*nstep) to cancel this out, i.e. ds is per second (and not per total time period)
       //!< assume the other effects are 0
       break;
+    }
     case 2: //!< Model by Delacourt & Safari, Journal of the Electrochemical Society 159 (8), 2012
     {       //!< Get the molar flux on each particle
+      DPair molarFlux;
+      const auto i_app = I() / geo.elec_surf;
+      for (auto dom : { pos, neg })
+        molarFlux[dom] = electrode[dom].molarFlux(i_app, st); //!< current density, molar flux on the pos/neg particle
 
-      const auto [i_app, jp, jn] = calcMolarFlux(); //!< current density, molar flux on the pos/neg particle
       //!< Use Arrhenius relations to update the fitting parameters for the cell temperature
       const double ap = lam_p.lam2ap * exp(lam_p.lam2t * ArrheniusCoeff);
       const double an = lam_p.lam2an * exp(lam_p.lam2t * ArrheniusCoeff);
@@ -384,11 +392,12 @@ void Cell_SPM::LAM(bool print, double zp_surf, double etap, double *dthickp, dou
       const double bn = lam_p.lam2bn * exp(lam_p.lam2t * ArrheniusCoeff);
 
       //!< Add the effects of this model
-      const auto abs_jp{ std::abs(jp) }, abs_jn{ std::abs(jn) };
+      const auto abs_jp{ std::abs(molarFlux[pos]) }, abs_jn{ std::abs(molarFlux[neg]) };
       depp += ap * abs_jp + bp * std::sqrt(abs_jp); //!< equation (5) from the paper
       denn += an * abs_jn + bn * std::sqrt(abs_jn);
       //!< assume the other effects are 0
-    } break;
+      break;
+    }
     case 3: //!< Model by Kindermann, Keil, Frank, Jossen, Journal of the Electrochemical Society 164 (12), 2017
     {
       double OCVpt; //!< cathode potential
@@ -503,8 +512,8 @@ double Cell_SPM::calculateIntegral()
 
   //!< get concentrations at each Chebyshev node
   //!< Due to symmetry, the concentration at the negative point is the same as the concentration of the positive point: c(-x) = c(x)
-  double cp[nch + 2], cn[nch + 2]; //!< positive and negative nodes, [+surface .. inner .. centre]
-  getC(cp, cn);                    // #TODO can return directly 2 arrays.
+
+  const auto cp(getC(pos)), cn(getC(neg)); //!< positive and negative nodes, [+surface .. inner .. centre]
 
   double CP[2 * nch + 3], CN[2 * nch + 3]; //!< concentrations at all nodes, [-surface .. inner .. centre .. inner .. +surface]
 
@@ -557,8 +566,8 @@ double Cell_SPM::calculateIntegral()
   // See bizeray2015lithium  -- Lithium-ion battery thermal-electrochemical model-based state
   // estimation using orthogonal collocation and a modified extended
   // Kalman filter, for Eqs. 29--30 for detailed explanation. #TODO -> improve this.
-  const double SOC_p = (3 * ap / Cmaxpos - xp_0) / (xp_100 - xp_0);
-  const double SOC_n = (3 * an / Cmaxneg - xn_0) / (xn_100 - xn_0);
+  const double SOC_p = (3 * ap / electrode[pos].Cmax - xp_0) / (xp_100 - xp_0);
+  const double SOC_n = (3 * an / electrode[neg].Cmax - xn_0) / (xn_100 - xn_0);
 
   const double SOCcal = (SOC_p + SOC_n) / 2;
   return SOCcal;
@@ -606,12 +615,10 @@ void Cell_SPM::getDaiStress(double *sigma_p, double *sigma_n, sigma_type &sigma_
 
   //!< get concentrations at each Chebyshev node
   //!< Due to symmetry, the concentration at the negative point is the same as the concentration of the positive point: c(-x) = c(x)
-  double cp[nch + 2], cn[nch + 2]; //!< positive and negative nodes, [+surface .. inner .. centre]
-  getC(cp, cn);                    // #TODO can return directly 2 arrays.
-
+  const auto cp(getC(pos)), cn(getC(neg)); //!< positive and negative nodes, [+surface .. inner .. centre]
   double CP[2 * nch + 3], CN[2 * nch + 3]; //!< concentrations at all nodes, [-surface .. inner .. centre .. inner .. +surface]
 
-  CP[nch + 1] = cp[nch + 1]; //!< cathode centre node
+  CP[nch + 1] = cp[nch + 1]; //!< cathode centre node #TODO this part is used both in DaiStress and CalculateIntegral
   CN[nch + 1] = cn[nch + 1]; //!< anode centre node
 
   for (size_t i = 0; i < nch + 1; i++) {
@@ -737,18 +744,15 @@ void Cell_SPM::getLaresgoitiStress(bool print, double *sigma_n)
 
   constexpr bool is_xx_fixed = true; //!< Change this if xx is not fixed time step.
 
-  //!< Get the surface concentration
-  double cps, cns;
-  getCSurf(cps, cns, print);              //!< get the surface lithium concentration [mol m-3]
-  const double zn_surf = (cns / Cmaxneg); //!< lithium fraction on negative surface [0, 1]
+  //!< Get the surface concentration  // #TODO we only need negative concentration!
+  DPair cs;
+  getCSurf(cs, print);                                   //!< get the surface lithium concentration [mol m-3]
+  const double zn_surf = electrode[neg].z_surf(cs[neg]); //!< lithium fraction on negative surface [0, 1]
 
-  //!< check if the surface concentration is within the allowed range
-  //!< 	0 < cp < Cmaxpos
-  //!< 	0 < cn < Cmaxneg
-  if (cps < 0 || cns < 0 || cps > Cmaxpos || cns > Cmaxneg) {
+  if (!electrode[neg].check_c_surf(cs)) {
     if (print) {
-      std::cerr << "ERROR in Cell_SPM::getLaresgoitiStress: concentration out of bounds. the positive lithium fraction is " << cps / Cmaxpos
-                << " and the negative lithium fraction is " << cns / Cmaxneg << "they should both be between 0 and 1.\n";
+      std::cerr << "ERROR in Cell_SPM::getLaresgoitiStress: concentration out of bounds."
+                << " the negative lithium fraction is " << zn_surf << "they should both be between 0 and 1.\n";
     }
     throw 101;
   }

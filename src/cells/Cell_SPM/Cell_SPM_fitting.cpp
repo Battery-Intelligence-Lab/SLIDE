@@ -130,7 +130,7 @@ namespace slide {
 //!< 		throw 12;
 //!< 	}
 
-//!< 	setC(fp, fn); //!< set the lithium concentration
+//!< 	setC({fp, fn}); //!< set the lithium concentration
 
 //!< 	//!< SEI parameters
 //!< 	nsei = 1;
@@ -203,7 +203,7 @@ namespace slide {
 //!< 	sparam.s_lares = false; //!< according to Laresgoiti's stress model
 //!< }
 
-void Cell_SPM::setOCVcurve(const std::string &namepos, const std::string &nameneg)
+void Cell_SPM::setOCVcurve(const Pair<std::string> &name)
 {
   /*
    * Function to load the specified OCV curves
@@ -216,8 +216,8 @@ void Cell_SPM::setOCVcurve(const std::string &namepos, const std::string &namene
 
   //!< Store the OCV curves
   try {
-    OCV_curves.OCV_neg.setCurve(PathVar::data / nameneg); //!< the OCV curve of the anode, the first column gives the lithium fractions (increasing), the 2nd column gives the OCV vs li/li+
-    OCV_curves.OCV_pos.setCurve(PathVar::data / namepos);
+    OCV_curves.OCV_neg.setCurve(PathVar::data / name[neg]); //!< the OCV curve of the anode, the first column gives the lithium fractions (increasing), the 2nd column gives the OCV vs li/li+
+    OCV_curves.OCV_pos.setCurve(PathVar::data / name[pos]);
   } catch (int e) {
     //!< std::cout << "Throw test: " << 32 << '\n';
     std::cout << "ERROR in Cell_SPM::setOCVcurve when loading the OCV curves from the CSV files: "
@@ -227,7 +227,7 @@ void Cell_SPM::setOCVcurve(const std::string &namepos, const std::string &namene
   }
 }
 
-void Cell_SPM::setInitialConcentration(double cmaxp, double cmaxn, double lifracp, double lifracn)
+void Cell_SPM::setInitialConcentration(DPair cmax, DPair lifrac)
 {
   /*
    * Function to specify the lithiun fraction from which we have to start
@@ -240,21 +240,20 @@ void Cell_SPM::setInitialConcentration(double cmaxp, double cmaxn, double lifrac
    */
 
   //!< Store the maximum concentrations
-  Cmaxpos = cmaxp;
-  Cmaxneg = cmaxn;
+  electrode[pos].Cmax = cmax[pos];
+  electrode[neg].Cmax = cmax[neg];
 
   //!< set the concentration
   try {
-    setC(lifracp, lifracn);
+    setC(lifrac);
   } catch (int e) {
-    //!< std::cout << "Throw test: " << 33 << '\n';
     std::cout << "Error in Cell_SPM::setInitialConcentration when setting the concentration: "
               << e << ".\n";
     throw e;
   }
 }
 
-void Cell_SPM::setGeometricParameters(double capnom, double surf, double ep, double en, double thickp, double thickn)
+void Cell_SPM::setGeometricParameters(double capnom, double surf, DPair e_, DPair thick_)
 {
   /*
    * Function to set the parameters relating to the total amount of active material present in the cell.
@@ -262,26 +261,22 @@ void Cell_SPM::setGeometricParameters(double capnom, double surf, double ep, dou
    * IN
    * capnom 		nominal capacity of the cell [Ah]
    * surf 		surface area of the electrodes [m2]
-   * ep 			volume fraction of active material in the cathode [-]
-   * en 			volume fraction of active material in the anode [-]
-   * thickp 		thickness of the cathode [m]
-   * thickn 		thickness of the anode [m]
+   * e_  			volume fraction of active material in the cathode/anode [-]
+   * thick 		thickness of the cathode/anode [m]
    */
 
   setCapacity(capnom);
   geo.elec_surf = surf;
 
   //!< If you change the volume fraction, you also have to change the effective surface area
-  double ap = 3 * ep / geo.Rp;
-  double an = 3 * en / geo.Rn;
-
+  DPair a{ 3 * e_[pos] / geo.Rp, 3 * e_[neg] / geo.Rn };
   //!< overwrite the original geometric parameters, use cell version
-  overwriteGeometricStates(thickp, thickn, ep, en, ap, an);
+  overwriteGeometricStates(thick_, e_, a);
 
   Vcell_valid = false;
 }
 
-void Cell_SPM::setCharacterisationParam(double Dp, double Dn, double kpi, double kni, double Rdc)
+void Cell_SPM::setCharacterisationParam(DPair D_, DPair k_, double Rdc)
 {
   /*
    * Function to set the parameters related to the characterisation of the cell
@@ -295,28 +290,14 @@ void Cell_SPM::setCharacterisationParam(double Dp, double Dn, double kpi, double
    */
 
   //!< store the rate constants in the cell
-  kp = kpi;
-  kn = kni;
+  electrode[pos].k = k_[pos];
+  electrode[neg].k = k_[neg];
 
   //!< calculate the specific electrode resistance from the total DC resistance
-  double r = Rdc * ((st.thickp() * st.ap() * geo.elec_surf + st.thickn() * st.an() * geo.elec_surf) / 2);
+  const double r = Rdc * ((st.thickp() * st.ap() * geo.elec_surf + st.thickn() * st.an() * geo.elec_surf) / 2);
 
   //!< overwrite the cycling related parameters
-  overwriteCharacterisationStates(Dp, Dn, r);
+  overwriteCharacterisationStates(D_, r);
 }
 
-//!< void Cell_SPM::setRamping(double Istep, double tstep)
-//!< {
-//!< 	/*
-//!< 	 * Function to set the ramping parameters of the cell.
-//!< 	 * This allows to decrease them if you are trying weird things (e.g. very small diffusion constants) with the cell
-//!< 	 *
-//!< 	 * IN
-//!< 	 * Istep 	maximum change in current per tstep [A], > 0
-//!< 	 * tstep 	time step by which you change the current, [s], > 0
-//!< 	 */
-
-//!< 	dIcell = Istep;
-//!< 	dt_I = tstep;
-//!< }
 } // namespace slide

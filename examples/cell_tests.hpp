@@ -36,10 +36,6 @@ inline auto GITT_test()
   c.setBlockDegAndTherm(true);
   c.setT(21.0_degC);
 
-  // double Cmaxpos{ 51385 };
-  // double Cmaxneg{ 30555 };
-  // double cps{}, cns{};
-
   // auto &st = c.getStateObj();
   auto cyc = Cycler(&c, "charge");
 

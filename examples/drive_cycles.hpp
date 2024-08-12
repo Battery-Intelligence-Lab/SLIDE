@@ -36,21 +36,17 @@ inline auto get_exampleCell()
   // Specify the OCV parameters (calculated by determineOCV::estimateOCVparameters)
   OCVparam ocvfit;
   ocvfit.elec_surf = (3.4 / 2.65) * 0.0982; // electrode surface Cap_ratio
-  ocvfit.ep = 0.5;                          // volume fraction of active material in the cathode
-  ocvfit.en = 0.5;                          // volume fraction of active material in the anode
-  ocvfit.thickp = 70e-6;                    // thickness of the cathode
-  ocvfit.thickn = 73.5e-6;                  // thickness of the anode
-  ocvfit.lifracpini = 0.6862;               // lithium fraction in the cathode at 50% soC
-  ocvfit.lifracnini = 0.4843;               // lithium fraction in the anode at 50% SOC
-  ocvfit.cmaxp = 51385;                     // maximum lithium concentration in the cathode [mol m-3]
-  ocvfit.cmaxn = 30555;                     // maximum lithium concentration in the anode [mol m-3]
+  ocvfit.e = { 0.5, 0.5 };                  // volume fraction of active material in the cathode/anode
+  ocvfit.thick = { 70e-6, 73.5e-6 };        // thickness of the cathode/anode
+  ocvfit.lifracini = { 0.6862, 0.4843 };    // lithium fraction in the cathode/anode at 50% soC
+  ocvfit.cmax = { 51385, 30555 };           // maximum lithium concentration in the cathode/anode [mol m-3]
   ocvfit.cap = 3.4;                         // the capacity of the cell [Ah]
   ocvfit.Vmax = 4.2;                        // maximum voltage of the cell [V]
   ocvfit.Vmin = 2.6;                        // minimum voltage of the cell [V]
 
-  // c.setOCVcurve(ocvfit.namepos, ocvfit.nameneg);
-  example_cell->setInitialConcentration(ocvfit.cmaxp, ocvfit.cmaxn, ocvfit.lifracpini, ocvfit.lifracnini);
-  example_cell->setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.ep, ocvfit.en, ocvfit.thickp, ocvfit.thickn);
+  // c.setOCVcurve(ocvfit.name);
+  example_cell->setInitialConcentration(ocvfit.cmax, ocvfit.lifracini);
+  example_cell->setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.e, ocvfit.thick);
 
   example_cell->setT(22.0_degC);    // set the temperature of the cell to the given value
   example_cell->setTenv(22.0_degC); // set the environmental temperature to the given value
@@ -185,7 +181,7 @@ inline void drive_cycle_artemis()
 
   double Cmaxpos{ 51385 };
   double Cmaxneg{ 30555 };
-  double cps, cns;
+  DPair cs;
 
 
   auto &st = c.getStateObj();
@@ -204,15 +200,15 @@ inline void drive_cycle_artemis()
                << "zp(3),"
                << "zn(3)\n";
 
-  c.getCSurf(cps, cns, false);
-  double V_old{ c.V() }, fp_old{ cps / Cmaxpos }, fn_old{ cns / Cmaxneg };
+  c.getCSurf(cs, false);
+  double V_old{ c.V() }, fp_old{ cs[pos] / Cmaxpos }, fn_old{ cs[neg] / Cmaxneg };
   out_fraction << c.I() << ',' << c.V() << ',' << fp_old << ',' << fn_old << ',' << st.zp(3) << ',' << st.zn(3) << '\n';
 
   c.setCurrent(-0.02);
   double threshold{ 1e-4 };
   while (c.V() < 4.2) {
-    c.getCSurf(cps, cns, false);
-    auto fp{ cps / Cmaxpos }, fn{ cns / Cmaxneg };
+    c.getCSurf(cs, false);
+    auto fp{ cs[pos] / Cmaxpos }, fn{ cs[neg] / Cmaxneg };
 
     if (std::abs(V_old - c.V()) > threshold || std::abs(fp_old - fp) > threshold || std::abs(fn_old - fn) > threshold) {
       V_old = c.V();
@@ -225,8 +221,9 @@ inline void drive_cycle_artemis()
 
   out_fraction.close();
 
-  c.getCSurf(cps, cns, false);
-  std::cout << "V: " << c.V() << " cps, cns : " << cps / Cmaxpos << ", " << cns / Cmaxneg << ',' << st.zp(3) << ',' << st.zn(3) << "\n";
+
+  c.getCSurf(cs, false);
+  std::cout << "V: " << c.V() << " cps, cns : " << cs[pos] / Cmaxpos << ", " << cs[neg] / Cmaxneg << ',' << st.zp(3) << ',' << st.zn(3) << "\n";
   for (auto z_i : st.z())
     std::cout << z_i << ' ';
   std::cout << '\n';
@@ -240,7 +237,7 @@ inline void drive_cycle_artemis()
   double SOC_vs_fn[] = { 0.028906, 0.120170, 0.211423, 0.302676, 0.393928, 0.485181, 0.576434, 0.667687, 0.758939, 0.850192, 0.941444 };
 
   for (int i = 0; i < 11; i++) {
-    c.setC(SOC_vs_fp[i], SOC_vs_fn[i]);
+    c.setC({ SOC_vs_fp[i], SOC_vs_fn[i] });
     std::cout << "i = " << i << " V = " << c.V() << '\n';
   }
 
@@ -300,7 +297,7 @@ inline void drive_cycle_artemis()
   //   c.timeStep_CC(1, 1);
 
   for (int i = 9; i > 1; i--) {
-    c.setC(SOC_vs_fp[i], SOC_vs_fn[i]);
+    c.setC({ SOC_vs_fp[i], SOC_vs_fn[i] });
     experiment(std::to_string(i) + "0");
   }
 

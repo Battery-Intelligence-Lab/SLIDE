@@ -55,4 +55,16 @@ enum cellType {
   UserCell = 2
 };
 
+enum Domain : size_t {
+  pos = 0, // Because positive is generally calculated first.
+  neg,
+  sep,
+  collector
+};
+
+constexpr int sign(Domain d)
+{
+  return (d == pos) ? -1 : 1;
 }
+
+} // namespace slide

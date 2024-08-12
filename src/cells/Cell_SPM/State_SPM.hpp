@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include "../../settings/settings.hpp"
-#include "../../types/State.hpp"
+#include "Pair.hpp"
+#include "settings.hpp"
+#include "State.hpp"
 
 #include <cstdlib>
 #include <array>
@@ -68,6 +69,16 @@ public:
   inline auto &zp(size_t i) { return (*this)[i_zp + i]; } //!< z_type, transformed li concentration at the positive inner nodes of the positive particle
   inline auto &zn(size_t i) { return (*this)[i_zn + i]; } //!< z_type, transformed li concentration at the positive inner nodes of the negative particle
   inline auto &z(size_t i) { return (*this)[i_zp + i]; }  //!< Both z_p and z_n;
+  inline auto &z(size_t i, Domain domain) { return (*this)[i_zp + nch * domain + i]; }
+
+  template <size_t domain>
+  inline auto &z(size_t i)
+  {
+    if constexpr (domain == 0)
+      return zp(i);
+    else
+      return zn(i);
+  }
 
   inline auto zp() { return std::span<double>(&zp(0), &zn(0)); }
   inline auto zn() { return std::span<double>(&zn(0), &zn(0) + nch); }
@@ -94,9 +105,17 @@ public:
   inline auto &I() { return (*this)[i_I]; }               //!< current [A]
   inline auto &V() { return (*this)[i_V]; }               //!< voltage [V]
 
+  // Additional definitions for domain-based access:
+  inline auto &thick(size_t domain) { return (*this)[i_thickp + domain]; }
+  inline auto &e(size_t domain) { return (*this)[i_ep + domain]; }
+  inline auto &a(size_t domain) { return (*this)[i_ap + domain]; }
+  inline auto &D(size_t domain) { return (*this)[i_Dp + domain]; }
+  inline auto &rDC(size_t domain) { return (*this)[i_rDCp + domain]; }
+
+
   //!< void setT(double Ti);                                                                                          //!< set the temperature
-  void overwriteGeometricStates(double thickpi, double thickni, double epi, double eni, double api, double ani); //!< overwrite the states related to the geometry of a cell
-  void overwriteCharacterisationStates(double Dpi, double Dni, double ri);                                       //!< overwrite the states related to the characterisation of a cell
+  void overwriteGeometricStates(DPair thick_, DPair e_, DPair a_); //!< overwrite the states related to the geometry of a cell
+  void overwriteCharacterisationStates(DPair D_, double ri);       //!< overwrite the states related to the characterisation of a cell
 
   std::span<double> viewGeometricStates() { return std::span<double>(&delta(), &delta_pl() + 1); } //!< #Check and fix. Why this also checks SOC?
 
@@ -105,7 +124,7 @@ public:
   inline auto I() const { return (*this)[i_I]; } //!< current [A]
 };
 
-inline void State_SPM::overwriteGeometricStates(double thickpi, double thickni, double epi, double eni, double api, double ani)
+inline void State_SPM::overwriteGeometricStates(DPair thick_, DPair e_, DPair a_)
 {
   /*
    * Function to overwrite the geometric parameters of the state.
@@ -113,24 +132,20 @@ inline void State_SPM::overwriteGeometricStates(double thickpi, double thickni, 
    * It should only be called when you are parametrising a cell (determineCharacterisation.cpp), never while cycling a cell.
    *
    * IN
-   * thickpi 	thickness of the cathode [m]
-   * thickni 	thickness of the anode [m]
-   * epi 		volume fraction of active material in the cathode [-]
-   * eni 		volume fraction of active material in the anode [-]
-   * api 		effective surface area of the porous cathode [m2 m-3]
-   * ani 		effective surface area of the porous anode [m2 m-3]
+   * thick_ 	thickness of the cathode/anode [m]
+   * e_ 		volume fraction of active material in the cathode/anode [-]
+   * a_ 		effective surface area of the porous cathode/anode [m2 m-3]
    */
 
   //!< set the states
-  this->thickp() = thickpi;
-  this->thickn() = thickni;
-  this->ep() = epi;
-  this->en() = eni;
-  this->ap() = api;
-  this->an() = ani;
+  for (auto dom : { pos, neg }) {
+    this->thick(dom) = thick_[dom];
+    this->e(dom) = e_[dom];
+    this->a(dom) = a_[dom];
+  }
 }
 
-inline void State_SPM::overwriteCharacterisationStates(double Dpi, double Dni, double ri)
+inline void State_SPM::overwriteCharacterisationStates(DPair D_, double ri)
 {
   /*
    * Function to overwrite the parameters related to the characterisation of the cell.
@@ -138,16 +153,16 @@ inline void State_SPM::overwriteCharacterisationStates(double Dpi, double Dni, d
    * It should only be called when you are parametrising a cell (determineCharacterisation.cpp), never while cycling a cell.
    *
    * IN
-   * Dpi	diffusion constant of the cathode at rate temperature [m s-1]
-   * Dni 	diffusion constant of the anode at rate temperature [m s-1]
+   * D_	diffusion constant of the cathode/anode at rate temperature [m s-1]
    * r 	specific resistance of the combined electrodes [Ohm m2]
    */
 
   //!< Set the states
-  this->Dp() = Dpi;
-  this->Dn() = Dni;
-  this->rDCp() = ri; //!< Considering both anode and cathode r is same.
-  this->rDCn() = ri;
+  for (auto dom : { pos, neg }) {
+    this->D(dom) = D_[dom];
+    this->rDC(dom) = ri; //!< Considering both anode and cathode r is same.
+  }
+
   //!< #TODO -> r was //!< the specific resistance (resistance times real surface area of the combined electrodes) [Ohm m2]
 }
 } // namespace slide

@@ -13,5 +13,5 @@ target_sources(Cell_SPM
   Model_SPM.hpp
 )
 target_include_directories(Cell_SPM PUBLIC .)
-target_link_libraries(Cell_SPM PUBLIC Eigen3::Eigen)
+target_link_libraries(Cell_SPM PUBLIC settings types Eigen3::Eigen range-v3)
  

@@ -58,16 +58,16 @@ auto linInt_noexcept(bool bound, Tx &xdat, Ty &ydat, int nin, double x, bool is_
     yy = ydat[nin - 1]; //!< If x is above the maximum value, return the y value of the last data point.
   else {
     //!< Scan the data points.
-    int i_low{ 0 };
+    size_t i_low{ 0 };
 
     //!< For fixed step, no need to iterate:
     if (is_fixed) {
       double dt = xdat[1] - xdat[0];
-      i_low = static_cast<int>((x - xdat[0]) / dt) + 1;
+      i_low = static_cast<size_t>((x - xdat[0]) / dt) + 1;
     } else {
       //!< Binary search algorithm:
       const auto it = std::lower_bound(xdat.begin(), xdat.begin() + nin, x);
-      i_low = static_cast<int>(it - xdat.begin());
+      i_low = static_cast<size_t>(it - xdat.begin());
     }
 
     const double xr = xdat[i_low]; //!< Then that point is the point 'to the right' of x.
