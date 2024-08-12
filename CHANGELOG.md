@@ -14,6 +14,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * SLIDE and SLIDE-pack has different LAM parameters as they use different set of fitting data.
 * `copy()` method is added to all classes to clone the class. 
 * `determine_OCV` functions now use absolute error which gives a better estimation of initial lithium fractions. 
+* `Electrode_SPM` class is created.
 
 ### Battery pack simulation support is added
 * SLIDE is merged with slide-pack. Now, SLIDE is now now capable of simulation large battery packs.
