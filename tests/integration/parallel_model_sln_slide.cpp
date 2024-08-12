@@ -137,7 +137,7 @@ void new_compute_A11_A12_A21_A22(int n_par, Eigen::VectorXd R, Eigen::VectorXd C
   Eigen::MatrixXd inv_A22 = A22.inverse();
   double error = (inv_A22 - m).norm();
 
-  std::cout << "Error: " << error << std::endl;
+  // std::cout << "Error: " << error << std::endl;
 }
 
 // Function to evaluate the vector field of the parallel pack model
@@ -337,11 +337,14 @@ int main()
     C(j) += var_C * distribution(generator);
   }
 
+  R_nom = R1_all[bat_select_num - 1];
+  Eigen::VectorXd F = Eigen::VectorXd::Constant(n_par, R_nom);
+  Eigen::VectorXd tau = F.cwiseProduct(C).cwiseInverse(); //
+
 
   { /// --- SLIDE CODE ------
     using namespace slide;
     // Make a module with N cells and a contact resistance
-    double Rc = 1e-3; // Contact resistance.
     using cell_type = Cell_ECM<1>;
 
     std::vector<Module_p::SU_t> cs;
@@ -350,15 +353,15 @@ int main()
     Cell_ECM<1>::R_C_pair RC_array[1];
 
     for (int i{}; i < n_par; i++) {
-      RC_array[0] = { R(i), C(i) };
+      RC_array[0] = { F(i), C(i) };
 
       cs.push_back(make<cell_type>("cell" + std::to_string(i),
                                    Q(i) / 3600.0, // Battery capacity in Ah
-                                   0.0,           // Initial SOC [0-1]
+                                   0.2,           // Initial SOC [0-1]
                                    r(i),          // DC resistance
                                    RC_array));
 
-      Rcs.push_back(Rc);
+      Rcs.push_back(R(i));
     }
 
     std::string n = "parECM";
@@ -382,7 +385,9 @@ int main()
     std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
 
 
-    cyc.CC(-16, 4.2, 3600, dt, 1, th);
+    cyc.CC(-10, 4.2, 300, dt, 1, th);
+    cyc.CC(10, 2.7, 300, dt, 1, th);
+
 
     std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
 
@@ -391,10 +396,6 @@ int main()
 
 
   /// ---------------------
-  R_nom = R1_all[bat_select_num - 1];
-  Eigen::VectorXd F = Eigen::VectorXd::Constant(n_par, R_nom);
-  Eigen::VectorXd tau = F.cwiseProduct(C).cwiseInverse();
-
   Eigen::MatrixXd A11, A12, A21, A22, m;
   new_compute_A11_A12_A21_A22(n_par, R, C, Q, tau, r, A11, A12, A21, A22, m);
 

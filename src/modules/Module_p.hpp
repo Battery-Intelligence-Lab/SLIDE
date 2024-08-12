@@ -20,6 +20,10 @@ class Module_p : public Module
 protected:
   void getVall(std::span<double> Vall, bool print = true); //!< get the voltage of all SUs while accounting for the contact resistance
 
+  Status setCurrent_analytical_impl(double Inew, bool checkV = true, bool print = true); //!< set a module current implementation
+  Status setCurrent_previous_impl(double Inew, bool checkV = true, bool print = true);   //!< set a module current implementation
+
+
 public:
   Module_p() : Module("moduleP") {} //!< #TODO note this constructor should never be used. It can't determine which coolsystem to use
   Module_p(std::string_view ID_, double Ti, bool print, bool pari, int Ncells_, int coolControl, int cooltype)

@@ -3,6 +3,7 @@ add_library(modules STATIC)
 
 target_sources(modules
   PRIVATE
+    Module_p_impl.cpp
     Module_p.cpp
     Module_s.cpp
     Module.cpp

@@ -49,8 +49,8 @@ protected:
   //!< parameters:
 
   std::array<double, N_RC> Rp{}, Tau{}; // Tau = 1/(RC). All initialised zero.
-  XYdata_vv OCV;                                //!< SOC vs voltage curve.
-  double Rdc{ 2e-3 };                           //!< DC resistance [Ohm]
+  XYdata_vv OCV;                        //!< SOC vs voltage curve.
+  double Rdc{ 2e-3 };                   //!< DC resistance [Ohm]
 
 public:
   Cell_ECM();
@@ -67,6 +67,8 @@ public:
   double SOC() override { return st.SOC(); }
   double T() override { return st.T(); }
 
+  double getVr() const { return getIr() * getRp(0); }
+
   //!< overwrite from Cell
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }
@@ -78,6 +80,9 @@ public:
   double getThotSpot() override { return T(); }
   double getThermalSurface() override { return 0; };                                        //!< #TODO Not implemented?
   double getOCV() override { return OCV.interp(st.SOC(), settings::printBool::printCrit); } // Linear interpolation #TODO add a OCV model.
+  double getRp(size_t i) const { return Rp[i]; }
+  double getTau(size_t i) const { return Tau[i]; }
+  double getC(size_t i) const { return getTau(i) / getRp(i); }
 
   Status setSOC(double SOCnew, bool checkV = true, bool print = true) override;
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override;

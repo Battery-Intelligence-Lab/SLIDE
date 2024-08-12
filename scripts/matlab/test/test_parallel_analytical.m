@@ -1,4 +1,4 @@
-clear variables; close all; clc;
+close all; clc;
 
 folder = '';
 
@@ -9,7 +9,7 @@ results = cell(Npar,1);
 
 tic;
 for i = 1:Npar
-    results{i} = slide_to_table("Cycler1_parECM_cell" + (i-i) + ".slide");
+    results{i} = slide_to_table("Cycler1_parECM_cell" + (i-1) + ".slide");
 end
 toc
 

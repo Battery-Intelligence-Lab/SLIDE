@@ -48,6 +48,8 @@ struct State_ECM : public State<3 + N_RC>
    * @return The current through the parallel resistance [I].
    */
   inline auto &Ir(size_t i = 0) { return (*this)[i_I + i + 1]; }
+  inline auto Ir(size_t i = 0) const { return (*this)[i_I + i + 1]; }
+
 
   /**
    * @brief Get the state of charge value (non-const method).
