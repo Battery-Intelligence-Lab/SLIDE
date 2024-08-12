@@ -1,4 +1,4 @@
-close all; clc;
+clc;
 
 folder = '';
 

@@ -37,6 +37,7 @@ double ocv_eval(const std::vector<double> &ocv_coefs, double z)
   return ocv;
 } // already existing function --> otomatik olarak değer fonksiyona gelecek
 
+
 void calculate_inverse_A22(int n_par, Eigen::VectorXd r, Eigen::MatrixXd &m)
 {
   // Initialize m as a zero matrix
@@ -138,7 +139,7 @@ void new_compute_A11_A12_A21_A22(int n_par, Eigen::VectorXd R, Eigen::VectorXd C
   Eigen::MatrixXd inv_A22 = A22.inverse();
   double error = (inv_A22 - m).norm();
 
-  std::cout << "Error: " << error << std::endl;
+  // std::cout << "Error: " << error << std::endl;
 }
 
 // Function to evaluate the vector field of the parallel pack model
@@ -433,7 +434,7 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   }
 
 
-  return Status::Success;
+  return StatusNow;
 }
 
 Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)

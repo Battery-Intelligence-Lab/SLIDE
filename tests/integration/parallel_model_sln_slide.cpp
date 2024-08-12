@@ -290,7 +290,8 @@ int main()
   std::vector<double> R1_all = { 0.0021, 0.0019, 0.0394 };
   std::vector<double> C1_all = { 23558, 23340, 634 };
   std::vector<double> r_all = { 0.0084, 0.0037, 0.0291 };
-  std::vector<double> ocv_coefs = { -5147.78793933142, 28772.2793299200, -68881.8548465757 };
+  std::vector<double> ocv_coefs = { 388.777948898447, -1439.65996000236, 2144.82483921443, -1643.59025162592, 687.400387016987, -153.700490412840, 16.8828505079177, 2.52943741109062 };
+
 
   // Open circuit voltage
   int nz = 100;
@@ -361,6 +362,7 @@ int main()
                                    r(i),          // DC resistance
                                    RC_array));
 
+      dynamic_cast<cell_type *>(cs.back().get())->set_ocv_coefs(ocv_coefs);
       Rcs.push_back(R(i));
     }
 
@@ -385,7 +387,7 @@ int main()
     std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
 
 
-    cyc.CC(-10, 4.2, 300, dt, 1, th);
+    cyc.CC(-10, 3.3, 3000, dt, 1, th);
     cyc.CC(10, 2.7, 300, dt, 1, th);
 
 
