@@ -45,7 +45,7 @@ if(fileEndianness ~= computerEndianness)
         ' Endianness correction feature is not implemented yet!\n']);
 end
 
-fprintf('Now reading %s, with version %d, %s-endian and %s data.',path, fileVersion, fileEndianness, matlabDataType);
+fprintf('Now reading %s, with version %d, %s-endian and %s data.\n',path, fileVersion, fileEndianness, matlabDataType);
 
 i_one = find(readed(1+metadata_length:end)==0, 1);
 i_one = i_one + metadata_length;
