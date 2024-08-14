@@ -23,6 +23,8 @@
 #include <array>
 #include <algorithm>
 #include <ctime>
+#include <numeric>
+#include <functional>
 
 namespace slide {
 
@@ -238,7 +240,6 @@ void parallel_model_dae5(double t, const state_type &x_std, double I, const Eige
     std::cout << "rho : " << rho.transpose() << std::endl;
   }
 
-
   double cn = 1.0;
   for (int j = 1; j < n; ++j) {
     double prod_theta = 1.0;
@@ -250,7 +251,6 @@ void parallel_model_dae5(double t, const state_type &x_std, double I, const Eige
 
   if (printDebug)
     std::cout << "cn : " << cn << std::endl;
-
 
   static Eigen::VectorXd f(n);
   f.fill(0);
@@ -294,8 +294,8 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   const int nSU = getNSUs();
 
   Eigen::VectorXd Q(nSU);   // Battery Capacity in As
-  Eigen::VectorXd F(nSU);   // RC devresinin bir elemani
-  Eigen::VectorXd C(nSU);   // RC devresinin bir elemani
+  Eigen::VectorXd F(nSU);   // RC circuit's R
+  Eigen::VectorXd C(nSU);   // RC circuit's C
   Eigen::VectorXd r(nSU);   // Rdc.
   Eigen::VectorXd tau(nSU); // 1/(RC)
 
@@ -313,15 +313,15 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     tau(i) = 1 / (F(i) * C(i));
   }
 
-  //   std::cout << "Q:\n"
-  //             << Q << "\n\n";
-  //   std::cout << "r:\n"
-  //             << r << "\n\n";
-  //   std::cout << "R:\n"
-  //             << R << "\n\n";
-  //   std::cout << "C:\n"
-  //             << C << "\n\n";
-  //   std::cout << std::endl;
+    // std::cout << "Q:\n"
+    //           << Q << "\n\n";
+    // std::cout << "r:\n"
+    //           << r << "\n\n";
+    // std::cout << "R:\n"
+    //           << R << "\n\n";
+    // std::cout << "C:\n"
+    //           << C << "\n\n";
+    // std::cout << std::endl;
 
   /// ---------------------
   Eigen::MatrixXd A11, A12, A21, A22, m;
@@ -379,23 +379,34 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   if (printDebug)
     std::cout << "cn : " << cn << std::endl;
 
-
   static Eigen::VectorXd f(nSU);
   f.fill(0);
 
-  for (int j = 0; j < nSU - 1; ++j) {
-    f(j) = rho(j + 1) * (v_mod(j + 1) - v_mod(j));
-    for (int i = j + 1; i < nSU - 1; ++i) {
-      double prod_theta = 1.0;
-      for (int k = i; k < nSU - 1; ++k) {
-        prod_theta *= theta(k + 1);
-      }
-      f(j) += prod_theta * rho(i + 1) * (v_mod(i + 1) - v_mod(j));
-    }
-  }
-  f(nSU - 1) = rho(nSU - 1) * (v_mod(nSU - 1) - v_mod(nSU - 2));
+  // for (int j = 0; j < nSU - 1; ++j) {
+  //   f(j) = rho(j + 1) * (v_mod(j + 1) - v_mod(j));
+  //   for (int i = j + 1; i < nSU - 1; ++i) {
+  //     double prod_theta = 1.0;
+  //     for (int k = i; k < nSU - 1; ++k) {
+  //       prod_theta *= theta(k + 1);
+  //     }
+  //     f(j) += prod_theta * rho(i + 1) * (v_mod(i + 1) - v_mod(j));
+  //   }
+  // }
+  // //f(nSU - 1) = rho(nSU - 1) * (v_mod(nSU - 1) - v_mod(nSU - 2));
+  // // f[n - 1] = rho[n - 1] * (v_mod[n - 1] - v_mod[n - 2]);
+  // f(nSU - 1) = rho(nSU-1) * (v_mod(nSU-1) - v_mod(nSU - 2));
 
-  if (printDebug)
+      for (int j = 0; j < nSU - 2; ++j) {
+        f[j] = rho[j + 1] * (v_mod[j + 1] - v_mod[j]);
+        for (int i = j + 1; i < nSU - 1; ++i) {
+            double prod_theta = std::accumulate(theta.begin() + i, theta.end(), 1.0, std::multiplies<double>());
+            f[j] += prod_theta * rho[i + 1] * (v_mod[i + 1] - v_mod[j]);
+        }
+    }
+
+    f[nSU - 2] = rho[nSU - 1] * (v_mod[nSU - 1] - v_mod[nSU - 2]);
+
+  //if (printDebug)
     std::cout << "f : " << f.transpose() << std::endl;
 
 
@@ -433,6 +444,8 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     std::cout << "\n";
   }
 
+  //std::cout << "i_branch_values:\n"
+  //           << i_branch << std::endl;
 
   return StatusNow;
 }
