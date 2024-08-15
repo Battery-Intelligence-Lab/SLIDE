@@ -313,15 +313,15 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     tau(i) = 1 / (F(i) * C(i));
   }
 
-    // std::cout << "Q:\n"
-    //           << Q << "\n\n";
-    // std::cout << "r:\n"
-    //           << r << "\n\n";
-    // std::cout << "R:\n"
-    //           << R << "\n\n";
-    // std::cout << "C:\n"
-    //           << C << "\n\n";
-    // std::cout << std::endl;
+  // std::cout << "Q:\n"
+  //           << Q << "\n\n";
+  // std::cout << "r:\n"
+  //           << r << "\n\n";
+  // std::cout << "R:\n"
+  //           << R << "\n\n";
+  // std::cout << "C:\n"
+  //           << C << "\n\n";
+  // std::cout << std::endl;
 
   /// ---------------------
   Eigen::MatrixXd A11, A12, A21, A22, m;
@@ -396,18 +396,18 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   // // f[n - 1] = rho[n - 1] * (v_mod[n - 1] - v_mod[n - 2]);
   // f(nSU - 1) = rho(nSU-1) * (v_mod(nSU-1) - v_mod(nSU - 2));
 
-      for (int j = 0; j < nSU - 2; ++j) {
-        f[j] = rho[j + 1] * (v_mod[j + 1] - v_mod[j]);
-        for (int i = j + 1; i < nSU - 1; ++i) {
-            double prod_theta = std::accumulate(theta.begin() + i, theta.end(), 1.0, std::multiplies<double>());
-            f[j] += prod_theta * rho[i + 1] * (v_mod[i + 1] - v_mod[j]);
-        }
+  for (int j = 0; j < nSU - 2; ++j) {
+    f[j] = rho[j + 1] * (v_mod[j + 1] - v_mod[j]);
+    for (int i = j + 1; i < nSU - 1; ++i) {
+      double prod_theta = std::accumulate(theta.begin() + i, theta.end(), 1.0, std::multiplies<double>());
+      f[j] += prod_theta * rho[i + 1] * (v_mod[i + 1] - v_mod[j]);
     }
+  }
 
-    f[nSU - 2] = rho[nSU - 1] * (v_mod[nSU - 1] - v_mod[nSU - 2]);
+  f[nSU - 2] = rho[nSU - 1] * (v_mod[nSU - 1] - v_mod[nSU - 2]);
 
-  //if (printDebug)
-    std::cout << "f : " << f.transpose() << std::endl;
+  // if (printDebug)
+  std::cout << "f : " << f.transpose() << std::endl;
 
 
   i_branch(nSU - 1) = (-Inew - f.sum()) / cn; // -Inew because discharge is positive in SLIDE.
@@ -444,8 +444,8 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     std::cout << "\n";
   }
 
-  //std::cout << "i_branch_values:\n"
-  //           << i_branch << std::endl;
+  // std::cout << "i_branch_values:\n"
+  //            << i_branch << std::endl;
 
   return StatusNow;
 }
@@ -586,6 +586,12 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
 
   // #TODO set old currents back here!
   return StatusNow;
+}
+
+
+void Module_p::integrateODE(double t_span)
+{
+  double Inow = I(); // Get the module current.
 }
 
 } // namespace slide

@@ -48,6 +48,8 @@ public:
 
   void timeStep_CC(double dt, int steps = 1) override;
 
+  void integrateODE(double t_end); //!< Boost integrator.
+
   Module_p *copy() override { return new Module_p(*this); }
 };
 } // namespace slide
