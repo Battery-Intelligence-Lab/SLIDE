@@ -137,7 +137,7 @@ void new_compute_A11_A12_A21_A22(int n_par, Eigen::VectorXd R, Eigen::VectorXd C
   Eigen::MatrixXd inv_A22 = A22.inverse();
   double error = (inv_A22 - m).norm();
 
-  std::cout << "Error: " << error << std::endl;
+  // std::cout << "Error: " << error << std::endl;
 }
 
 // Function to evaluate the vector field of the parallel pack model
@@ -284,21 +284,14 @@ void parallel_model_dae5(double t, const state_type &x_std, double I, const Eige
 
 int main()
 {
-  int bat_select_num = 3;
-  // Eigen::VectorXd R(n_par), C(n_par), Q(n_par), tau(n_par), r(n_par);
-
-  // R << 0, 0, 0;
-  // C << 634.0, 634.0, 634.0;
-  // Q << 9000.0, 9000.0, 9000.0;
-  // tau << 0.04, 0.04, 0.04;
-  // r << 0.029, 0.029, 0.029;
+  constexpr int bat_select_num = 3;
 
   std::vector<double> capacitance_Ah_all = { 2.50, 3.0, 2.60 };
   std::vector<double> R1_all = { 0.0021, 0.0019, 0.0394 };
   std::vector<double> C1_all = { 23558, 23340, 634 };
   std::vector<double> r_all = { 0.0084, 0.0037, 0.0291 };
-  std::vector<double> ocv_coefs = { -5147.78793933142, 28772.2793299200, -68881.8548465757 };
-  // std::vector<double> ocv_coefs = {-5147.78793933142,	28772.2793299200,	-68881.8548465757}; // Example OCV coefficients
+  std::vector<double> ocv_coefs = { 388.777948898447, -1439.65996000236, 2144.82483921443, -1643.59025162592, 687.400387016987, -153.700490412840, 16.8828505079177, 2.52943741109062 };
+
 
   // Open circuit voltage
   int nz = 100;
@@ -310,10 +303,10 @@ int main()
 
   // Model parameters
   // int n_par = 100; // The number of cells in parallel
-  int n_par = 1000; // for testing
+  constexpr int n_par = 10; // for testing
 
   double capacitance_Ah = capacitance_Ah_all[bat_select_num - 1];
-  double capacitance = 3600 * capacitance_Ah;
+  double capacitance_As = 3600 * capacitance_Ah;
 
   double C_rate = 0.01;
   double I = n_par * C_rate * capacitance_Ah;
@@ -323,14 +316,14 @@ int main()
   double r_nom = r_all[bat_select_num - 1];
   double C_nom = C1_all[bat_select_num - 1];
 
-  Eigen::VectorXd Q = Eigen::VectorXd::Constant(n_par, capacitance);
+  Eigen::VectorXd Q = Eigen::VectorXd::Constant(n_par, capacitance_As);
   Eigen::VectorXd R = Eigen::VectorXd::Constant(n_par, R_nom);
   Eigen::VectorXd C = Eigen::VectorXd::Constant(n_par, C_nom);
   Eigen::VectorXd r = Eigen::VectorXd::Constant(n_par, r_nom);
 
   // Add noise to each of the parameters to simulate aging
   double sd_vars = 1 * 1e-3;
-  double var_Q = sd_vars * capacitance;
+  double var_Q = sd_vars * capacitance_As;
   double var_R = sd_vars * R_nom;
   double var_r = sd_vars * r_nom;
   double var_C = sd_vars * C_nom;
@@ -347,8 +340,64 @@ int main()
 
   R_nom = R1_all[bat_select_num - 1];
   Eigen::VectorXd F = Eigen::VectorXd::Constant(n_par, R_nom);
-  Eigen::VectorXd tau = F.cwiseProduct(C).cwiseInverse();
+  Eigen::VectorXd tau = F.cwiseProduct(C).cwiseInverse(); //
 
+
+  { /// --- SLIDE CODE ------
+    using namespace slide;
+    // Make a module with N cells and a contact resistance
+    using cell_type = Cell_ECM<1>;
+
+    std::vector<Module_p::SU_t> cs;
+    std::vector<double> Rcs{};
+
+    Cell_ECM<1>::R_C_pair RC_array[1];
+
+    for (int i{}; i < n_par; i++) {
+      RC_array[0] = { F(i), C(i) };
+
+      cs.push_back(make<cell_type>("cell" + std::to_string(i),
+                                   Q(i) / 3600.0, // Battery capacity in Ah
+                                   0.2,           // Initial SOC [0-1]
+                                   r(i),          // DC resistance
+                                   RC_array));
+
+      dynamic_cast<cell_type *>(cs.back().get())->set_ocv_coefs(ocv_coefs);
+      Rcs.push_back(R(i));
+    }
+
+    std::string n = "parECM";
+
+    double T = settings::T_ENV;
+    bool checkCells = false;
+    auto mp = make<Module_p>(n, T, true, false, std::size(cs), 1, 1);
+    mp->setSUs(cs, checkCells, true);
+    mp->setRcontact(Rcs);
+
+    //!< total resistance:
+    //!< 		-Rp+-Rp-+-Rp-|
+    //!< 		   |    |    |
+    //!< 		  Rs    Rs   Rs
+    //!< where Rp = contact resistance (value Rc) and Rs = cell resistance = 0.01;
+
+    Cycler cyc(mp, "Cycler1");
+
+    ThroughputData th{};
+    double dt = 0.01;
+    std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
+
+
+    cyc.CC(-10, 3.3, 3000, dt, 1, th);
+    cyc.CC(10, 2.7, 300, dt, 1, th);
+
+
+    std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
+
+    cyc.writeData();
+  }
+
+
+  /// ---------------------
   Eigen::MatrixXd A11, A12, A21, A22, m;
   new_compute_A11_A12_A21_A22(n_par, R, C, Q, tau, r, A11, A12, A21, A22, m);
 

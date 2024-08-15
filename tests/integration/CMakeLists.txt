@@ -11,3 +11,15 @@ target_link_libraries(parallel_model
   project_options
   Boost::boost
 )
+
+add_executable(parallel_model_slide
+  parallel_model_sln_slide.cpp
+)
+
+target_link_libraries(parallel_model_slide
+  PRIVATE
+  src
+  project_warnings
+  project_options
+  Boost::boost
+)

@@ -205,7 +205,6 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
   return StatusNow; // #TODO add some voltage/current etc. Also return max iter condition!!!!
 }
 
-// NİLSU
 Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 {
   /*
@@ -220,132 +219,8 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
    * 3 	checkV is true && the voltage is outside the safety limits, old current is restored
    * 15 	after setting the current, the voltage of the cells are too far apart
    */
-
-  const bool verb = print && (settings::printBool::printCrit); //!< print if the (global) verbose-setting is above the threshold
-
-  constexpr int maxIteration = 50;
-  int iter{}; // Current iteration
-  const int nSU = getNSUs();
-
-  auto StatusNow = Status::Success;
-
-  using A_type = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX>;
-  using b_type = Eigen::Array<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX>;
-
-
-  b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
-
-
-  StatusNow = Status::Success; //!< reset at each iteration.
-
-  const double tolerance = 1e-6;
-  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
-    Ib[i] = SUs[i]->I();
-    Vb[i] = SUs[i]->V();
-  }
-
-
-  double Icumulative{}, error{};
-  for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
-    Icumulative += Ib[i];
-
-    if (i != 0)
-      b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
-    else
-      b(i) = Inew - Icumulative; // #TODO????
-
-    error += std::max(std::abs(b(i)), error);
-
-    r_est[i] = 200e-3; // 100e-3; // Init the resistances high at the beginning. #TODO probably not robust for all cases.
-  }
-
-  if (error < tolerance) return StatusNow;
-
-
-  // // Perturb a bit:
-  // const double perturbation = 0.5; //
-  // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
-  //   Ib[i] += perturbation; // Perturbation
-  //   SUs[i]->setCurrent(Ib[i]);
-
-  //   const double Vnew = SUs[i]->V();
-  //   r_est[i] = (Vb[i] - Vnew) / perturbation; // Estimated resistance.
-  //   Vb[i] = Vnew;
-  // }
-
-  auto getLU = [&]() { // #TODO this will be static in future defined in parallel block
-    A_type A(nSU, nSU);
-    // Set up the A matrix in Ax = b
-    for (size_t j = 0; j < nSU; j++)
-      for (size_t i = 0; i < nSU; i++) {
-        if (i == 0)
-          A(i, j) = -1;
-        else if (i == j)
-          A(i, j) = -Rcontact[i] - r_est[i];
-        else if (i == j + 1)
-          A(i, j) = r_est[j];
-        else if (j > i)
-          A(i, j) = -Rcontact[i];
-        else
-          A(i, j) = 0;
-      }
-    Eigen::PartialPivLU<A_type> LU(A); // LU decomposition of A.
-    return LU;
-  };
-
-  b_type deltaI;
-  Eigen::PartialPivLU<A_type> LU;
-  while (iter < maxIteration) {
-    double Icumulative{}, error{};
-    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
-      Icumulative += Ib[i];
-
-      if (i != 0)
-        b(i) = Vb[i] - Vb[i - 1] - Icumulative * Rcontact[i];
-      else
-        b(i) = Inew - Icumulative; // #TODO????
-
-      error = std::max(std::abs(b(i)), error);
-    }
-
-    if (error < tolerance) break;
-
-    LU = getLU();
-
-    deltaI = LU.solve(b.matrix()).array();
-
-
-    for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
-      double Vb_old = Vb[i];
-      StatusNow = std::max(StatusNow, SUs[i]->setCurrent(Ib[i] - deltaI[i]));
-      Ib[i] = SUs[i]->I();
-      Vb[i] = SUs[i]->V();
-
-
-      if (std::abs(deltaI[i]) > 1e-6 || iter == 0) {
-        double r_est_i = (Vb[i] - Vb_old) / deltaI[i];
-
-        if (r_est_i > 0)
-          r_est[i] = r_est_i;
-        else
-          r_est[i] = 1e-3;
-      }
-    }
-
-    iter++;
-  }
-
-  if (iter == maxIteration)
-    StatusNow = Status::RedistributeCurrent_failed;
-
-  if constexpr (settings::printNumIterations)
-    if (iter > 5) std::cout << "setCurrent iterations: " << iter << std::endl;
-
-
-  // #TODO set old currents back here!
-  return StatusNow;
+  return setCurrent_analytical_impl(Inew, checkV, print); // setCurrent_analytical_impl
 }
-
 
 /**
  * @brief Perform a time step at a constant current.

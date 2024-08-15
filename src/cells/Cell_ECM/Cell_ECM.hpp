@@ -26,6 +26,8 @@
 
 namespace slide {
 
+double ocv_eval(const std::vector<double> &ocv_coefs, double z);
+
 template <size_t N_RC = 1>
 class Cell_ECM : public Cell
 {
@@ -43,14 +45,16 @@ public:
 
 private:
   void createDFheaders();
+  std::vector<double> ocv_coefs = { -5147.78793933142, 28772.2793299200, -68881.8548465757 };
+
 
 protected:
   State_ECM<N_RC> st{ settings::T_ENV, 0.5 }; //!< States T, SOC, , I, Ir, ... ;
   //!< parameters:
 
   std::array<double, N_RC> Rp{}, Tau{}; // Tau = 1/(RC). All initialised zero.
-  XYdata_vv OCV;                                //!< SOC vs voltage curve.
-  double Rdc{ 2e-3 };                           //!< DC resistance [Ohm]
+  XYdata_vv OCV;                        //!< SOC vs voltage curve.
+  double Rdc{ 2e-3 };                   //!< DC resistance [Ohm]
 
 public:
   Cell_ECM();
@@ -67,6 +71,8 @@ public:
   double SOC() override { return st.SOC(); }
   double T() override { return st.T(); }
 
+  double getVr() const { return getIr() * getRp(0); }
+
   //!< overwrite from Cell
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }
@@ -76,8 +82,13 @@ public:
 
   double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
   double getThotSpot() override { return T(); }
-  double getThermalSurface() override { return 0; };                                        //!< #TODO Not implemented?
-  double getOCV() override { return OCV.interp(st.SOC(), settings::printBool::printCrit); } // Linear interpolation #TODO add a OCV model.
+  double getThermalSurface() override { return 0; }               //!< #TODO Not implemented?
+  double getOCV() override { return ocv_eval(ocv_coefs, SOC()); } //  { return OCV.interp(st.SOC(), settings::printBool::printCrit); }
+
+  // Linear interpolation #TODO add a OCV model. OCV.interp(st.SOC(), settings::printBool::printCrit);
+  double getRp(size_t i) const { return Rp[i]; }
+  double getTau(size_t i) const { return Tau[i]; }
+  double getC(size_t i) const { return getTau(i) / getRp(i); }
 
   Status setSOC(double SOCnew, bool checkV = true, bool print = true) override;
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override;
@@ -94,6 +105,10 @@ public:
   void writeData(const std::string &prefix) override;
 
   Cell_ECM<N_RC> *copy() override { return new Cell_ECM<N_RC>(*this); }
+
+  // --- do not use ---
+
+  void set_ocv_coefs(std::vector<double> ocv_coefs_) { ocv_coefs = ocv_coefs_; }
 };
 
 // Implementation:
