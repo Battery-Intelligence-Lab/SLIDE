@@ -35,6 +35,7 @@ target_link_libraries(src
   types
   utility
   ${PTHREADS} # -> for WSL
+  Boost::boost # -> for odeint
 )
 
 add_executable(papercode paperCode.cpp)

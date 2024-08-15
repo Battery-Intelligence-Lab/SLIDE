@@ -99,3 +99,6 @@ install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
 )
+
+# Prints out the licenses of third party packages in binary folder. 
+cpm_licenses_create_disclaimer_target(write-licenses "${CMAKE_CURRENT_SOURCE_DIR}/bin/third_party.txt" "${CPM_PACKAGES}")
