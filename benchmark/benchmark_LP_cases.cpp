@@ -1,19 +1,15 @@
-/*
- * running_Cell_Bucket.hpp
- *
- *  Benchmark file for Cell_Bucket
- *
- *  Created on: 07 Aug 2022
- *   Author(s): Volkan Kumtepeli
+/**
+ * @file benchmark_LP_cases.cpp
+ * @brief Benchmark file for Cell_Bucket
+ * @author Volkan Kumtepeli
+ * @date 07 Aug 2022
  */
 
-#pragma once
-
-#include "../src/slide.hpp"
+#include "slide.hpp"
 
 #include <string>
 
-namespace slide::benchmarks {
+using namespace slide;
 
 inline void run_LP_case_SmallPack()
 {
@@ -199,5 +195,12 @@ inline void run_LP_case_LargePackLong()
   cyc.writeData();
 }
 
+int main()
+{
+  run_LP_case_SmallPack();
+  run_LP_case_MediumPack();
+  // run_LP_case_LargePack();
+  // run_LP_case_LargePackLong();
 
-} // namespace slide::benchmarks
+  return EXIT_SUCCESS;
+}

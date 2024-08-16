@@ -11,7 +11,6 @@
 
 //!< Include header files
 #include "slide.hpp"
-#include "../benchmark/benchmarks.hpp"
 #include "../examples/examples.hpp"
 
 #include <Eigen/Dense>

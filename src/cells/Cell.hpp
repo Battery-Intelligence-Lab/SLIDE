@@ -1,7 +1,8 @@
 /**
  * @file Cell.hpp
  * @brief Cell class definition
- * @author Jorn Reniers, Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
  * @date 22 Nov 2019
  */
 

@@ -226,7 +226,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
 
   while (ttot < tlim) {
 
-    auto succNow = setCurrent(I, vlim, vi); // #TODO this was not here I added to get nice results from
+    succNow = setCurrent(I, vlim, vi); // #TODO this was not here I added to get nice results from
     if (!isStatusSuccessful(succNow))
       return succNow; //!< stop if we could not successfully set the current
 

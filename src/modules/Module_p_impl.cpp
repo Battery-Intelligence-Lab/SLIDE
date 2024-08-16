@@ -592,6 +592,9 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
 void Module_p::integrateODE(double t_span)
 {
   double Inow = I(); // Get the module current.
+
+  
+
 }
 
 } // namespace slide

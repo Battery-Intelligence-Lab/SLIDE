@@ -1,10 +1,8 @@
-/*
- * module_tests.hpp
- *
- * Example module test functions;
- *
- * Created on: 01 Aug 2024
- * Author(s): Volkan Kumtepeli
+/**
+ * @file module_tests.hpp
+ * @brief Example module test functions
+ * @author Volkan Kumtepeli
+ * @date 01 Aug 2024
  */
 
 #pragma once
@@ -14,7 +12,6 @@
 #include <vector>
 
 namespace slide::examples {
-
 
 void module_p_ECM()
 {

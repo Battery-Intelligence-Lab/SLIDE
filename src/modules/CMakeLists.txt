@@ -3,6 +3,7 @@ add_library(modules OBJECT)
 
 target_sources(modules
   PUBLIC
+    Module_p_impl.cpp
     Module_p.cpp
     Module_s.cpp
     Module.cpp

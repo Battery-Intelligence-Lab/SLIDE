@@ -22,6 +22,7 @@ add_subdirectory(src bin)
 
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
+add_subdirectory(benchmark)
 
 target_link_libraries(src PUBLIC Eigen3::Eigen range-v3 fmt) # Link dependencies to the src library.
 # glaze::glaze  -> maybe in future. 

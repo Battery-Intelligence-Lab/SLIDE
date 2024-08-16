@@ -451,7 +451,7 @@ TEST_CASE("test_Hierarchichal_p", "[module]")
   mp->timeStep_CC(dt);
   REQUIRE_THAT(cp1->SOC(), WithinAbs((0.5 - 2 * dt / 3600.0 / cp1->Cap()), tol)); //!< the SOC must have increased (check just 1 cell out of all 7)
   REQUIRE(mp->V() > Vini);
-  REQUIRE_THAT(mp2->V(), mp3->V(), tol);                                          //!< submodules must have same voltage
+  REQUIRE_THAT(mp2->V() - mp3->V(), WithinAbs(0, tol)); //!< submodules must have same voltage
 }
 
 TEST_CASE("Hierarchical_cross_p", "[Module_p]")
@@ -619,7 +619,7 @@ bool test_equaliseV_timing(Deep_ptr<Module_p> &mp, Deep_ptr<StorageUnit> c[], in
   vlim = mp->Vmax() - lim;
   cyc.CC(-I, vlim, TIME_INF, dt, ndata, th); //!< CC charge
   vlim = mp->Vmin() + lim;
-  cyc.CC(I, vlim, TIME_INF, dt, ndata, th);  //!< CC discharge
+  cyc.CC(I, vlim, TIME_INF, dt, ndata, th); //!< CC discharge
 
   std::cout << "Finished CC cycle.\n";
 
@@ -638,8 +638,8 @@ bool test_equaliseV()
   deg.SEI_id.add_model(4); //!< chirstensen SEI growth
   deg.SEI_porosity = 0;    //!< don't decrease the porosity (set to 1 if you do want to decrease the porosity)
 
-  deg.CS_id.add_model(0);  //!< no surface cracks
-  deg.CS_diffusion = 0;    //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
+  deg.CS_id.add_model(0); //!< no surface cracks
+  deg.CS_diffusion = 0;   //!< don't decrease the diffusion coefficient (set to 1 if you do want to decrease the diffusion)
 
   deg.LAM_id.add_model(0); //!< no LAM
   deg.pl_id = 0;           //!< no litihium plating

@@ -1,8 +1,9 @@
-/*
- * CoolSystem.hpp
- *
- *  Created on: 29 Apr 2020
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
+/**
+ * @file CoolSystem.hpp
+ * @brief CoolSystem header file.
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
+ * @date 29 Apr 2020
  */
 
 #pragma once

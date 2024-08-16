@@ -1,10 +1,8 @@
-/*
- * cell_tests.hpp
- *
- * Example cell test functions;
- *
- * Created on: 04 Apr 2022
- * Author(s): Volkan Kumtepeli
+/**
+ * @file cell_tests.hpp
+ * @brief Example cell test functions;
+ * @author Volkan Kumtepeli
+ * @date 04 Apr 2022
  */
 
 #pragma once

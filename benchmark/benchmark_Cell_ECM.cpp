@@ -1,19 +1,15 @@
-/*
- * running_Cell_Bucket.hpp
- *
- *  Benchmark file for Cell_Bucket
- *
- *  Created on: 07 Aug 2022
- *   Author(s): Volkan Kumtepeli
+/**
+ * @file benchmark_Cell_ECM.cpp
+ * @brief Benchmark file for Cell_ECM
+ * @author Volkan Kumtepeli
+ * @date 07 Aug 2022
  */
 
-#pragma once
-
-#include "../src/slide.hpp"
+#include "slide.hpp"
 
 #include <string>
 
-namespace slide::benchmarks {
+using namespace slide;
 
 inline void run_Cell_ECM_single_default_pulse()
 {
@@ -59,7 +55,6 @@ inline void run_Cell_ECM_single_default_CCCV()
   cyc.writeData();
 }
 
-
 inline void run_Cell_ECM_2_RC_single_default_pulse()
 {
   // Benchmark with default parameters:
@@ -103,7 +98,6 @@ inline void run_Cell_ECM_2_RC_single_default_CCCV()
   std::cout << "Finished " << ID << " in " << clk << ".\n";
   cyc.writeData();
 }
-
 
 inline void run_Cell_ECM_parallel_3_default_pulse()
 {
@@ -220,7 +214,6 @@ inline void run_Cell_ECM_parallel_3_withRcontact_CCCV()
   cyc.writeData();
 }
 
-
 inline void run_Cell_ECM_series_3_withRcontact_CCCV()
 {
   constexpr double T_ENV = 15.0_degC;
@@ -262,7 +255,6 @@ inline void run_Cell_ECM_series_3_withRcontact_CCCV()
   std::cout << "Finished " << ID << " in " << clk << ".\n";
   cyc.writeData();
 }
-
 
 inline void run_Cell_ECM_SmallPack()
 {
@@ -435,5 +427,23 @@ inline void run_Cell_ECM_LargePackLong()
   cyc.writeData();
 }
 
+int main()
+{
+  run_Cell_ECM_single_default_pulse();
+  run_Cell_ECM_single_default_CCCV();
+  run_Cell_ECM_2_RC_single_default_pulse();
+  run_Cell_ECM_2_RC_single_default_CCCV();
 
-} // namespace slide::benchmarks
+  run_Cell_ECM_parallel_3_default_pulse();
+  run_Cell_ECM_parallel_3_default_CCCV();
+
+  run_Cell_ECM_parallel_3_withRcontact_CCCV();
+  run_Cell_ECM_series_3_withRcontact_CCCV();
+
+  run_Cell_ECM_SmallPack();
+  run_Cell_ECM_MediumPack();
+  run_Cell_ECM_LargePack();
+  run_Cell_ECM_LargePackLong();
+
+  return EXIT_SUCCESS;
+}

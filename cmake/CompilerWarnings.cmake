@@ -66,8 +66,8 @@ function(set_project_warnings project_name)
 
   # Warnings to ignore: 
   # Adapted from Eigen library's "DisableStupidWarnings.h"
-  set(CLANG_WARNINGS ${CLANG_WARNINGS} -Wno-unknown-attributes -Wno-unused-parameter)
-  set(GCC_WARNINGS ${GCC_WARNINGS} -Wno-unknown-attributes)
+  set(CLANG_WARNINGS ${CLANG_WARNINGS} -Wno-unknown-attributes -Wno-unused-parameter -Wno-sign-conversion -Wno-implicit-int-float-conversion)
+  set(GCC_WARNINGS ${GCC_WARNINGS} -Wno-unknown-attributes -Wno-sign-conversion -Wno-implicit-int-float-conversion)
   set(MSVC_WARNINGS
       ${MSVC_WARNINGS}
       /wd4100 # unreferenced formal parameter (occurred e.g. in aligned_allocator::destroy(pointer p))

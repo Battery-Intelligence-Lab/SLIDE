@@ -1,5 +1,5 @@
 /**
- * @file drive_cycles.cpp
+ * @file drive_cycles.hpp
  * @brief Example drive cycle applications.
  * @author Volkan Kumtepeli
  * @date 02 Nov 2022

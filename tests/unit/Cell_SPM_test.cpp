@@ -77,10 +77,10 @@ TEST_CASE("test_getStates_SPM", "[CELL_SPM]")
   REQUIRE_THAT(c1.T(), WithinAbs(settings::T_ENV, TOL_EQ));
 
   // Check CSurf values
-  double cps{}, cns{};
-  c1.getCSurf(cps, cns, false);
-  REQUIRE_THAT(cps, WithinAbs(35421.3, 0.1));
-  REQUIRE_THAT(cns, WithinAbs(14644.5, 0.1));
+  DPair cs;
+  c1.getCSurf(cs, false);
+  REQUIRE_THAT(cs[pos], WithinAbs(35421.3, 0.1));
+  REQUIRE_THAT(cs[neg], WithinAbs(14644.5, 0.1));
   REQUIRE_THAT(c1.getRdc(), WithinAbs(0.001253, tol));
 }
 
