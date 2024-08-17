@@ -13,6 +13,7 @@
 #include "../cells/cells.hpp"
 
 #include <Eigen/Dense>
+#include <boost/numeric/odeint.hpp>
 
 #include <cassert>
 #include <iostream>
@@ -589,12 +590,37 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
 }
 
 
-void Module_p::integrateODE(double t_span)
+void Module_p::get_dxdt(getStates_t dxdt)
 {
-  double Inow = I(); // Get the module current.
 
-  
+  for (const auto &SU : SUs)
+    SU->get_dxdt(dxdt); //!< pass a vector, the next nsi locations will be automatically filled with the states of cell i
 
+  dxdt.push_back(0); //!< store the module temperature #TODO temperature model = 0
+}
+
+
+void Module_p::integrateODE_CC(double Inow, double t_span)
+{
+  setCurrent_analytical_impl(Inow, false, false);
+  std::vector<double> x0;
+  getStates(x0);
+
+  const double dt_int = 1;
+
+  // Observer to print the state
+  auto Observer = [this](const auto &x, double t) { this->storeData(); };
+
+  auto myODE = [&](std::vector<double> &x, auto &dxdt, double t) {
+    std::span<double> x_span{ x.begin(), x.end() };
+    setStates(x_span, false, false);
+    get_dxdt(dxdt);
+  };
+
+  using namespace boost::numeric;
+
+  odeint::runge_kutta_dopri5<std::vector<double>> stepper;
+  odeint::integrate_adaptive(odeint::make_controlled(1.0e-12, 1.0e-12, stepper), myODE, x0, 0.0, t_span, dt_int, Observer);
 }
 
 } // namespace slide

@@ -109,6 +109,27 @@ public:
   // --- do not use ---
 
   void set_ocv_coefs(std::vector<double> ocv_coefs_) { ocv_coefs = ocv_coefs_; }
+
+
+  void get_dxdt(getStates_t dxdt) override
+  {
+    decltype(st) dst;
+    std::fill(dst.begin(), dst.end(), 0.0);
+    const auto dAh = st.I();
+    dst.SOC() = -st.I() / Cap();
+
+    for (size_t i{}; i < N_RC; i++) // dIr/dt = (I - Ir)/(RC)
+      dst.Ir(i) = (st.I() - st.Ir(i)) / Tau[i];
+
+    //!< increase the cumulative variables of this cell
+    if constexpr (settings::data::storeCumulativeData) {
+      dst.time() = 1;
+      dst.Ah() = std::abs(dAh);
+      dst.Wh() = dst.Ah() * V();
+    }
+
+    dxdt.insert(dxdt.end(), dst.begin(), dst.end());
+  }
 };
 
 // Implementation:

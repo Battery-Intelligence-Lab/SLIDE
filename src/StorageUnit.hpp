@@ -29,7 +29,7 @@ protected:
   std::string ID{ "StorageUnit" };           //!< identification string
   StorageUnit *parent{ nullptr };            //!< pointer to the SU 'above' this one [e.g. the module to which a cell is connected]
   bool blockDegAndTherm{ false };            //!< if true, degradation and the thermal ODE are ignored
-  using setStates_t = std::span<double> &;   //!< To pass states to read, non-expandable container.
+  using setStates_t = double *&;             //!< To pass states to read, non-expandable container.
   using getStates_t = std::vector<double> &; //!< To pass states to save, expandable container.
   using viewStates_t = std::span<double>;
   virtual size_t calculateNcells() { return 0; }
@@ -71,6 +71,8 @@ public:
 
 
   virtual Status setStates(setStates_t s, bool checkStates = true, bool print = true) = 0; //!< opposite of getStates, check the states are valid?
+
+  virtual void get_dxdt(getStates_t s) {}
 
   virtual void backupStates() {}  //!< Back-up states.
   virtual void restoreStates() {} //!< restore backed-up states.

@@ -396,6 +396,47 @@ int main()
     cyc.writeData();
   }
 
+  { /// --- SLIDE CODE with Boost------
+    using namespace slide;
+    // Make a module with N cells and a contact resistance
+    using cell_type = Cell_ECM<1>;
+
+    std::vector<Module_p::SU_t> cs;
+    std::vector<double> Rcs{};
+
+    Cell_ECM<1>::R_C_pair RC_array[1];
+
+    for (int i{}; i < n_par; i++) {
+      RC_array[0] = { F(i), C(i) };
+
+      cs.push_back(make<cell_type>("cell" + std::to_string(i),
+                                   Q(i) / 3600.0, // Battery capacity in Ah
+                                   0.2,           // Initial SOC [0-1]
+                                   r(i),          // DC resistance
+                                   RC_array));
+
+      dynamic_cast<cell_type *>(cs.back().get())->set_ocv_coefs(ocv_coefs);
+      Rcs.push_back(R(i));
+    }
+
+    std::string n = "parECM_boost";
+
+    double T = settings::T_ENV;
+    bool checkCells = false;
+    auto mp = make<Module_p>(n, T, true, false, std::size(cs), 1, 1);
+    mp->setSUs(cs, checkCells, true);
+    mp->setRcontact(Rcs);
+
+    //!< total resistance:
+    //!< 		-Rp+-Rp-+-Rp-|
+    //!< 		   |    |    |
+    //!< 		  Rs    Rs   Rs
+    //!< where Rp = contact resistance (value Rc) and Rs = cell resistance = 0.01;
+
+    mp->integrateODE_CC(-10, 300);
+    mp->integrateODE_CC(10, 300);
+    mp->writeData(n);
+  }
 
   /// ---------------------
   Eigen::MatrixXd A11, A12, A21, A22, m;
