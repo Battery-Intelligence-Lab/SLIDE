@@ -9,6 +9,7 @@
 #pragma once
 
 #include "../../settings/settings.hpp"
+#include "enum_definitions.hpp"
 
 #include <Eigen/Dense>
 #include <Eigen/LU>
@@ -50,12 +51,13 @@ struct Model_SPM
   //	cp = Cp*zpos + Dp*jp			actual concentration [mol m-3] of the nodes (surface, inner)
   //!< 	cn = Cn*zpos + Dn*jn
 
-  Eigen::Vector<double, nch> Ap, An; //!< only main diagonal is non-zero, so only store those values
-  Eigen::Vector<double, nch> Bp, Bn;
-  Eigen::Matrix<double, N, nch> Cp, Cn;
-  Eigen::Vector<double, N> Cc, Dp, Dn;    //!< matrix to get the concentration at the centre node
-  Eigen::Matrix<double, nch, nch> Vp, Vn; //!< inverse of the eigenvectors for the positive/negative electrode
-  Eigen::Matrix<double, M + 1, M + 1> Q;  //!< Matrix for Chebyshev integration
+  std::array<Eigen::Vector<double, nch>, 2> A, B; //!< only main diagonal is non-zero, so only store those values
+  std::array<Eigen::Matrix<double, N, nch>, 2> C;
+  std::array<Eigen::Vector<double, N>, 2> D;
+  std::array<Eigen::Matrix<double, nch, nch>, 2> V; //!< inverse of the eigenvectors for the positive/negative electrode
+
+  Eigen::Vector<double, N> Cc;           //!< matrix to get the concentration at the centre node
+  Eigen::Matrix<double, M + 1, M + 1> Q; //!< Matrix for Chebyshev integration
 
   Model_SPM()
   {
@@ -115,51 +117,51 @@ struct Model_SPM
 
     const double temp = (1 - DN1(0, 0));
 
-    const Eigen::Matrix<double, N - 1, N - 1> A = DN2.template block<N - 1, N - 1>(1, 1) + DN2.template block<N - 1, 1>(1, 0) * DN1.template block<1, N - 1>(0, 1) / temp;
-    const Eigen::Matrix<double, N - 1, 1> B = DN2.template block<N - 1, 1>(1, 0) / temp;
-    const Eigen::Matrix<double, 1, N - 1> C = DN1.template block<1, N - 1>(0, 1) / temp;
-    const double D = 1.0 / temp;
+    const Eigen::Matrix<double, N - 1, N - 1> A_ = DN2.template block<N - 1, N - 1>(1, 1) + DN2.template block<N - 1, 1>(1, 0) * DN1.template block<1, N - 1>(0, 1) / temp;
+    const Eigen::Matrix<double, N - 1, 1> B_ = DN2.template block<N - 1, 1>(1, 0) / temp;
+    const Eigen::Matrix<double, 1, N - 1> C_ = DN1.template block<1, N - 1>(0, 1) / temp;
+    const double D_ = 1.0 / temp;
 
-    const Eigen::Matrix<double, N - 1, N - 1> A1 = A / (Rn * Rn);
-    const Eigen::Matrix<double, N - 1, 1> B1 = B;
+    const Eigen::Matrix<double, N - 1, N - 1> A1 = A_ / (Rn * Rn);
+    const Eigen::Matrix<double, N - 1, 1> B1 = B_;
     Eigen::Matrix<double, N, nch> C1;
 
-    C1.row(0) = C / Rn;
+    C1.row(0) = C_ / Rn;
     C1.bottomRows(nch) = xn.array().inverse().matrix().asDiagonal();
 
     Eigen::Vector<double, N> D1 = Eigen::Vector<double, N>::Zero();
-    D1(0) = Rn * D;
+    D1(0) = Rn * D_;
 
-    const Eigen::Matrix<double, N - 1, N - 1> A3 = A / (Rp * Rp);
-    const Eigen::Matrix<double, N - 1, 1> B3 = B;
+    const Eigen::Matrix<double, N - 1, N - 1> A3 = A_ / (Rp * Rp);
+    const Eigen::Matrix<double, N - 1, 1> B3 = B_;
     Eigen::Matrix<double, N, nch> C3;
 
-    C3.row(0) = C / Rp;
+    C3.row(0) = C_ / Rp;
     C3.bottomRows(nch) = xp.array().inverse().matrix().asDiagonal();
 
     Eigen::Vector<double, N> D3 = Eigen::Vector<double, N>::Zero();
-    D3(0) = Rp * D;
+    D3(0) = Rp * D_;
 
     Eigen::EigenSolver<Eigen::Matrix<double, N - 1, N - 1>> es1(A1);
-    Vn = es1.eigenvectors().real();
-    An = es1.eigenvalues().real();
-    Bn = Vn.lu().solve(B1);
-    Cn = C1 * Vn;
-    Dn = D1;
+    V[neg] = es1.eigenvectors().real();
+    A[neg] = es1.eigenvalues().real();
+    B[neg] = V[neg].lu().solve(B1);
+    C[neg] = C1 * V[neg];
+    D[neg] = D1;
 
     Eigen::EigenSolver<Eigen::Matrix<double, N - 1, N - 1>> es3(A3);
-    Vp = es3.eigenvectors().real();
-    Ap = es3.eigenvalues().real();
-    Bp = Vp.lu().solve(B3);
-    Cp = C3 * Vp;
-    Dp = D3;
+    V[pos] = es3.eigenvectors().real();
+    A[pos] = es3.eigenvalues().real();
+    B[pos] = V[pos].lu().solve(B3);
+    C[pos] = C3 * V[pos];
+    D[pos] = D3;
 
-    Vp = Vp.inverse();
-    Vn = Vn.inverse();
+    V[pos] = V[pos].inverse();
+    V[neg] = V[neg].inverse();
 
-    Ap.array().abs().minCoeff(&zero);
+    A[pos].array().abs().minCoeff(&zero);
 
-    Ap(zero) = An(zero) = 0.0;
+    A[pos](zero) = A[neg](zero) = 0.0;
 
     Cc = DM1.leftCols(N) + DM1.rightCols(N).rowwise().reverse();
     Q = cumsummat<M>();
@@ -236,35 +238,35 @@ void testwriteChebyshevModel()
   file << "xch: \n"
        << model.xch << "\n\n"
 
-       << "An: \n"
-       << model.An << "\n\n"
+       << "A[neg]: \n"
+       << model.A[neg] << "\n\n"
 
-       << "Bn: \n"
-       << model.Bn << "\n\n"
+       << "B[neg]: \n"
+       << model.B[neg] << "\n\n"
 
-       << "Cn: \n"
-       << model.Cn << "\n\n"
+       << "C[neg]: \n"
+       << model.C[neg] << "\n\n"
 
-       << "Dn: \n"
-       << model.Dn << "\n\n"
+       << "D[neg]: \n"
+       << model.D[neg] << "\n\n"
 
-       << "Ap: \n"
-       << model.Ap << "\n\n"
+       << "A[pos]: \n"
+       << model.A[pos] << "\n\n"
 
-       << "Bp: \n"
-       << model.Bp << "\n\n"
+       << "B[pos]: \n"
+       << model.B[pos] << "\n\n"
 
-       << "Cp: \n"
-       << model.Cp << "\n\n"
+       << "C[pos]: \n"
+       << model.C[pos] << "\n\n"
 
-       << "Dp: \n"
-       << model.Dp << "\n\n"
+       << "D[pos]: \n"
+       << model.D[pos] << "\n\n"
 
-       << "Vn: \n"
-       << model.Vn << "\n\n"
+       << "V[neg]: \n"
+       << model.V[neg] << "\n\n"
 
-       << "Vp: \n"
-       << model.Vp << "\n\n"
+       << "V[pos]: \n"
+       << model.V[pos] << "\n\n"
 
        << "Q: \n"
        << model.Q << "\n\n"

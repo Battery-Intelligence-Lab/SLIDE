@@ -71,14 +71,21 @@ public:
   double SOC() override { return st.SOC(); }
   double T() override { return st.T(); }
 
-  double getVr() const { return getIr() * getRp(0); }
+  double getVr() const
+  {
+    double Vr = 0;
+    for (size_t i{}; i < N_RC; i++)
+      Vr -= Rp[i] * st.Ir(i);
+
+    return Vr;
+  }
 
   //!< overwrite from Cell
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }
   auto &getStateObj() { return st; }
   double V() override; //!< crit is an optional argument
-  Status setStates(setStates_t s, bool checkV = true, bool print = true) override;
+  Status setStates(setStates_t s, int &n, bool checkV = true, bool print = true) override;
 
   double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
   double getThotSpot() override { return T(); }
@@ -109,6 +116,27 @@ public:
   // --- do not use ---
 
   void set_ocv_coefs(std::vector<double> ocv_coefs_) { ocv_coefs = ocv_coefs_; }
+
+
+  void get_dxdt(getStates_t dxdt) override
+  {
+    decltype(st) dst;
+    std::fill(dst.begin(), dst.end(), 0.0);
+    const auto dAh = st.I();
+    dst.SOC() = -st.I() / Cap();
+
+    for (size_t i{}; i < N_RC; i++) // dIr/dt = (I - Ir)/(RC)
+      dst.Ir(i) = (st.I() - st.Ir(i)) / Tau[i];
+
+    //!< increase the cumulative variables of this cell
+    if constexpr (settings::data::storeCumulativeData) {
+      dst.time() = 1;
+      dst.Ah() = std::abs(dAh);
+      dst.Wh() = dst.Ah() * V();
+    }
+
+    dxdt.insert(dxdt.end(), dst.begin(), dst.end());
+  }
 };
 
 // Implementation:
@@ -344,10 +372,7 @@ inline double Cell_ECM<N_RC>::V()
   const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
   try {
     const double ocv = getOCV();
-    double v_now = ocv - Rdc * st.I();
-
-    for (size_t i{}; i < N_RC; i++)
-      v_now -= Rp[i] * st.Ir(i);
+    double v_now = ocv + getVr() - Rdc * st.I();
 
     return v_now;
   } catch (...) {
@@ -358,19 +383,21 @@ inline double Cell_ECM<N_RC>::V()
 }
 
 template <size_t N_RC>
-inline Status Cell_ECM<N_RC>::setStates(setStates_t s, bool checkV, bool print)
+inline Status Cell_ECM<N_RC>::setStates(setStates_t s, int &n, bool checkV, bool print)
 {
   /*
    */
   const auto st_old = st; //!< Back-up values.
 
-  std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
-  s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
+  auto s_now = s.begin() + n;
 
+  std::copy(s_now, s_now + st.size(), st.begin()); //!< Copy states.
   const Status status = free::check_Cell_states(*this, checkV);
 
   if (isStatusBad(status))
     st = st_old; //!< Restore states here.
+  else
+    n += st.size();
 
   return status;
 }

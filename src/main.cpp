@@ -11,7 +11,6 @@
 
 //!< Include header files
 #include "slide.hpp"
-#include "../benchmark/benchmarks.hpp"
 #include "../examples/examples.hpp"
 
 #include <Eigen/Dense>
@@ -33,27 +32,6 @@
 
 int main()
 {
-
-  std::vector<std::string> header{ "Voltage [V]", "Current [A]", "State of charge [%]", "Temperature [K]" };
-  std::vector<double> tst;
-
-  constexpr size_t NNN = 1000000;
-
-  for (size_t i = 0; i < (NNN * header.size()); i++)
-    tst.push_back(i * 0.1 * 3.141256786);
-
-  slide::DataFrame<double> df;
-  df.header = header;
-  df.insert(df.end(), tst.begin(), tst.end());
-
-  df.to_binary("mydf.slide");
-
-
-  {
-    slide::Clock clk;
-    slide::io::binary_writer(std::string("mydata.slide"), tst, header);
-    std::cout << clk << '\n';
-  }
 
   /*
    * This function decides what will be simulated.
@@ -163,41 +141,43 @@ int main()
   auto numThreads = std::thread::hardware_concurrency(); //!<
   std::cout << "Available number of threads : " << numThreads << '\n';
 
-  slide::examples::module_p_ECM();
+  // slide::examples::module_p_ECM();
 
   // Please see examples for using SLIDE. For previous version refer to SLIDE_v2 branch.
-  // using namespace slide;
+  using namespace slide;
 
-  // auto test = Cell_ECM<1>("myCell", 30, 0.5, 0.001, std::array<double, 1>{ 0.001 }, std::array<double, 1>{ 1 }); // make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
+  auto test = Cell_SPM(); // Cell_ECM<1>("myCell", 30, 0.5, 0.001, std::array<double, 1>{ 0.001 }, std::array<double, 1>{ 1 }); // make<Cell_SPM>("MyCell", deg, 1, 1, 1, 1);
 
-  // auto c = &test;
-  // auto &st = c->getStateObj();
+  auto c = &test;
+  auto &st = c->getStateObj();
 
-  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  // c->setCurrent(16);
-  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
-  // c->timeStep_CC(1, 60);
-  // std::cout << "Voltage: " << c->V() << " SOC: " << 100 * st.SOC() << " %.\n";
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * c->SOC() << " %.\n";
+  c->setCurrent(16);
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * c->SOC() << " %.\n";
+  c->timeStep_CC(1, 60);
+  std::cout << "Voltage: " << c->V() << " SOC: " << 100 * c->SOC() << " %.\n";
 
-  // Cycler cyc(c, "Cycler1");
+  Cycler cyc(c, "Cycler1");
 
-  // ThroughputData th{};
-  // double dt = 0.01;
-  // cyc.CC(-16, 4.2, 3600, dt, 1, th);
-  // std::cout << "\nAfter CC charge:\n";
-  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  ThroughputData th{};
+  double dt = 0.01;
+  cyc.CC(-16, 4.2, 3600, dt, 1, th);
+  std::cout << "\nAfter CC charge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * c->SOC() << " stSOC = " << 100 * st.SOC() << " %.\n";
 
-  // auto status = cyc.CV(c->Vmax(), 10e-3, 7200, dt, 1, th);
-  // std::cout << "\nAfter CV charge:\n";
-  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
-  // std::cout << getStatusMessage(status) << "\n";
+  auto status = cyc.CV(c->Vmax(), 0.1e-3, 17200, dt, 1, th);
+  std::cout << "\nAfter CV charge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * c->SOC() << " stSOC = " << 100 * st.SOC() << " %.\n";
+  std::cout << getStatusMessage(status) << "\n";
 
-  // cyc.CCCV(16, c->Vmin(), 5e-3, dt, 1, th);
-  // std::cout << "\nAfter CCCV discharge:\n";
-  // std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * st.SOC() << " %.\n";
+  cyc.CCCV(16, c->Vmin(), 5e-3, dt, 1, th);
+  std::cout << "\nAfter CCCV discharge:\n";
+  std::cout << "Voltage: " << c->V() << " I: " << 1000 * c->I() << "mA SOC: " << 100 * c->SOC() << " stSOC = " << 100 * st.SOC() << " %.\n";
 
-  // cyc.writeData();
+  cyc.writeData();
   // // Cycler:
+
+  // estimateOCVparameters();
 
   // Cycler cyc(c, "Cycler2");
   // ThroughputData th{};
@@ -225,8 +205,8 @@ int main()
 
 
   //!< Examples:
-  //  slide::examples::drive_cycle_artemis();
-  // slide::examples::GITT_test();
+  // slide::examples::drive_cycle_artemis();
+  //  slide::examples::GITT_test();
   //!< Benchmarks:
 
   // slide::benchmarks::run_Cell_Bucket();

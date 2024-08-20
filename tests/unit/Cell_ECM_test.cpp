@@ -94,8 +94,8 @@ TEST_CASE("Test setting ECM states", "[CELL_ECM]")
   s[State_ECM<1>::i_T] = t;
   s[State_ECM<1>::i_I] = i;
 
-  std::span<double> spn{ s };
-  c1.setStates(spn, true, true);
+  int n = 0;
+  c1.setStates(s, n, true, true);
 
   s.clear();
   c1.getStates(s);
@@ -116,8 +116,8 @@ TEST_CASE("Test ECM validStates", "[CELL_ECM]")
   s[State_ECM<1>::i_Ir] = ir;
   s[State_ECM<1>::i_T] = t;
   s[State_ECM<1>::i_I] = i;
-  std::span<double> spn{ s };
-  c1.setStates(spn);
+  int n = 0;
+  c1.setStates(s, n, true, true);
   REQUIRE(c1.validStates());
 }
 

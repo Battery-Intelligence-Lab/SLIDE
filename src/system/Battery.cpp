@@ -104,10 +104,11 @@ void Battery::setBlockDegAndTherm(bool block)
   cells->setBlockDegAndTherm(block);
 }
 
-Status Battery::setStates(setStates_t s, bool checkStates, bool print)
+Status Battery::setStates(setStates_t s, int &n, bool checkStates, bool print)
 {
-  auto status = cells->setStates(s, checkStates, print);
-  setT(s.back()); //!< #TODO probably here we need to check?
+  auto status = cells->setStates(s, n, checkStates, print);
+  setT(s[n]); //!< #TODO probably here we need to check?
+  n++;
   return status;
 }
 

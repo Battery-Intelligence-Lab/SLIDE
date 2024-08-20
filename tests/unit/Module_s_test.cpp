@@ -202,9 +202,8 @@ bool test_setStates()
   std::copy(s2.begin(), s2.end(), std::back_inserter(s));
   s.push_back(Tnew);
 
-  std::span<double> spn(s);
-
-  mp->setStates(spn); //!< this changes the states of m, and should therefore change the states of cell 2 too
+  int n = 0;
+  mp->setStates(s, n); //!< #TODO this changes the states of m, and should therefore change the states of cell 2 too
 
   //!< Check cell 2 and the states have changed
   assert(cp2->SOC() == 0.4); //!< mp->setStates invoked cp2->setStates, so also c2 should have changed
@@ -446,8 +445,8 @@ bool test_validStates()
 
   //!< valid states (new T)
   s.back() = 5_degC;
-  std::span<double> spn(s);
-  mp->setStates(spn);
+  auto sptr = s.data();
+  mp->setStates(sptr);
   assert(mp->validStates());
 
   // if () { // #TODO failure tests.
@@ -608,8 +607,8 @@ bool test_Modules_s()
   }
 
   s[s1.size() * 2] = Tnew;
-  std::span<double> spn(s);
-  mp->setStates(spn);
+  auto sptr = s.data();
+  mp->setStates(sptr);
 
   mp->V(); // Check voltage otherwise it is not calculated.
 

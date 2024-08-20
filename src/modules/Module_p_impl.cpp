@@ -13,6 +13,7 @@
 #include "../cells/cells.hpp"
 
 #include <Eigen/Dense>
+#include <boost/numeric/odeint.hpp>
 
 #include <cassert>
 #include <iostream>
@@ -313,15 +314,15 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     tau(i) = 1 / (F(i) * C(i));
   }
 
-    // std::cout << "Q:\n"
-    //           << Q << "\n\n";
-    // std::cout << "r:\n"
-    //           << r << "\n\n";
-    // std::cout << "R:\n"
-    //           << R << "\n\n";
-    // std::cout << "C:\n"
-    //           << C << "\n\n";
-    // std::cout << std::endl;
+  // std::cout << "Q:\n"
+  //           << Q << "\n\n";
+  // std::cout << "r:\n"
+  //           << r << "\n\n";
+  // std::cout << "R:\n"
+  //           << R << "\n\n";
+  // std::cout << "C:\n"
+  //           << C << "\n\n";
+  // std::cout << std::endl;
 
   /// ---------------------
   Eigen::MatrixXd A11, A12, A21, A22, m;
@@ -376,8 +377,8 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     cn += prod_theta;
   }
 
-  //if (printDebug)
-    std::cout << "cn : " << cn << std::endl;
+  // if (printDebug)
+  std::cout << "cn : " << cn << std::endl;
 
   static Eigen::VectorXd f(nSU);
   f.fill(0);
@@ -396,17 +397,17 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   // // f[n - 1] = rho[n - 1] * (v_mod[n - 1] - v_mod[n - 2]);
   // f(nSU - 1) = rho(nSU-1) * (v_mod(nSU-1) - v_mod(nSU - 2));
 
-      for (int j = 0; j < nSU - 2; ++j) {
-        f[j] = rho[j + 1] * (v_mod[j + 1] - v_mod[j]);
-        for (int i = j + 1; i < nSU - 1; ++i) {
-            double prod_theta = std::accumulate(theta.begin() + i, theta.end(), 1.0, std::multiplies<double>());
-            f[j] += prod_theta * rho[i + 1] * (v_mod[i + 1] - v_mod[j]);
-        }
+  for (int j = 0; j < nSU - 2; ++j) {
+    f[j] = rho[j + 1] * (v_mod[j + 1] - v_mod[j]);
+    for (int i = j + 1; i < nSU - 1; ++i) {
+      double prod_theta = std::accumulate(theta.begin() + i, theta.end(), 1.0, std::multiplies<double>());
+      f[j] += prod_theta * rho[i + 1] * (v_mod[j + 1] - v_mod[j]);
     }
+  }
 
-    f[nSU - 2] = rho[nSU - 1] * (v_mod[nSU - 1] - v_mod[nSU - 2]);
+  f[nSU - 2] = rho[nSU - 1] * (v_mod[nSU - 1] - v_mod[nSU - 2]);
 
-  //if (printDebug)
+  if (printDebug)
     std::cout << "f : " << f.transpose() << std::endl;
 
 
@@ -444,8 +445,8 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     std::cout << "\n";
   }
 
-  std::cout << "i_branch_values:\n"
-            << i_branch << std::endl;
+  // std::cout << "i_branch_values:\n"
+  //            << i_branch << std::endl;
 
   return StatusNow;
 }
@@ -586,6 +587,41 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
 
   // #TODO set old currents back here!
   return StatusNow;
+}
+
+
+void Module_p::get_dxdt(getStates_t dxdt)
+{
+
+  for (const auto &SU : SUs)
+    SU->get_dxdt(dxdt); //!< pass a vector, the next nsi locations will be automatically filled with the states of cell i
+
+  dxdt.push_back(0); //!< store the module temperature #TODO temperature model = 0
+}
+
+
+void Module_p::integrateODE_CC(double Inow, double t_span)
+{
+  setCurrent_analytical_impl(Inow, false, false);
+  std::vector<double> x0;
+  getStates(x0);
+
+  const double dt_int = 1;
+
+  // Observer to print the state
+  auto Observer = [this](const auto &x, double t) { this->storeData(); };
+
+  auto myODE = [&](const std::vector<double> &x, auto &dxdt, double t) {
+    int n = 0;
+    setStates(x, n, false, false);
+    dxdt.clear();
+    get_dxdt(dxdt);
+  };
+
+  using namespace boost::numeric;
+
+  odeint::runge_kutta_dopri5<std::vector<double>> stepper;
+  odeint::integrate_adaptive(odeint::make_controlled(1.0e-12, 1.0e-12, stepper), myODE, x0, 0.0, t_span, dt_int, Observer);
 }
 
 } // namespace slide

@@ -1,19 +1,15 @@
-/*
- * running_Cell_Bucket.hpp
- *
- *  Benchmark file for Cell_Bucket
- *
- *  Created on: 07 Aug 2022
- *   Author(s): Volkan Kumtepeli
+/**
+ * @file benchmark_Cell_Bucket.cpp
+ * @brief Benchmark file for Cell_Bucket
+ * @author Volkan Kumtepeli
+ * @date 07 Aug 2022
  */
 
-#pragma once
-
-#include "../src/slide.hpp"
+#include "slide.hpp"
 
 #include <string>
 
-namespace slide::benchmarks {
+using namespace slide;
 
 inline void run_Cell_Bucket_single_default_pulse()
 {
@@ -105,30 +101,12 @@ inline void run_Cell_ECM()
   std::cout << "Finished run_Cell_ECM in " << clk << ".\n";
 }
 
-inline void run_Cell_SPM()
+int main()
 {
+  run_Cell_Bucket_single_default_pulse();
+  run_Cell_Bucket_single_default_CCCV();
+  // run_Cell_Bucket();
+  // run_Cell_ECM();
 
-  std::string ID = "temp";
-  Clock clk;
-
-  // constexpr size_t N = 15;
-
-  auto c = Cell_SPM();
-  std::cout << "V: " << c.V() << '\n';
-  // auto cyc = Cycler(&c, ID);
-
-  // double Ah, Wh, dtime;
-  // for (size_t i{ 0 }; i < N; i++) {
-
-
-  //   cyc.CCCV(1, 4, 0.1, 1, 10, Ah, Wh, dtime);
-  //   cyc.CCCV(1, 3, 0.1, 1, 10, Ah, Wh, dtime);
-  // }
-
-  // c.writeData("test");
-  // std::cout << "V: " << c.V() << '\n';
-  // std::cout << "Wh: " << Wh << '\n';
-  // std::cout << "Finished run_Cell_SPM in " << clk << ".\n";
+  return EXIT_SUCCESS;
 }
-
-} // namespace slide::benchmarks

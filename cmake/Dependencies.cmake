@@ -4,6 +4,12 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/recipes/")
 
 include(cmake/recipes/CPM.cmake)
 
+CPMAddPackage(
+  NAME CPMLicenses.cmake 
+  GITHUB_REPOSITORY cpm-cmake/CPMLicenses.cmake
+  VERSION 0.0.7
+)
+
 # Range-v3 library:
 CPMAddPackage(
   NAME range-v3
@@ -30,5 +36,3 @@ CPMAddPackage(
   NAME fmt
   URL "https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz"
 )
-
-

@@ -23,10 +23,10 @@
  * See the licence file LICENSE for more information.
  */
 
-#include "../cells/cells.hpp"
+#include "cells.hpp"
 #include "Cycler.hpp"
 #include "determine_characterisation.hpp"
-#include "../utility/utility.hpp"
+#include "utility.hpp"
 
 #include <array>
 #include <thread>
@@ -63,10 +63,10 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
 
   //!< *********************************************************** 1 variables ***********************************************************************
   //!< Check all parameters are positive
-  if (Dp <= 0 || Dn <= 0 || kp <= 0 || kn <= 0 || R < 0)
+  if (D_[pos] || D_[neg] <= 0 || k_[pos] <= 0 || k_[neg] <= 0 || R < 0)
     return false;
 
-  c1.setCharacterisationParam(Dp, Dn, kp, kn, R);
+  c1.setCharacterisationParam(D_, k_, R);
 
   //!< time steps
   double dt = 2.0; //!< time step for cycling [s]
@@ -155,7 +155,9 @@ bool CCCV_fit(Cell_SPM c1, double Crate, double Ccut, double Tref, double Dp, do
   return true; //!< Simulation was successful.
 }
 
-void CCCV(double Crate, double Ccut, double Tref, double Dp, double Dn, double kp, double kn, double R, const struct OCVparam &ocvfit, const struct Model_SPM<> *M,
+void CCCV(double Crate, double Ccut, double Tref, DPair D_,
+          DPair k_, double R, const struct OCVparam &ocvfit,
+          const struct Model_SPM<> *M,
           slide::XYdata_vv &Vsim, slide::XYdata_vv &Tsim)
 {
   /*
@@ -205,14 +207,14 @@ void CCCV(double Crate, double Ccut, double Tref, double Dp, double Dn, double k
   Cell_SPM c1(M, verbose);
 
   //!< Check all parameters are positive
-  if (Dp <= 0 || Dn <= 0 || kp <= 0 || kn <= 0 || R < 0)
+  if (D_[pos] <= 0 || D_[neg] <= 0 || k_[pos] <= 0 || k_[neg] <= 0 || R < 0)
     throw 10003;
 
   //!< Set the characterisation parameters of the cell to the ones given as input to this function
-  c1.setOCVcurve(ocvfit.namepos, ocvfit.nameneg);
-  c1.setInitialConcentration(ocvfit.cmaxp, ocvfit.cmaxn, ocvfit.lifracpini, ocvfit.lifracnini);
-  c1.setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.ep, ocvfit.en, ocvfit.thickp, ocvfit.thickn);
-  c1.setCharacterisationParam(Dp, Dn, kp, kn, R);
+  c1.setOCVcurve(ocvfit.name);
+  c1.setInitialConcentration(ocvfit.cmax, ocvfit.lifracini);
+  c1.setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.e, ocvfit.thick);
+  c1.setCharacterisationParam(D_, k_, R);
   //!< c1.setVlimits(ocvfit.Vmax, ocvfit.Vmin); #TODO
   c1.setT(Tref);    //!< set the temperature of the cell to the given value
   c1.setTenv(Tref); //!< set the environmental temperature to the given value
@@ -363,9 +365,9 @@ void fitDiffusionAndRate(int hierarchy, int ir, double R, slide::FixedData<doubl
   Cell_SPM cell_init{};
 
   //!< Set the characterisation parameters of the cell to the ones given as input to this function
-  cell_init.setOCVcurve(ocvfit.namepos, ocvfit.nameneg);
-  cell_init.setInitialConcentration(ocvfit.cmaxp, ocvfit.cmaxn, ocvfit.lifracpini, ocvfit.lifracnini);
-  cell_init.setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.ep, ocvfit.en, ocvfit.thickp, ocvfit.thickn);
+  cell_init.setOCVcurve(ocvfit.name);
+  cell_init.setInitialConcentration(ocvfit.cmax, ocvfit.lifracini);
+  cell_init.setGeometricParameters(ocvfit.cap, ocvfit.elec_surf, ocvfit.e, ocvfit.thick);
   //!< cell_init.setVlimits(ocvfit.Vmax, ocvfit.Vmin); #TODO set Vlimits?
   cell_init.setT(Tref);    //!< set the temperature of the cell to the given value
   cell_init.setTenv(Tref); //!< set the environmental temperature to the given value
@@ -553,24 +555,16 @@ void estimateCharacterisation()
 
   //!< Specify the OCV parameters (calculated by determineOCV::estimateOCVparameters)
   OCVparam ocvfit;
-  ocvfit.elec_surf = 0.0982;  //!< electrode surface
-  ocvfit.ep = 0.5;            //!< volume fraction of active material in the cathode
-  ocvfit.en = 0.5;            //!< volume fraction of active material in the anode
-  ocvfit.thickp = 70e-6;      //!< thickness of the cathode
-  ocvfit.thickn = 73.5e-6;    //!< thickness of the anode
-  ocvfit.lifracpini = 0.6862; //!< lithium fraction in the cathode at 50% soC
-  ocvfit.lifracnini = 0.4843; //!< lithium fraction in the anode at 50% SOC
-  ocvfit.cmaxp = 51385;       //!< maximum lithium concentration in the cathode [mol m-3]
-  ocvfit.cmaxn = 30555;       //!< maximum lithium concentration in the anode [mol m-3]
-  ocvfit.cap = 2.7;           //!< the capacity of the cell [Ah]
-  ocvfit.Vmax = 4.2;          //!< maximum voltage of the cell [V]
-  ocvfit.Vmin = 2.7;          //!< minimum voltage of the cell [V]
+  ocvfit.elec_surf = 0.0982;             //!< electrode surface
+  ocvfit.e{ 0.5, 0.5 };                  //!< volume fraction of active material in the cathode/anode
+  ocvfit.thick = { 70e-6, 73.5e-6 };     //!< thickness of the cathode/anode
+  ocvfit.lifracini = { 0.6862, 0.4843 }; //!< lithium fraction in the cathode/anode at 50% soC
+  ocvfit.cmax = { 51385, 30555 };        //!< maximum lithium concentration in the cathode/anode [mol m-3]
+  ocvfit.cap = 2.7;                      //!< the capacity of the cell [Ah]
+  ocvfit.Vmax = 4.2;                     //!< maximum voltage of the cell [V]
+  ocvfit.Vmin = 2.7;                     //!< minimum voltage of the cell [V]
 
-  ocvfit.namepos = "OCVfit_cathode.csv"; //!< name of the CSV file with the cathode OCV curve
-  ocvfit.nameneg = "OCVfit_anode.csv";   //!< name of the CSV file with the anode OCV curve
-  ocvfit.np = 49;                        //!< number of points in the cathode OCV curve
-  ocvfit.nn = 63;                        //!< number of points in the anode OCV curve
-
+  ocvfit.name = { "OCVfit_cathode.csv", "OCVfit_anode.csv" }; //!< name of the CSV file with the cathode/anode OCV curve
   //!< ****************************************** 2 define the search space for fitting parameters ***********************************************************************
 
   //!< define the search space for the characterisation parameters at reference temperature

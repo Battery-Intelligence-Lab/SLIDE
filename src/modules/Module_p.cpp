@@ -219,7 +219,24 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
    * 3 	checkV is true && the voltage is outside the safety limits, old current is restored
    * 15 	after setting the current, the voltage of the cells are too far apart
    */
-  return setCurrent_analytical_impl(Inew, checkV, print); // setCurrent_analytical_impl
+
+  // std::vector<double> Ib_vk(SUs.size()), Vb_vk(SUs.size()), Ib(SUs.size()), Vb(SUs.size());
+  // setCurrent_previous_impl(Inew, checkV, print);
+
+  // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+  //   Ib_vk[i] = SUs[i]->I();
+  //   Vb_vk[i] = SUs[i]->V();
+  // }
+
+  auto status = setCurrent_analytical_impl(Inew, checkV, print);
+
+  // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
+  //   Ib[i] = SUs[i]->I();
+  //   Vb[i] = SUs[i]->V();
+  // }
+
+
+  return status; // setCurrent_analytical_impl
 }
 
 /**

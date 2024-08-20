@@ -7,6 +7,9 @@
  */
 
 #include "Cell_SPM.hpp"
+#include "Pair.hpp"
+
+#include <range/v3/view/iota.hpp>
 
 #include <cassert>
 #include <iostream>
@@ -16,6 +19,7 @@
 #include <array>
 #include <algorithm>
 #include <utility>
+
 
 namespace slide {
 void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
@@ -35,21 +39,19 @@ void Cell_SPM::dState_diffusion(bool print, State_SPM &d_st)
    * 		dzn			time derivative of the transformed concentration at the positive inner nodes of the negative electrode (dzn/dt)
    *
    */
+  using std::exp, PhyConst::F;
+  const auto nch{ st.nch };
+  const auto ArrheniusCoeff = calcArrheniusCoeff();
+  const double i_app = I() / geo.elec_surf;
 
-  const auto nch = st.nch;
-
-  auto [Dpt, Dnt] = calcDiffConstant();
-  auto [i_app, jp, jn] = calcMolarFlux(); //!< current density, molar flux on the pos/neg particle
-
-  //!< Calculate the effect of the main li-reaction on the (transformed) concentration
-  for (size_t j = 0; j < nch; j++)
-    d_st.zp(j) = (Dpt * M->Ap(j) * st.zp(j) + M->Bp(j) * jp); //!< dz/dt = D * A * z + B * j
-
-  //!< loop for each row of the matrix-vector product A * z
-  for (size_t j = 0; j < nch; j++)                            //!< A is diagonal, so the array M->A has only the diagonal elements
-    d_st.zn(j) = (Dnt * M->An(j) * st.zn(j) + M->Bn(j) * jn); //!< dz/dt = D * A * z + B * j
-
-  d_st.SOC() += -I() / (Cap() * 3600); //!< dSOC state of charge
+  for (auto dom : { pos, neg }) {
+    const auto D = electrode[dom].Dt(ArrheniusCoeff, st);       //!< Diffusion
+    const auto molarFlux = electrode[dom].molarFlux(i_app, st); //!< molar flux
+    //!< Calculate the effect of the main li-reaction on the (transformed) concentration
+    for (size_t k = 0; k < nch; k++)                                                 //!< loop for each row of the matrix-vector product A * z
+      d_st.z(k, dom) = (D * M->A[dom](k) * st.z(k, dom) + M->B[dom](k) * molarFlux); //!< dz/dt = D * A * z + B * j
+  }
+  // d_st.SOC() -= i_app / Cmaxpos; //!< #TODO there must be an expression to calculate this.
 }
 
 void Cell_SPM::dState_thermal(bool print, double &dQgen)
@@ -68,51 +70,40 @@ void Cell_SPM::dState_thermal(bool print, double &dQgen)
    */
 
   //!< Calculcate the lithium fractions at the surface of the particles
-  auto [Dpt, Dnt] = calcDiffConstant();
-  auto [i_app, jp, jn] = calcMolarFlux(); //!< current density, molar flux on the pos/neg particle
-  auto [cps, cns] = calcSurfaceConcentration(jp, jn, Dpt, Dnt);
+  const auto ArrheniusCoeff = calcArrheniusCoeff();
+  const double i_app = I() / geo.elec_surf; //!< current density on the electrode [A m-2]
 
-  //!< check if the surface concentration is within the allowed range
-  //!< 	0 < cp < Cmaxpos
-  //!< 	0 < cn < Cmaxneg
-  if (cps <= 0 || cns <= 0 || cps >= Cmaxpos || cns >= Cmaxneg) //!< Do not delete if you cannot ensure zp/zn between 0-1
-  {
-    if (print) {
-      std::cerr << "ERROR in Cell_SPM::dState: concentration out of bounds. the positive lithium fraction is "
-                << cps / Cmaxpos << " and the negative lithium fraction is " << cns / Cmaxneg;
-      std::cerr << "they should both be between 0 and 1.\n";
+  DPair Dt, molarFlux, c_surf, z_surf, eta; //!< Calculate the diffusion constant [m s-1], molar flux at the battery temperature using an Arrhenius relation
+  for (const auto dom : { pos, neg }) {
+    Dt[dom] = electrode[dom].Dt(ArrheniusCoeff, st);
+    molarFlux[dom] = electrode[dom].molarFlux(i_app, st);
+    c_surf[dom] = calcSurfaceConcentration(molarFlux[dom], Dt[dom], dom);
+    z_surf[dom] = c_surf[dom] / electrode[dom].Cmax; //!< lithium fraction (0 to 1)
+
+    //!< check if the surface concentration is within the allowed range
+    if (z_surf[dom] <= 0 || z_surf[dom] > 1) //!< Do not delete if you cannot ensure zp/zn between 0-1
+    {
+      if (print)
+        std::cerr << "ERROR in Cell_SPM::dState: concentration out of bounds. For domain = "
+                  << dom << " " << z_surf[dom] << "both fractions should be between 0 and 1.\n";
+
+      throw 101;
     }
-    throw 101;
-  }
 
-  const double zp_surf = (cps / Cmaxpos); //!< lithium fraction (0 to 1)
-  //!< const double zn_surf = (cns / Cmaxneg);
-
-  //!< Calculate the overpotentials if needed
-  auto [etap, etan] = calcOverPotential(cps, cns, i_app);
-
-  constexpr int electr = 0;    //!< #TODO why don't we use in the new one?
-  if constexpr (electr == 2) { //!< only consider negative electrode, ignore the positive electrode
-    jp = 0;
-    Dpt = 0;
-    etap = 0;
-  } else if constexpr (electr == 1) { //!< only consider positive electrode, ignore the negative electrode
-    jn = 0;
-    Dnt = 0;
-    etan = 0;
+    eta[dom] = electrode[dom].overpotential(c_surf[dom], ArrheniusCoeff, i_app, st);
   }
 
   //!< Calculate the entropic coefficient
-  const bool bound = true;                                               //!< in linear interpolation, throw an error if you are outside of the allowed range of the data
-  const double dOCV = OCV_curves.dOCV_tot.interp(zp_surf, print, bound); //!< entropic coefficient of the entire cell OCV [V K-1]
+  const bool bound = true;                                                   //!< in linear interpolation, throw an error if you are outside of the allowed range of the data
+  const double dOCV = OCV_curves.dOCV_tot.interp(z_surf[pos], print, bound); //!< entropic coefficient of the entire cell OCV [V K-1]
 
   //!< temperature model
   //!< Calculate the thermal sources/sinks/transfers per unit of volume of the battery
   //!< The battery volume is given by the product of the cell thickness and the electrode surface
-  const double Qrev = -I() * T() * dOCV;    //!< reversible heat due to entropy changes [W]
-  const double Qrea = I() * (etan - etap);  //!< reaction heat due to the kinetics [W]
-  const double Qohm = I() * I() * getRdc(); //!< Ohmic heat due to electrode resistance [W]
-  //!< const double Qc = -Qch * SAV * (st.T() - T_env); 				//!< cooling with the environment [W m-2]
+  const double Qrev = -I() * T() * dOCV;           //!< reversible heat due to entropy changes [W]
+  const double Qrea = I() * (eta[neg] - eta[pos]); //!< reaction heat due to the kinetics [W]
+  const double Qohm = sqr(I()) * getRdc();         //!< Ohmic heat due to electrode resistance [W]
+  //!< const double Qc = -Qch * SAV * (st.T() - T_env); //!< cooling with the environment [W m-2] #TODO
 
   //!< total heat generation and cooling in W
   dQgen = (Qrev + Qrea + Qohm);
@@ -159,44 +150,33 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   using settings::nch;
 
   //!< Calculcate the lithium fractions at the surface of the particles
-  auto [Dpt, Dnt] = calcDiffConstant();
-  auto [i_app, jp, jn] = calcMolarFlux(); //!< current density, molar flux on the pos/neg particle
-  auto [cps, cns] = calcSurfaceConcentration(jp, jn, Dpt, Dnt);
+  const auto ArrheniusCoeff = calcArrheniusCoeff();
+  DPair cs, eta;
+  getCSurf(cs, false);
 
-  //!< check if the surface concentration is within the allowed range
-  //!< 	0 < cp (cn) < Cmaxpos (Cmaxneg)
-  if (cps <= 0 || cns <= 0 || cps >= Cmaxpos || cns >= Cmaxneg) //!< Do not delete if you cannot ensure zp/zn between 0-1
-  {
-    if (print) {
-      std::cerr << "ERROR in Cell_SPM::dState: concentration out of bounds. the positive lithium fraction is "
-                << cps / Cmaxpos << " and the negative lithium fraction is " << cns / Cmaxneg
-                << " they should both be between 0 and 1.\n";
-    }
-    throw 101;
-  }
-
-  const double zp_surf = (cps / Cmaxpos); //!< lithium fraction (0 to 1)
-  const double zn_surf = (cns / Cmaxneg);
+  const double i_app = I() / geo.elec_surf;
+  const DPair z_surf{ cs[pos] / electrode[pos].Cmax, cs[neg] / electrode[neg].Cmax }; //!< lithium fraction (0 to 1)
 
   //!< Calculate the overpotentials if needed
-  auto [etap, etan] = calcOverPotential(cps, cns, i_app);
+  for (auto dom : { pos, neg })
+    eta[dom] = electrode[dom].overpotential(cs[dom], ArrheniusCoeff, i_app, st);
 
   const bool bound = true;
   //!< calculate the anode potential (needed for various degradation models)
-  const double dOCVn = OCV_curves.dOCV_neg.interp(zp_surf, print, bound); //!< entropic coefficient of the anode potential [V K-1]
-  const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, print, bound);  //!< anode potential [V]
-  const double OCVnt = OCV_n + (st.T() - T_ref) * dOCVn;                  //!< anode potential at the cell's temperature [V]
+  const double dOCVn = OCV_curves.dOCV_neg.interp(z_surf[pos], print, bound); //!< entropic coefficient of the anode potential [V K-1]
+  const double OCV_n = OCV_curves.OCV_neg.interp(z_surf[neg], print, bound);  //!< anode potential [V]
+  const double OCVnt = OCV_n + (st.T() - T_ref) * dOCVn;                      //!< anode potential at the cell's temperature [V]
 
   //!< SEI growth
   double isei;        //!< current density of the SEI growth side reaction [A m-2]
   double den_sei;     //!< decrease in volume fraction due to SEI growth [s-1]
   double dznsei[nch]; //!< additional diffusion in the anode due to isei
 
-  SEI(OCVnt, etan, &isei, &den_sei); //!< Throws but not wrapped in try-catch since only appears here.
+  SEI(OCVnt, eta[neg], &isei, &den_sei); //!< Throws but not wrapped in try-catch since only appears here.
 
   //!< Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + isei/nF)
   for (size_t j = 0; j < nch; j++)
-    dznsei[j] = (M->Bn(j) * isei / (nsei * F));
+    dznsei[j] = (M->B[neg](j) * isei / (nsei * F));
 
   //!< crack growth leading to additional exposed surface area
   double isei_multiplyer; //!< relative increase in isei due to additional SEI growth on the extra exposed surface area [-]
@@ -204,30 +184,30 @@ void Cell_SPM::dState_degradation(bool print, State_SPM &d_state)
   double dDn;             //!< change in negative diffusion constant [m s-1 s-1]
   double dznsei_CS[nch];  //!< additional diffusion in the anode due to extra SEI growth on the crack surface
 
-  CS(OCVnt, etan, &isei_multiplyer, &dCS, &dDn); //!< Throws but not wrapped in try-catch since only appears here.
+  CS(OCVnt, eta[neg], &isei_multiplyer, &dCS, &dDn); //!< Throws but not wrapped in try-catch since only appears here.
 
   //!< crack surface leads to extra SEI growth because the exposed surface area increases.
   //!< (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + isei/nF + isei_CS/nF)
   const double isei_CS = isei * isei_multiplyer; //!< extra SEI side reaction current density due to the crack surface area [A m-2]
-  for (int j = 0; j < nch; j++)
-    dznsei_CS[j] = (M->Bn(j) * isei_CS / (nsei * F));
+  for (size_t v = 0; v < nch; v++)
+    dznsei_CS[v] = (M->B[neg](v) * isei_CS / (nsei * F));
 
   //!< loss of active material LAM
   double dthickp, dthickn, dap, dan, dep, den; //!< change in geometric parameters describing the amount of active material
 
-  LAM(print, zp_surf, etap, &dthickp, &dthickn, &dap, &dan, &dep, &den); //!< Throws but not wrapped in try-catch since only appears here.
+  LAM(print, z_surf[pos], eta[pos], &dthickp, &dthickn, &dap, &dan, &dep, &den); //!< Throws but not wrapped in try-catch since only appears here.
 
   //!< lithium plating
-  const double ipl = LiPlating(OCVnt, etan); //!< current density of the plating side reaction [A m-2]
-  double dzn_pl[nch];                        //!< additional diffusion in the anode due to ipl
+  const double ipl = LiPlating(OCVnt, eta[neg]); //!< current density of the plating side reaction [A m-2]
+  double dzn_pl[nch];                            //!< additional diffusion in the anode due to ipl
 
   //!< Subtract Li from negative electrode (like an extra current density -> add it in the boundary conditions: dCn/dx =  jn + ipl/nF)
-  for (size_t j = 0; j < nch; j++)
-    dzn_pl[j] = (M->Bn(j) * ipl / (npl * F)); //!< #TODO (npl * F) division is unnecessary it is already multiple in the function.
+  for (size_t v = 0; v < nch; v++)
+    dzn_pl[v] = (M->B[neg](v) * ipl / (npl * F)); //!< #TODO (npl * F) division is unnecessary it is already multiple in the function.
 
   //!< output
-  for (size_t j = 0; j < nch; j++)                           //!< dzp += 0 //!< dzp should be added from diffusion function
-    d_state.zn(j) += (dznsei[j] + dznsei_CS[j] + dzn_pl[j]); //!< dzn		jtot = jn + isei/nF + isei_CS/nF + ipl/nF
+  for (size_t v = 0; v < nch; v++)                           //!< dzp += 0 //!< dzp should be added from diffusion function
+    d_state.zn(v) += (dznsei[v] + dznsei_CS[v] + dzn_pl[v]); //!< dzn		jtot = jn + isei/nF + isei_CS/nF + ipl/nF
 
   d_state.delta() = isei / (nsei * F * rhosei);                                   //!< ddelta	SEI thickness
   d_state.LLI() = (isei + isei_CS + ipl) * geo.elec_surf * st.thickn() * st.an(); //!< dLLI		lost lithium

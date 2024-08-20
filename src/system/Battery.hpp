@@ -68,7 +68,7 @@ public:
     return cells->setCurrent(Inew / nparallel, checkV, print);
   }
 
-  Status setStates(setStates_t s, bool checkStates = true, bool print = true) override; //!< opposite of getStates, check the states are valid?
+  Status setStates(setStates_t s, int &n, bool checkStates = true, bool print = true) override; //!< opposite of getStates, check the states are valid?
   double getAndResetConvLosses();
   double getConvLosses_total() { return convlosses_tot; }
   void resetConvLosses() { convlosses = 0; }

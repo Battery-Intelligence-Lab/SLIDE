@@ -188,7 +188,7 @@ bool Module::validStates(bool print)
   return true; // #TODO here we probably need to check if all submodule states valid!
 }
 
-Status Module::setStates(setStates_t s, bool checkV, bool print)
+Status Module::setStates(setStates_t s, int &n, bool checkV, bool print)
 {
   /*
    * The states are first set, and then checked for validity (valid states are always checked, valid voltages only if checkV == true).
@@ -211,15 +211,16 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
 
   const bool verb = print && (settings::printBool::printCrit);
 
-  std::vector<double> sorig;
-  getStates(sorig);
+  thread_local std::vector<double> sorig;
+  sorig.clear();
+  getStates(sorig); // #TODO actually we can getStates only one of the SUs we dont have to get all...
+                    // I mean we of course get all of them to reset the previous ones but get them when needed.
 
-  std::span<double> spn_orig{ sorig };
-
+  int n_sorig = 0;
   //!< set the new cell states
   for (size_t i = 0; i < getNSUs(); i++) {
 
-    const Status status = SUs[i]->setStates(s, checkV, print); //!<  set the states
+    const Status status = SUs[i]->setStates(s, n, checkV, print); //!<  set the states
 
     if (verb && isStatusWarning(status))
       std::cout << "warning in Module::setStates, the voltage of cell " << i << " with id "
@@ -230,7 +231,7 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
                   << ". Restoring the old states, status: " << getStatusMessage(status) << '\n';
 
       for (size_t j = 0; j <= i; j++)
-        SUs[i]->setStates(spn_orig, false, print); //!< restore the original states without checking validity (they should be valid)
+        SUs[i]->setStates(sorig, n_sorig, false, print); //!< restore the original states without checking validity (they should be valid)
 
       return status;
     }
@@ -238,9 +239,9 @@ Status Module::setStates(setStates_t s, bool checkV, bool print)
   } //!< end loop to set the cell states
 
   //!< set the module temperature
-  assert(s[0] >= 0.0_degC); //!< #TODO here we are checking but should we?
-  setT(s[0]);
-  s = s.last(s.size() - 1);
+  assert(s[n] >= 0.0_degC); //!< #TODO here we are checking but should we?
+  setT(s[n]);
+  n += 1;
 
   //!< check that the cells are valid for this module configuration (same I if series, same V if parallel)
   /*

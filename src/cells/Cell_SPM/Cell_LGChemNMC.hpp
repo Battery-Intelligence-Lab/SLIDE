@@ -52,12 +52,8 @@ inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
    */
 
   //!< maximum concentrations
-  Cmaxpos = 51385; //!< value for NMC
-  Cmaxneg = 30555; //!< value for C
-  C_elec = 1000;   //!< standard concentration of 1 molar
-
-  //!< constants
-  n = 1;
+  electrode[pos].Cmax = 51385; //!< value for NMC
+  electrode[neg].Cmax = 30555; //!< value for C
 
   //!< Cell parameters
   setCapacity(3.5);
@@ -85,8 +81,9 @@ inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
   sparam = param::def::StressParam_LGCChemNMC;
 
   //!< main Li reaction
-  kp = 0.9e-12; //!< fitting parameter
-  kp_T = 58000;
+  electrode[pos].k = 9e-11; //!< fitting parameter
+  electrode[pos].k_T = 58000;
+
   kn = 4e-10; //!< fitting parameter
   kn_T = 20000;
   //!< The diffusion coefficients at reference temperature are part of 'State'.
@@ -130,7 +127,7 @@ inline Cell_LGChemNMC::Cell_LGChemNMC(Model_SPM *MM, int verbosei)
     std::cout << "Error in State::initialise, one of the states has an illegal value, throwing an error\n";
     throw 12;
   }
-  setC(fp, fn); //!< set the lithium concentration
+  setC({ fp, fn }); //!< set the lithium concentration
 
   //!< SEI parameters
   nsei = 1;

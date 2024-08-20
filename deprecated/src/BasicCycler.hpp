@@ -110,7 +110,7 @@ public:
   int CC_t_V(double I, double dt, bool blockDegradation, double time, double Vupp, double Vlow, double *ahi, double *whi, double *timei); //!< CC cycle with a time and two voltage end-condition
   int CC_t(double I, double dt, bool blockDegradation, double time, double *ahi, double *whi, double *timei);                             //!< CC cycle for a fixed amount of time
   int CC_V(double I, double dt, bool blockDegradation, double Vset, double *ahi, double *whi, double *timei);                             //!< CC cycle until a given voltage is reached
-  void CC_halfCell_full(double I, double dt, bool pos, std::vector<double> &OCVi, double *ahi, bool isWritten);                           //!< CC cycle only one electrode
+  void CC_halfCell_full(double I, double dt, bool pos_, std::vector<double> &OCVi, double *ahi, bool isWritten);                           //!< CC cycle only one electrode
 
   //!< cycle battery at constant voltage
   void findCVcurrent(double Vset, double dt, bool blockDegradation, double *Il, double *Vl);     //!< find the current needed to keep the voltage constant at the specified value

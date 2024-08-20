@@ -57,12 +57,8 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM<> *MM, int verbosei)
    */
 
   //!< maximum concentrations
-  Cmaxpos = 51385; //!< value for NMC
-  Cmaxneg = 30555; //!< value for C
-  C_elec = 1000;   //!< standard concentration of 1 molar
-
-  //!< constants
-  n = 1;
+  electrode[pos].Cmax = 51385; //!< value for NMC
+  electrode[neg].Cmax = 30555; //!< value for C
 
   //!< Cell parameters
   setCapacity(16); //!< Ah
@@ -90,14 +86,15 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM<> *MM, int verbosei)
   sparam = param::def::StressParam_Kokam;
 
   //!< main Li reaction
-  kp = 5e-11; //!< fitting parameter
-  kp_T = 58000;
-  kn = 1.7640e-11; //!< fitting parameter
-  kn_T = 20000;
+  electrode[pos].k = 5e-11; //!< fitting parameter
+  electrode[pos].k_T = 58000;
+
+  electrode[neg].k = 1.7640e-11; //!< fitting parameter
+  electrode[neg].k_T = 20000;
   //!< The diffusion coefficients at reference temperature are part of 'State'.
   //!< The values are set in the block of code below ('Initialise state variables')
-  Dp_T = 29000;
-  Dn_T = 35000 / 5.0; // #TODO Ask Jorn why SLIDE didn't have 5.0
+  electrode[pos].D_T = 29000;
+  electrode[neg].D_T = 35000 / 5.0; // #TODO Ask Jorn why SLIDE didn't have 5.0
 
   //!< spatial discretisation of the solid diffusion PDE
   M = MM;
@@ -107,9 +104,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM<> *MM, int verbosei)
   // double Rdc = 0.0102; //!< DC resistance of the total cell in Ohm
 
   double fp{ 0.689332 }, fn{ 0.479283 }; //!< lithium fraction in the cathode/anode at 50% soc [-]
-
-
-  st.T() = 25.0_degC; //!< cell temperature
+  st.T() = 25.0_degC;                    //!< cell temperature
 
 
   //!< Set initial state:
@@ -146,7 +141,7 @@ inline Cell_KokamNMC::Cell_KokamNMC(Model_SPM<> *MM, int verbosei)
     throw 12;
   }
 
-  setC(fp, fn); //!< set the lithium concentration
+  setC({ fp, fn }); //!< set the lithium concentration
 
   //!< SEI parameters
   nsei = 1;

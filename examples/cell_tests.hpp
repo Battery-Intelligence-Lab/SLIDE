@@ -1,10 +1,8 @@
-/*
- * cell_tests.hpp
- *
- * Example cell test functions;
- *
- * Created on: 04 Apr 2022
- * Author(s): Volkan Kumtepeli
+/**
+ * @file cell_tests.hpp
+ * @brief Example cell test functions;
+ * @author Volkan Kumtepeli
+ * @date 04 Apr 2022
  */
 
 #pragma once
@@ -35,10 +33,6 @@ inline auto GITT_test()
   auto c = Cell_SPM("cell_ancillary", deg, 1, 1, 1, 1);
   c.setBlockDegAndTherm(true);
   c.setT(21.0_degC);
-
-  // double Cmaxpos{ 51385 };
-  // double Cmaxneg{ 30555 };
-  // double cps{}, cns{};
 
   // auto &st = c.getStateObj();
   auto cyc = Cycler(&c, "charge");

@@ -141,8 +141,8 @@ TEST_CASE("setStates_test", "[Cell_Bucket]")
   s[State_Bucket::i_T] = t;
   s[State_Bucket::i_I] = i;
 
-  std::span<double> spn{ s };
-  c1.setStates(spn, true, true);
+  int n = 0;
+  c1.setStates(s, n, true, true);
 
   s.clear();
   c1.getStates(s);

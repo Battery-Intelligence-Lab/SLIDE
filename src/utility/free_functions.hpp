@@ -35,7 +35,7 @@ inline Status setVoltage_iterative(Tsu *su, double Vset)
     if (std::abs(Vset - Va) < 1e-6)
       return StatusNow;
 
-    const auto Ib = (Vset > Va) ? Ia - 0.01 * su->Cap() : Ia + 0.01 * su->Cap();
+    const auto Ib = 0.99 * Ia; //(Vset > Va) ? Ia - 0.001 * su->Cap() : Ia + 0.001 * su->Cap();
     su->setCurrent(Ib);
     const auto Vb = su->V();
 

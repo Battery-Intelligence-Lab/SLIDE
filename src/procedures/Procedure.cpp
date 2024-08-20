@@ -387,7 +387,7 @@ Status Procedure::rebalance(StorageUnit *su)
   constexpr double Cset = 1.0 / 2.0;    //!< use a C/2 current in the CC phase of the rebalance
   constexpr double Clim = 1.0 / 1000.0; //!< crate for CV limit current
   constexpr double dt = 1;
-  constexpr int ndata = 0;
+  constexpr int ndata = 0; // #TODO check if we need to use ndata in procedure.
 
   //!< if it is a module, recursively call this function on all children to rebalance the cells
   if (auto m = dynamic_cast<Module *>(su)) {
@@ -521,12 +521,11 @@ void Procedure::checkUp_prep(StorageUnit *su)
   const double V = 0.75 * su->Vmax() + 0.25 * su->Vmin(); //!< go to a voltage at about 75% SOC
   const double I = -su->Cap() / 25.0;                     //!< use a C/25 rate to charge, so P modules have plenty of time to equalise the voltages
   const double dt = 2;
-  int ndata = 0;
-  double ahi, whi;
+  int n_data = 0;
 
   //!< charge to middle voltage, stop when the voltage of one cell has reached the maximum or minimum
   ThroughputData th{};
-  Cycler(su, "pre-checkUp").CC(I, V, TIME_INF, dt, ndata, th);
+  Cycler(su, "pre-checkUp").CC(I, V, TIME_INF, dt, n_data, th);
 }
 
 /**

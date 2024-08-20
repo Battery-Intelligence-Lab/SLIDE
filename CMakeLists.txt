@@ -22,6 +22,7 @@ add_subdirectory(src bin)
 
 include(cmake/Coverage.cmake)
 add_subdirectory(tests)
+add_subdirectory(benchmark)
 
 target_link_libraries(src PUBLIC Eigen3::Eigen range-v3 fmt) # Link dependencies to the src library.
 # glaze::glaze  -> maybe in future. 
@@ -57,7 +58,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
   endif()
 endif()
 
-# # enable cache system
+# enable cache system
 # include(cmake/Cache.cmake)
 
 # standard compiler warnings
@@ -65,8 +66,8 @@ include(cmake/CompilerWarnings.cmake)
 set_project_warnings(project_warnings)
 
 # # sanitizer options if supported by compiler
-# include(cmake/Sanitizers.cmake)
-# enable_sanitizers(project_options)
+include(sanitizers)
+add_sanitizers(project_options)
 
 # enable doxygen
 # include(cmake/Doxygen.cmake)
@@ -99,3 +100,6 @@ install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
 )
+
+# Prints out the licenses of third party packages in binary folder. 
+cpm_licenses_create_disclaimer_target(write-licenses "${CMAKE_CURRENT_SOURCE_DIR}/bin/third_party.txt" "${CPM_PACKAGES}")

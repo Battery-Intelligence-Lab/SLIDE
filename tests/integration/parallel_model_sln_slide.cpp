@@ -253,14 +253,14 @@ void parallel_model_dae5(double t, const state_type &x_std, double I, const Eige
   static Eigen::VectorXd f(n);
   f.fill(0);
 
-  for (int j = 0; j < n - 1; ++j) {
+  for (int j = 0; j < n - 2; ++j) {
     f(j) = rho(j + 1) * (v_mod(j + 1) - v_mod(j));
     for (int i = j + 1; i < n - 2; ++i) {
       double prod_theta = 1.0;
       for (int k = i; k < n - 1; ++k) {
         prod_theta *= theta(k);
       }
-      f(j) += prod_theta * rho(i + 1) * (v_mod(i + 1) - v_mod(j));
+      f(j) += prod_theta * rho(i + 1) * (v_mod(j + 1) - v_mod(j));
     }
   }
   f(n - 1) = rho(n - 1) * (v_mod(n - 1) - v_mod(n - 2));
@@ -308,7 +308,7 @@ int main()
   double capacitance_As = 3600 * capacitance_Ah;
 
   double C_rate = 0.01;
-  double I = n_par * C_rate * capacitance_Ah;
+  double I = 10; // n_par * C_rate * capacitance_Ah;
 
   double R_nom = 0 * 1e-5;
 
@@ -321,7 +321,7 @@ int main()
   Eigen::VectorXd r = Eigen::VectorXd::Constant(n_par, r_nom);
 
   // Add noise to each of the parameters to simulate aging
-  double sd_vars = 1 * 1e-3;
+  double sd_vars = 0; // 1 * 1e-4;
   double var_Q = sd_vars * capacitance_As;
   double var_R = sd_vars * R_nom;
   double var_r = sd_vars * r_nom;
@@ -355,9 +355,16 @@ int main()
     for (int i{}; i < n_par; i++) {
       RC_array[0] = { F(i), C(i) };
 
+      double initsocc = 0.2;
+
+      if (i == 1)
+        initsocc = 0.23;
+      else
+        initsocc = 0.20;
+
       cs.push_back(make<cell_type>("cell" + std::to_string(i),
                                    Q(i) / 3600.0, // Battery capacity in Ah
-                                   0.2,           // Initial SOC [0-1]
+                                   initsocc,      // Initial SOC [0-1]
                                    r(i),          // DC resistance
                                    RC_array));
 
@@ -382,7 +389,7 @@ int main()
     Cycler cyc(mp, "Cycler1");
 
     ThroughputData th{};
-    double dt = 0.01;
+    double dt = 0.2;
     std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
 
 
@@ -395,6 +402,47 @@ int main()
     cyc.writeData();
   }
 
+  // { /// --- SLIDE CODE with Boost------
+  //   using namespace slide;
+  //   // Make a module with N cells and a contact resistance
+  //   using cell_type = Cell_ECM<1>;
+
+  //   std::vector<Module_p::SU_t> cs;
+  //   std::vector<double> Rcs{};
+
+  //   Cell_ECM<1>::R_C_pair RC_array[1];
+
+  //   for (int i{}; i < n_par; i++) {
+  //     RC_array[0] = { F(i), C(i) };
+
+  //     cs.push_back(make<cell_type>("cell" + std::to_string(i),
+  //                                  Q(i) / 3600.0, // Battery capacity in Ah
+  //                                  0.2,           // Initial SOC [0-1]
+  //                                  r(i),          // DC resistance
+  //                                  RC_array));
+
+  //     dynamic_cast<cell_type *>(cs.back().get())->set_ocv_coefs(ocv_coefs);
+  //     Rcs.push_back(R(i));
+  //   }
+
+  //   std::string n = "parECM_boost";
+
+  //   double T = settings::T_ENV;
+  //   bool checkCells = false;
+  //   auto mp = make<Module_p>(n, T, true, false, std::size(cs), 1, 1);
+  //   mp->setSUs(cs, checkCells, true);
+  //   mp->setRcontact(Rcs);
+
+  //   //!< total resistance:
+  //   //!< 		-Rp+-Rp-+-Rp-|
+  //   //!< 		   |    |    |
+  //   //!< 		  Rs    Rs   Rs
+  //   //!< where Rp = contact resistance (value Rc) and Rs = cell resistance = 0.01;
+
+  //   mp->integrateODE_CC(-10, 300);
+  //   mp->integrateODE_CC(10, 300);
+  //   mp->writeData(n);
+  // }
 
   /// ---------------------
   Eigen::MatrixXd A11, A12, A21, A22, m;
@@ -415,6 +463,8 @@ int main()
   state_type x0(2 * n_par, 0.2);
   for (int j = 0; j < n_par; ++j)
     x0[2 * j + 1] = 0;
+
+  x0[2] = 0.23;
 
   double t_f = 0.6 * 3600 / C_rate;
   int num_points = 100; // need to explicitly specify the number of points because there is no default value (MATLAB default = 100)

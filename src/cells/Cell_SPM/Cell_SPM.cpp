@@ -117,7 +117,7 @@ Status Cell_SPM::setCurrent(double Inew, bool checkV, bool print)
   return status;
 }
 
-bool Cell_SPM::getCSurf(double &cps, double &cns, bool print)
+bool Cell_SPM::getCSurf(DPair &c_surf, bool print)
 {
   /*
    * Calculates the surface concentration at each particle.
@@ -131,19 +131,22 @@ bool Cell_SPM::getCSurf(double &cps, double &cns, bool print)
    * cns 	surface li-concentration at the negative particle [mol m-3]
    */
 
-  const auto [Dpt, Dnt] = calcDiffConstant();
-  const auto [i_app, jp, jn] = calcMolarFlux(); //!< current density, molar flux on the pos/neg particle
+  const auto ArrheniusCoeff = calcArrheniusCoeff();
+  const double i_app = I() / geo.elec_surf; //!< current density on the electrode [A m-2]
 
-  std::tie(cps, cns) = calcSurfaceConcentration(jp, jn, Dpt, Dnt);
+  DPair Dt, molarFlux; //!< Calculate the diffusion constant [m s-1], molar flux at the battery temperature using an Arrhenius relation
+  for (const auto dom : { pos, neg }) {
+    Dt[dom] = electrode[dom].Dt(ArrheniusCoeff, st);
+    molarFlux[dom] = electrode[dom].molarFlux(i_app, st);
+    c_surf[dom] = calcSurfaceConcentration(molarFlux[dom], Dt[dom], dom);
+  }
 
   //!< check if the surface concentration is within the allowed range
-  //!< 	0 < cp < Cmaxpos  &&  0 < cn < Cmaxneg
-  const auto flag = !(cps <= 0 || cns <= 0 || cps >= Cmaxpos || cns >= Cmaxneg);
-
+  const auto flag = electrode[pos].check_c_surf(c_surf) && electrode[neg].check_c_surf(c_surf);
   return flag;
 }
 
-void Cell_SPM::getC(double cp[], double cn[]) noexcept
+std::array<double, settings::nch + 2> Cell_SPM::getC(Domain dom) noexcept
 {
   /*
    * Calculates the lithium concentration at each positive Chebyshev node (0 <= x <= 1), including the centre and surface nodes.
@@ -162,37 +165,37 @@ void Cell_SPM::getC(double cp[], double cn[]) noexcept
    *
    */
   using settings::nch;
+  const auto ArrheniusCoeff = calcArrheniusCoeff();
+  const double i_app = I() / geo.elec_surf; //!< current density on the electrode [A m-2]
 
-  //!< Calculate the diffusion constant at the battery temperature using an Arrhenius relation
-  const auto [Dpt, Dnt] = calcDiffConstant();
+  const double Dt = electrode[dom].Dt(ArrheniusCoeff, st); //!< Calculate the diffusion constant [m s-1], molar flux at the battery temperature using an Arrhenius relation
+  const double molarFlux = electrode[dom].molarFlux(i_app, st);
 
-  //!< Calculate the molar flux on the surfaces
-  const auto [i_app, jp, jn] = calcMolarFlux(); //!< current density, molar flux on the pos/neg particle
-
+  const double Rps[2]{ geo.Rp, geo.Rn };
+  const double R = Rps[dom];
+  std::array<double, settings::nch + 2> concentration;
   //!< Calculate concentration at the surface and inner nodes using the matrices from the spatial discretisation of the solid diffusion PDE
   //!< 	cp = M->Cp[:][:] * zp[:] + M->Dp*jp/Dpt
   //!< 	cn = M->Cn[:][:] * zn[:] + M->Dn*jn/Dnt
   for (size_t i = 0; i < nch + 1; i++) //!< Problem here!!!!!!! #TODO
   {                                    //!< loop to calculate at each surface + inner node
-    double cpt{ 0 }, cnt{ 0 };
-    for (unsigned j = 0; j < nch; j++) {
-      cpt += M->Cp(i, j) * st.zp(j);
-      cnt += M->Cn(i, j) * st.zn(j);
-    }
-    cp[i] = cpt + M->Dp(i) * jp / Dpt;
-    cn[i] = cnt + M->Dn(i) * jn / Dnt;
+    double cpt{ 0 };
+    for (unsigned j = 0; j < nch; j++)
+      cpt += M->C[dom](i, j) * st.z(j, dom);
+
+    concentration[i] = cpt + M->D[dom](i) * molarFlux / Dt;
   }
 
   //!< Calculate the concentration at centre node using the boundary condition (the concentration gradient at the centre has to be 0 due to symmetry)
   //!< cp_centre = -1/2 (M->Cc[:]*cp +jp*Rp/Dpt)
   //!< cn_centre = -1/2 (M->Cc[:]*cn +jn*Rn/Dnt)
-  double cpt{ 0 }, cnt{ 0 };
-  for (size_t i = 0; i < nch + 1; i++) {
-    cpt += M->Cc(i) * cp[i];
-    cnt += M->Cc(i) * cn[i];
-  }
-  cp[nch + 1] = (-1.0 / 2.0) * (cpt + jp * geo.Rp / Dpt);
-  cn[nch + 1] = (-1.0 / 2.0) * (cnt + jn * geo.Rn / Dnt);
+  double cpt{ 0 };
+  for (size_t i = 0; i < nch + 1; i++)
+    cpt += M->Cc(i) * concentration[i];
+
+  concentration[nch + 1] = -0.5 * (cpt + molarFlux * R / Dt);
+
+  return concentration;
 }
 
 double Cell_SPM::getOCV()
@@ -214,13 +217,15 @@ double Cell_SPM::getOCV()
   const bool bound = true;                          //!< in linear interpolation, throw an error if you are out of the allowed range
 
   //!< Get the surface concentrations
-  double cps, cns;
-  const auto flag = getCSurf(cps, cns, verb);
+  DPair cs, z_surf;
+  const auto flag = getCSurf(cs, verb);
   //!< Calculate the li-fraction (instead of the li-concentration)
-  const double zp_surf{ cps / Cmaxpos }, zn_surf{ cns / Cmaxneg };
-  const double dOCV = OCV_curves.dOCV_tot.interp(zp_surf, verb, bound); //!< entropic coefficient of the total cell voltage [V/K]
-  const double OCV_n = OCV_curves.OCV_neg.interp(zn_surf, verb, bound); //!< anode potential [V]
-  const double OCV_p = OCV_curves.OCV_pos.interp(zp_surf, verb, bound); //!< cathode potential [V]
+  for (auto dom : { pos, neg })
+    z_surf[dom] = electrode[dom].z_surf(cs);
+
+  const double dOCV = OCV_curves.dOCV_tot.interp(z_surf[pos], verb, bound); //!< entropic coefficient of the total cell voltage [V/K]
+  const double OCV_n = OCV_curves.OCV_neg.interp(z_surf[neg], verb, bound); //!< anode potential [V]
+  const double OCV_p = OCV_curves.OCV_pos.interp(z_surf[pos], verb, bound); //!< cathode potential [V]
 
   const auto entropic_effect = (st.T() - T_ref) * dOCV;
 
@@ -256,8 +261,8 @@ double Cell_SPM::V()
   const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
 
   //!< Get the surface concentrations
-  double cps, cns;
-  const auto flag = getCSurf(cps, cns, verb);
+  DPair cs, eta;
+  const auto flag = getCSurf(cs, verb);
   //!< check if the surface concentration is within the allowed range
   //!< 	0 < cp < Cmaxpos
   //!< 	0 < cn < Cmaxneg
@@ -265,15 +270,15 @@ double Cell_SPM::V()
   if (!flag) {
     if (verb) { //!< print error message unless you want to suppress the output
       std::cerr << "ERROR in Cell_SPM::V: concentration out of bounds. the positive lithium fraction is "
-                << cps / Cmaxpos << " and the negative lithium fraction is " << cns / Cmaxneg
+                << cs[pos] / electrode[pos].Cmax << " and the negative lithium fraction is " << cs[neg] / electrode[neg].Cmax
                 << " they should both be between 0 and 1.\n";
     }
     //	*v = nan("double"); //!< set the voltage to nan (Not A Number)
     return 0; //!< Surface concentration is out of bounds.
   } else {
     //!< Calculate the li-fraction (instead of the li-concentration)
-    const double zp_surf = (cps / Cmaxpos);
-    const double zn_surf = (cns / Cmaxneg);
+    const double zp_surf = (cs[pos] / electrode[pos].Cmax);
+    const double zn_surf = (cs[neg] / electrode[neg].Cmax);
 
     //!< Calculate the electrode potentials
     const bool bound = true;                                              //!< in linear interpolation, throw an error if you are out of the allowed range
@@ -283,14 +288,17 @@ double Cell_SPM::V()
 
     const double i_app = I() / geo.elec_surf; //!< current density on the electrodes [I m-2]
 
-    const auto [etapi, etani] = calcOverPotential(cps, cns, i_app); // #TODO if current is zero dont calculate.
+    const auto ArrheniusCoeff = calcArrheniusCoeff();
+    //!< Calculate the overpotentials if needed
+    for (auto dom : { pos, neg })
+      eta[dom] = electrode[dom].overpotential(cs[dom], ArrheniusCoeff, i_app, st); // #TODO if current is zero dont calculate.
 
     //!< Calculate the cell voltage
     //!< the cell OCV at the reference temperature is OCV_p - OCV_n
     //!< this OCV is adapted to the actual cell temperature using the entropic coefficient dOCV * (T - Tref)
     //!< then the overpotentials and the resistive voltage drop are added
     const auto entropic_effect = (st.T() - T_ref) * dOCV; // #TODO
-    const auto overpotential = etapi - etani;
+    const auto overpotential = eta[pos] - eta[neg];
     const auto OCV = (OCV_p - OCV_n + entropic_effect);
 
     const double Vnow = OCV + overpotential - getRdc() * I(); //
@@ -319,8 +327,8 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
   st.LLI() = 0;                   //!< lost lithium. Start with 0 so we can keep track of how much li we lose while cycling the cell
   st.Dp() = 8e-14;                //!< diffusion constant of the cathode at reference temperature
   st.Dn() = 7e-14;                //!< diffusion constant of the anode at reference temperature
-  st.thickp() = 70e-6;            //!< thickness of the positive electrode
-  st.thickn() = 73.5e-6;          //!< thickness of the negative electrode
+  st.thickp() = 86.87357e-6;      //!< thickness of the positive electrode
+  st.thickn() = 74.883947e-6;     //!< thickness of the negative electrode
   st.ep() = 0.5;                  //!< volume fraction of active material in the cathode
   st.en() = 0.5;                  //!< volume fraction of active material in the anode
   st.ap() = 3 * st.ep() / geo.Rp; //!< effective surface area of the cathode, the 'real' surface area is the product of the effective surface area (a) with the electrode volume (elec_surf * thick)
@@ -335,10 +343,14 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
 
   st.delta_pl() = 0; //!< thickness of the plated lithium layer. You can start with 0 here
 
-  constexpr double fp = 0.689332; //!< 0.689332 lithium fraction in the cathode at 50% soc (3.68136 V) [-]
-  constexpr double fn = 0.479283; //!< 0.479283 lithium fraction in the anode at 50% soc (3.68136 V) [-]
-  setC(fp, fn);
-  st.SOC() = 0.5; //!< Since fp and fn are set at 50%.
+  const double SOCset = 0.5;
+
+  st.SOC() = SOCset; //!< Since fp and fn are set at 50%.
+
+  const auto xp_now = xp_0 + SOCset * (xp_100 - xp_0);
+  const auto xn_now = xn_0 + SOCset * (xn_100 - xn_0);
+
+  setC({ xp_now, xn_now });
 
   s_ini = st; //!< set the states, with a random value for the concentration
 
@@ -349,7 +361,7 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
   // cellData.initialise(*this);
 }
 
-Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
+Status Cell_SPM::setStates(setStates_t s, int &n, bool checkV, bool print)
 {
   /*
    * Returns Status see Status.hpp for the meaning.
@@ -358,8 +370,9 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
   auto st_old = st; //!< Back-up values.
   auto Vcell_valid_prev = Vcell_valid;
 
-  std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
-  s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
+  auto s_now = s.begin() + n;
+
+  std::copy(s_now, s_now + st.size(), st.begin()); //!< Copy states.
   Vcell_valid = false;
 
   const Status status = free::check_Cell_states(*this, checkV);
@@ -367,7 +380,8 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
   if (isStatusBad(status)) {
     st = st_old; //!< Restore states here.
     Vcell_valid = Vcell_valid_prev;
-  }
+  } else
+    n += static_cast<int>(st.size());
 
   return status;
 }
@@ -406,13 +420,13 @@ bool Cell_SPM::validStates(bool print)
     range = false;
   }
 
-  double cps, cns;
-  auto flag = getCSurf(cps, cns, false);
+  DPair cs;
+  auto flag = getCSurf(cs, false);
 
   if (!flag) {
     if (verb)
       std::cerr << "ERROR in Cell_SPM::validState: concentration out of bounds. the positive lithium fraction is "
-                << cps / Cmaxpos << " and the negative lithium fraction is " << cns / Cmaxneg
+                << cs[pos] / electrode[pos].Cmax << " and the negative lithium fraction is " << cs[neg] / electrode[neg].Cmax
                 << " they should both be between 0 and 1.\n";
     range = false;
   }
@@ -556,7 +570,7 @@ void Cell_SPM::setT(double Ti)
   sparam.s_lares_update = false;
 }
 
-void Cell_SPM::setC(double cp0, double cn0)
+void Cell_SPM::setC(DPair lifrac)
 {
   /*
    * Function to set the value of the transformed concentrations to the values
@@ -573,45 +587,40 @@ void Cell_SPM::setC(double cp0, double cn0)
   //!< #NOTHOTFUNCTION
   using settings::nch;
 
-  bool pp = (cp0 < 0) || (cp0 > 1);
+  bool pp = (lifrac[pos] < 0) || (lifrac[pos] > 1);
   if (pp)
-    std::cerr << "ERROR in Cell_SPM::setC, illegal input li-fraction for the positive electrode : " << cp0
+    std::cerr << "ERROR in Cell_SPM::setC, illegal input li-fraction for the positive electrode : " << lifrac[pos]
               << ". The value has to be between 0 and 1.\n";
 
-  bool nn = (cn0 < 0) || (cn0 > 1);
+  bool nn = (lifrac[neg] < 0) || (lifrac[neg] > 1);
   if (nn)
-    std::cerr << "ERROR in Cell_SPM::setC, illegal input li-fraction for the negative electrode : " << cn0
+    std::cerr << "ERROR in Cell_SPM::setC, illegal input li-fraction for the negative electrode : " << lifrac[neg]
               << ". The value has to be between 0 and 1.\n";
   if (pp || nn) {
     std::cout << "Throwed in File: " << __FILE__ << ", line: " << __LINE__ << '\n';
     throw 104;
   }
 
-  //!< Calculate the corresponding li-concentrations in [mol m-3]
-  const double cp = cp0 * Cmaxpos;
-  const double cn = cn0 * Cmaxneg;
-
   //!< The second transformation is to the eigenspace: z = V * u with V the inverse of the matrix with the eigenvectors.
   //!< As explained, we know that there is one eigenvector corresponding to a uniform concentration
   //!< So we need to calculate only this one nonzero value for the (twice) transformed concentration
-  //!< The location of the uniform eigenvector (which has a 0 eigenvalue) is written in M->Input[3]
+  //!< The location of the uniform eigenvector (which has a 0 eigenvalue) is written in M->Input[M->zero]
   std::fill(st.z().begin(), st.z().end(), 0); //!< Make the arrays for the (twice) transformed concentration with all zero
 
-  double znu = 0; //!< (twice) transformed negative uniform concentration
-  double zpu = 0; //!< (twice) transformed positive uniform concentration
+  double Rps[2]{ geo.Rp, geo.Rn };
 
-  for (size_t i = 0; i < nch; i++) {
-    //!< Do the first transformation, to u(i) = radius(i) * concentration = x(i) * R * concentration(i)
-    const auto uneg = geo.Rn * cn * M->xch(i);
-    const auto upos = geo.Rp * cp * M->xch(i);
-    //!< ---------------------------------------------------------------------------
-    //!< loop to calculate the row of V * u corresponding to the uniform concentration
-    znu += M->Vn(M->zero, i) * uneg;
-    zpu += M->Vp(M->zero, i) * upos;
+  for (auto dom : { pos, neg }) {
+    const double concentration = lifrac[dom] * electrode[dom].Cmax; //!< Calculate the corresponding li-concentrations in [mol m-3]
+    double zu = 0;                                                  //!< (twice) transformed negative uniform concentration
+    for (size_t i = 0; i < nch; i++) {
+      //!< Do the first transformation, to u(i) = radius(i) * concentration = x(i) * R * concentration(i)
+      const auto u = Rps[dom] * concentration * M->xch(i);
+
+      //!< loop to calculate the row of V * u corresponding to the uniform concentration
+      zu += M->V[dom](M->zero, i) * u;
+    }
+    st.z(M->zero, dom) = zu;
   }
-
-  st.zp(M->zero) = zpu;
-  st.zn(M->zero) = znu;
 
   //!< Set the cell current to 0 to reflect the boundary condition for a fully uniform concentration
   st.I() = 0; //!< #TODO we do not do this.
@@ -656,6 +665,7 @@ Cell_SPM::Cell_SPM(std::string IDi, const DEG_ID &degid, double capf, double res
   for (auto cs_id : deg_id.CS_id)
     sparam.s_lares = sparam.s_lares || cs_id == 1;
 }
+
 
 void Cell_SPM::checkModelparam()
 {

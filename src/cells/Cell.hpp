@@ -1,7 +1,8 @@
 /**
  * @file Cell.hpp
  * @brief Cell class definition
- * @author Jorn Reniers, Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @author Volkan Kumtepeli
  * @date 22 Nov 2019
  */
 
@@ -38,6 +39,7 @@ protected:
 
   // CellData<settings::DATASTORE_CELL> cellData; //!< Cell data storage.
 
+protected:
 public:
   settings::CellDataStorageLevel dataStorageLevel{ settings::CellDataStorageLevel::storeMostStates };
   DataFrame<double> timeData{};

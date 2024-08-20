@@ -9,12 +9,14 @@
 #pragma once
 
 #include "State_SPM.hpp" //!< class that represents the state of a cell, the state is the collection of all time-varying conditions of the battery
+#include "Electrode_SPM.hpp"
 #include "Model_SPM.hpp" //!< defines a struct with the values for the matrices used in the spatial discretisation of the diffusion PDE
 #include "param/param_SPM.hpp"
 #include "../Cell.hpp"
-#include "../../utility/utility.hpp"   // Do not remove they are required in cpp files.
-#include "../../settings/settings.hpp" // Do not remove they are required in cpp files.
-#include "../../types/OCVcurves.hpp"
+#include "../../utility/utility.hpp" // Do not remove they are required in cpp files.
+#include "settings.hpp"              // Do not remove they are required in cpp files.
+#include "OCVcurves.hpp"
+#include "Pair.hpp"
 
 #include <vector>
 #include <array>
@@ -35,21 +37,26 @@ public:
 protected:                 //!< protected such that child classes can access the class variables
   State_SPM st{}, s_ini{}; //!< the battery current/initial state, grouping all parameter which change over the battery's lifetime (see State_SPM.hpp)
 
-  //!< Battery model constants
-  double Cmaxpos{ 51385 }; //!< maximum lithium concentration in the cathode [mol m-3]  value for NMC
-  double Cmaxneg{ 30555 }; //!< maximum lithium concentration in the anode [mol m-3] value for C
-  double C_elec{ 1000 };   //!< Li- concentration in electrolyte [mol m-3] standard concentration of 1 molar
+  Pair<Electrode_SPM> electrode{
+    Electrode_SPM{
+      .dom = pos, //!< Positive electrode:
+      //!< parameters of the main li-insertion reaction
+      .k = 5e-11,   //!< rate constant of main reaction at reference temperature
+      .k_T = 58000, //!< activation energy for the Arrhenius relation of k
+      .D_T = 29000, //!< activation energy for the Arrhenius relation of D
+      .Cmax = 51385 //!< maximum lithium concentration in the cathode [mol m-3]  value for NMC
+    },
 
-  double n{ 1 }; //!< number of electrons involved in the main reaction [-] #TODO if really constant?
+    Electrode_SPM{
+      .dom = neg, //!< Negative electrode
+      //!< parameters of the main li-insertion reaction
+      .k = 1.764e-11,       //!< rate constant of main reaction at reference temperature
+      .k_T = 20000,         //!< activation energy for the Arrhenius relation of k
+      .D_T = 35000.0 / 5.0, //!< activation energy for the Arrhenius relation of D
+      .Cmax = 30555,        //!< maximum lithium concentration in the anode [mol m-3] value for C
+    },
 
-  //!< parameters of the main li-insertion reaction
-  double kp{ 5e-11 };      //!< rate constant of main reaction at positive electrode at reference temperature
-  double kp_T{ 58000 };    //!< activation energy for the Arrhenius relation of kp
-  double kn{ 1.7640e-11 }; //!< rate constant of main reaction at negative electrode at reference temperature
-  double kn_T{ 20000 };    //!< activation energy for the Arrhenius relation of kn
-  //!< The diffusion constants at reference temperature are part of State because they can change over the battery's lifetime
-  double Dp_T{ 29000 };         //!< activation energy for the Arrhenius relation of Dp
-  double Dn_T{ 35000.0 / 5.0 }; //!< activation energy for the Arrhenius relation of Dn
+  };
 
   //!< Thermal model parameters
   double Therm_Qgen{};             //!< total heat generation since the last update [J]
@@ -63,6 +70,8 @@ protected:                 //!< protected such that child classes can access the
   double Qch{ 45 };   //!< convective heat transfer coefficient per volume [W K-1 m-3]
   double rho{ 1626 }; //!< density of the battery
   double Cp{ 750 };   //!< thermal capacity of the battery #TODO = units missing.
+
+  double xp_0{ 0.983999588653496 }, xp_100{ 0.400145394039564 }, xn_0{ 0.029397569380507 }, xn_100{ 0.932469496648387 }; // Lithium fractions at 0 to 100 percent.
 
   //!< Geometric parameters
   param::Geometry_SPM geo{};
@@ -105,15 +114,10 @@ protected:                 //!< protected such that child classes can access the
   bool Vcell_valid{ false };
 
   //!< Functions
-  std::pair<double, double> calcSurfaceConcentration(double jp, double jn, double Dpt, double Dnt);
-  std::pair<double, double> calcOverPotential(double cps, double cns, double i_app); //!< Should not throw normally, except divide by zero?
+  double calcSurfaceConcentration(double molarFlux, double Dt, Domain dom);
 
   inline double calcArrheniusCoeff() { return (1 / T_ref - 1 / st.T()) / PhyConst::Rg; } //!< Calculates Arrhenius coefficient.
-
-  std::array<double, 2> calcDiffConstant(); //!< Calculate the diffusion constant at the battery temperature using an Arrhenius relation
-  std::array<double, 3> calcMolarFlux();    //!< Calculate molar flux
-
-  //!< void setStates(State_SPM &&states);											  //!< set the cell's states to the states in the array
+  std::pair<double, DPair> calcMolarFlux();                                              //!< Calculate molar flux
 
   //!< degradation models
   void SEI(double OCVnt, double etan, double *isei, double *den);                                                                             //!< calculate the effect of SEI growth
@@ -199,8 +203,8 @@ public:
   double I() const override { return st.I(); } //!< get the cell current [A]  positive for discharging
   double V() override;
 
-  bool getCSurf(double &cps, double &cns, bool print);                                                                           //!< get the surface concentrations
-  void getC(double cp[], double cn[]) noexcept;                                                                                  //!< get the concentrations at all nodes
+  bool getCSurf(DPair &c_surf, bool print);                                                                                      //!< get the surface concentrations
+  std::array<double, settings::nch + 2> getC(Domain dom) noexcept;                                                               //!< get the concentrations at all nodes
   int getVoltage(bool print, double *V, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp);    //!< get the cell's voltage
   int getVoltage_ne(bool print, double *V, double *OCVp, double *OCVn, double *etap, double *etan, double *Rdrop, double *Temp); //!< get the cell's voltage noexcept
 
@@ -213,8 +217,7 @@ public:
   //!< void setVlimits(double VMAX, double VMIN); //!< set the voltage limits of the cell
   void setT(double T) override; //!< set the cell's temperature
   void setTenv(double Tenv);    //!< set the environmental temperature
-  //!< void setStates(const State_SPM &si, double I);		  //!< set the cell's states to the states in the State object and the cell current to the given value
-  void setC(double cp0, double cn0); //!< set the concentrations to the given (uniform) concentration
+  void setC(DPair lifrac);      //!< set the concentrations to the given (uniform) concentration
   //!< void setCurrent(bool critical, bool check, double I); //!< set the cell's current to the specified value -> From old slide.
   void peekVoltage(double I); //!< Peeks voltage for state for given I
 
@@ -226,24 +229,25 @@ public:
   //!< }
   ThroughputData getThroughputs() override { return { st.time(), st.Ah(), st.Wh() }; }
 
-  void overwriteCharacterisationStates(double Dpi, double Dni, double ri)
+  void overwriteCharacterisationStates(DPair D_, double ri)
   {
     //!< Overwrite both current and initial states.
-    st.overwriteCharacterisationStates(Dpi, Dni, ri);
-    s_ini.overwriteCharacterisationStates(Dpi, Dni, ri);
+    st.overwriteCharacterisationStates(D_, ri);
+    s_ini.overwriteCharacterisationStates(D_, ri);
   }
 
-  void overwriteGeometricStates(double thickpi, double thickni, double epi, double eni, double api, double ani)
+  void overwriteGeometricStates(DPair thick_, DPair e_, DPair a_)
   {
     //!< Overwrite both current and initial states.
-    st.overwriteGeometricStates(thickpi, thickni, epi, eni, api, ani);
-    s_ini.overwriteGeometricStates(thickpi, thickni, epi, eni, api, ani);
+    st.overwriteGeometricStates(thick_, e_, a_);
+    s_ini.overwriteGeometricStates(thick_, e_, a_);
   }
 
+  double calculateIntegral();
   //!< time integration
   //!< void integratorStep(bool print, double dti, bool blockDegradation); //!< step forward in time using specified numerical integrator
 
-  //!< void ETI_electr(bool print, double I, double dti, bool blockDegradation, bool pos); //!< step forward with only one electrode using forward Euler time integration
+  //!< void ETI_electr(bool print, double I, double dti, bool blockDegradation, bool pos_); //!< step forward with only one electrode using forward Euler time integration
 
   //!< Base integrators:
 
@@ -257,13 +261,12 @@ public:
   void checkModelparam(); //!< check if the inputs to the MATLAB code are the same as the ones here in the C++ code
 
   //!< --- slide-pack functions --- //
-
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); } //!< returns the states of the cell collectively.
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
   double getOCV() override;
-  Status setStates(setStates_t sSpan, bool checkV, bool print) override;
+  Status setStates(setStates_t s, int &n, bool checkV, bool print) override;
   bool validStates(bool print = true) override;
-  inline double SOC() override { return st.SOC(); }
+  inline double SOC() override { return calculateIntegral(); }
   void timeStep_CC(double dt, int steps = 1) override;
 
   Cell_SPM *copy() override { return new Cell_SPM(*this); }
@@ -271,11 +274,11 @@ public:
   void ETI(bool print, double dti, bool blockDegradation); //!< step forward in time using forward Eurler time integration
 
   //!< Functions for fitting:
-  void setOCVcurve(const std::string &namepos, const std::string &nameneg);                                         //!< sets the OCV curve of the cell to the given value
-  void setInitialConcentration(double cmaxp, double cmaxn, double lifracp, double lifracn);                         //!< sets the initial concentration
-  void setGeometricParameters(double capnom, double elec_surf, double ep, double en, double thickp, double thickn); //!< sets the geometric parameters related to the amount of active material
+  void setOCVcurve(const Pair<std::string> &name);                                      //!< sets the OCV curve of the cell to the given value
+  void setInitialConcentration(DPair cmax, DPair lifrac);                               //!< sets the initial concentration
+  void setGeometricParameters(double capnom, double elec_surf, DPair e_, DPair thick_); //!< sets the geometric parameters related to the amount of active material
   //!< void setRamping(double Istep, double tstep);																	  //!< sets the ramping parameters
 
-  void setCharacterisationParam(double Dp, double Dn, double kp, double kn, double Rdc); //!< sets the parameters related to the characterisation of the cell
+  void setCharacterisationParam(DPair D_, DPair k_, double Rdc); //!< sets the parameters related to the characterisation of the cell
 };
 } // namespace slide

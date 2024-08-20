@@ -897,7 +897,7 @@ int BasicCycler::CC_V(double I, double dt, bool blockDegradation, double Vset, d
   return endcr;
 }
 
-void BasicCycler::CC_halfCell_full(double I, double dt, bool pos, std::vector<double> &OCVi, double *ahi, bool isWritten)
+void BasicCycler::CC_halfCell_full(double I, double dt, bool pos_, std::vector<double> &OCVi, double *ahi, bool isWritten)
 {
   /*
    * This function cycles one electrode with a constant current.
@@ -915,7 +915,7 @@ void BasicCycler::CC_halfCell_full(double I, double dt, bool pos, std::vector<do
    * IN
    * I 			load current [A], positive = discharge, negative = charge
    * dt 			time step to be taken in the time integration
-   * pos 			if true, the positive electrode is cycled
+   * pos_ 			if true, the positive electrode is cycled
    * 				if false, the negative electrode is cycled
    *
    * OUT
@@ -949,7 +949,7 @@ void BasicCycler::CC_halfCell_full(double I, double dt, bool pos, std::vector<do
     throw e;
   }
   if (isWritten) {
-    if (pos) //!< we are cycling the positive electrode, store OCVpos
+    if (pos_) //!< we are cycling the positive electrode, store OCVpos
       OCVi.push_back(OCVpi);
     else //!< we are cycling the negative electrode, store OCVneg
       OCVi.push_back(OCVni);
@@ -960,10 +960,10 @@ void BasicCycler::CC_halfCell_full(double I, double dt, bool pos, std::vector<do
     c.getStates(s, &Iprev); //!< battery state before this iteration
 
     if constexpr (printBool::printCyclerDetail)
-      std::cout << "BasicCycler::CC_halfCell_full is cycling electrode " << pos << " with cathode potential "
+      std::cout << "BasicCycler::CC_halfCell_full is cycling electrode " << pos_ << " with cathode potential "
                 << OCVpi << " and anode potential " << OCVni << '\n';
 
-    c.ETI_electr(printBool::printNonCrit, I, dt, blockDegradation, pos);                                               //!< cycle only one electrode
+    c.ETI_electr(printBool::printNonCrit, I, dt, blockDegradation, pos_);                                              //!< cycle only one electrode
     const auto status = c.getVoltage_ne(printBool::printNonCrit, &V, &OCVpi, &OCVni, &etapi, &etani, &Rdropi, &tempi); //!< get the voltage
 
     if (status != 0) {
@@ -978,7 +978,7 @@ void BasicCycler::CC_halfCell_full(double I, double dt, bool pos, std::vector<do
 
     //!< Store the data point
     if (isWritten) {
-      if (pos) //!< we are cycling the positive electrode, store OCVpos
+      if (pos_) //!< we are cycling the positive electrode, store OCVpos
         OCVi.push_back(OCVpi);
       else //!< we are cycling the negative electrode, store OCVneg
         OCVi.push_back(OCVni);
