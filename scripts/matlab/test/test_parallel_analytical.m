@@ -7,9 +7,9 @@ Npar = 10;
 
 results = cell(Npar,1);
 
-tic; %parECM_boost_parECM_boost_cell
+tic; %Cycler1_parECM_cell0 %parECM_boost_parECM_boost_cell
 for i = 1:Npar
-    results{i} = slide_to_table("parECM_boost_parECM_boost_cell" + (i-1) + ".slide");
+    results{i} = slide_to_table("Cycler1_parECM_cell" + (i-1) + ".slide");
 end
 toc
 

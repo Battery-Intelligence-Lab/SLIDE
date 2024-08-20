@@ -209,9 +209,6 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
   if (boolStoreData) storeData();
 
   double vi{}; //!< voltage now
-  auto succNow = setCurrent(I, vlim, vi);
-  if (!isStatusSuccessful(succNow)) return succNow; //!< stop if we could not successfully set the current
-
   auto succ = Status::ReachedTimeLimit;
 
   //!< Variables
@@ -226,7 +223,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
 
   while (ttot < tlim) {
 
-    succNow = setCurrent(I, vlim, vi); // #TODO this was not here I added to get nice results from
+    auto succNow = setCurrent(I, vlim, vi); // #TODO this was not here I added to get nice results from
     if (!isStatusSuccessful(succNow))
       return succNow; //!< stop if we could not successfully set the current
 

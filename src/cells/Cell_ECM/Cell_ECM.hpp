@@ -71,7 +71,14 @@ public:
   double SOC() override { return st.SOC(); }
   double T() override { return st.T(); }
 
-  double getVr() const { return getIr() * getRp(0); }
+  double getVr() const
+  {
+    double Vr = 0;
+    for (size_t i{}; i < N_RC; i++)
+      Vr -= Rp[i] * st.Ir(i);
+
+    return Vr;
+  }
 
   //!< overwrite from Cell
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
@@ -365,10 +372,7 @@ inline double Cell_ECM<N_RC>::V()
   const bool verb = settings::printBool::printCrit; //!< print if the (global) verbose-setting is above the threshold
   try {
     const double ocv = getOCV();
-    double v_now = ocv - Rdc * st.I();
-
-    for (size_t i{}; i < N_RC; i++)
-      v_now -= Rp[i] * st.Ir(i);
+    double v_now = ocv + getVr() - Rdc * st.I();
 
     return v_now;
   } catch (...) {

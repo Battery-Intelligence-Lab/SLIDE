@@ -401,14 +401,14 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     f[j] = rho[j + 1] * (v_mod[j + 1] - v_mod[j]);
     for (int i = j + 1; i < nSU - 1; ++i) {
       double prod_theta = std::accumulate(theta.begin() + i, theta.end(), 1.0, std::multiplies<double>());
-      f[j] += prod_theta * rho[i + 1] * (v_mod[i + 1] - v_mod[j]);
+      f[j] += prod_theta * rho[i + 1] * (v_mod[j + 1] - v_mod[j]);
     }
   }
 
   f[nSU - 2] = rho[nSU - 1] * (v_mod[nSU - 1] - v_mod[nSU - 2]);
 
-  // if (printDebug)
-  std::cout << "f : " << f.transpose() << std::endl;
+  if (printDebug)
+    std::cout << "f : " << f.transpose() << std::endl;
 
 
   i_branch(nSU - 1) = (-Inew - f.sum()) / cn; // -Inew because discharge is positive in SLIDE.
