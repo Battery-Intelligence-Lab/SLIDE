@@ -427,8 +427,7 @@ double Cycler::testCapacity(double &Ah, double &ttot)
   sini.clear();
 
   su->getStates(sini);
-
-  std::span<double> sini_span{ sini };
+  int n_sini = 0;
   //!< #TODO once we introduce a different temperature, set T to Tref
 
   //!< *********************************************************** 2 full charge / discharge cycle ***********************************************************************
@@ -445,7 +444,7 @@ double Cycler::testCapacity(double &Ah, double &ttot)
                 << getStatusMessage(status) << ".\n";
 
     //!< restore the original states
-    su->setStates(sini_span, false, true);
+    su->setStates(sini, n_sini, false, true);
 
     return 0;
   }
@@ -460,7 +459,7 @@ double Cycler::testCapacity(double &Ah, double &ttot)
                 << getStatusMessage(status) << ".\n";
 
     //!< restore the original states
-    su->setStates(sini_span, false, true);
+    su->setStates(sini, n_sini, false, true); // #TODO we forgot to reset Ah and others maybe.
     return 0;
   }
 

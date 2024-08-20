@@ -26,11 +26,11 @@ namespace slide {
 class StorageUnit
 {
 protected:
-  std::string ID{ "StorageUnit" };           //!< identification string
-  StorageUnit *parent{ nullptr };            //!< pointer to the SU 'above' this one [e.g. the module to which a cell is connected]
-  bool blockDegAndTherm{ false };            //!< if true, degradation and the thermal ODE are ignored
-  using setStates_t = double *&;             //!< To pass states to read, non-expandable container.
-  using getStates_t = std::vector<double> &; //!< To pass states to save, expandable container.
+  std::string ID{ "StorageUnit" };             //!< identification string
+  StorageUnit *parent{ nullptr };              //!< pointer to the SU 'above' this one [e.g. the module to which a cell is connected]
+  bool blockDegAndTherm{ false };              //!< if true, degradation and the thermal ODE are ignored
+  using setStates_t = std::span<const double>; //!< To pass states to read, non-expandable container.
+  using getStates_t = std::vector<double> &;   //!< To pass states to save, expandable container.
   using viewStates_t = std::span<double>;
   virtual size_t calculateNcells() { return 0; }
 
@@ -64,13 +64,9 @@ public:
   void setBlockDegAndTherm(bool block) { blockDegAndTherm = block; }
   virtual void setParent(StorageUnit *p) { parent = p; }                             //!< set the parent
   virtual Status setCurrent(double Inew, bool checkV = true, bool print = true) = 0; //
-  virtual Status setVoltage(double Vnew, bool checkI = true, bool print = true)
-  {
-    return free::setVoltage_iterative(this, Vnew);
-  }
+  virtual Status setVoltage(double Vnew, bool checkI = true, bool print = true) { return free::setVoltage_iterative(this, Vnew); }
 
-
-  virtual Status setStates(setStates_t s, bool checkStates = true, bool print = true) = 0; //!< opposite of getStates, check the states are valid?
+  virtual Status setStates(setStates_t s, int &n, bool checkStates = true, bool print = true) = 0; //!< opposite of getStates, check the states are valid?
 
   virtual void get_dxdt(getStates_t s) {}
 

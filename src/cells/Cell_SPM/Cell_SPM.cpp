@@ -361,7 +361,7 @@ Cell_SPM::Cell_SPM() : Cell() //!< Default constructor
   // cellData.initialise(*this);
 }
 
-Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
+Status Cell_SPM::setStates(setStates_t s, int &n, bool checkV, bool print)
 {
   /*
    * Returns Status see Status.hpp for the meaning.
@@ -370,8 +370,9 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
   auto st_old = st; //!< Back-up values.
   auto Vcell_valid_prev = Vcell_valid;
 
-  std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
-  s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
+  auto s_now = s.begin() + n;
+
+  std::copy(s_now, s_now + st.size(), st.begin()); //!< Copy states.
   Vcell_valid = false;
 
   const Status status = free::check_Cell_states(*this, checkV);
@@ -379,7 +380,8 @@ Status Cell_SPM::setStates(setStates_t s, bool checkV, bool print)
   if (isStatusBad(status)) {
     st = st_old; //!< Restore states here.
     Vcell_valid = Vcell_valid_prev;
-  }
+  } else
+    n += static_cast<int>(st.size());
 
   return status;
 }

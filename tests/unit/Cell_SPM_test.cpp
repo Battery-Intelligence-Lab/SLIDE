@@ -142,8 +142,8 @@ TEST_CASE("test_setStates_SPM", "[CELL_SPM]")
   sini[State_SPM::i_T] = T;
   sini[State_SPM::i_I] = I;
 
-  std::span<double> spn(sini);
-  c1.setStates(spn, true, true); // This checks states are valid
+  int n = 0;
+  c1.setStates(sini, n, true, true);
 
   // Assertions for all expected states
   REQUIRE_THAT(st.SOC(), WithinAbs(SOC, TOL_EQ));

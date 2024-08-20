@@ -13,8 +13,8 @@
 #include "Model_SPM.hpp" //!< defines a struct with the values for the matrices used in the spatial discretisation of the diffusion PDE
 #include "param/param_SPM.hpp"
 #include "../Cell.hpp"
-#include "../../utility/utility.hpp"   // Do not remove they are required in cpp files.
-#include "settings.hpp" // Do not remove they are required in cpp files.
+#include "../../utility/utility.hpp" // Do not remove they are required in cpp files.
+#include "settings.hpp"              // Do not remove they are required in cpp files.
 #include "OCVcurves.hpp"
 #include "Pair.hpp"
 
@@ -119,8 +119,6 @@ protected:                 //!< protected such that child classes can access the
   inline double calcArrheniusCoeff() { return (1 / T_ref - 1 / st.T()) / PhyConst::Rg; } //!< Calculates Arrhenius coefficient.
   std::pair<double, DPair> calcMolarFlux();                                              //!< Calculate molar flux
 
-  //!< void setStates(State_SPM &&states);											  //!< set the cell's states to the states in the array
-
   //!< degradation models
   void SEI(double OCVnt, double etan, double *isei, double *den);                                                                             //!< calculate the effect of SEI growth
   void CS(double OCVnt, double etan, double *isei_multiplyer, double *dCS, double *dDn);                                                      //!< calculate the effect of surface crack growth
@@ -219,8 +217,7 @@ public:
   //!< void setVlimits(double VMAX, double VMIN); //!< set the voltage limits of the cell
   void setT(double T) override; //!< set the cell's temperature
   void setTenv(double Tenv);    //!< set the environmental temperature
-  //!< void setStates(const State_SPM &si, double I);		  //!< set the cell's states to the states in the State object and the cell current to the given value
-  void setC(DPair lifrac); //!< set the concentrations to the given (uniform) concentration
+  void setC(DPair lifrac);      //!< set the concentrations to the given (uniform) concentration
   //!< void setCurrent(bool critical, bool check, double I); //!< set the cell's current to the specified value -> From old slide.
   void peekVoltage(double I); //!< Peeks voltage for state for given I
 
@@ -267,7 +264,7 @@ public:
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); } //!< returns the states of the cell collectively.
   std::span<double> viewStates() override { return std::span<double>(st.begin(), st.end()); }
   double getOCV() override;
-  Status setStates(setStates_t sSpan, bool checkV, bool print) override;
+  Status setStates(setStates_t s, int &n, bool checkV, bool print) override;
   bool validStates(bool print = true) override;
   inline double SOC() override { return calculateIntegral(); }
   void timeStep_CC(double dt, int steps = 1) override;

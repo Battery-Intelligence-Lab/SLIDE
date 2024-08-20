@@ -92,7 +92,7 @@ public:
   //	int Vstatus
 
   virtual bool validStates(bool print = true) override; //!< check if a state-array is valid for this module (uses setStates)
-  virtual Status setStates(setStates_t s, bool checkV = true, bool print = true) override;
+  virtual Status setStates(setStates_t s, int &n, bool checkV = true, bool print = true) override;
   //!< Set the states of this module to the given one
   //!< note: setStates is the master function to check if states and cells are valid
   //!< if checkV=true, then also the cell and module voltages are checked

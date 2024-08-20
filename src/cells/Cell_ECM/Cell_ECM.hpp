@@ -78,7 +78,7 @@ public:
   void getStates(getStates_t s) override { s.insert(s.end(), st.begin(), st.end()); }
   auto &getStateObj() { return st; }
   double V() override; //!< crit is an optional argument
-  Status setStates(setStates_t s, bool checkV = true, bool print = true) override;
+  Status setStates(setStates_t s, int &n, bool checkV = true, bool print = true) override;
 
   double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
   double getThotSpot() override { return T(); }
@@ -379,19 +379,21 @@ inline double Cell_ECM<N_RC>::V()
 }
 
 template <size_t N_RC>
-inline Status Cell_ECM<N_RC>::setStates(setStates_t s, bool checkV, bool print)
+inline Status Cell_ECM<N_RC>::setStates(setStates_t s, int &n, bool checkV, bool print)
 {
   /*
    */
   const auto st_old = st; //!< Back-up values.
 
-  std::copy(s.begin(), s.begin() + st.size(), st.begin()); //!< Copy states.
-  s = s.last(s.size() - st.size());                        //!< Remove first Nstates elements from span.
+  auto s_now = s.begin() + n;
 
+  std::copy(s_now, s_now + st.size(), st.begin()); //!< Copy states.
   const Status status = free::check_Cell_states(*this, checkV);
 
   if (isStatusBad(status))
     st = st_old; //!< Restore states here.
+  else
+    n += st.size();
 
   return status;
 }

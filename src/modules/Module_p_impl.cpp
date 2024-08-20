@@ -611,9 +611,10 @@ void Module_p::integrateODE_CC(double Inow, double t_span)
   // Observer to print the state
   auto Observer = [this](const auto &x, double t) { this->storeData(); };
 
-  auto myODE = [&](std::vector<double> &x, auto &dxdt, double t) {
-    std::span<double> x_span{ x.begin(), x.end() };
-    setStates(x_span, false, false);
+  auto myODE = [&](const std::vector<double> &x, auto &dxdt, double t) {
+    int n = 0;
+    setStates(x, n, false, false);
+    dxdt.clear();
     get_dxdt(dxdt);
   };
 
