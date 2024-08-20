@@ -255,10 +255,10 @@ void parallel_model_dae5(double t, const state_type &x_std, double I, const Eige
 
   for (int j = 0; j < n - 1; ++j) {
     f(j) = rho(j + 1) * (v_mod(j + 1) - v_mod(j));
-    for (int i = j + 1; i < n - 1; ++i) {
+    for (int i = j + 1; i < n - 2; ++i) {
       double prod_theta = 1.0;
       for (int k = i; k < n - 1; ++k) {
-        prod_theta *= theta(k + 1);
+        prod_theta *= theta(k);
       }
       f(j) += prod_theta * rho(i + 1) * (v_mod(i + 1) - v_mod(j));
     }
@@ -280,7 +280,6 @@ void parallel_model_dae5(double t, const state_type &x_std, double I, const Eige
     std::cout << "xdot : " << xdot.transpose() << std::endl;
   }
 }
-
 
 int main()
 {
@@ -333,7 +332,7 @@ int main()
 
   for (int j = 0; j < n_par; ++j) {
     Q(j) += var_Q * distribution(generator);
-    R(j) += var_R * distribution(generator);
+    R(j) += 0*var_R * distribution(generator);
     r(j) += var_r * distribution(generator);
     C(j) += var_C * distribution(generator);
   }

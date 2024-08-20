@@ -376,7 +376,7 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     cn += prod_theta;
   }
 
-  if (printDebug)
+  //if (printDebug)
     std::cout << "cn : " << cn << std::endl;
 
   static Eigen::VectorXd f(nSU);
@@ -444,8 +444,8 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     std::cout << "\n";
   }
 
-  //std::cout << "i_branch_values:\n"
-  //           << i_branch << std::endl;
+  std::cout << "i_branch_values:\n"
+            << i_branch << std::endl;
 
   return StatusNow;
 }
