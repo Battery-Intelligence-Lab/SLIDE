@@ -321,7 +321,7 @@ int main()
   Eigen::VectorXd r = Eigen::VectorXd::Constant(n_par, r_nom);
 
   // Add noise to each of the parameters to simulate aging
-  double sd_vars = 0; // 1 * 1e-4;
+  double sd_vars = 1 * 1e-4;
   double var_Q = sd_vars * capacitance_As;
   double var_R = sd_vars * R_nom;
   double var_r = sd_vars * r_nom;
@@ -332,7 +332,7 @@ int main()
 
   for (int j = 0; j < n_par; ++j) {
     Q(j) += var_Q * distribution(generator);
-    R(j) += 0*var_R * distribution(generator);
+    R(j) += var_R * distribution(generator);
     r(j) += var_r * distribution(generator);
     C(j) += var_C * distribution(generator);
   }
@@ -392,11 +392,11 @@ int main()
     double dt = 0.2;
     std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
 
-
+    Clock clk;
     cyc.CC(-10, 3.3, 3000, dt, 1, th);
     cyc.CC(10, 2.7, 300, dt, 1, th);
 
-
+    std::cout << clk << std::endl;
     std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
 
     cyc.writeData();
@@ -451,10 +451,8 @@ int main()
   // std::cout << "A11:\n" << A11 << std::endl;
   // std::cout << "A12:\n" << A12 << std::endl;
   // std::cout << "A21:\n" << A21 << std::endl;
-  std::cout << "A22:\n"
-            << A22 << std::endl;
-  std::cout << "m:\n"
-            << m << std::endl;
+  // std::cout << "A22:\n"          << A22 << std::endl;
+  // std::cout << "m:\n"            << m << std::endl;
   // std::cout << "tau:\n" << tau << std::endl;
   // std::cout << "I:\n" << I << std::endl;
   // std::cout << "x0:\n" << x0 << std::endl;
@@ -470,7 +468,7 @@ int main()
   int num_points = 100; // need to explicitly specify the number of points because there is no default value (MATLAB default = 100)
   Eigen::VectorXd tspan = Eigen::VectorXd::LinSpaced(num_points, 0, t_f);
 
-  auto start = std::chrono::high_resolution_clock::now();
+  // auto start = std::chrono::high_resolution_clock::now();
   // Call the functions
   // Eigen::VectorXd xdot_inv = parallel_model(t, x, I, A11, A12, A21, A22, ocv_coefs);
   // Eigen::VectorXd xdot_m = parallel_model_no_mat_inverse(t, x, I, A11, A12, A21, A22, ocv_coefs, m);
@@ -481,12 +479,12 @@ int main()
   // std::cout << "xdot_dae:\n" << xdot2 << std::endl;
 
   // Use the Runge-Kutta Cash-Karp method (similar to MATLAB's ode45)
-  odeint::runge_kutta_dopri5<state_type> stepper;
+  // odeint::runge_kutta_dopri5<state_type> stepper;
 
   Eigen::VectorXd i_branch(n_par);
   // Integrate the ODE from t=0 to t=10 with step size 0.1
   double t_start = 0.0, t_end = 4 * 3600.0, dt = 0.1;
-  auto myODE = [&](const auto &x, auto &dxdt, double t) {
+  /*auto myODE = [&](const auto &x, auto &dxdt, double t) {
     parallel_model_dae5(t, x, I, A11, A12, A21, A22, ocv_coefs, R, r, dxdt, i_branch);
   };
 
@@ -511,11 +509,11 @@ int main()
 
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> time_dae = end - start;
-  std::cout << "DAE5 computation took: " << time_dae.count() << " seconds" << std::endl;
+  std::cout << "DAE5 computation took: " << time_dae.count() << " seconds" << std::endl;*/
 
-  Eigen::VectorXd i_branch_values = i_branch;
+  /*Eigen::VectorXd i_branch_values = i_branch;
   std::cout << "i_branch_values:\n"
-            << i_branch_values << std::endl;
+            << i_branch_values << std::endl;*/
 
   // std::cout << "i_branch_values:\n" << i_branch.transpose() << std::endl;
 

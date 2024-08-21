@@ -377,8 +377,8 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
     cn += prod_theta;
   }
 
-  // if (printDebug)
-  std::cout << "cn : " << cn << std::endl;
+  if (printDebug)
+    std::cout << "cn : " << cn << std::endl;
 
   static Eigen::VectorXd f(nSU);
   f.fill(0);
