@@ -23,4 +23,12 @@ for i=1:Npar
 end
 
 grid on;
+%%
+figure; 
+for i=1:Npar    
+    c = results{i};
+    plot(c{:, "time [s]"},c{:, "Current [A]"});
+    hold on;
+end
 
+grid on;

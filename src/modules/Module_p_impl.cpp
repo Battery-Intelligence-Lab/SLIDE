@@ -72,7 +72,7 @@ void calculate_inverse_A22(int n_par, Eigen::VectorXd r, Eigen::MatrixXd &m)
   }
 }
 
-void new_compute_A11_A12_A21_A22(int n_par, Eigen::VectorXd R, Eigen::VectorXd C, Eigen::VectorXd Q, Eigen::VectorXd tau, Eigen::VectorXd r, Eigen::MatrixXd &A11, Eigen::MatrixXd &A12, Eigen::MatrixXd &A21, Eigen::MatrixXd &A22, Eigen::MatrixXd &m)
+void new_compute_A11_A12_A21_A22(int n_par, Eigen::VectorXd &R, Eigen::VectorXd &C, Eigen::VectorXd &Q, Eigen::VectorXd &tau, Eigen::VectorXd &r, Eigen::MatrixXd &A11, Eigen::MatrixXd &A12, Eigen::MatrixXd &A21, Eigen::MatrixXd &A22, Eigen::MatrixXd &m)
 {
   // Initialize A11 and A12
   A11 = Eigen::MatrixXd::Zero(2 * n_par, 2 * n_par);
@@ -294,25 +294,17 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   int iter{}; // Current iteration
   const int nSU = getNSUs();
 
-  Eigen::VectorXd Q(nSU);   // Battery Capacity in As
-  Eigen::VectorXd F(nSU);   // RC circuit's R
-  Eigen::VectorXd C(nSU);   // RC circuit's C
-  Eigen::VectorXd r(nSU);   // Rdc.
-  Eigen::VectorXd tau(nSU); // 1/(RC)
+  static Eigen::VectorXd Q(nSU);   // Battery Capacity in As
+  static Eigen::VectorXd F(nSU);   // RC circuit's R
+  static Eigen::VectorXd C(nSU);   // RC circuit's C
+  static Eigen::VectorXd r(nSU);   // Rdc.
+  static Eigen::VectorXd tau(nSU); // 1/(RC)
 
-  Eigen::VectorXd R = Eigen::VectorXd::Constant(nSU, 0.0); // Rcontant
+  static Eigen::VectorXd R(nSU);
+  R.fill(0.0); // Rcontant
 
-  Eigen::VectorXd i_branch(nSU);
+  static Eigen::VectorXd i_branch(nSU);
 
-  for (int i{}; i < nSU; i++) {
-    auto cp = dynamic_cast<Cell_ECM<1> *>(SUs[i].get());
-
-    Q(i) = cp->Cap() * 3600;
-    r(i) = cp->getRtot();
-    F(i) = cp->getRp(0); // 0 -> because we have one RC pair.
-    C(i) = cp->getC(0);
-    tau(i) = 1 / (F(i) * C(i));
-  }
 
   // std::cout << "Q:\n"
   //           << Q << "\n\n";
@@ -325,8 +317,23 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   // std::cout << std::endl;
 
   /// ---------------------
-  Eigen::MatrixXd A11, A12, A21, A22, m;
-  new_compute_A11_A12_A21_A22(nSU, R, C, Q, tau, r, A11, A12, A21, A22, m);
+  static Eigen::MatrixXd A11, A12, A21, A22, m;
+  static bool is_init(false);
+
+  if (!is_init) {
+    for (int i{}; i < nSU; i++) {
+      auto cp = dynamic_cast<Cell_ECM<1> *>(SUs[i].get());
+
+      Q(i) = cp->Cap() * 3600;
+      r(i) = cp->getRtot();
+      F(i) = cp->getRp(0); // 0 -> because we have one RC pair.
+      C(i) = cp->getC(0);
+      tau(i) = 1 / (F(i) * C(i));
+    }
+    new_compute_A11_A12_A21_A22(nSU, R, C, Q, tau, r, A11, A12, A21, A22, m);
+    is_init = true;
+  }
+
 
   if (printDebug) {
     std::cout << "A22:\n"
@@ -337,20 +344,15 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
 
 
   // ----------- parallel_model_dae5 -----
-  static Eigen::VectorXd OCV_branch(nSU), w(nSU), v_mod(nSU);
+  static Eigen::VectorXd w(nSU), v_mod(nSU);
 
   for (int i{}; i < nSU; i++) {
     auto cp = dynamic_cast<Cell_ECM<1> *>(SUs[i].get());
-    const auto SOC = cp->SOC(); // [0-1]
-    OCV_branch(i) = cp->getOCV();
-    w(i) = cp->getVr(); // Relaxation voltage.
-    v_mod(i) = OCV_branch(i) + w(i);
+    v_mod(i) = cp->getOCV() + cp->getVr();
   }
 
   if (printDebug) {
     std::cout << "v_mod : " << v_mod.transpose() << std::endl;
-    std::cout << "w : " << w.transpose() << std::endl;
-    std::cout << "OCV_branch : " << OCV_branch.transpose() << std::endl;
   }
 
   // static Eigen::VectorXd i_branch(nSU)
@@ -400,7 +402,7 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   for (int j = 0; j < nSU - 2; ++j) {
     f[j] = rho[j + 1] * (v_mod[j + 1] - v_mod[j]);
     for (int i = j + 1; i < nSU - 1; ++i) {
-      double prod_theta = std::accumulate(theta.begin() + i, theta.end(), 1.0, std::multiplies<double>());
+      const double prod_theta = std::accumulate(theta.begin() + i, theta.end(), 1.0, std::multiplies<double>());
       f[j] += prod_theta * rho[i + 1] * (v_mod[j + 1] - v_mod[j]);
     }
   }
@@ -419,31 +421,29 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
 
   auto StatusNow = Status::Success;
 
-  Eigen::VectorXd Vb(nSU);
-  std::vector<double> Vcontant_included(nSU);
+  // Eigen::VectorXd Vb(nSU);
+  // std::vector<double> Vcontant_included(nSU);
 
   for (int i{}; i < nSU; i++) {
     auto cp = dynamic_cast<Cell_ECM<1> *>(SUs[i].get());
     StatusNow = std::max(StatusNow, cp->setCurrent(-i_branch(i)));
-
-    Vb(i) = cp->V();
   }
 
-  getVall(Vcontant_included, false); // Get voltages with contact resistances included.
+  // getVall(Vcontant_included, false); // Get voltages with contact resistances included.
 
-  if (printDebug) {
-    std::cout << "I:\n"
-              << -i_branch << "\n";
+  // if (printDebug) {
+  //   std::cout << "I:\n"
+  //             << -i_branch << "\n";
 
-    std::cout << "Vb:\n"
-              << Vb << "\n"; // These should be equal if no contact resistance.
+  //   std::cout << "Vb:\n"
+  //             << Vb << "\n"; // These should be equal if no contact resistance.
 
-    std::cout << "Vcontant_included:\n";
-    for (auto V_ : Vcontant_included)
-      std::cout << V_ << '\n';
+  //   std::cout << "Vcontant_included:\n";
+  //   for (auto V_ : Vcontant_included)
+  //     std::cout << V_ << '\n';
 
-    std::cout << "\n";
-  }
+  //   std::cout << "\n";
+  // }
 
   // std::cout << "i_branch_values:\n"
   //            << i_branch << std::endl;

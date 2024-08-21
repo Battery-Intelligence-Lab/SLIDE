@@ -393,8 +393,11 @@ int main()
     std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
 
     Clock clk;
-    cyc.CC(-10, 3.3, 3000, dt, 1, th);
-    cyc.CC(10, 2.7, 300, dt, 1, th);
+
+    for (int i = 0; i < 200; i++) {
+      cyc.CC(-10, 3.9, 300, dt, 1, th);
+      cyc.CC(10, 2.7, 300, dt, 1, th);
+    }
 
     std::cout << clk << std::endl;
     std::cout << "Voltage: " << mp->V() << " I: " << mp->I() << " A.\n";
