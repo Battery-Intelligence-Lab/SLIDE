@@ -474,10 +474,10 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
 
   auto StatusNow = Status::Success;
 
-  using A_type = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX>;
-  using b_type = Eigen::Array<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX>;
+  using A_type = Eigen::MatrixXd;
+  using b_type = Eigen::VectorXd;
 
-  b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
+  static b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
 
   StatusNow = Status::Success; //!< reset at each iteration.
 

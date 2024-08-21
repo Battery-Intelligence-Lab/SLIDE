@@ -302,7 +302,7 @@ int main()
 
   // Model parameters
   // int n_par = 100; // The number of cells in parallel
-  constexpr int n_par = 10; // for testing
+  constexpr int n_par = 100; // for testing
 
   double capacitance_Ah = capacitance_Ah_all[bat_select_num - 1];
   double capacitance_As = 3600 * capacitance_Ah;

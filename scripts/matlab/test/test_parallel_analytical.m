@@ -32,3 +32,13 @@ for i=1:Npar
 end
 
 grid on;
+
+%%
+figure; 
+for i=1:Npar    
+    c = results{i};
+    plot(c{:, "time [s]"},c{:, "SOC [-]"});
+    hold on;
+end
+
+grid on;
