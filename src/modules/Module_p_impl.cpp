@@ -499,7 +499,7 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
 
     error += std::max(std::abs(b(i)), error);
 
-    r_est[i] = 200e-3; // 100e-3; // Init the resistances high at the beginning. #TODO probably not robust for all cases.
+    r_est[i] = SUs[i]->getRtot(); // 100e-3; // Init the resistances high at the beginning. #TODO probably not robust for all cases.
   }
 
   if (error < tolerance) return StatusNow;
@@ -516,8 +516,16 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
   //   Vb[i] = Vnew;
   // }
 
-  auto getLU = [&]() { // #TODO this will be static in future defined in parallel block
-    A_type A(nSU, nSU);
+  // auto getLU = [&]() { // #TODO this will be static in future defined in parallel block
+  //   // Eigen::PartialPivLU<A_type> LU(A); // LU decomposition of A.
+  //   // return LU;
+  // };
+
+  static A_type A(nSU, nSU);
+
+  static bool is_init = false;
+
+  if (!is_init) {
     // Set up the A matrix in Ax = b
     for (size_t j = 0; j < nSU; j++)
       for (size_t i = 0; i < nSU; i++) {
@@ -532,12 +540,13 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
         else
           A(i, j) = 0;
       }
-    Eigen::PartialPivLU<A_type> LU(A); // LU decomposition of A.
-    return LU;
-  };
 
-  b_type deltaI;
-  Eigen::PartialPivLU<A_type> LU;
+    is_init = true;
+  }
+
+  static b_type deltaI;
+  static Eigen::FullPivLU<A_type> LU(A);
+
   while (iter < maxIteration) {
     double Icumulative{}, error{};
     for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
@@ -553,8 +562,7 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
 
     if (error < tolerance) break;
 
-    LU = getLU();
-
+    // Normally LU should be here but moved for ECM.
     deltaI = LU.solve(b.matrix()).array();
 
 

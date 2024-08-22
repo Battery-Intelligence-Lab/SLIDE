@@ -222,14 +222,14 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   // std::vector<double> Ib_vk(SUs.size()), Vb_vk(SUs.size()), Ib(SUs.size()), Vb(SUs.size());
 
-  // auto status = setCurrent_previous_impl(Inew, checkV, print); // SLIDE implementation
+  auto status = setCurrent_previous_impl(Inew, checkV, print); // SLIDE implementation
 
   // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
   //   Ib_vk[i] = SUs[i]->I();
   //   Vb_vk[i] = SUs[i]->V();
   // }
 
-  auto status = setCurrent_analytical_impl(Inew, checkV, print); // New implementation
+  // auto status = setCurrent_analytical_impl(Inew, checkV, print); // New implementation
 
   // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
   //   Ib[i] = SUs[i]->I();
