@@ -1,13 +1,12 @@
-/*
- * modules.hpp
+/**
+ * @file cooling.hpp
+ * @brief Header file to include available cooling headers.
  *
- * to include available module headers.
- *
- *  Created on: 04 Nov 2022
- *   Author(s): Jorn Reniers, Volkan Kumtepeli
- *
+ * This file serves as a convenience header to include all the available cooling system headers.
+ * @author Volkan Kumtepeli
+ * @author Jorn Reniers
+ * @date 04 Nov 2022
  */
-
 
 #pragma once
 
