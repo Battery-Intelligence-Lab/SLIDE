@@ -23,6 +23,8 @@ protected:
   Status setCurrent_analytical_impl(double Inew, bool checkV = true, bool print = true); //!< set a module current implementation
   Status setCurrent_previous_impl(double Inew, bool checkV = true, bool print = true);   //!< set a module current implementation
 
+  std::vector<double> r_estimate{};
+
 
 public:
   Module_p() : Module("moduleP") {} //!< #TODO note this constructor should never be used. It can't determine which coolsystem to use
