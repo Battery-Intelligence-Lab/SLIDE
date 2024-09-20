@@ -1,25 +1,17 @@
 /**
  * @file ReadCSVfiles.hpp
- * @brief functions for reading csv files into arrays and matrices.
+ * @brief Functions for reading CSV files into arrays and matrices.
+ *
+ * This file contains functions for reading CSV files into arrays and matrices.
+ *
  * @author Volkan Kumtepeli
  * @author Jorn Reniers
  * @date 09 Nov 2022
  */
 
-/*
- * ReadCSVfiles.hpp
- *
- * groups functions for reading csv files into arrays and matrices
- *
- * Copyright (c) 2019, The Chancellor, Masters and Scholars of the University
- * of Oxford, VITO nv, and the 'Slide' Developers.
- * See the licence file LICENSE for more information.
- */
-
 #pragma once
 
 #include "io_util.hpp"
-
 #include "../../types/matrix.hpp"
 #include "../util_debug.hpp"
 
@@ -34,54 +26,62 @@
 #include <cstring> //!< -> for memcpy
 
 namespace slide::io {
+
+/**
+ * @brief Get the contents of a file as a string.
+ *
+ * @tparam Tpath The type of the file path.
+ * @param name The path to the file.
+ * @return The contents of the file as a string.
+ * @throws std::runtime_error if the file could not be opened.
+ */
 template <typename Tpath>
 std::string getFileContents(const Tpath &name)
 {
-
-  std::cerr << "NOT IMPLEMENTED YET!\n";
-  throw 1234;
-
   //!< For more info see: https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
-
   std::ifstream in(name, std::ios::in | std::ios::binary);
-  if (!in.good()) //!< check if we could open the file
-  {
-    std::cerr << "Error in getFileContents. File " << name << " could not be opened.\n";
-    throw 2;
+  if (!in.good()) {
+    throw std::runtime_error("Error in getFileContents. File " + std::string(name) + " could not be opened.");
   }
 
   std::ostringstream fileContents;
   fileContents << in.rdbuf();
   in.close();
-  return (fileContents.str());
+  return fileContents.str();
 }
 
+/**
+ * @brief Get the contents of a file.
+ *
+ * @param name The name of the file.
+ * @return The contents of the file.
+ * @throws std::runtime_error if the function is not implemented.
+ */
 inline auto getFile(std::string name)
 {
-  std::cerr << "NOT IMPLEMENTED YET!\n";
-  throw 1234;
+  throw std::runtime_error("getFile function is not implemented yet!");
   static std::map<std::string, std::string> fileMap;
+  // #TODO: Implement the function
 }
 
+/**
+ * @brief Load data from a CSV file into a matrix.
+ *
+ * @tparam Tpath The type of the file path.
+ * @tparam T The type of the matrix elements.
+ * @tparam ROW The number of rows in the matrix.
+ * @tparam COL The number of columns in the matrix.
+ * @param name The path to the CSV file.
+ * @param x The matrix to store the loaded data.
+ * @throws std::runtime_error if the file could not be opened.
+ */
 template <typename Tpath, typename T, size_t ROW, size_t COL>
 void loadCSV_mat(const Tpath &name, Matrix<T, ROW, COL> &x)
 {
-  //!< 	 * Reads a matrix CSV file with multiple columns.
-  //!< 	 * IN
-  //!< 	 * name 	the name of the file
-  //!< 	 *
-  //!< 	 * OUT
-  //!< 	 * x 		matrix in which the data from the file will be put.
-  //!< 	 *
-  //!< 	 * THROWS
-  //!< 	 * 2 		could not open the file
-  //!< 	 */
   std::ifstream in(name, std::ios_base::in);
 
-  if (!in.good()) //!< check if we could open the file
-  {
-    std::cerr << "Error in ReadCSVfiles::loadCSV_mat. File " << name << " could not be opened\n";
-    throw 2;
+  if (!in.good()) {
+    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_mat. File " + std::string(name) + " could not be opened.");
   }
 
   char c = '.';
@@ -100,40 +100,42 @@ void loadCSV_mat(const Tpath &name, Matrix<T, ROW, COL> &x)
   in.close();
 }
 
+/**
+ * @brief Load data from a CSV file with one column into an array.
+ *
+ * @tparam Tpath The type of the file path.
+ * @tparam T The type of the array elements.
+ * @tparam ROW The number of rows in the array.
+ * @param name The path to the CSV file.
+ * @param x The array to store the loaded data.
+ */
 template <typename Tpath, typename T, size_t ROW>
 void loadCSV_1col(const Tpath &name, std::array<T, ROW> &x)
 {
-  //!< read data from a CSV file with one column
   slide::Matrix<T, ROW, 1> temp;
   loadCSV_mat(name, temp);
   std::memcpy(&x, &temp, sizeof temp);
 }
 
+/**
+ * @brief Load data from a CSV file with two columns into separate arrays.
+ *
+ * @tparam Tpath The type of the file path.
+ * @tparam Tx The type of the first array elements.
+ * @tparam Ty The type of the second array elements.
+ * @param name The path to the CSV file.
+ * @param x The array to store the data from the first column.
+ * @param y The array to store the data from the second column.
+ * @param n The number of rows to read (0 to read all rows).
+ * @throws std::runtime_error if the file could not be opened.
+ */
 template <typename Tpath, typename Tx, typename Ty>
 void loadCSV_2col(const Tpath &name, Tx &x, Ty &y, int n = 0)
 {
-  /*
-   * Reads data from a CSV file with 2 columns
-   *
-   * IN
-   * name 	the name of the file
-   * n 		the number of rows to read (if n==0, read all), it is used to read a portion of a *.csv file.
-   *
-   * OUT
-   * x 		array in which the data from the first column will be put
-   * y 		array in which the data from the second column will be put
-   *
-   * THROWS
-   * 2 		could not open the specified file
-   */
-
   std::ifstream in(name, std::ios_base::in);
 
-  if (!in.good()) //!< check if we could open the file
-  {
-    std::cerr << "Error in ReadCSVfiles::loadCSV_2col. File " << name
-              << " could not be opened.\n";
-    throw 2;
+  if (!in.good()) {
+    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_2col. File " + std::string(name) + " could not be opened.");
   }
 
   ignoreBOM(in);
@@ -157,31 +159,23 @@ void loadCSV_2col(const Tpath &name, Tx &x, Ty &y, int n = 0)
   }
 }
 
+/**
+ * @brief Load data from a CSV file with multiple columns into a dynamic matrix.
+ *
+ * @tparam Tpath The type of the file path.
+ * @tparam Tx The type of the matrix elements.
+ * @param name The path to the CSV file.
+ * @param x The dynamic matrix to store the loaded data.
+ * @param n The number of rows to read (0 to read all rows).
+ * @throws std::runtime_error if the file could not be opened.
+ */
 template <typename Tpath, typename Tx>
 void loadCSV_Ncol(const Tpath &name, DynamicMatrix<Tx> &x, int n = 0)
 {
-  /*
-   * Reads data from a CSV file with 2 columns
-   *
-   * IN
-   * name 	the name of the file
-   * n 		the number of rows to read (if n==0, read all), it is used to read a portion of a *.csv file.
-   *
-   * OUT
-   * x 		array in which the data from the first column will be put
-   * y 		array in which the data from the second column will be put
-   *
-   * THROWS
-   * 2 		could not open the specified file
-   */
-
   std::ifstream in(name, std::ios_base::in);
 
-  if (!in.good()) //!< check if we could open the file
-  {
-    std::cerr << "Error in ReadCSVfiles::loadCSV_2col. File " << name
-              << " could not be opened.\n";
-    throw 2;
+  if (!in.good()) {
+    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_2col. File " + std::string(name) + " could not be opened.");
   }
 
   ignoreBOM(in);
@@ -210,30 +204,27 @@ void loadCSV_Ncol(const Tpath &name, DynamicMatrix<Tx> &x, int n = 0)
   x.data.shrink_to_fit();
 }
 
+/**
+ * @brief Structure to store plain X and Y data.
+ */
 struct XYplain
 {
   std::vector<double> x_vec, y_vec;
 };
 
-//!< struct Data
+/**
+ * @brief Load data from a CSV file with two columns into spans.
+ *
+ * @tparam Tpath The type of the file path.
+ * @param name The path to the CSV file.
+ * @param x The span to store the data from the first column.
+ * @param y The span to store the data from the second column.
+ * @param n The number of rows to read (0 to read all rows).
+ * @throws std::runtime_error if the file could not be opened.
+ */
 template <typename Tpath>
 void loadCSV_2col(const Tpath &name, std::span<double> &x, std::span<double> &y, int n = 0)
 {
-  /*
-   * Reads data from a CSV file with 2 columns
-   *
-   * IN
-   * name 	the name of the file
-   * n 		the number of rows to read (if n==0, read all), it is used to read a portion of a *.csv file.
-   *
-   * OUT
-   * x 		array in which the data from the first column will be put
-   * y 		array in which the data from the second column will be put
-   *
-   * THROWS
-   * 2 		could not open the specified file
-   */
-
   static std::map<std::string, XYplain> XYdataMap;
 
   auto name_str = name.string();
@@ -256,4 +247,4 @@ void loadCSV_2col(const Tpath &name, std::span<double> &x, std::span<double> &y,
   }
 }
 
-} // namespace slide
+} // namespace slide::io
