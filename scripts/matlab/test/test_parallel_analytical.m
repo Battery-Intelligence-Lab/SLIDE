@@ -3,7 +3,7 @@ clc;
 folder = '';
 
 
-Npar = 10; 
+Npar = 500; 
 
 results = cell(Npar,1);
 
@@ -100,7 +100,11 @@ title_size = 16;
 legend_size = 12;
 % Subplot 1: Voltage vs. Time
 subplot(3, 1, 1); % Create the first subplot in a 3x1 grid
+<<<<<<< HEAD
 sgtitle(['Analytical Implementation for ', num2str(Npar), ' Cells \& 50 Cycles'], 'FontSize', 18, 'Interpreter', 'latex')
+=======
+sgtitle(['Implementation for ', num2str(Npar), ' Cells \& 200 Cycles'], 'FontSize', 18, 'Interpreter', 'latex')
+>>>>>>> 219657a157c8c64880088d50ebb3a2497b2eff18
 hold on;
 for i = 1:Npar    
     c = results{i};

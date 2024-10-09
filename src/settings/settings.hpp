@@ -62,9 +62,9 @@ constexpr int DATASTORE_COOL = 0; //!< if 0, no data is stored
                                   //!< if 1, statistics about the cooling system is stored
                                   //!< if 2, operating power etc is stored every time step
 
-constexpr int MODULE_NSUs_MAX = 100; //!< #TODO eliminate but recursive static does not solve the situation since it is recursive.
-                                     //!< maximum number of cells in a base module
-                                     //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
+constexpr int MODULE_NSUs_MAX = 1000; //!< #TODO eliminate but recursive static does not solve the situation since it is recursive.
+                                      //!< maximum number of cells in a base module
+                                      //!< note: CELL_NSTATE_MAX * MODULE_NCELL_MAX <= StorageUnit_NSTATES_MAX
 
 constexpr int N_RC_MAX = 3; //!< Maximum RC pairs in Cell_ECM.
 

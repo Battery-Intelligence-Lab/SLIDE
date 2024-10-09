@@ -121,10 +121,10 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
 
   auto StatusNow = Status::Success;
 
-  using A_type = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, settings::MODULE_NSUs_MAX, settings::MODULE_NSUs_MAX>;
-  using b_type = Eigen::Array<double, Eigen::Dynamic, 1, 0, settings::MODULE_NSUs_MAX>;
+  using A_type = Eigen::MatrixXd;
+  using b_type = Eigen::VectorXd;
 
-  b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
+  static b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
 
   const double tolerance = 1e-9;
 
@@ -153,7 +153,7 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
       Vb[i] = Vnew;
     }
 
-    A_type A(nSU, nSU);
+    static A_type A(nSU, nSU);
     // Set up the A matrix in Ax = b
     for (size_t j = 0; j < nSU; j++)
       for (size_t i = 0; i < nSU; i++) {
@@ -222,14 +222,14 @@ Status Module_p::setCurrent(double Inew, bool checkV, bool print)
 
   // std::vector<double> Ib_vk(SUs.size()), Vb_vk(SUs.size()), Ib(SUs.size()), Vb(SUs.size());
 
-  // auto status = setCurrent_previous_impl(Inew, checkV, print); // SLIDE implementation
+  auto status = setCurrent_previous_impl(Inew, checkV, print); // SLIDE implementation
 
   // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
   //   Ib_vk[i] = SUs[i]->I();
   //   Vb_vk[i] = SUs[i]->V();
   // }
 
-  auto status = setCurrent_analytical_impl(Inew, checkV, print); // New implementation
+  // auto status = setCurrent_analytical_impl(Inew, checkV, print); // New implementation
 
   // for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
   //   Ib[i] = SUs[i]->I();

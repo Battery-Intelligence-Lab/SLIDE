@@ -302,13 +302,13 @@ int main()
 
   // Model parameters
   // int n_par = 100; // The number of cells in parallel
-  constexpr int n_par = 10; // for testing
+  constexpr int n_par = 500; // for testing
 
   double capacitance_Ah = capacitance_Ah_all[bat_select_num - 1];
   double capacitance_As = 3600 * capacitance_Ah;
 
   double C_rate = 0.01;
-  double I = 10; // n_par * C_rate * capacitance_Ah;
+  double I = 100; // n_par * C_rate * capacitance_Ah;
 
   double R_nom = 0 * 1e-5;
 
@@ -394,7 +394,7 @@ int main()
 
     Clock clk;
 
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < 100; i++) {
       cyc.CC(-10, 3.9, 300, dt, 1, th);
       cyc.CC(10, 2.7, 300, dt, 1, th);
     }
