@@ -41,7 +41,7 @@ std::string getFileContents(const Tpath &name)
   //!< For more info see: https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
   std::ifstream in(name, std::ios::in | std::ios::binary);
   if (!in.good()) {
-    throw std::runtime_error("Error in getFileContents. File " + std::string(name) + " could not be opened.");
+    throw std::runtime_error("Error in getFileContents. File " + name.string() + " could not be opened.");
   }
 
   std::ostringstream fileContents;
@@ -81,7 +81,7 @@ void loadCSV_mat(const Tpath &name, Matrix<T, ROW, COL> &x)
   std::ifstream in(name, std::ios_base::in);
 
   if (!in.good()) {
-    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_mat. File " + std::string(name) + " could not be opened.");
+    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_mat. File " + name.string() + " could not be opened.");
   }
 
   char c = '.';
@@ -135,7 +135,7 @@ void loadCSV_2col(const Tpath &name, Tx &x, Ty &y, int n = 0)
   std::ifstream in(name, std::ios_base::in);
 
   if (!in.good()) {
-    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_2col. File " + std::string(name) + " could not be opened.");
+    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_2col. File " + name.string() + " could not be opened.");
   }
 
   ignoreBOM(in);
@@ -175,7 +175,7 @@ void loadCSV_Ncol(const Tpath &name, DynamicMatrix<Tx> &x, int n = 0)
   std::ifstream in(name, std::ios_base::in);
 
   if (!in.good()) {
-    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_2col. File " + std::string(name) + " could not be opened.");
+    throw std::runtime_error("Error in ReadCSVfiles::loadCSV_2col. File " + name.string() + " could not be opened.");
   }
 
   ignoreBOM(in);
