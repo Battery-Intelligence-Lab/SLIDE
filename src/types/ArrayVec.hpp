@@ -14,15 +14,35 @@
 #include <span>
 
 namespace slide {
+
+/**
+ * @brief A container class for storing variable-size arrays
+ *
+ * @tparam Tdata Type of data to store
+ *
+ * This class provides a way to store multiple variable-size arrays
+ * in a single contiguous memory block while maintaining access to
+ * individual arrays through spans.
+ *
+ * @note This class is currently not fully implemented and may not work correctly.
+ */
 template <typename Tdata>
 class ArrayVec
 {
-  std::vector<std::span<Tdata>> data_span;
+  std::vector<std::span<Tdata>> data_span; //!< Vector of spans pointing to data segments
 
 public:
-  std::vector<Tdata> data;
+  std::vector<Tdata> data; //!< Contiguous storage for all data
+
+  /**
+   * @brief Default constructor
+   */
   ArrayVec() = default;
 
+  /**
+   * @brief Add a span of data to the container
+   * @param spn Span of data to add
+   */
   void push_back(std::span<const Tdata> spn)
   {
     const auto new_begin = data.end();
@@ -30,6 +50,10 @@ public:
     data_span.emplace_back(new_begin, data.end());
   }
 
+  /**
+   * @brief Add a single element to the container
+   * @param x Element to add
+   */
   void push_back(const Tdata &x)
   {
     const auto new_begin = data.end();

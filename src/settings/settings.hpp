@@ -15,11 +15,23 @@
 #include "tolerances.hpp"
 #include "macros.hpp"
 
-namespace slide::settings::cool //!< Cooling System Settings.
-{
+/**
+ * @brief Cooling system settings namespace
+ *
+ * This namespace contains settings related to the cooling system
+ * configuration and parameters.
+ */
+namespace slide::settings::cool {
 constexpr double flowrate_perCell{ 0.0005 }; //!< flow rate m3/s, per cell value
 }
 
+/**
+ * @brief Main settings namespace for SLIDE
+ *
+ * This namespace contains all the main configuration settings for the SLIDE
+ * battery simulation software, including parallelization, data storage,
+ * thermal modeling, and other simulation parameters.
+ */
 namespace slide::settings {
 constexpr bool isParallel{ true };                 //!< Parallelises the code if possible.
 constexpr unsigned int numMaxParallelWorkers = 32; //!< Maximum number of threads to use if isParallel true.
@@ -117,7 +129,12 @@ constexpr bool printNumIterations{ true }; //!< Prints number of iterations for 
 
 } // namespace slide::settings
 
-//!< Non-user related settings, please do not change!
+/**
+ * @brief Internal settings namespace (non-user configurable)
+ *
+ * This namespace contains internal settings that should not be changed
+ * by users as they are critical to the proper functioning of the software.
+ */
 namespace slide::settings {
 constexpr auto CVcurrentFindingMethod = CVcurrentAlgorithm::falsePosition;
 } // namespace slide::settings
