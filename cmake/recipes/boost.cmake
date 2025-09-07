@@ -1,66 +1,39 @@
-# Obtained: https://github.com/polyfem/polysolve/tree/main/cmake/recipes
-# Copyright 2021 Adobe. All rights reserved.
-# This file is licensed to you under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License. You may obtain a copy
-# of the License at http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software distributed under
-# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
-#
-if(TARGET Boost::boost)
+if(TARGET boost_headers)
     return()
 endif()
 
-message(STATUS "Third-party: creating targets 'Boost::boost'...")
+message(STATUS "Third-party: creating targets 'boost_headers'...")
 
-set(PREVIOUS_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-set(OLD_CMAKE_POSITION_INDEPENDENT_CODE ${CMAKE_POSITION_INDEPENDENT_CODE})
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# Try to find system Boost first (e.g., from Homebrew)
+find_package(Boost QUIET)
 
-set(BOOST_URL "https://archives.boost.io/release/1.85.0/source/boost_1_85_0.7z" CACHE STRING "Boost download URL")
-set(BOOST_URL_SHA256 "16d16b9658753117c1434e5450c5eac194957f4b6d0b390b9d07900d37c115a4" CACHE STRING "Boost download URL SHA256 checksum")
+if(Boost_FOUND)
+    message(STATUS "Found system Boost: ${Boost_VERSION}")
+    # Create an interface target for consistency
+    add_library(boost_headers INTERFACE)
+    target_include_directories(boost_headers INTERFACE ${Boost_INCLUDE_DIRS})
+    # Create alias for compatibility
+    return()
+endif()
+
+# If system Boost not found, download header-only version
+message(STATUS "System Boost not found, downloading header-only version...")
+
+set(BOOST_URL "https://archives.boost.io/release/1.89.0/source/boost_1_89_0.tar.gz" CACHE STRING "Boost download URL")
+set(BOOST_URL_SHA256 "9de758db755e8330a01d995b0a24d09798048400ac25c03fc5ea9be364b13c93" CACHE STRING "Boost download URL SHA256 checksum")
 
 include(CPM)
 CPMAddPackage(
     NAME boost
     URL ${BOOST_URL}
-    URL_HASH SHA256=${BOOST_URL_SHA256}
     DOWNLOAD_ONLY ON
 )
-set(BOOST_SOURCE ${boost_SOURCE_DIR})
+
+# Create interface target for header-only Boost
+add_library(boost_headers INTERFACE)
+target_include_directories(boost_headers INTERFACE ${boost_SOURCE_DIR})
+
+# Create alias for compatibility
+add_library(Boost::boost ALIAS boost_headers)
+
 set(Boost_POPULATED ON)
-
-# Only build the following Boost libs
-set(BOOST_LIBS_OPTIONAL "" CACHE STRING "Boost libs to be compiled" FORCE)
-
-# File lcid.cpp from Boost_locale.cpp doesn't compile on MSVC, so we exclude them from the default
-# targets being built by the project (only targets explicitly used by other targets will be built).
-CPMAddPackage(
-    NAME boost-cmake
-    GITHUB_REPOSITORY Orphis/boost-cmake
-    GIT_TAG 7f97a08b64bd5d2e53e932ddf80c40544cf45edf
-    EXCLUDE_FROM_ALL
-)
-
-set(CMAKE_POSITION_INDEPENDENT_CODE ${OLD_CMAKE_POSITION_INDEPENDENT_CODE})
-set(CMAKE_CXX_FLAGS "${PREVIOUS_CMAKE_CXX_FLAGS}")
-
-foreach(name IN ITEMS
-        atomic
-        chrono
-        container
-        date_time
-        filesystem
-        iostreams
-        log
-        system
-        thread
-        timer
-    )
-    if(TARGET Boost_${name})
-        set_target_properties(Boost_${name} PROPERTIES FOLDER third_party/boost)
-    endif()
-endforeach()

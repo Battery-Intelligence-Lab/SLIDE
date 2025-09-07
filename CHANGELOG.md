@@ -47,7 +47,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * `getIndex` is removed
 * remainder for integers are eliminated. 
 * `i` in Cycler::rest is removed. 
-* `M_PI` constant defined. 
+* `CONST_PI` constant defined. 
 * `double Rdc` is removed from `Cell.hpp`
 * Free functions to call member functions under `free` namespace.
 * `develop` folder is added for developer-related matters.
