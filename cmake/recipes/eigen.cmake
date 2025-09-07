@@ -19,7 +19,6 @@ option(EIGEN_MPL2_ONLY "Enable Eigen MPL2 license only" OFF)
 
 message(STATUS "Third-party: creating target 'Eigen3::Eigen'")
 
-include(CPM)
 # Eigen library:
 CPMAddPackage(
   NAME eigen

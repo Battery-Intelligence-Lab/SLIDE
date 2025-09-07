@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.31)
 
 # include(cmake/ProjectSettings.cmake)
 project(SLIDE VERSION "3.0.0"
@@ -36,6 +36,7 @@ target_link_libraries(slide
   src
   project_warnings
   project_options
+  nlopt
 )
 
 target_include_directories(slide

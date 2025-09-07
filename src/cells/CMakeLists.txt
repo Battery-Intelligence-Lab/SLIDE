@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.31)
 add_library(cells OBJECT)
 set_target_properties(cells PROPERTIES LINKER_LANGUAGE CXX)
 

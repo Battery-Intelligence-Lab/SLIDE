@@ -36,3 +36,21 @@ CPMAddPackage(
   NAME fmt
   URL "https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz"
 )
+
+CPMAddPackage(
+    NAME nlopt
+    VERSION 2.10.0
+    GITHUB_REPOSITORY stevengj/nlopt
+    OPTIONS
+        "NLOPT_CXX ON"
+        "NLOPT_PYTHON OFF"
+        "NLOPT_OCTAVE OFF"
+        "NLOPT_MATLAB OFF"
+        "NLOPT_LUKSAN OFF"
+        "NLOPT_FORTRAN OFF"
+        "NLOPT_EXAMPLES OFF"
+        "NLOPT_TESTS OFF"
+        "NLOPT_GUILE OFF"
+        "NLOPT_LUA OFF"
+        "NLOPT_Java OFF"
+)
