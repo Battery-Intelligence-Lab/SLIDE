@@ -48,8 +48,14 @@ jobs:
           - CC: clang-17
             CXX: clang++-17
             compiler: clang-17
+          - CC: clang-18
+            CXX: clang++-18
+            compiler: clang-18
+          - CC: clang-19
+            CXX: clang++-19
+            compiler: clang-19
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: update
         run: sudo apt update
