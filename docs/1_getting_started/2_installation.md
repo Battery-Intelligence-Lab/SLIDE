@@ -97,5 +97,7 @@ If it is called ‘eclipse.exe *32’ it is a 32-bit version. can be observed fr
 xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install cmake
+brew install llvm
+brew install boost
 ```
 3. Follow steps 1--4 on [Linux section](#linux)

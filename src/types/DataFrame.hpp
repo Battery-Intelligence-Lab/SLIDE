@@ -67,9 +67,9 @@ struct DataFrame : public std::vector<T>
     }
   }
 
-  void to_csv(std::string_view str, bool includeHeader = true)
+  void to_csv(std::string_view str, bool includeHeader = true) // #TODO remove string_view and use c_string or string. For some reason on apple clang it doesn't have constructor for ofstream.
   {
-    std::ofstream out{ str, std::ios::out };
+    std::ofstream out{ str.data(), std::ios::out };
     to_csv(out, header);
   }
 
