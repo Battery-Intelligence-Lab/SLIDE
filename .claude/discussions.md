@@ -1,0 +1,147 @@
+# SLIDE Development Discussions
+
+This document tracks design decisions, architecture evolution, and session notes for long-term pair programming collaboration on SLIDE.
+
+---
+
+## Active Design Decisions
+
+### [2026-01-29] Initial Codebase Review & Collaboration Setup
+
+**Status**: Decided
+
+**Context**: First comprehensive review of SLIDE codebase to establish pair programming infrastructure for multi-year development.
+
+**Key Findings**:
+1. Architecture is well-structured: StorageUnit → Cell → Module → Battery hierarchy
+2. C++20 codebase with modern practices (Deep_ptr, std::span, constexpr)
+3. Good test infrastructure (Catch2) but some tests commented out
+4. Python/MATLAB bindings planned but not implemented
+5. TODO.md has 365 lines of unstructured items
+
+**Decision**: Create comprehensive documentation and tracking infrastructure:
+- Updated CLAUDE.md with SLIDE-specific domain knowledge
+- Updated style guides (cpp-style.md, python-style.md) for SLIDE
+- Create skills for common operations
+- Reorganize TODO.md with priorities
+- Use this discussions.md for ongoing decision tracking
+
+---
+
+### [Pending] Python Bindings Strategy
+
+**Status**: Open
+
+**Context**: Python bindings are a high-priority feature request for broader adoption.
+
+**Options**:
+1. **pybind11** - Mature, well-documented, widely used
+   - Pros: Large ecosystem, good numpy integration
+   - Cons: Compile times, header-only can increase binary size
+
+2. **nanobind** - Modern successor to pybind11 by same author
+   - Pros: Faster compile, smaller binaries, better C++17/20 support
+   - Cons: Smaller community, fewer examples
+
+3. **SWIG** - Language-agnostic wrapper generator
+   - Pros: Can generate Python and MATLAB simultaneously
+   - Cons: Less Pythonic output, steeper learning curve
+
+**Decision**: TBD - Need to evaluate compile time impact and numpy integration quality
+
+---
+
+### [Pending] `redistributeCurrent_new` Performance
+
+**Status**: Open
+
+**Context**: The current redistribution algorithm for parallel modules can require up to 2500 iterations (TODO.md line 79), causing significant slowdowns.
+
+**Options**:
+1. **Newton-Raphson solver** - Quadratic convergence
+2. **Direct linear algebra** - Solve coupled equations directly
+3. **Adaptive tolerance** - Accept less precision when converging slowly
+4. **Better initial guess** - Use previous solution as starting point
+
+**Decision**: TBD - Need profiling data to identify root cause
+
+---
+
+## Architecture Evolution Log
+
+### Version 3.x Roadmap
+
+**Current**: v3.0.0 (slide-pack merged, C++20)
+
+#### Planned Milestones
+- [ ] **v3.1.0**: Python bindings (pybind11/nanobind)
+- [ ] **v3.2.0**: MATLAB MEX interface
+- [ ] **v3.3.0**: PyBaMM-compatible Experiment interface
+- [ ] **v3.4.0**: SUNDIALS solver integration (optional)
+- [ ] **v4.0.0**: GPU acceleration (CUDA, optional)
+
+#### Completed Milestones
+- [x] v3.0.0 (Current)
+  - Merged SLIDE and slide-pack
+  - Upgraded to C++20
+  - Added Cell_ECM, Cell_Bucket
+  - Converted shared_ptr → unique_ptr/Deep_ptr
+  - Added std::span for state access
+  - Status class for error handling
+  - Model_SPM optimization: 34s → 12s (2.8x speedup)
+  - File I/O elimination: 30s improvement
+
+---
+
+## Performance Benchmarks History
+
+| Date | Version | Test | Time | Hardware | Notes |
+|------|---------|------|------|----------|-------|
+| 2026-01-29 | v3.0.0 | 5000 1C CC cycles | <1 min | - | Baseline from README |
+| 2026-01-29 | v3.0.0 | CC+CV cycles | <2 min | - | Baseline from README |
+| 2026-01-29 | v3.0.0 | EPFL battery 1hr CC | ~2 sec | - | From TODO.md |
+| 2026-01-29 | v3.0.0 | EPFL battery + aging | ~3.5 sec | - | From TODO.md |
+
+---
+
+## Known Technical Debt
+
+| Priority | Issue | File | Notes |
+|----------|-------|------|-------|
+| High | `redistributeCurrent_new` 2500+ iterations | Module_p_impl.cpp | Performance bottleneck |
+| High | MSVC 3x slower than Clang | CMakeLists.txt | Vectorization flags |
+| Medium | Raw `assert()` in tests | Cycler_test.cpp | Should use Catch2 REQUIRE() |
+| Medium | Mixed `#define` and `constexpr` | settings.hpp:101 | DATASTORE_BATT macro |
+| Medium | `StorageUnit::copy()` returns raw ptr | StorageUnit.hpp | Should return unique_ptr |
+| Medium | C-array `double Tneighb[]` params | Module.hpp:284 | Use std::span |
+| Low | Inconsistent Status codes | Various | Some int, some Status enum |
+| Low | Global `settings::isParallel` | settings.hpp | Encapsulate thread control |
+| Low | `therm.Qcontact` 6x overestimated | Module thermal | Calculation bug |
+
+---
+
+## Session Notes
+
+### [2026-01-29] Initial Codebase Exploration
+
+- **Focus**: Complete exploration of SLIDE library, documentation setup, collaboration infrastructure
+- **Decisions**:
+  - Style guides updated in-place (not new files) for SLIDE
+  - Completed TODO items archived to separate COMPLETED.md
+  - Session notes use summary bullets + rationale format
+- **Next Steps**:
+  - Create skill files for common operations
+  - Restructure TODO.md into prioritized format
+  - Run test suite to verify build still works
+- **Blockers**: None
+
+---
+
+## Quick Links
+
+- [CLAUDE.md](CLAUDE.md) - Main runbook
+- [cpp-style.md](cpp-style.md) - C++ conventions
+- [python-style.md](python-style.md) - Python conventions
+- [develop/TODO.md](../develop/TODO.md) - Active development items
+- [develop/COMPLETED.md](../develop/COMPLETED.md) - Archived completed items
+- [CHANGELOG.md](../CHANGELOG.md) - Release history

@@ -1,11 +1,13 @@
-# DTWC++ Python Style Guide
+# SLIDE Python Style Guide
 
-This document describes the Python coding conventions for the DTWC++ project bindings and scripts.
+This document describes the Python coding conventions for the SLIDE project bindings and scripts.
+
+> **Note:** Python bindings are planned but not yet implemented. This guide establishes conventions for when they are built.
 
 ## Python Version
 
-- **Minimum:** Python 3.7 (for broad compatibility)
-- **Recommended:** Python 3.9+
+- **Minimum:** Python 3.9
+- **Recommended:** Python 3.11+
 
 ## Style Standard
 
@@ -15,50 +17,55 @@ Follow [PEP 8](https://peps.python.org/pep-0008/) with the following project-spe
 
 ### Modules
 - **snake_case**, lowercase
-- Examples: `setup.py`, `py_main.cpp`, `ucr_benchmark.py`
+- Examples: `slide_core.py`, `battery.py`, `cell_spm.py`
 
 ### Classes
 - **PascalCase**
-- Examples: `CMakeExtension`, `CMakeBuild`, `DTW`, `KMedoids`
+- Mirror C++ class names where appropriate
+- Examples: `StorageUnit`, `CellSPM`, `CellECM`, `ModuleS`, `ModuleP`, `Battery`, `Cycler`
 
 ### Functions and Methods
 - **snake_case**
-- Examples: `build_extension`, `get_ext_fullpath`, `fit`, `predict`
+- Examples: `set_current`, `get_states`, `time_step_cc`, `run_cccv`
 
 ### Variables
 - **snake_case**
-- Examples: `ext_fullpath`, `cmake_args`, `n_clusters`
+- Examples: `cell_voltage`, `time_step`, `n_cycles`
 
 ### Constants
 - **UPPER_SNAKE_CASE**
-- Examples: `PLAT_TO_CMAKE`, `DEFAULT_BAND_WIDTH`
+- Examples: `DEFAULT_TEMPERATURE`, `VMIN`, `VMAX`
 
 ### Private/Internal
 - Single leading underscore: `_internal_method`
-- Double underscore for name mangling (rare): `__private`
 
 ## Type Hints
 
-Use type hints for function signatures (Python 3.7+ style):
+Use type hints for function signatures (Python 3.9+ style):
 
 ```python
-def build_extension(self, ext: CMakeExtension) -> None:
+import numpy as np
+from numpy.typing import NDArray
+
+def set_current(self, current: float, check_voltage: bool = True) -> bool:
     ...
 
-def fit(self, X: np.ndarray) -> "KMedoids":
+def get_states(self) -> NDArray[np.float64]:
     ...
 ```
 
-For complex types, use `typing` module:
+For complex types:
 ```python
-from typing import List, Optional, Union
+from typing import Optional, Union
 
-def cluster(
+def run_cycle(
     self,
-    data: List[np.ndarray],
-    n_clusters: int,
-    initial_medoids: Optional[List[int]] = None
-) -> np.ndarray:
+    current: float,
+    v_limit: float,
+    t_limit: float,
+    dt: float = 1.0,
+    n_data_points: Optional[int] = None
+) -> CycleResult:
     ...
 ```
 
@@ -73,118 +80,142 @@ Separate each group with a blank line:
 
 ```python
 import os
-import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from dtwcpp import DTW, KMedoids
+from slide import Battery, CellSPM, Cycler
 ```
-
-### Import Style
-- Prefer explicit imports over `from module import *`
-- Group related imports on same line if short
 
 ## Docstrings
 
 Use NumPy-style docstrings for consistency with scientific Python packages:
 
 ```python
-def dtw_distance(x: np.ndarray, y: np.ndarray, band: int = -1) -> float:
+def run_cc(
+    self,
+    current: float,
+    v_limit: float,
+    t_limit: float,
+    dt: float = 1.0
+) -> CycleResult:
     """
-    Compute Dynamic Time Warping distance between two time series.
+    Run constant current (CC) phase on the battery.
 
     Parameters
     ----------
-    x : np.ndarray
-        First time series (1D array).
-    y : np.ndarray
-        Second time series (1D array).
-    band : int, optional
-        Sakoe-Chiba band width. -1 means no constraint (default).
+    current : float
+        Applied current in Amperes. Positive = discharge.
+    v_limit : float
+        Voltage limit in Volts (min for discharge, max for charge).
+    t_limit : float
+        Time limit in seconds.
+    dt : float, optional
+        Time step in seconds, by default 1.0.
 
     Returns
     -------
-    float
-        The DTW distance between x and y.
+    CycleResult
+        Object containing time, voltage, current, and temperature arrays.
 
     Examples
     --------
-    >>> x = np.array([1, 2, 3, 4])
-    >>> y = np.array([1, 2, 2, 3, 4])
-    >>> dtw_distance(x, y)
-    1.0
+    >>> cell = CellSPM()
+    >>> cycler = Cycler(cell)
+    >>> result = cycler.run_cc(current=1.0, v_limit=2.7, t_limit=3600)
+    >>> print(f"Final voltage: {result.voltage[-1]:.3f} V")
 
     See Also
     --------
-    distance_matrix : Compute pairwise DTW distances.
+    run_cv : Run constant voltage phase.
+    run_cccv : Run combined CC-CV cycle.
+
+    Notes
+    -----
+    The sign convention follows the C++ library:
+    - Positive current = discharge (current flows out)
+    - Negative current = charge (current flows in)
     """
     ...
 ```
 
 ## Class Design
 
-### Scikit-learn Compatible API
+### PyBaMM-Compatible API
 
-For clustering classes, follow scikit-learn conventions:
+Target compatibility with PyBaMM Experiment interface:
 
 ```python
-class KMedoids:
-    """K-Medoids clustering using DTW distance.
+class Battery:
+    """Lithium-ion battery simulation using Single Particle Model.
 
     Parameters
     ----------
-    n_clusters : int
-        Number of clusters.
-    metric : str, default="dtw"
-        Distance metric to use.
-    random_state : int, optional
-        Random seed for reproducibility.
+    capacity : float
+        Nominal capacity in Ah.
+    v_min : float
+        Minimum voltage limit in V.
+    v_max : float
+        Maximum voltage limit in V.
+    temperature : float, optional
+        Initial temperature in Kelvin, by default 298.15 K.
 
     Attributes
     ----------
-    labels_ : np.ndarray
-        Cluster labels for each sample.
-    cluster_centers_ : np.ndarray
-        Indices of medoid samples.
-    inertia_ : float
-        Sum of distances to closest medoid.
+    voltage : float
+        Current terminal voltage in V.
+    current : float
+        Current flowing through battery in A.
+    temperature : float
+        Cell temperature in K.
+    soc : float
+        State of charge (0.0 to 1.0).
     """
 
     def __init__(
         self,
-        n_clusters: int,
-        metric: str = "dtw",
-        random_state: Optional[int] = None
+        capacity: float,
+        v_min: float = 2.7,
+        v_max: float = 4.2,
+        temperature: float = 298.15
     ):
-        self.n_clusters = n_clusters
-        self.metric = metric
-        self.random_state = random_state
+        self._handle = _slide_core.create_battery(...)
 
-    def fit(self, X: np.ndarray) -> "KMedoids":
-        """Fit the K-Medoids model.
+    @property
+    def voltage(self) -> float:
+        """Current terminal voltage in Volts."""
+        return self._handle.V()
+
+    @property
+    def current(self) -> float:
+        """Current in Amperes (positive = discharge)."""
+        return self._handle.I()
+
+    def set_current(self, current: float) -> bool:
+        """Apply a current to the battery.
 
         Parameters
         ----------
-        X : np.ndarray of shape (n_samples, n_features)
-            Training data.
+        current : float
+            Current in Amperes (positive = discharge).
 
         Returns
         -------
-        self
-            Fitted estimator.
+        bool
+            True if successful, False if voltage limits violated.
         """
-        ...
-        return self
+        return self._handle.setCurrent(current)
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        """Predict cluster labels for samples."""
-        ...
+    def step(self, dt: float) -> None:
+        """Advance simulation by one time step.
 
-    def fit_predict(self, X: np.ndarray) -> np.ndarray:
-        """Fit and return cluster labels."""
-        return self.fit(X).labels_
+        Parameters
+        ----------
+        dt : float
+            Time step in seconds.
+        """
+        self._handle.timeStep_CC(dt)
 ```
 
 ## NumPy Integration
@@ -193,17 +224,25 @@ class KMedoids:
 - Accept both lists and numpy arrays
 - Convert to numpy internally if needed
 - Return numpy arrays for consistency
+- Use zero-copy where possible via pybind11/nanobind
 
 ```python
-def distance_matrix(X):
-    X = np.asarray(X)  # Convert if needed
-    # ... compute ...
-    return result  # Return numpy array
+def get_states(self) -> NDArray[np.float64]:
+    """Get all internal state variables.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Array of state variables (see State_SPM for order).
+    """
+    # Zero-copy view into C++ state array
+    return np.asarray(self._handle.getStatesView())
 ```
 
 ### Memory Efficiency
 - Use `np.ascontiguousarray()` before passing to C++ if needed
 - Document when zero-copy is possible
+- Avoid unnecessary copies in hot paths
 
 ## Error Handling
 
@@ -212,12 +251,16 @@ def distance_matrix(X):
 - Create custom exceptions for domain-specific errors
 
 ```python
-class DTWError(Exception):
-    """Base exception for DTW-related errors."""
+class SlideError(Exception):
+    """Base exception for SLIDE-related errors."""
     pass
 
-class InvalidBandWidthError(DTWError):
-    """Raised when band width is invalid."""
+class VoltageLimitError(SlideError):
+    """Raised when voltage limits are violated."""
+    pass
+
+class TemperatureLimitError(SlideError):
+    """Raised when temperature limits are violated."""
     pass
 ```
 
@@ -226,12 +269,13 @@ class InvalidBandWidthError(DTWError):
 - Provide clear error messages
 
 ```python
-def fit(self, X):
-    if X.ndim != 2:
-        raise ValueError(f"X must be 2D, got {X.ndim}D")
-    if X.shape[0] < self.n_clusters:
+def set_current(self, current: float) -> bool:
+    if not isinstance(current, (int, float)):
+        raise TypeError(f"current must be numeric, got {type(current)}")
+    if abs(current) > self.max_current:
         raise ValueError(
-            f"n_samples={X.shape[0]} must be >= n_clusters={self.n_clusters}"
+            f"current magnitude {abs(current):.2f} A exceeds "
+            f"maximum {self.max_current:.2f} A"
         )
 ```
 
@@ -241,40 +285,49 @@ def fit(self, X):
 ```python
 import pytest
 import numpy as np
-from dtwcpp import DTW, KMedoids
+from slide import CellSPM, Cycler
 
 
-class TestDTW:
-    def test_same_series_zero_distance(self):
-        """Distance to self should be zero."""
-        x = np.array([1, 2, 3, 4, 5])
-        dtw = DTW()
-        assert dtw.distance(x, x) == 0.0
+class TestCellSPM:
+    @pytest.fixture
+    def cell(self):
+        """Create a default SPM cell for testing."""
+        return CellSPM()
 
-    def test_symmetric(self):
-        """DTW distance should be symmetric."""
-        x = np.array([1, 2, 3])
-        y = np.array([1, 2, 2, 3])
-        dtw = DTW()
-        assert dtw.distance(x, y) == dtw.distance(y, x)
+    def test_initial_voltage(self, cell):
+        """Cell should have valid initial voltage."""
+        assert 2.7 <= cell.voltage <= 4.2
 
-    @pytest.mark.parametrize("band", [1, 5, 10])
-    def test_banded_dtw(self, band):
-        """Banded DTW should not exceed full DTW."""
-        x = np.random.randn(100)
-        y = np.random.randn(100)
-        dtw_full = DTW().distance(x, y)
-        dtw_banded = DTW(band=band).distance(x, y)
-        assert dtw_banded >= dtw_full
+    def test_discharge_reduces_voltage(self, cell):
+        """Discharging should reduce voltage."""
+        initial_v = cell.voltage
+        cycler = Cycler(cell)
+        cycler.run_cc(current=1.0, v_limit=2.7, t_limit=100)
+        assert cell.voltage < initial_v
+
+    @pytest.mark.parametrize("current", [0.5, 1.0, 2.0])
+    def test_discharge_currents(self, cell, current):
+        """Test various discharge currents."""
+        cycler = Cycler(cell)
+        result = cycler.run_cc(current=current, v_limit=2.7, t_limit=60)
+        assert len(result.time) > 0
 ```
 
 ### Fixtures
 ```python
 @pytest.fixture
-def sample_data():
-    """Generate sample time series data."""
-    np.random.seed(42)
-    return np.random.randn(50, 100)  # 50 series, length 100
+def sample_battery():
+    """Create a sample battery configuration."""
+    return Battery(capacity=3.0, v_min=2.7, v_max=4.2)
+
+@pytest.fixture
+def degradation_params():
+    """Default degradation parameters for testing."""
+    return {
+        "sei_enabled": True,
+        "lam_enabled": False,
+        "crack_enabled": False
+    }
 ```
 
 ## Formatting Tools
@@ -282,13 +335,13 @@ def sample_data():
 ### Black
 Use Black for automatic formatting:
 ```bash
-black path/to/file.py
+black python/
 ```
 
 ### isort
 Use isort for import sorting (compatible with Black):
 ```bash
-isort path/to/file.py
+isort python/
 ```
 
 ### Configuration
@@ -296,7 +349,7 @@ In `pyproject.toml`:
 ```toml
 [tool.black]
 line-length = 88
-target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+target-version = ['py39', 'py310', 'py311', 'py312']
 
 [tool.isort]
 profile = "black"
@@ -306,29 +359,50 @@ profile = "black"
 
 ```
 python/
-├── dtwcpp/
-│   ├── __init__.py      # Package init, version, public API
-│   ├── _core.py         # Internal wrapper around C++ bindings
-│   ├── dtw.py           # DTW class
-│   ├── clustering.py    # KMedoids, CLARA classes
-│   └── metrics.py       # Evaluation metrics
+├── slide/
+│   ├── __init__.py          # Package init, version, public API
+│   ├── _core.pyi            # Type stubs for C++ bindings
+│   ├── battery.py           # Battery class wrapper
+│   ├── cell.py              # Cell classes (SPM, ECM)
+│   ├── module.py            # Module classes (series, parallel)
+│   ├── cycler.py            # Cycler and procedures
+│   └── plotting.py          # Visualization utilities
 ├── tests/
 │   ├── __init__.py
-│   ├── test_dtw.py
-│   ├── test_clustering.py
-│   └── conftest.py      # pytest fixtures
-└── py_main.cpp          # pybind11 bindings
+│   ├── conftest.py          # pytest fixtures
+│   ├── test_cell.py
+│   ├── test_cycler.py
+│   └── test_battery.py
+├── examples/
+│   ├── basic_cycling.py
+│   ├── degradation_study.py
+│   └── pybamm_comparison.py
+└── src/
+    └── py_main.cpp          # pybind11/nanobind bindings
 ```
 
 ## Package Metadata
 
 In `__init__.py`:
 ```python
-"""DTWC++ - Dynamic Time Warping Clustering Library."""
+"""SLIDE - Simulator for Lithium-Ion Degradation.
+
+A fast lithium-ion battery simulation library with degradation modeling.
+"""
 
 from ._version import __version__
-from .dtw import DTW
-from .clustering import KMedoids, CLARA
+from .cell import CellSPM, CellECM
+from .module import ModuleS, ModuleP
+from .battery import Battery
+from .cycler import Cycler
 
-__all__ = ["DTW", "KMedoids", "CLARA", "__version__"]
+__all__ = [
+    "CellSPM",
+    "CellECM",
+    "ModuleS",
+    "ModuleP",
+    "Battery",
+    "Cycler",
+    "__version__",
+]
 ```

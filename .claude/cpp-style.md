@@ -1,85 +1,94 @@
-# DTWC++ C++ Style Guide
+# SLIDE C++ Style Guide
 
-This document describes the C++ coding conventions used in the DTWC++ project, derived from analyzing the existing codebase.
+This document describes the C++ coding conventions used in the SLIDE project, derived from analyzing the existing codebase.
 
 ## C++ Standard
 
-- **Minimum:** C++17
-- **Target:** C++17 (avoiding C++20 features for broader compiler compatibility)
+- **Required:** C++20
+- **Features used:** concepts, ranges, std::span, constexpr improvements
+- **CMake minimum:** 3.31
 
 ## Naming Conventions
 
 ### Classes and Structs
 - **PascalCase** (UpperCamelCase)
-- Examples: `Problem`, `Data`, `Range`, `Index`, `DataLoader`
+- Examples: `StorageUnit`, `Cell_SPM`, `Module_p`, `Battery`, `Cycler`, `State_SPM`
+- Cell types use underscores: `Cell_SPM`, `Cell_ECM`, `Cell_Bucket`
 
 ### Functions
-- **snake_case**
-- Examples: `readFile`, `load_folder`, `dtwFull`, `dtwBanded`
-- Exception: DTW algorithm variants may use mixed case for readability (`dtwFull_L`)
+- **camelCase** or **snake_case** (codebase has mixed usage)
+- Examples: `setCurrent`, `getStates`, `timeStep_CC`, `validStates`
+- Prefer consistency within a file/class
 
 ### Member Functions
-- **snake_case**
-- Examples: `set_numberOfClusters`, `get_name`, `p_vec`, `centroid_of`
+- **camelCase** preferred
+- Examples: `setCurrent()`, `getOCV()`, `timeStep_CC()`, `storeData()`
+- Getters: `V()`, `I()`, `T()`, `Cap()` (short names for frequently-called methods)
 
 ### Variables
-- **snake_case**
-- Examples: `p_vec`, `p_names`, `clusters_ind`, `centroids_ind`
+- **snake_case** or **camelCase** (mixed in codebase)
+- Examples: `Vcell_valid`, `nch`, `dt`, `tlim`
+- State variables often use abbreviated names: `I`, `V`, `T`, `SOC`
 
 ### Member Variables
-- **snake_case** with trailing underscore for private members
-- Examples: `name_`, `solver_`
-- Public members may omit the underscore: `Nc`, `distMat`, `band`
+- Public members: descriptive names (`Rcontact`, `Vmin`, `Vmax`)
+- Private members: trailing underscore optional
+- Constants in classes: UPPER_CASE (`VMIN`, `VMAX`)
 
 ### Constants
 - **UPPER_SNAKE_CASE** for compile-time constants
-- Examples: `DEFAULT_BAND_LENGTH`, `DEFAULT_MIP_SOLVER`
+- Examples: `MODULE_NSUs_MAX`, `DATASTORE_CELL`, `T_ENV`
+- Use `constexpr` over `#define` where possible
 
 ### Template Parameters
-- Descriptive names with `_t` suffix or `T` prefix
-- Examples: `data_t`, `Tfun`, `Tpath`
+- Descriptive names or single letters
+- Examples: `settings::nch`, `N_RC`, `cell_t`
 
 ### Namespaces
-- **snake_case** or short lowercase names
-- Primary namespace: `dtwc`
-- Nested: `dtwc::settings`, `dtwc::init`, `dtwc::scores`
+- Primary namespace: `slide`
+- Nested: `slide::settings`, `slide::util`
+- Use `namespace fs = std::filesystem;` for aliases
 
 ### Enums
 - Enum class names: **PascalCase**
-- Enum values: **PascalCase**
-- Examples: `Method::Kmedoids`, `Method::MIP`, `Solver::Gurobi`
+- Enum values: **PascalCase** or descriptive
+- Examples: `Status::Success`, `Status::Vmin_violation`
 
 ## File Organization
 
 ### Header Files
-1. Doxygen documentation block at top
-2. `#pragma once` (not traditional include guards)
+1. Copyright/license block
+2. `#pragma once`
 3. Project-local includes
 4. Standard library includes
-5. Third-party includes (e.g., Armadillo)
+5. Third-party includes (Eigen, Boost, etc.)
 
 Example:
 ```cpp
-/**
- * @file Problem.hpp
- * @brief Brief description
- * @date 19 Oct 2022
- * @author Author Name
+/*
+ * SLIDE - Simulator for Lithium-Ion Degradation
+ * Copyright (c) 2024, University of Oxford
  */
 
 #pragma once
 
-#include "Data.hpp"
-#include "settings.hpp"
+#include "State_SPM.hpp"
+#include "../StorageUnit.hpp"
 
-#include <string>
+#include <span>
 #include <vector>
 
-#include <armadillo>
+#include <Eigen/Dense>
 ```
 
-### Namespace Aliases
-Use `namespace fs = std::filesystem;` at namespace scope.
+### Source File Organization
+- Cell implementations split across multiple files:
+  - `Cell_SPM.hpp` - class definition
+  - `Cell_SPM.cpp` - constructor, initialization
+  - `Cell_SPM_dstate.cpp` - ODE derivatives
+  - `Cell_SPM_diffusion.cpp` - diffusion solver
+  - `Cell_SPM_degradation.cpp` - aging models
+  - `Cell_SPM_thermal.cpp` - thermal calculations
 
 ## Formatting
 
@@ -88,160 +97,160 @@ Use `namespace fs = std::filesystem;` at namespace scope.
 - Configured in `.clang-format`
 
 ### Braces
-- **Allman style** for classes, structs, functions
-- Opening brace on new line for class/function definitions
+- Opening brace on same line for functions
+- Allman style acceptable for class definitions
 
 ```cpp
-class Problem
+class Cell_SPM : public Cell
 {
 public:
-  void doSomething();
-};
-
-void Problem::doSomething()
-{
-  if (condition) {
-    // short blocks may use attached braces
+  double V() override {
+    // implementation
   }
-}
+};
 ```
 
 ### Line Length
-- No hard limit enforced (ColumnLimit: 0 in clang-format)
-- Prefer readable line breaks for long parameter lists
+- No hard limit (ColumnLimit: 0 in clang-format)
+- Break long parameter lists for readability
 
 ### Pointer/Reference Alignment
-- Attached to type (right alignment): `const std::vector<data_t> &x`
+- Attached to type: `const std::vector<double> &x`
 
-### Template Formatting
-- Space after `template` keyword: `template <typename T>`
-- No spaces inside angle brackets: `std::vector<int>`
+## Modern C++ Features
+
+### Smart Pointers
+- `Deep_ptr<T>` for StorageUnit ownership (enables polymorphic deep copy)
+- `std::unique_ptr<T>` for exclusive ownership
+- Avoid raw `new`/`delete` in core code
+
+```cpp
+// Deep_ptr enables polymorphic copies
+Deep_ptr<StorageUnit> su = makeBattery(...);
+auto copy = su;  // Deep copy via su->copy()
+```
+
+### std::span for Array Views
+```cpp
+// Zero-copy state access
+void getStates(std::span<double> s) const;
+Status setStates(std::span<double> s);
+```
+
+### State Classes
+- Inherit from `std::array` for performance
+- Provide named accessors for clarity
+
+```cpp
+struct State_SPM : public std::array<double, N>
+{
+  double &I() { return (*this)[0]; }
+  double &V() { return (*this)[1]; }
+  // ...
+};
+```
+
+### constexpr
+- Use for compile-time configuration:
+```cpp
+namespace settings {
+  constexpr int nch = 5;  // Chebyshev nodes
+  constexpr double T_ENV = 298.15;  // Kelvin
+}
+```
+
+### User-Defined Literals
+```cpp
+using namespace slide::literals;
+double temp = 25.0_degC;  // Converts to Kelvin
+```
+
+## Memory Management
+
+### No Raw new/delete
+- Use standard containers (`std::vector`, `std::array`)
+- Use smart pointers when dynamic allocation needed
+- Use `Deep_ptr` for polymorphic battery hierarchy
+
+### Thread-Local Storage
+- Use for per-thread scratch buffers in hot paths:
+```cpp
+thread_local std::vector<double> scratch_buffer;
+```
+
+### Avoid Allocations in Hot Paths
+- Pre-allocate vectors with known sizes
+- Pass output parameters instead of returning vectors
+- Use `std::span` for views into existing data
+
+## Error Handling
+
+### Status Codes
+- Use `Status` enum for recoverable errors
+- Return `Status::Success` on success
+- Specific violations: `Status::Vmin_violation`, `Status::Vmax_violation`, etc.
+
+```cpp
+Status setCurrent(double I, bool checkV) {
+  if (V() < VMIN()) return Status::Vmin_violation;
+  // ...
+  return Status::Success;
+}
+```
+
+### Exceptions
+- Use for unrecoverable errors or programming errors
+- Catch at appropriate boundaries
+
+### Assertions
+- Use Catch2 `REQUIRE()` in tests, not raw `assert()`
+- `assert()` acceptable for internal invariants in debug builds
 
 ## Documentation
 
 ### Doxygen Style
 ```cpp
 /**
- * @brief Short description.
- * @details Longer explanation if needed.
- * @tparam data_t Description of template parameter.
- * @param name Description of parameter.
- * @return Description of return value.
+ * @brief Set the current flowing through the storage unit.
+ * @param I Current in Amperes (positive = discharge)
+ * @param checkV If true, validate voltage limits
+ * @return Status indicating success or violation type
  */
-```
-
-### Member Variable Comments
-- Use `//!<` or `/*!< */` for inline documentation
-```cpp
-int Nc{ 1 }; /*!< Number of clusters. */
-bool is_distMat_filled{ false }; //!< Whether distance matrix is computed.
+Status setCurrent(double I, bool checkV);
 ```
 
 ### Inline Comments
 - Use `//` for single-line comments
-- Place on same line for short explanations
-```cpp
-if (&x == &y) return 0; // Same data, distance is 0
-```
-
-## Modern C++ Features
-
-### Initialization
-- Prefer brace initialization for members:
-```cpp
-int Nc{ 1 };
-bool flag{ false };
-```
-
-### Type Inference
-- Use `auto` for complex return types and iterators
-- Be explicit when type clarity matters
-
-### Move Semantics
-- Use `std::move` for efficiency in constructors and functions
-```cpp
-p_vec = std::move(p_vec_new);
-p_vec.push_back(std::move(p));
-```
-
-### Structured Bindings (C++17)
-```cpp
-auto &[short_vec, long_vec] = getVectors();
-```
-
-### constexpr
-- Use for compile-time constants:
-```cpp
-constexpr int DEFAULT_BAND_LENGTH = -1;
-constexpr data_t maxValue = std::numeric_limits<data_t>::max();
-```
-
-### Type Aliases
-- Prefer `using` over `typedef`:
-```cpp
-using distMat_t = arma::Mat<double>;
-using path_t = std::decay_t<decltype(settings::resultsPath)>;
-```
-
-## Memory Management
-
-### No Raw new/delete
-- Use standard containers (`std::vector`, `std::string`)
-- Use smart pointers when dynamic allocation is needed
-
-### RAII
-- All resources managed through constructors/destructors
-- File handles, locks, etc. cleaned up automatically
-
-### Thread-Local Storage
-- Use `thread_local` for per-thread scratch buffers:
-```cpp
-thread_local arma::Mat<data_t> C;
-thread_local static std::vector<data_t> buffer(10000);
-```
-
-## Error Handling
-
-### Exceptions
-- Use `std::runtime_error` for runtime errors
-- Provide descriptive error messages
-```cpp
-throw std::runtime_error("Error opening file: " + path.string());
-```
-
-### Validation
-- Validate inputs at public API boundaries
-- Use assertions for internal invariants in debug builds
+- Explain non-obvious logic, not obvious code
 
 ## Performance Considerations
 
-### Avoid Allocations in Hot Loops
-- Reuse buffers via thread-local storage
-- Reserve capacity for vectors when size is known
+### Hot Path Guidelines
+- Minimize virtual function calls where possible
+- Use `std::span` instead of copying vectors
+- Pre-compute values that don't change per time step
+- Profile before optimizing
 
-### Use References for Large Objects
-```cpp
-void process(const std::vector<data_t> &data);
-```
-
-### Prefer operator[] Over .at() in Hot Paths
-- `.at()` has bounds checking overhead
-- Use `operator[]` when indices are guaranteed valid
+### Benchmarking
+- Benchmarks in `benchmark/` folder
+- Record results with timestamps in `benchmark/README.md`
+- Compare Debug vs Release builds
 
 ## Parallelization
 
 ### OpenMP
 - Must be optional (guarded by `#ifdef _OPENMP`)
-- Provide serial fallback for all parallel code
+- Provide serial fallback
+- Use `settings::isParallel` to control at runtime
 
 ## Formatting Tool
 
 Run clang-format before committing:
 ```bash
-clang-format -i path/to/file.cpp
+clang-format -i src/**/*.cpp src/**/*.hpp
 ```
 
 Or check without modifying:
 ```bash
-clang-format --dry-run --Werror path/to/file.cpp
+clang-format --dry-run --Werror src/**/*.cpp
 ```
