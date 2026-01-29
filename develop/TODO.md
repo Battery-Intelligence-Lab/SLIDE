@@ -122,7 +122,7 @@
 - [ ] getNSUs may slow down time to time. 
 - [ ] std::vector<double> Iolds in Module_p.cpp
 - [ ] Use just one memory allocation, dynamically allocated memory space for Model_SPM. 
-
+- [ ] PyBAMM-compatible Experiment interface, so it could be a drop-in replacement for PyBAMM.
 
 ### From SLIDE v2: 
 
