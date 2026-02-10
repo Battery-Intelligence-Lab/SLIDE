@@ -16,7 +16,11 @@
       "WebFetch(domain:basilisk.fr)",
       "Bash(cmake:*)",
       "Bash(ctest:*)",
-      "Bash(\"bin\\\\Debug\\\\unit_test_Chebyshev.exe\" --reporter compact)"
+      "Bash(\"bin\\\\Debug\\\\unit_test_Chebyshev.exe\" --reporter compact)",
+      "Bash(\"bin\\\\Debug\\\\unit_test_Cell_SPM.exe\":*)",
+      "Bash(\"unit_test_Cell_SPM.exe\" --reporter compact)",
+      "Bash(\"./unit_test_Cell_SPM.exe\" --reporter compact)",
+      "Bash(\"bin\\\\Debug\\\\unit_test_Chebyshev.exe\" -v high)"
     ]
   }
 }
