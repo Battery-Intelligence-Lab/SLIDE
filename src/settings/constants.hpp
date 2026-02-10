@@ -11,7 +11,7 @@
 #include <numbers>
 
 namespace slide {
-inline constexpr double TIME_INF = 250 * 365 * 24 * 3600; // Very long time for no time limit.
+inline constexpr double TIME_INF = 250.0 * 365 * 24 * 3600; // Very long time for no time limit.
 inline constexpr double CONST_PI = std::numbers::pi;
 } // namespace slide
 

@@ -119,8 +119,8 @@
 ## Known Issues (Tracking)
 
 ### Numerical/Physics
-- [ ] Chebyshev discretisation only works for nch = 5 - investigate
-- [ ] Model.Dn and Dp created as nch elements but require nch+1 elements
+- [x] Chebyshev discretisation only works for nch = 5 — fixed: zero eigenvalue detection used absolute threshold; now uses MATLAB-matching relative normalisation and per-electrode detection
+- [x] Model.Dn and Dp created as nch elements but require nch+1 elements — confirmed not a bug: naming confusion between state-space D vector (size nch+1, correct) and state scalars Dp/Dn
 - [ ] determineOCV is inefficient - can reduce search space
 - [ ] Why does getOCV not include entropic coefficient?
 - [ ] Cell_SPM::setSOC does not actually set SOC

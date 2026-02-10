@@ -177,8 +177,8 @@ std::array<double, settings::nch + 2> Cell_SPM::getC(Domain dom) noexcept
   //!< Calculate concentration at the surface and inner nodes using the matrices from the spatial discretisation of the solid diffusion PDE
   //!< 	cp = M->Cp[:][:] * zp[:] + M->Dp*jp/Dpt
   //!< 	cn = M->Cn[:][:] * zn[:] + M->Dn*jn/Dnt
-  for (size_t i = 0; i < nch + 1; i++) //!< Problem here!!!!!!! #TODO
-  {                                    //!< loop to calculate at each surface + inner node
+  for (size_t i = 0; i < nch + 1; i++) //!< loop over surface + nch inner nodes (nch+1 = N rows of C matrix)
+  {
     double cpt{ 0 };
     for (unsigned j = 0; j < nch; j++)
       cpt += M->C[dom](i, j) * st.z(j, dom);
@@ -186,14 +186,13 @@ std::array<double, settings::nch + 2> Cell_SPM::getC(Domain dom) noexcept
     concentration[i] = cpt + M->D[dom](i) * molarFlux / Dt;
   }
 
-  //!< Calculate the concentration at centre node using the boundary condition (the concentration gradient at the centre has to be 0 due to symmetry)
-  //!< cp_centre = -1/2 (M->Cc[:]*cp +jp*Rp/Dpt)
-  //!< cn_centre = -1/2 (M->Cc[:]*cn +jn*Rn/Dnt)
+  //!< Calculate the concentration at centre node using the surface derivative boundary condition
+  //!< c_centre = cc_coeff * (Cc . c + flux*R/D), where cc_coeff = -1/DM1(N)
   double cpt{ 0 };
   for (size_t i = 0; i < nch + 1; i++)
     cpt += M->Cc(i) * concentration[i];
 
-  concentration[nch + 1] = -0.5 * (cpt + molarFlux * R / Dt);
+  concentration[nch + 1] = M->cc_coeff * (cpt + molarFlux * R / Dt);
 
   return concentration;
 }

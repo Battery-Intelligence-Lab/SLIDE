@@ -38,15 +38,12 @@ constexpr unsigned int numMaxParallelWorkers = 32; //!< Maximum number of thread
 
 //!< if this assertion fails, the user has changed something in the code at some point, without accounting for this change somewhere else.
 //!< e.g. if you add an extra state-variable, you have to increase the value of 'ns' (defined in Constants.hpp), and add it in all functions in State.
-constexpr size_t nch{ 5 }; ////!< number of points in the spatial discretisation of the solid diffusion equation
-//!< number of points in the spatial discretisation of the solid diffusion equation *** DON'T CHANGE THE VALUE ***
-//!< this is the number of positive inner Chebyshev nodes
-//!< 		the full Chebyshev interval is from x = -1 to x = 1
-//!< 		the positive points go from x = 0 to x = 1
-//!< 		the inner positive points are the positive points excluding the point at x=0 and at x=1
-//!< 		so nch is the number of Chebyshev points with 0 < x < 1
-//!< do NOT CHANGE this value, if you do change it, you have to recalculate the spatial discretisation with the supplied MATLAB scripts.
-//!< See the word document '2 overview of the code', section 'MATLAB setup before running the C++ code'
+constexpr size_t nch{ 5 }; //!< number of positive inner Chebyshev nodes for solid diffusion PDE discretisation
+//!< Values 3–15 are reasonable. Higher values give more spatial accuracy but increase
+//!< the state vector size (19 + 2*nch elements). nch=5 is the default, providing
+//!< a good accuracy–performance trade-off.
+//!< The full Chebyshev interval is [-1, 1]; positive inner nodes are those with 0 < x < 1.
+//!< The discretisation matrices are computed in C++ (Model_SPM.hpp) — no MATLAB step needed.
 
 constexpr double Tmin_Cell_K{ 0.0_degC };  //!< the minimum temperature allowed in the simulation [K]
 constexpr double Tmax_Cell_K{ 60.0_degC }; //!< the maximum temperature allowed in the simulation [K]

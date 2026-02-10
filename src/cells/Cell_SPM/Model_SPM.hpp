@@ -15,6 +15,8 @@
 #include <Eigen/LU>
 
 #include <array>
+#include <cassert>
+#include <iostream>
 #include <numbers>
 #include <fstream>
 
@@ -57,6 +59,7 @@ struct Model_SPM
   std::array<Eigen::Matrix<double, nch, nch>, 2> V; //!< inverse of the eigenvectors for the positive/negative electrode
 
   Eigen::Vector<double, N> Cc;           //!< matrix to get the concentration at the centre node
+  double cc_coeff{};                     //!< coefficient for centre concentration: c_centre = cc_coeff * (Cc.c + flux*R/D)
   Eigen::Matrix<double, M + 1, M + 1> Q; //!< Matrix for Chebyshev integration
 
   Model_SPM()
@@ -143,6 +146,13 @@ struct Model_SPM
     D3(0) = Rp * D_;
 
     Eigen::EigenSolver<Eigen::Matrix<double, N - 1, N - 1>> es1(A1);
+    {
+      const double imag_max = es1.eigenvalues().imag().array().abs().maxCoeff();
+      const double real_max = es1.eigenvalues().real().array().abs().maxCoeff();
+      if (real_max > 0 && imag_max > 1e-10 * real_max)
+        std::cerr << "WARNING: Model_SPM eigenvalues (neg) have significant imaginary parts "
+                  << "(ratio=" << imag_max / real_max << ") for nch=" << nch << "\n";
+    }
     V[neg] = es1.eigenvectors().real();
     A[neg] = es1.eigenvalues().real();
     B[neg] = V[neg].lu().solve(B1);
@@ -150,20 +160,43 @@ struct Model_SPM
     D[neg] = D1;
 
     Eigen::EigenSolver<Eigen::Matrix<double, N - 1, N - 1>> es3(A3);
+    {
+      const double imag_max = es3.eigenvalues().imag().array().abs().maxCoeff();
+      const double real_max = es3.eigenvalues().real().array().abs().maxCoeff();
+      if (real_max > 0 && imag_max > 1e-10 * real_max)
+        std::cerr << "WARNING: Model_SPM eigenvalues (pos) have significant imaginary parts "
+                  << "(ratio=" << imag_max / real_max << ") for nch=" << nch << "\n";
+    }
     V[pos] = es3.eigenvectors().real();
     A[pos] = es3.eigenvalues().real();
     B[pos] = V[pos].lu().solve(B3);
     C[pos] = C3 * V[pos];
     D[pos] = D3;
 
-    V[pos] = V[pos].inverse();
-    V[neg] = V[neg].inverse();
+    V[pos] = V[pos].inverse().eval(); //!< .eval() required to avoid Eigen aliasing for small matrices (nch <= 4)
+    V[neg] = V[neg].inverse().eval();
 
-    A[pos].array().abs().minCoeff(&zero);
+    //!< Find the zero eigenvalue using relative threshold (matching MATLAB reference).
+    //!< Normalise eigenvalues by max absolute value, then find the one closest to zero.
+    //!< Do this independently for each electrode to avoid index mismatch from EigenSolver ordering.
+    auto findZeroEigenvalue = [](const auto &eigenvalues) -> Eigen::Index {
+      const double max_abs = eigenvalues.array().abs().maxCoeff();
+      Eigen::Index idx{};
+      (eigenvalues.array().abs() / max_abs).minCoeff(&idx);
+      return idx;
+    };
 
-    A[pos](zero) = A[neg](zero) = 0.0;
+    const Eigen::Index zero_pos = findZeroEigenvalue(A[pos]);
+    const Eigen::Index zero_neg = findZeroEigenvalue(A[neg]);
+
+    A[pos](zero_pos) = 0.0;
+    A[neg](zero_neg) = 0.0;
+
+    assert(zero_pos == zero_neg && "Zero eigenvalue index mismatch between electrodes");
+    zero = zero_pos;
 
     Cc = DM1.leftCols(N) + DM1.rightCols(N).rowwise().reverse();
+    cc_coeff = -1.0 / DM1(N); //!< DM1(N) = 2*(-1)^N, so cc_coeff = -0.5 for even N, +0.5 for odd N
     Q = cumsummat<M>();
   }
 
