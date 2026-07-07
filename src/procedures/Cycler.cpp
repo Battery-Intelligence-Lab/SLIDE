@@ -145,7 +145,7 @@ Status Cycler::rest(double tlim, double dt, int ndt_data, ThroughputData &th)
  * @param[in] vlim Voltage limit to be respected (in Volts).
  * @return Status for the reason why the function stopped.
  */
-Status Cycler::setCurrent(double I, double vlim, double &v_now)
+Status Cycler::setCurrent(double I, double vlim)
 {
   const bool checkCellV = true;
 
@@ -223,7 +223,7 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
 
   while (ttot < tlim) {
 
-    auto succNow = setCurrent(I, vlim, vi); // #TODO this was not here I added to get nice results from
+    auto succNow = setCurrent(I, vlim);
     if (!isStatusSuccessful(succNow))
       return succNow; //!< stop if we could not successfully set the current
 
@@ -278,7 +278,7 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
   if (boolStoreData) storeData();
 
   //!< check if we are already at the limit
-  double vprev{ su->V() }, Ii{ su->I() }, vi{}; //!< voltage and current in the previous and present time step
+  double Ii{ su->I() }; //!< current in the present time step
 
   if ((std::abs(Ii) < Ilim)) return Status::ReachedCurrentLimit;
 
@@ -292,6 +292,8 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
     auto succNow = su->setVoltage(Vset);
     if (!isStatusOK(succNow)) return succNow; //!< stop if we could not successfully set the current
 
+    const double v_before = su->V(); //!< terminal voltage at the start of the step (for the trapezoid energy)
+
     dti = std::min(dti, tlim - ttot); //!< change length of the time step in the last iteration to get exactly tlim seconds
 
     //!< take a time step
@@ -304,13 +306,18 @@ Status Cycler::CV(double Vset, double Ilim, double tlim, double dt, int ndt_data
       return Status::timeStep_CC_failed;
     }
 
-    //!< increase the throughput
-    const auto dAh = std::abs(su->I() * dti / 3600.0);
-    vi = su->V();
+    //!< increase the throughput. The current is held constant during timeStep_CC
+    //!< (it is only re-adjusted by setVoltage at the top of the loop), so |I|*dt is
+    //!< exact. The voltage drifts away from Vset during the step -> trapezoid rule
+    //!< (v_before + v_after)/2, consistent with Cycler::CC. Previously this used the
+    //!< end-of-step voltage only, and th.time() was never accumulated at all.
+    const auto dAh = std::abs(su->I()) * dti / 3600.0;
+    const double v_after = su->V(); //!< terminal voltage at the end of the step
     ttot += dti;
     idat++;
+    th.time() += dti;
     th.Ah() += dAh;
-    th.Wh() += dAh * vi;
+    th.Wh() += dAh * 0.5 * (v_before + v_after);
 
     //!< Store a data point if needed
     if (boolStoreData && idat >= ndt_data) {

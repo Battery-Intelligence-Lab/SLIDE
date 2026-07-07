@@ -46,13 +46,19 @@ public:
 
   double Vof(double tt) const { return Vstart + (Vend - Vstart) * (tt / Tramp); }
 
-  //!< --- behaviour used by Cycler::CC ---
+  //!< --- behaviour used by Cycler::CC / Cycler::CV ---
   double V() override { return Vof(t); }
   double getOCV() override { return Vof(t); }
   double I() const override { return Icell; }
   slide::Status setCurrent(double Inew, bool = true, bool = true) override
   {
     Icell = Inew;
+    return slide::Status::Success;
+  }
+  //!< Inert voltage regulation: Cycler::CV only needs setVoltage to succeed; the
+  //!< terminal voltage keeps following the time ramp so integral(V dt) stays known.
+  slide::Status setVoltage(double, bool = true, bool = true) override
+  {
     return slide::Status::Success;
   }
   void timeStep_CC(double dt, int steps = 1) override { t += dt * steps; }
@@ -103,6 +109,44 @@ TEST_CASE("Cycler::CC energy throughput uses the trapezoid rule", "[Cycler][B3]"
   const int ndt_data = 0;    //!< no data storage
 
   const auto succ = cyc.CC(I, vlim, tlim, dt, ndt_data, th);
+
+  REQUIRE(succ == slide::Status::ReachedTimeLimit);
+  REQUIRE_THAT(th.time(), WithinAbs(3600.0, 1e-9));
+  REQUIRE_THAT(th.Ah(), WithinAbs(1.0, 1e-9));
+  //!< Registered band (linear ramp -> trapezoid is exact):
+  REQUIRE_THAT(th.Wh(), WithinAbs(3.5, 1e-6));
+}
+
+/**
+ * Registered test for P0-C6 (PLAN.md 2.5): Cycler::CV throughput.
+ *
+ * Cycler::CV accumulated Wh with the END-of-step voltage only (`th.Wh() += dAh * vi`
+ * with vi sampled after timeStep_CC) and never accumulated th.time() at all.
+ * Same 4.0 -> 3.0 V linear ramp over 3600 s at |I| = 1 A, dt = 1 s (the stub's
+ * setVoltage is inert, so CV reduces to time integration of a known V(t)).
+ *
+ * REGISTERED PREDICTION (written before running):
+ *   - time = 3600 s (pre-fix: 0 s, since CV never touched th.time() -> FAILS).
+ *   - Ah   = 1.0 (I is held constant during each step, |I|*dt is exact pre- and post-fix).
+ *   - Wh   = 3.5 +- 1e-6 (trapezoid exact on a linear ramp). The pre-fix end-of-step
+ *     Riemann sum gives sum_{k=1..3600}(1/3600)(4 - k/3600) = 3.49986... Wh,
+ *     which MISSES the band by ~1.4e-4 -> FAILS.
+ */
+TEST_CASE("Cycler::CV throughput uses the trapezoid rule and counts time", "[Cycler][P0-C6]")
+{
+  RampCell cell;
+  cell.setCurrent(1.0); //!< CV loop reads su->I(); keep |I| = 1 A throughout
+
+  slide::Cycler cyc(&cell, "P0C6_energy");
+
+  slide::ThroughputData th{};
+  const double Vset = 3.6;  //!< inert for the stub; any value inside the ramp
+  const double Ilim = 0.5;  //!< |I| stays 1 A -> current limit never reached
+  const double tlim = 3600.0;
+  const double dt = 1.0;
+  const int ndt_data = 0;
+
+  const auto succ = cyc.CV(Vset, Ilim, tlim, dt, ndt_data, th);
 
   REQUIRE(succ == slide::Status::ReachedTimeLimit);
   REQUIRE_THAT(th.time(), WithinAbs(3600.0, 1e-9));
