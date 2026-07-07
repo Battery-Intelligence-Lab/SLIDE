@@ -227,6 +227,9 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
     if (!isStatusSuccessful(succNow))
       return succNow; //!< stop if we could not successfully set the current
 
+    const double v_before = su->V(); //!< terminal voltage at the start of the step (for the trapezoid energy)
+    vi = v_before;                   //!< keep vi meaningful for the diagnostic in the catch below
+
     dti = std::min(dti, tlim - ttot); //!< the last time step, ensure we end up exactly at the right time
 
     //!< take a number of time steps
@@ -241,12 +244,16 @@ Status Cycler::CC(double I, double vlim, double tlim, double dt, int ndt_data, T
     }
 
     //!< Increase the throughput
+    const double v_after = su->V(); //!< terminal voltage at the end of the step (for the trapezoid energy)
     const auto dt_now = dti * nOnce;
     th.time() += dt_now;
     ttot += dt_now;
     th.Ah() += std::abs(I) * dt_now / 3600.0;
     idat += nOnce;
-    th.Wh() += std::abs(I) * dt_now / 3600 * vi; // #TODO This should be (v_before + v_after)/2
+    //!< Energy throughput via the trapezoid rule (v_before + v_after)/2 over the step.
+    //!< Previously this used a single voltage sample `vi`, which Cycler::setCurrent never
+    //!< assigns, so the term accumulated exactly 0 Wh.
+    th.Wh() += std::abs(I) * dt_now / 3600.0 * 0.5 * (v_before + v_after);
 
     //!< Store a data point if needed
     if (boolStoreData && idat >= ndt_data) {
