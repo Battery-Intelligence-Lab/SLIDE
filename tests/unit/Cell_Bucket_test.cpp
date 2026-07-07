@@ -62,14 +62,14 @@ TEST_CASE("getV_test", "[Cell_Bucket]")
   Cell_Bucket c1;
   std::string n = "na";
   //!< normal cell, should give no errors
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, 1e-15));
   double v{};
   auto val = c1.checkVoltage(v, false);
   REQUIRE(isStatusSuccessful(val));
-  REQUIRE_THAT(v, WithinAbs(3.15, 1e-15));
+  REQUIRE_THAT(v, WithinAbs(3.45, 1e-15));
 
   //!< cell with SOC out of range
   Cell_Bucket c2(n, 1, 1); //!< make a cell with soC equal to 1
@@ -97,10 +97,10 @@ TEST_CASE("setCurrent_test", "[Cell_Bucket]")
   // setCurrent with a valid voltage
   c1.setCurrent(0, true, true);
   REQUIRE_THAT(c1.I(), WithinAbs(0, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, 1e-15));
   c1.setCurrent(0); // without optional arguments
   REQUIRE_THAT(c1.I(), WithinAbs(0, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, 1e-15));
 }
 
 TEST_CASE("setT_test", "[Cell_Bucket]")
@@ -124,10 +124,10 @@ TEST_CASE("setSOC_test", "[Cell_Bucket]")
   // setCurrent with a valid voltage
   c1.setSOC(0.5, false, false);
   REQUIRE_THAT(c1.I(), WithinAbs(0, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, 1e-15));
   c1.setCurrent(0); // without optional arguments
   REQUIRE_THAT(c1.I(), WithinAbs(0, 1e-15));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, 1e-15));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, 1e-15));
 }
 
 TEST_CASE("setStates_test", "[Cell_Bucket]")

@@ -45,7 +45,13 @@ public:
 
 private:
   void createDFheaders();
-  std::vector<double> ocv_coefs = { -5147.78793933142, 28772.2793299200, -68881.8548465757 };
+  //!< Optional polynomial OCV fit (descending powers, see ocv_eval). Empty by default:
+  //!< getOCV() then interpolates the OCV table. Only the analytical parallel-module
+  //!< path sets this via set_ocv_coefs. The previous default was a truncated 3-term
+  //!< fit giving OCV = -55782.66 V at every SOC (PLAN.md P0-C2); the full 8-term fit
+  //!< it was cut from lives in tests/integration/parallel_model_sln_slide.cpp and
+  //!< spans only [2.53, 3.46] V, so it cannot be a default for a 2.7-4.2 V cell either.
+  std::vector<double> ocv_coefs{};
 
 
 protected:
@@ -90,9 +96,14 @@ public:
   double getRtot() override { return Rdc; } //!< Return the total resistance, V = OCV - I*Rtot
   double getThotSpot() override { return T(); }
   double getThermalSurface() override { return 0; }               //!< #TODO Not implemented?
-  double getOCV() override { return ocv_eval(ocv_coefs, SOC()); } //  { return OCV.interp(st.SOC(), settings::printBool::printCrit); }
+  //!< OCV: linear interpolation on the SOC-voltage table by default; polynomial
+  //!< evaluation if a fit has been supplied via set_ocv_coefs (analytical path).
+  double getOCV() override
+  {
+    return ocv_coefs.empty() ? OCV.interp(st.SOC(), settings::printBool::printCrit)
+                             : ocv_eval(ocv_coefs, SOC());
+  }
 
-  // Linear interpolation #TODO add a OCV model. OCV.interp(st.SOC(), settings::printBool::printCrit);
   double getRp(size_t i) const { return Rp[i]; }
   double getTau(size_t i) const { return Tau[i]; }
   double getC(size_t i) const { return getTau(i) / getRp(i); }

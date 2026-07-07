@@ -62,14 +62,14 @@ TEST_CASE("Test ECM getV", "[CELL_ECM]")
   Cell_ECM c1;
 
   //!< normal cell, should give no errors
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, TOL_EQ));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, TOL_EQ));
-  REQUIRE_THAT(c1.V(), WithinAbs(3.15, TOL_EQ));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, TOL_EQ));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, TOL_EQ));
+  REQUIRE_THAT(c1.V(), WithinAbs(3.45, TOL_EQ));
 
   //!< set to charging and check the voltage has increased
   c1.setCurrent(-1);
   double V = c1.V();
-  REQUIRE(V > 3.15);
+  REQUIRE(V > 3.45);
   c1.timeStep_CC(5);
   REQUIRE(c1.V() > V);
 
