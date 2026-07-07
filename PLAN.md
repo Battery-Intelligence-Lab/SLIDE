@@ -280,12 +280,17 @@ Three solver modes behind one interface, selected per pack (all operate on the s
   MNA-current-solve + per-cell-stepping architecture at pack scale.
 - **Mode B — ladder fast path:** pure parallel/series ladders get the Thomas-style O(n) elimination (generalisation of
   Nilsu's `setCurrent_analytical_impl` via the Thevenin interface). Detected automatically at compile().
-  **Upgrade (SOTA check 2026-07-07):** the published form of this solution — Lone, **Atlan**, Fasolato, Raimondo,
-  **Drummond**, arXiv:2508.14454 (2025) — goes further: analytical current distribution converts the parallel-pack
-  **DAE into plain ODEs** (algebraic constraint eliminated, not just solved fast; ~44% faster than direct DAE at
-  n=135, gains grow with n). Mode B adopts the ODE reformulation where its conditions hold (parallel topology,
-  ohmic interconnects, known R_k); the Thomas elimination remains the fallback for mixed ladders. This RESOLVES
-  §7 Q6: "Ross's analytical solution" = this paper; Nilsu is a co-author and her code is its implementation.
+  **Upgrade (SOTA check 2026-07-07, PROVISIONAL — Volkan: "never trust without measuring"):** the published form
+  of this solution — Lone, **Atlan**, Fasolato, Raimondo, **Drummond**, arXiv:2508.14454 (2025) — goes further:
+  analytical current distribution converts the parallel-pack **DAE into plain ODEs** (algebraic constraint
+  eliminated, not just solved fast; ~44% faster than direct DAE at n=135). This RESOLVES §7 Q6: "Ross's analytical
+  solution" = this paper; Nilsu is a co-author and her code is its implementation.
+  **Regime caution — the paper's assumptions clash with our main use case:** derivation assumes linear-in-current
+  ohmic drop with known/fixed R_k, and reported validity degrades with cell heterogeneity (report cites ~1e-4 σ
+  cap for n>100) — while SLIDE packs are SPM cells (r_eff varies with SOC/T) with %-level `varied()` spread, at
+  10⁴–10⁵ ≫ the paper's n=135 experimental validation. So: implement behind a compile()-verified regime check +
+  runtime flag, NEVER the silent default, and admit it only through gate **P2-G5** (below) with Mode A as arbiter.
+  Thomas elimination stays the unconditional ladder fast path.
 - **Mode C — relaxation advance (target for 10⁴–10⁵ cells, GPU):** Jorn's "PI" idea in its literature form:
   **waveform relaxation** (Miekkala & Nevanlinna, SIAM J. Sci. Stat. Comput. 1987, 10.1137/0908046) with **Baumgarte
   constraint stabilisation** (replace `g=0` by `ġ+2αg=0`) on the voltage-equality constraints. O(n) per step, no
@@ -549,7 +554,7 @@ another scientist can trust".
 | D-17 | Units checked at description layer (`Quantity` + UDLs), raw SI doubles after `build()` | dimensional safety with zero runtime cost | runtime unit objects (cost) or no checking (CLAUDE.md violation) |
 | D-18 | Per-pack `SolverWorkspace`: warm start + chord/Shamanskii Jacobian reuse with contraction-monitored refresh + explicit invalidation (§3.4.1) | keeps the speed the legacy statics bought (Volkan's quasi-Newton memory) without their races/staleness; Kelley ch.5 grounds the refresh rule | (a) function-statics (races, cross-instance pollution — §2.4 A2/A4); (b) refactorise every iteration (current Phase-0 state: correct, memoryless, pays O(n³/nnz) per iteration) |
 | D-19 | Pack construction = value-type combinator tree + `Netlist` escape hatch; `compile()` erases authoring shape (§3.4.2) | intuitive generation AND solver independence from nesting style; liionpack netlist schema = free PyBaMM interop | (a) runtime tree solved recursively (today — nesting multiplies iterations); (b) netlist-only API (hostile for the 99% ladder case) |
-| D-20 | Mode B adopts the analytical DAE→ODE reformulation for parallel packs (Lone/Atlan/Fasolato/Raimondo/Drummond, arXiv:2508.14454) where conditions hold; Thomas elimination as fallback | removes the algebraic constraint entirely (exact, no iteration, ~44% faster than direct DAE at n=135, growing with n); resolves Q6 — this IS Ross's solution, Nilsu's code implements it | route pure-parallel packs through generic MNA (Mode A) or WR (Mode C) — both pay for a constraint this case doesn't need |
+| D-20 | Mode B adopts the analytical DAE→ODE reformulation for parallel packs (Lone/Atlan/Fasolato/Raimondo/Drummond, arXiv:2508.14454) **PROVISIONALLY**: behind a compile()-verified regime check + flag, admitted only via measurement gate P2-G5 vs Mode A (Volkan 2026-07-07: never trust without measuring; paper's linearity/heterogeneity/known-R_k assumptions clash with SPM + `varied()` packs) | removes the algebraic constraint entirely — exact, no iteration — WHERE VALID; resolves Q6 (this IS Ross's solution, Nilsu's code implements it) | (a) unconditional adoption (regime unproven at our heterogeneity/scale/nonlinearity); (b) ignoring it (pays for a constraint the pure-parallel linear case doesn't need) |
 
 ## 5. Migration strategy & verification discipline
 
@@ -615,7 +620,12 @@ restore digit-matches cold solve). P2-G2 Mode B ≡ Mode A on ladders to
 1e-10 A. P2-G3 nested-constructed pack (p-in-p-in-s) compiles flat and solves in ONE Newton loop (no nested
 iteration), Newton iterations ≤ 8 on the 4p heterogeneous-resistance case that historically blew up. P2-G4 workspace
 efficacy: on a 100-step 4p CC segment, count of numeric factorisations ≤ 10 (vs 1 per iteration today) at identical
-converged currents (1e-10 A) — an iteration/factorisation COUNT, not a timing (§5.6).
+converged currents (1e-10 A) — an iteration/factorisation COUNT, not a timing (§5.6). P2-G5 Mode B-ODE (D-20)
+admission — registered BEFORE implementation: branch currents vs Mode A arbiter on (a) linear ECM 16p, R spread 1%:
+max |ΔI| ≤ 1e-8 A (paper's home regime — must be exact); (b) SPM 16p, `varied()` 2% capacity + 5% resistance
+spread, 1C CCCV cycle: max |ΔI|/I_branch ≤ 1e-3 over trajectory; (c) same at 256p. Failure of (b) or (c) does NOT
+kill the fast path — it CONFINES it: compile() regime check then restricts Mode B-ODE to the measured-valid
+envelope and logs why; falsification is a deliverable, record the numbers either way.
 
 ### Phase 3 — Integration upgrade
 Deliver: exponential modal propagator, Strang multirate, event-aligned segmentation, arena checkpoints/rollback,
