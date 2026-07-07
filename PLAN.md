@@ -212,6 +212,14 @@ using Kokam_SPM = SPM<SpectralDiffusion<5>, ThermalLumped, AgingPack<SEI_Kinetic
   recompilation (C++) or via selecting the closest registered composition (Python/MATLAB) — same philosophy as CasADi:
   the dynamic language chooses among precompiled fast paths.
 - `nch` stops being a global: it is a template parameter of the composition; different batches may use different nch.
+- **Extension axes (Volkan, 2026-07-07 — "COMSOL-lite": a fixed compiled menu, not a runtime PDE engine).** Each
+  slot of the composition is an independent axis a future model plugs into without touching the others:
+  *discretisation* (`SpectralDiffusion<NCH>` now; FVM/FDM particle grids, DFN/SPMe electrolyte discretisations later —
+  same slot, same `CellDesign` input); *geometry* (spherical particle now; plate/cylinder via a geometry tag the
+  kernel is templated on — shape factors are compile-time constants); *thermal / heat transfer* (ThermalLumped now;
+  Thermal1D-through-thickness and pack-coupled cooling later; `h_conv` is a §3.11 `ParamFn` so constant vs
+  correlation vs user-injected costs the same at run time). New physics = new type in a slot + registry entry —
+  the hierarchy, arena, and solver layers are untouched by construction.
 
 ### 3.3 Physical description hierarchy — Electrode as first-class (kill `_p`/`_n`)
 
@@ -611,6 +619,13 @@ expected ~10 mV model-difference scale — document, don't hide, the modelling d
 MEX `+slide` package symmetric with Python; CUDA one-cell-per-thread batch stepping (host-side coupling); docs site
 update (installation, quickstarts ×3 languages, "add a cell model", "add an ageing mechanism"); v4.0.0 SemVer release,
 CHANGELOG consolidation. Gates defined when phase opens.
+
+### Beyond v4.0 (recorded so design choices don't foreclose them)
+
+- **WASM GUI (Volkan, 2026-07-07):** Emscripten build of the dependency-free core + a browser front-end. Costless to
+  keep open: core already must build with zero deps (non-negotiable #4), no threads assumed outside the pool (§3.8),
+  no filesystem dependence in the hot path. Only rule it adds NOW: no platform API in core without a portable seam.
+- Thermal 1D/2D per-cell models; blended electrodes (`vector<ActiveMaterial>`); SYCL/HIP (Q5); f32 storage (Q1).
 
 ## 7. Open questions for Volkan (OPEN/ASSUMED ledger)
 
