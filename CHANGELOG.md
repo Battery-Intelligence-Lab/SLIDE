@@ -9,6 +9,7 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 
 ## Added
 * **v4 core keystone (`slide::core`, `src/core/`)**: `StateArena` (contiguous 64-byte-aligned variable-major SoA state storage; snapshot/restore = single `memcpy`) and `BatchBuilder` (build-time state layout from component `StateSpec` declarations; hands out integer `StateSlice` handles; reserves the cross-batch thermal-flux seam `q_ext`). Header-only, not linked into the legacy library (strangler migration, PLAN.md §5). Tests include allocation-counting groundwork for the zero-per-step-allocation gate (P1-G2).
+* **P1-G0 parity-drift pilot**: `SpectralDiffusionLegacyKernel` (op-order-faithful replica of the legacy `Cell_SPM` forward-Euler diffusion update on `StateArena` rows) + lockstep pilot test. Result: **bit-identical** (drift exactly 0 over 1200 steps), so the v4 parity gates keep the registered 1e-12 digit-diff band (PLAN.md §7 Q8, resolved).
 
 ## Fixed
 * **Build restored under clang ≥ 21**: `fmt` bumped 11.0.2 → 11.2.0; 11.0.2's consteval format-string checking rejects its own internal format calls (`format-inl.h`/`os.cc`), so the tree did not compile at all. (P0-C1)

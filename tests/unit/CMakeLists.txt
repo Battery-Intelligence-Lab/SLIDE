@@ -19,6 +19,10 @@ add_executable_with_coverage_and_test(unit_test_Cycler_energy Cycler_energy_test
 add_executable_with_coverage_and_test(unit_test_core_StateArena core_StateArena_test.cpp)
 target_link_libraries(unit_test_core_StateArena PRIVATE slide_core)
 
+# Phase 1 P1-G0 pilot (Q8): legacy vs v4 core diffusion parity-drift — needs BOTH legacy src and slide_core
+add_executable_with_coverage_and_test(unit_test_core_P1G0_pilot core_P1G0_pilot_test.cpp)
+target_link_libraries(unit_test_core_P1G0_pilot PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)
