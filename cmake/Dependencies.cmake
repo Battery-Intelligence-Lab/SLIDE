@@ -32,9 +32,13 @@ if(NOT TARGET Catch2::Catch2WithMain)
 endif()
 
 # fmt library:
+# NOTE: 11.0.2 fails to compile under clang >= 21 (consteval format-string
+# checking rejects fmt's own internal format calls: "call to consteval function
+# is not a constant expression", format-inl.h / os.cc). Fixed upstream in 11.1.x;
+# pinned to the latest 11.x release. See PLAN.md P0-C1.
 CPMAddPackage(
   NAME fmt
-  URL "https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz"
+  URL "https://github.com/fmtlib/fmt/archive/refs/tags/11.2.0.tar.gz"
 )
 
 CPMAddPackage(
