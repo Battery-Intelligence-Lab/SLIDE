@@ -49,7 +49,10 @@ void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
     case 0: //!< no SEI growth
       is += 0;
       break;
-    case 1: //!< kinetics and diffusion according to Pinson & Bazant, Journal of the Electrochemical society 160 (2), 2013
+    case 1: //!< kinetics-limited SEI growth: pure Tafel side-reaction current, NO SEI-layer
+            //!< diffusion limitation (isei does not depend on the SEI thickness except through
+            //!< the resistive overpotential rsei*delta*I). ref: Ning & Popov, Journal of the
+            //!< Electrochemical Society 151 (10), 2004.
     {
       const auto kseit = sei_p.sei1k * exp(sei_p.sei1k_T * ArrheniusCoeff); //!< Arrhenius relation for the rate parameter at the cell temperature
       is += nsei * F * kseit * exp(-nsei * F / (Rg * st.T()) * alphasei * (OCVnt + etan - OCVsei + rsei * st.delta() * I()));
@@ -59,7 +62,12 @@ void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
       //!< on charge, I < 0 and etan < 0.
       //!< so higher charging current -> more negative term in exponential -> larger isei
     } break;
-    case 2: //!< Kinetic model according to Ning & Popov, Journal of the Electrochemical Society 151 (10), 2004 #TODO -> In slidepack case1 paper and case2 paper are swapped.
+    case 2: //!< kinetics + linear SEI-layer diffusion: diffusion-limited growth, the series
+            //!< term isei3 = delta/(nsei*F*Dseit) grows with the SEI thickness so the reaction
+            //!< slows as the SEI thickens (sqrt(t) behaviour). ref: Pinson & Bazant, Journal of
+            //!< the Electrochemical society 160 (2), 2013.
+            //!< (NB: the physics-to-reference pairing here is the opposite of the labels used in
+            //!< slide-pack; it is aligned to the actual formula below, which is the source of truth.)
     {
       const auto kseit = sei_p.sei2k * exp(sei_p.sei2k_T * ArrheniusCoeff); //!< Arrhenius relation for the rate parameter at the cell temperature
       const auto Dseit = sei_p.sei2D * exp(sei_p.sei2D_T * ArrheniusCoeff); //!< Arrhenius relation for the diffusion constant at the cell temperature
@@ -100,7 +108,7 @@ void Cell_SPM::SEI(double OCVnt, double etan, double *isei, double *den)
     } break;
     default: //!< unknown degradation model
       std::cerr << "ERROR in Cell_SPM::SEI, unknown SEI degradation model with identifier "
-                << static_cast<int>(sei_id) << ". Only values 0 to 3 are allowed. Throw an error.\n";
+                << static_cast<int>(sei_id) << ". Only values 0 to 4 are allowed. Throw an error.\n";
       throw 106;
       break;
     }

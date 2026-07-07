@@ -43,10 +43,16 @@ struct DEG_ID
 
   DegArray SEI_id{}; //!< Array with identifications to decide which SEI models to use.
   /**
+   * (Numbering and physics are aligned to the switch in Cell_SPM::SEI, Cell_SPM_degradation.cpp,
+   *  which is the source of truth.)
    * - 0:	no SEI growth
-   * - 1:	kinetic model only (Tafel kinetics), ref: Ning & Popov, Journal of the Electrochemical Society 151 (10), 2004
-   * - 2:	Pinson&Bazant model: linear diffusion + Tafel kinetics, ref: Pinson & Bazant, Journal of the Electrochemical society 160 (2), 2013
-   * - 3:	Christensen and Newman model, ref: Christensen & Newmann, Journal of the Electrochemical Society 152 (4), 2005
+   * - 1:	kinetics-limited growth (pure Tafel side reaction, no SEI-diffusion limitation),
+   *      ref: Ning & Popov, Journal of the Electrochemical Society 151 (10), 2004
+   * - 2:	kinetics + linear SEI-layer diffusion (diffusion-limited, sqrt(t) growth),
+   *      ref: Pinson & Bazant, Journal of the Electrochemical society 160 (2), 2013
+   * - 3:	Christensen & Newman model (SEI-layer diffusion + Butler-Volmer kinetics),
+   *      ref: Christensen & Newman, Journal of the Electrochemical Society 152 (4), 2005
+   * - 4:	optimisation-fit variant of the Christensen & Newman form (fixed a_L_K, fitted k/D)
    */
 
   data_t SEI_porosity{ 0 }; //!< Integer deciding whether we reduce the active volume fraction due to SEI growth.

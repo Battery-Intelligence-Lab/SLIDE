@@ -21,3 +21,9 @@ The architect merges these into CHANGELOG.md (agent A owns that file).
   rule `(v_before + v_after)/2` over each step, sampling the terminal voltage before and
   after `timeStep_CC`. Previously it used a single `vi` sample that `Cycler::setCurrent`
   never assigns, so the CC energy throughput was always 0 Wh. (`src/procedures/Cycler.cpp`)
+- Corrected the SEI degradation-model documentation to match the code (the source of truth):
+  the unreachable-model error message now says "0 to 4" (cases 0-4 exist, not 0-3); the
+  inline comments for SEI ids 1 and 2 had their literature references swapped relative to
+  the actual formulas (id 1 = kinetics-limited/Ning & Popov, id 2 = kinetics + SEI-layer
+  diffusion/Pinson & Bazant); and `DEG_ID`'s SEI list now documents id 4. No behavioural
+  change. (`src/cells/Cell_SPM/Cell_SPM_degradation.cpp`, `src/cells/Cell_SPM/param/DEG_ID.hpp`)
