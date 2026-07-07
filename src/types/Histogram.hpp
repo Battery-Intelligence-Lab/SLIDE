@@ -48,10 +48,12 @@ public:
      * bins[0] is number of elements less than x_min
      * bins[end] is number of elements more than x_max
      * */
+    if (bins.empty()) return; //!< default-constructed (Nbins==0) histogram records nothing; avoids OOB write.
+
     auto i = static_cast<int>(1 + (x - x_min) / dx);
 
     const auto ssize = static_cast<int>(bins.size());
-    i = std::max(0, std::min(i, ssize - 1)); // #TODO what happens if container is empty?
+    i = std::max(0, std::min(i, ssize - 1));
     bins[i]++;
   }
 

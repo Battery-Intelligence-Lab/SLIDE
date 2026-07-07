@@ -13,3 +13,7 @@ The architect merges these into CHANGELOG.md (agent A owns that file).
   `<variant>` and other standard headers into `namespace slide` (corrupting them) and nested
   `slide::slide::CellDataWriter`, so the header could not be compiled at all when included.
   (`src/recording/CellDataStorage.hpp`)
+- `Histogram::add()` no longer performs an out-of-bounds write on a default-constructed
+  (empty-bins, `Nbins == 0`) histogram: it now returns early when there are no bins. This
+  affects the global `slide::EmptyHistogram` and any histogram used before `initialise()`.
+  (`src/types/Histogram.hpp`)
