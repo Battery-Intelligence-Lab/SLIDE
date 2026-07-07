@@ -16,6 +16,7 @@
 #include <cassert>
 #include <cmath>
 #include <random>
+#include <type_traits>
 #include <iostream>
 #include <fstream>
 
@@ -264,7 +265,11 @@ TEMPLATE_TEST_CASE("test_Modules_p", "[Module_p]", Cell_ECM<1>, Cell_SPM)
     auto cell1 = dynamic_cast<TestType *>(su.get()); // Dynamic cast from StorageUnit to Cell
     REQUIRE(cell1->SOC() < soc1);
     double expected_SOC = 0.5 - 1.0 * 5.0 / 3600.0 / cell1->Cap();
-    REQUIRE_THAT(cell1->SOC(), WithinAbs(expected_SOC, TOL_EQ));
+    // ECM/Bucket SOC is exact coulomb counting -> machine precision. Cell_SPM::SOC()
+    // is estimated from the lithium fractions (v3 redesign, improved in 147ee4c), so
+    // it deviates from the coulomb count by O(1e-5) after a 5 s, ~1C step.
+    const double soc_tol = std::is_same_v<TestType, Cell_SPM> ? 5e-5 : TOL_EQ;
+    REQUIRE_THAT(cell1->SOC(), WithinAbs(expected_SOC, soc_tol));
   }
 
   // Charge
