@@ -15,6 +15,11 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 * **`Module_p::setVoltage`** no longer keeps its solver vectors/matrix in function-`static` storage (same instance/thread-sharing hazard as A2). (bug A2)
 * **Analytical parallel-branch solver** returns `Status::Invalid_SUs` instead of dereferencing an unchecked `dynamic_cast` when a child is not a `Cell_ECM<1>`. (bug A5)
 * **Parallel-solver early-exit residual** uses a proper L∞ norm (`max`) instead of a malformed running sum of maxes. (bug A7)
+* **Time-series cell data storage (`CellDataStorage<storeTimeData>`) now appends** each timestep instead of dropping history: the ill-formed `data.assign(data.end(), {...})` became `data.insert(data.end(), {...})`. The `#include "CellDataWriter.hpp"` was also moved out of `namespace slide` to global scope — the mid-namespace include pulled standard headers into `namespace slide` and nested `slide::slide::CellDataWriter`, so the header could not compile when included. (bug B1)
+* **`Histogram::add()` no longer writes out of bounds** on a default-constructed histogram (empty bins): it returns early when there are no bins. Affects `slide::EmptyHistogram` and any histogram used before `initialise()`. (bug B2)
+* **`Cycler::CC` energy throughput (`Wh`) is now actually accumulated**, integrating with the trapezoid rule `(v_before + v_after)/2` per step. Previously it multiplied by a `vi` sample that `Cycler::setCurrent` never assigned, so CC energy throughput was always 0 Wh. (bug B3)
+* **SEI degradation-model documentation aligned with the code**: the unreachable-model message now says ids "0 to 4" (cases 0–4 exist); the inline literature references for SEI ids 1 and 2 were swapped relative to the formulas (id 1 = kinetics-limited/Ning & Popov, id 2 = kinetics + SEI-layer diffusion/Pinson & Bazant); `DEG_ID` now documents id 4. No behavioural change. (bug B4)
+* **Degradation forward-Euler invariant documented and debug-guarded** in `Cell_SPM::timeStep_CC`: the loop integrates every state index (including the algebraic I/V slots) and is only correct because degradation leaves those derivatives at 0 — now asserted in debug builds. Digit-identical behaviour. (bug B5)
 
 <br/><br/>
 # SLIDE v3.0.0 (aka slide-pack merged into SLIDE)

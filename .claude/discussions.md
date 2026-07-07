@@ -137,6 +137,22 @@ This document tracks design decisions, architecture evolution, and session notes
 
 ---
 
+## 2026-07-07 — v4 architecture decided (Fable session)
+
+- **Decision**: Full v4 refactor architecture fixed and recorded in [/PLAN.md](../PLAN.md) §3–§4 (14-entry
+  decision log with rejected alternatives). Headlines: SoA state arena with archetype batches (D-01),
+  compile-time model composition with per-batch dispatch (D-02), netlist compiled flat to sparse MNA with
+  three solver modes — sparse Newton / Thomas ladder / waveform-relaxation+Baumgarte (D-03..05), exponential
+  modal propagator replacing forward Euler on diffusion (D-07), Strang multirate (D-08), strangler migration
+  with digit-diff parity gates (D-14).
+- **Evidence**: three-scout audit 2026-07-07; findings condensed in PLAN.md §2 with file:line citations.
+  Chebyshev nch≠5 root-caused (centre-node `-0.5` sign + Eigen inverse aliasing; already fixed on `Claude`).
+- **Next Steps**: Phase 0 bug fixes (2 Opus agents, in flight); Phase 1 core data model after Volkan reviews
+  PLAN.md §3/§4 and §7 open questions.
+- **Blockers**: PLAN.md §7 Q1–Q7 await Volkan's answers (assumptions recorded, work proceeds on them).
+
+---
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

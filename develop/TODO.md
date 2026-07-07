@@ -3,6 +3,11 @@
 > **Note**: This is a living document. See [COMPLETED.md](COMPLETED.md) for archived completed items.
 >
 > **Disclaimer**: Some items are informal notes. Priority may shift based on user needs.
+>
+> **2026-07-07 — v4 refactor started.** The authoritative vision/roadmap is now [/PLAN.md](../PLAN.md)
+> (architecture, decision log, phased gates, open questions). Phase 0 (12 confirmed bugs, see PLAN.md §2.4)
+> is in flight; several "Critical Bugs" below are superseded by that list (Qcontact double-count,
+> redistributeCurrent stale-Jacobian/static-state). Update PLAN.md §8, not just this file.
 
 ---
 
