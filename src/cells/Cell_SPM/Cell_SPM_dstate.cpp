@@ -327,7 +327,13 @@ void Cell_SPM::timeStep_CC(double dt, int nstep)
     }
 
     //!< forward Euler time integration: s(t+1) = s(t) + ds/dt * dt
-    //!< degradation accumulation
+    //!< degradation accumulation.
+    //!< INVARIANT: this loop deliberately runs over ALL state indices (including the current
+    //!< i_I and voltage i_V slots, which are algebraic outputs, not integrated states). It is
+    //!< only correct because dState_degradation() never writes those slots, so d_st[i_I] and
+    //!< d_st[i_V] are exactly 0 and add nothing. Guard the invariant in debug builds; if a
+    //!< future degradation model writes I/V, this fires instead of silently corrupting them.
+    assert(d_st.I() == 0.0 && d_st.V() == 0.0);
     for (size_t i = 0; i < st.size(); i++)
       st[i] += d_st[i] * dt * nstep;
   }

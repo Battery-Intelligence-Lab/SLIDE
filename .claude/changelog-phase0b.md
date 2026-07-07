@@ -27,3 +27,8 @@ The architect merges these into CHANGELOG.md (agent A owns that file).
   the actual formulas (id 1 = kinetics-limited/Ning & Popov, id 2 = kinetics + SEI-layer
   diffusion/Pinson & Bazant); and `DEG_ID`'s SEI list now documents id 4. No behavioural
   change. (`src/cells/Cell_SPM/Cell_SPM_degradation.cpp`, `src/cells/Cell_SPM/param/DEG_ID.hpp`)
+- Documented and debug-guarded the invariant behind the degradation forward-Euler loop in
+  `Cell_SPM::timeStep_CC`: the loop integrates every state index (including the algebraic
+  current/voltage slots) and is only correct because `dState_degradation` leaves `d_st[i_I]`
+  and `d_st[i_V]` at 0. Added `assert(d_st.I() == 0.0 && d_st.V() == 0.0)`. Digit-identical
+  behaviour (Release: assert removed; Debug: invariant holds). (`src/cells/Cell_SPM/Cell_SPM_dstate.cpp`)
