@@ -7,6 +7,9 @@ This changelog contains a non-exhaustive list of new features and notable bug-fi
 <br/><br/>
 # Unreleased
 
+## Added
+* **v4 core keystone (`slide::core`, `src/core/`)**: `StateArena` (contiguous 64-byte-aligned variable-major SoA state storage; snapshot/restore = single `memcpy`) and `BatchBuilder` (build-time state layout from component `StateSpec` declarations; hands out integer `StateSlice` handles; reserves the cross-batch thermal-flux seam `q_ext`). Header-only, not linked into the legacy library (strangler migration, PLAN.md §5). Tests include allocation-counting groundwork for the zero-per-step-allocation gate (P1-G2).
+
 ## Fixed
 * **Build restored under clang ≥ 21**: `fmt` bumped 11.0.2 → 11.2.0; 11.0.2's consteval format-string checking rejects its own internal format calls (`format-inl.h`/`os.cc`), so the tree did not compile at all. (P0-C1)
 * **Default `Cell_ECM`/`Cell_Bucket` OCV is no longer −55 782 V.** The default `ocv_coefs` polynomial was a truncated 3-term fit that evaluates to ≈ −55 782 V at every SOC, so default ECM/Bucket cells (and any `Module_p` built from them) were unusable. `getOCV()` now interpolates the cell's SOC-voltage table by default (restoring the pre-Aug-2024, 2.7–4.2 V behaviour); the polynomial path remains available by supplying a fit via `set_ocv_coefs` (analytical parallel-module work). Unit-test voltage expectations updated 3.15 V → 3.45 V: the 3.15 V values dated from the deleted standalone `Cell_Bucket` class whose dummy OCV ramped 2.0–4.3 V; the alias `Cell_ECM<0>`'s table ramps 2.7–4.2 V, giving 3.45 V at SOC 0.5. (P0-C2)

@@ -3,6 +3,7 @@ add_library(src STATIC)
 
 target_include_directories(src PUBLIC .)
 
+add_subdirectory(core) # v4 slide::core — NOT linked into legacy `src` (strangler, PLAN.md §5)
 add_subdirectory(types)
 add_subdirectory(cells)
 add_subdirectory(modules)

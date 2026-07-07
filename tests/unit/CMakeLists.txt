@@ -15,6 +15,10 @@ add_executable_with_coverage_and_test(unit_test_Histogram Histogram_test.cpp)
 # Phase 0 (agent B) regression test for bug B3
 add_executable_with_coverage_and_test(unit_test_Cycler_energy Cycler_energy_test.cpp)
 
+# Phase 1 (v4 core): StateArena/BatchBuilder (PLAN.md §3.1) — links slide_core, not legacy physics
+add_executable_with_coverage_and_test(unit_test_core_StateArena core_StateArena_test.cpp)
+target_link_libraries(unit_test_core_StateArena PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)
