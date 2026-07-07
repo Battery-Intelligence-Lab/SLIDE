@@ -280,12 +280,21 @@ Three solver modes behind one interface, selected per pack (all operate on the s
   MNA-current-solve + per-cell-stepping architecture at pack scale.
 - **Mode B — ladder fast path:** pure parallel/series ladders get the Thomas-style O(n) elimination (generalisation of
   Nilsu's `setCurrent_analytical_impl` via the Thevenin interface). Detected automatically at compile().
+  **Upgrade (SOTA check 2026-07-07):** the published form of this solution — Lone, **Atlan**, Fasolato, Raimondo,
+  **Drummond**, arXiv:2508.14454 (2025) — goes further: analytical current distribution converts the parallel-pack
+  **DAE into plain ODEs** (algebraic constraint eliminated, not just solved fast; ~44% faster than direct DAE at
+  n=135, gains grow with n). Mode B adopts the ODE reformulation where its conditions hold (parallel topology,
+  ohmic interconnects, known R_k); the Thomas elimination remains the fallback for mixed ladders. This RESOLVES
+  §7 Q6: "Ross's analytical solution" = this paper; Nilsu is a co-author and her code is its implementation.
 - **Mode C — relaxation advance (target for 10⁴–10⁵ cells, GPU):** Jorn's "PI" idea in its literature form:
   **waveform relaxation** (Miekkala & Nevanlinna, SIAM J. Sci. Stat. Comput. 1987, 10.1137/0908046) with **Baumgarte
   constraint stabilisation** (replace `g=0` by `ġ+2αg=0`) on the voltage-equality constraints. O(n) per step, no
   matrix solve, embarrassingly parallel; convergence conditional on an index-1 topological criterion — `compile()`
   checks it and refuses Mode C otherwise. Gain α tuned like a Baumgarte damping constant, with the exact solve
-  (Mode A) as the arbiter in tests.
+  (Mode A) as the arbiter in tests. **Honesty note (SOTA check):** WR for packs is published (J. Energy Storage
+  2022, S2352152X21014304) and Baumgarte is standard, but the WR+Baumgarte COMBINATION has no published precedent
+  found — it is our synthesis; treat as a research contribution, gated on the Mode-A arbiter (P4-G1/G2). Mode C is
+  only needed where B's conditions fail (arbitrary series-parallel meshes at 10⁴⁺ cells).
 
 NOT chosen: one monolithic 100k-state DAE handed to IDA/KLU — KLU is serial and a global Jacobian factorises poorly;
 liionpack deliberately avoids it too (§4 D-06).
@@ -439,8 +448,13 @@ violations surface as `Status` from `step()`, and the Cycler restores the arena 
   `until <x> V|A|C/n`, joinable `or until`), cycles via tuples/`*`.
 - **ParameterSet:** flat `map<string, double|Curve>` keyed by PyBaMM's exact strings
   (`"Negative electrode thickness [m]"` …) + absorption table → internal `ElectrodeParams`. Ship `Chen2020` first.
-  ⚠ verify current diffusivity key name (`"Negative particle diffusivity [m2.s-1]"` renamed recently) against the
-  installed PyBaMM before freezing the table.
+  **Verified against PyBaMM stable 26.6.2.0, CalVer (SOTA check 2026-07-07):** key on the NEW names with
+  deprecation-aware aliases for old ones — `"Negative electrode diffusivity"`→`"Negative particle diffusivity"`
+  (v25.6.0, PR #3624); `"Exchange-current density for lithium plating"`→`"…for lithium metal electrode"` (v25.4.0);
+  `"1 + dlnf/dlnc"`→`"Thermodynamic factor"` (v23.3). Behavioural notes: `update()` is now update-insert
+  (`check_already_exists` deprecated v25.12.0); default constants no longer auto-added on construction (v25.12.0).
+  Experiment grammar additions to cover: custom steps (v25.4.0), custom terminations (v25.10.0), `start_time`
+  (v23.9). Solution additions: `.yp`, `.observe()` (v25.12.0) — out of scope v4.0, document as such.
 - **Python:** nanobind + scikit-build-core wheels. `slide.Experiment`, `slide.ParameterValues("Chen2020")`,
   `slide.Simulation(...).solve()`, dict-like `Solution["Terminal voltage [V]"]` (+ `.entries`, call-interpolation,
   `.plot()`, `save_data(..., to_format="csv"|"matlab")`). Options dict (`{"SEI": "solvent-diffusion limited", ...}`)
@@ -535,6 +549,7 @@ another scientist can trust".
 | D-17 | Units checked at description layer (`Quantity` + UDLs), raw SI doubles after `build()` | dimensional safety with zero runtime cost | runtime unit objects (cost) or no checking (CLAUDE.md violation) |
 | D-18 | Per-pack `SolverWorkspace`: warm start + chord/Shamanskii Jacobian reuse with contraction-monitored refresh + explicit invalidation (§3.4.1) | keeps the speed the legacy statics bought (Volkan's quasi-Newton memory) without their races/staleness; Kelley ch.5 grounds the refresh rule | (a) function-statics (races, cross-instance pollution — §2.4 A2/A4); (b) refactorise every iteration (current Phase-0 state: correct, memoryless, pays O(n³/nnz) per iteration) |
 | D-19 | Pack construction = value-type combinator tree + `Netlist` escape hatch; `compile()` erases authoring shape (§3.4.2) | intuitive generation AND solver independence from nesting style; liionpack netlist schema = free PyBaMM interop | (a) runtime tree solved recursively (today — nesting multiplies iterations); (b) netlist-only API (hostile for the 99% ladder case) |
+| D-20 | Mode B adopts the analytical DAE→ODE reformulation for parallel packs (Lone/Atlan/Fasolato/Raimondo/Drummond, arXiv:2508.14454) where conditions hold; Thomas elimination as fallback | removes the algebraic constraint entirely (exact, no iteration, ~44% faster than direct DAE at n=135, growing with n); resolves Q6 — this IS Ross's solution, Nilsu's code implements it | route pure-parallel packs through generic MNA (Mode A) or WR (Mode C) — both pay for a constraint this case doesn't need |
 
 ## 5. Migration strategy & verification discipline
 
@@ -653,7 +668,7 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | Q3 | Legacy API: keep as façade over core after parity, or hard-break at v4.0? | ASSUMED façade through v4.x, delete in v5 |
 | Q4 | KLU/SuiteSparse as optional dep acceptable? | ASSUMED yes (optional, Eigen SparseLU default) — matches non-negotiable #4 |
 | Q5 | GPU: CUDA-only first? | ASSUMED yes; SYCL/HIP revisit after CUDA lands |
-| Q6 | Ross's analytical parallel solution — is `setCurrent_analytical_impl` (Nilsu 2024) the code you meant, or is there a separate derivation to recover? | ASSUMED it's this one |
+| Q6 | Ross's analytical parallel solution — is `setCurrent_analytical_impl` (Nilsu 2024) the code you meant, or is there a separate derivation to recover? | **RESOLVED 2026-07-07 [confirmed]**: arXiv:2508.14454 (Lone, Atlan, Fasolato, Raimondo, Drummond 2025) — Nilsu co-authored it; her code implements it. Adopted as Mode-B upgrade (D-20) |
 | Q7 | PyBaMM version to target for the parameter absorption table? | ASSUMED latest stable at Phase 7 start; key-rename check mandatory |
 
 ## 8. Status ledger
@@ -667,4 +682,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-07 | Phase 0 follow-up (P0-C1 fmt/clang21, P0-C2 ocv_coefs, P0-C3 thickp, P0-C5/C6 Cycler) | IN FLIGHT — goal: full ctest green |
 | 2026-07-07 | Solver-memory design (§3.4.1, D-18, P2-G4) | DONE — Volkan clarified the legacy statics were intentional quasi-Newton Jacobian memory; design keeps the memory, adds invalidation + thread safety. Agent cap now ≤2 (header) |
 | 2026-07-07 | Pack description layer (§3.4.2, D-19) | DONE — combinator tree + Netlist escape hatch; compile() erases authoring shape. Per Volkan: agents = Opus HIGH (not xhigh), no "ultrathink" in agent prompts |
+| 2026-07-07 | SOTA verification (report: `.claude/reports/sota-verification-2026-07-07.md`) | DONE — C1/C3/C5/C6 CONFIRMED, C2/C4 NUANCED (liionpack maintenance-mode; WR+Baumgarte combo unpublished = our synthesis), C7 PyBaMM 26.6.2.0 keys verified. Q6 RESOLVED, D-20 added (arXiv:2508.14454 Mode-B upgrade). Description-layer zero-cost pattern confirmed (CasADi/Eigen/Halide precedent) provided erasure is total |
 | — | Phases 1–8 | NOT STARTED — Phase 1 is next; do not start before Volkan reviews §3/§4 |
