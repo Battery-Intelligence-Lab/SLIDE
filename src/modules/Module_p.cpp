@@ -124,7 +124,9 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
   using A_type = Eigen::MatrixXd;
   using b_type = Eigen::VectorXd;
 
-  static b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
+  //!< Per-call locals (NOT static): sharing these across Module_p instances/threads gave
+  //!< wrong currents, out-of-bounds access for differently-sized modules, and data races.
+  b_type b(nSU), Ib(nSU), Vb(nSU), r_est(nSU);
 
   const double tolerance = 1e-9;
 
@@ -153,7 +155,7 @@ Status Module_p::setVoltage(double Vnew, bool checkI, bool print)
       Vb[i] = Vnew;
     }
 
-    static A_type A(nSU, nSU);
+    A_type A(nSU, nSU); //!< per-call (NOT static): must be sized/filled for THIS module.
     // Set up the A matrix in Ax = b
     for (size_t j = 0; j < nSU; j++)
       for (size_t i = 0; i < nSU; i++) {
@@ -270,11 +272,15 @@ void Module_p::timeStep_CC(double dt, int nstep)
   if (!blockDegAndTherm) {
     therm.time += nstep * dt;
 
-    //!< Increase the heat from the contact resistances
-    double Ii = 0; //!< current through resistor I
+    //!< Increase the heat from the contact resistances.
+    //!< Contact resistor i carries the summed branch current of cells i..N-1 (the cells
+    //!< 'behind' it in the ladder, matching the getVall convention). The accumulator MUST
+    //!< be reset for each i; previously it was declared outside the loop and kept summing
+    //!< across i, so Qcontact grew quadratically (double-counting the contact heat).
     for (size_t i = 0; i < SUs.size(); i++) {
-      for (size_t j = i; j < SUs.size(); j++) // #TODO very important! Not calculating current for Rcontact properly!!!!!!!!!!
-        Ii += SUs[j]->I();                    //!< resistor i sees the currents through the cells 'behind' them
+      double Ii = 0; //!< current through contact resistor i
+      for (size_t j = i; j < SUs.size(); j++)
+        Ii += SUs[j]->I(); //!< resistor i sees the currents through the cells 'behind' it
 
       therm.Qcontact += Rcontact[i] * sqr(Ii) * nstep * dt;
     }
