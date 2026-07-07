@@ -5,7 +5,7 @@
 > continuing this work must (1) read this file first, (2) execute the next unblocked item in §6, (3) update §8 status
 > ledger and this header. Requirements originate in `.claude/FABLE.md`. Do not re-litigate decisions in §4 without new
 > evidence that overturns the cited rationale.
-> **Operating rules:** ≤3 parallel agents; small reviewable commits on branch `Claude`; every user-visible change updates
+> **Operating rules:** ≤2 parallel agents (Volkan, 2026-07-07 — quota tightening; was ≤3); small reviewable commits on branch `Claude`; every user-visible change updates
 > `CHANGELOG.md` (Unreleased); wall-clock benchmarks on this machine are UNRELIABLE (user runs parallel jobs) — judge
 > performance by structural arguments (allocation counts, complexity, vectorizability), not timings.
 
@@ -282,6 +282,107 @@ Three solver modes behind one interface, selected per pack (all operate on the s
 NOT chosen: one monolithic 100k-state DAE handed to IDA/KLU — KLU is serial and a global Jacobian factorises poorly;
 liionpack deliberately avoids it too (§4 D-06).
 
+### 3.4.1 Solver memory: per-pack `SolverWorkspace` (the Jacobian cache done right)
+
+**Origin (Volkan, 2026-07-07):** the legacy function-`static` Eigen objects in `Module_p_impl.cpp` were not an
+accident — they were a deliberate quasi-Newton memory: keep the factorised Jacobian and secant resistance estimates
+across calls so the solver does NOT pay a Jacobian rebuild + factorisation every time step. The Phase-0 fix
+(per-call locals, refactorise every iteration — `Module_p_impl.cpp:481,527,546`) restored correctness but destroyed
+that memory: every `setCurrent` now re-seeds `r_est` from `getRtot()` and refactorises per iteration. v4 keeps the
+idea and fixes the storage class. The named literature form of the idea is the **chord/Shamanskii method** (Newton
+with a frozen, periodically refreshed Jacobian — Kelley, *Iterative Methods for Linear and Nonlinear Equations*,
+SIAM 1995, ch. 5).
+
+**The object.** One `SolverWorkspace` per compiled `Pack`, owned as a member, allocated exactly once at
+`Pack::compile()` (PC-1: zero per-step allocations):
+
+```cpp
+struct SolverWorkspace {
+  // persistent across time steps — the "memory" the statics were emulating
+  VectorXd        x;        // last converged branch currents + node voltages → warm start
+  VectorXd        r_eff;    // per-branch secant Thevenin resistances (NOT re-seeded from getRtot() each call)
+  Factorization   fact;     // numeric LU of J(r_eff), reused across iterations AND steps
+  int             age = 0;  // steps since last numeric refactor (diagnostics)
+  bool            valid = false;
+  // fixed at compile()
+  SymbolicPattern pattern;  // analyzePattern() once; every refactor reuses it
+  // scratch, sized once
+  VectorXd        b, dx;
+};
+```
+
+**Freshness policy — refresh only when the cache stops paying (registered rule, not vibes):**
+
+- Iterate with the *cached* factorisation: each iteration = residual build O(n) + triangular solve O(nnz), no
+  factorisation. Monitor the contraction ratio `ρ_k = ‖b_{k+1}‖_∞ / ‖b_k‖_∞`.
+- Chord-method theory: convergence is linear with rate ∝ ‖J_cached − J_true‖. Between consecutive time steps
+  `r_eff` drifts at the %-level (SOC/T move slowly), so ρ ≪ 1 and 1–2 iterations/step is the expected regime —
+  this is exactly the win the statics bought.
+- **Refresh trigger:** `ρ_k > 0.5` or `k > 4` iterations → rebuild J from the current secant `r_eff` (O(nnz)
+  fill, pattern unchanged), numeric refactorisation only, reset `age`. Worst case degenerates to today's
+  refactor-per-iteration behaviour; typical case is one factorisation amortised over many steps.
+- **Tier-0 shortcut:** a batch whose cells declare `linear == true` (ECM with fixed R) has a *constant* J →
+  factor once at `compile()`, never refresh; the chord iteration is then exact Newton and converges in 1 step.
+  Detected structurally at compile, not by runtime probing (fixes the A3 class of bug by construction).
+- Mode B (Thomas ladder) skips `fact` entirely — an O(n) elimination is cheaper than any cache — but still uses
+  `x`/`r_eff` warm start. Mode C (waveform relaxation) uses `x` as the initial waveform iterate.
+
+**Invalidation contract — the part the statics never had (and why they broke: shared across instances/threads,
+wrong sizes, stale across topology changes — §2.4 A2/A4):**
+
+| Event | Action |
+|-------|--------|
+| `Pack::compile()` | build `pattern`; `valid = false` |
+| Checkpoint **restore** (rollback) | `valid = false`; keep `pattern`; keep `r_eff` as initial guess only |
+| Topology event (contactor open/close) | recompile symbolic; full reset |
+| Temperature/SOC step beyond registered threshold | force refresh at next solve |
+
+- The workspace is **ephemeral state**: excluded from `StateArena` snapshots (it is reconstructible; snapshots
+  stay pure-state memcpy, PC-7). The restore path MUST call `ws.invalidate()` — parity test required: solve
+  after rollback digit-matches a cold solve on the same state.
+- **Threading:** one workspace per pack instance; parallelism is across packs/batches, so no sharing and no locks
+  (PC-4). Never function-`static`, never `thread_local` (a pack that migrates threads under the pool would pick
+  up a foreign cache).
+
+**Deliverable placement:** Phase 2 (Mode A/B carry the workspace from day one); the rollback-invalidation parity
+test joins P2-G1.
+
+### 3.4.2 Pack description layer — intuitive generation, compiled once
+
+The user-facing construction API is a **value-semantic description tree** (cheap, copyable, printable); nothing
+about how the user *writes* the topology may influence how it is *solved* — `compile()` erases the authoring shape
+(fixes the FABLE.md complaint "depending how it is created, solving becomes a mess"). Mirrors the two-layer split of
+the parameter system (§3.11): friendly at description time, flat arrays at run time.
+
+```cpp
+using namespace slide;
+auto cell = CellDesign{ .neg = ElectrodeDesign{...}, .pos = ElectrodeDesign{...}, ... };   // §3.11
+
+auto brick  = parallel(5, cell,  Link{ .R_contact = 0.5_mOhm });        // 5p
+auto string_= series (14, brick, Link{ .R_busbar  = 0.1_mOhm });        // 14s5p
+auto pack   = Pack(string_, PackOptions{ .cooling = CoolingDesign{...} });
+
+// cell-to-cell heterogeneity — composes with §3.11 varied():
+auto spread = parallel(5, varied(cell, { .capacity = Spread::normal(0.02, /*seed*/ 42) }), Link{...});
+
+// escape hatch for non-ladder topologies + liionpack/PyBaMM users:
+auto custom = Pack(Netlist::from_csv("topology.csv"));   // liionpack netlist schema (node, node, R, type)
+
+pack.compile();   // ONE pass: archetype batching → flat netlist → sparsity pattern →
+                  // ladder detection (Mode B) / index-1 check (Mode C) → SolverWorkspace alloc
+```
+
+- `series(n, child, link)` / `parallel(n, child, link)` nest arbitrarily; repetition shares one description by
+  value. `Link` packs carry connection physics (contact/busbar R, later: fuses, contactors) — designated
+  initializers, no positional soup (D-15).
+- **Addressing:** compile assigns hierarchical path IDs (`"s03.p2"`, matching legacy `getFullID` style) in a flat
+  string table; results are indexable by path or `(batch, lane)`. The tree itself is discarded after compile
+  (kept only if the user retains the design object — it is just data).
+- **Round-trip:** any compiled pack can emit its flat netlist (`pack.netlist()`) — serialisable, diffable,
+  re-importable; this is also the PyBaMM/liionpack interop surface (Phase 7).
+- Contactor/switch events (later phase): declared in the description; each discrete configuration gets its own
+  cached symbolic pattern at compile so a switch flip is a pattern swap, not a re-analysis.
+
 ### 3.5 Time integration: exponential modal propagator + multirate
 
 - **Diffusion (fast, linear, modally decoupled):** the Chebyshev eigendecomposition already gives
@@ -424,6 +525,8 @@ another scientist can trust".
 | D-15 | Parameters grouped in designated-initializer packs on physical entities; any API function needing >4 params takes a pack | COMSOL grouping precedent; kills `function(...15 inputs)` and the 4-positional-x0/x100 ctor style | flat global parameter bag / long positional signatures |
 | D-16 | Every function-valued parameter canonicalised at `build()` to {scalar, SoA row, uniform LUT, separable LUT product, Arrhenius}; build-time accuracy gate | hot-path cost independent of injected expression complexity; preserves PC-5 | opaque std::function/callables in kernels |
 | D-17 | Units checked at description layer (`Quantity` + UDLs), raw SI doubles after `build()` | dimensional safety with zero runtime cost | runtime unit objects (cost) or no checking (CLAUDE.md violation) |
+| D-18 | Per-pack `SolverWorkspace`: warm start + chord/Shamanskii Jacobian reuse with contraction-monitored refresh + explicit invalidation (§3.4.1) | keeps the speed the legacy statics bought (Volkan's quasi-Newton memory) without their races/staleness; Kelley ch.5 grounds the refresh rule | (a) function-statics (races, cross-instance pollution — §2.4 A2/A4); (b) refactorise every iteration (current Phase-0 state: correct, memoryless, pays O(n³/nnz) per iteration) |
+| D-19 | Pack construction = value-type combinator tree + `Netlist` escape hatch; `compile()` erases authoring shape (§3.4.2) | intuitive generation AND solver independence from nesting style; liionpack netlist schema = free PyBaMM interop | (a) runtime tree solved recursively (today — nesting multiplies iterations); (b) netlist-only API (hostile for the 99% ladder case) |
 
 ## 5. Migration strategy & verification discipline
 
@@ -465,10 +568,14 @@ diffusion with constant-flux BC vs the analytic series solution (Carslaw & Jaege
 
 ### Phase 2 — Pack layer
 Deliver: netlist combinators + `Pack::compile()` (flatten, sparsity, ladder detection, index-1 check), Mode A sparse
-Newton (Eigen SparseLU; KLU optional), Mode B Thomas ladder, Thevenin batch interface.
-**Gates:** P2-G1 parity vs legacy `Module_s`/`Module_p` on 3s2p (band §5.2). P2-G2 Mode B ≡ Mode A on ladders to
+Newton (Eigen SparseLU; KLU optional), Mode B Thomas ladder, Thevenin batch interface, `SolverWorkspace` (§3.4.1)
+with warm start, chord refresh policy, and invalidation contract.
+**Gates:** P2-G1 parity vs legacy `Module_s`/`Module_p` on 3s2p (band §5.2) + rollback-invalidation test (solve after
+restore digit-matches cold solve). P2-G2 Mode B ≡ Mode A on ladders to
 1e-10 A. P2-G3 nested-constructed pack (p-in-p-in-s) compiles flat and solves in ONE Newton loop (no nested
-iteration), Newton iterations ≤ 8 on the 4p heterogeneous-resistance case that historically blew up.
+iteration), Newton iterations ≤ 8 on the 4p heterogeneous-resistance case that historically blew up. P2-G4 workspace
+efficacy: on a 100-step 4p CC segment, count of numeric factorisations ≤ 10 (vs 1 per iteration today) at identical
+converged currents (1e-10 A) — an iteration/factorisation COUNT, not a timing (§5.6).
 
 ### Phase 3 — Integration upgrade
 Deliver: exponential modal propagator, Strang multirate, event-aligned segmentation, arena checkpoints/rollback,
@@ -526,4 +633,6 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-07 | PLAN.md v1 written | DONE (this file) |
 | 2026-07-07 | Phase 0 (A1–A7, B1–B5) | DONE — 11 commits on `Claude` (7529039…91faaf9); A6 refuted (non-bug, documented); regression tests added (Module_p_phase0, CellDataStorage, Histogram, Cycler_energy); CHANGELOG consolidated. Baseline had 4/6 test binaries failing PRE-EXISTING (§2.5 P0-C2/C3); agents' tests all pass; no new failures introduced |
 | 2026-07-07 | Phase 0 follow-up (P0-C1 fmt/clang21, P0-C2 ocv_coefs, P0-C3 thickp, P0-C5/C6 Cycler) | IN FLIGHT — goal: full ctest green |
+| 2026-07-07 | Solver-memory design (§3.4.1, D-18, P2-G4) | DONE — Volkan clarified the legacy statics were intentional quasi-Newton Jacobian memory; design keeps the memory, adds invalidation + thread safety. Agent cap now ≤2 (header) |
+| 2026-07-07 | Pack description layer (§3.4.2, D-19) | DONE — combinator tree + Netlist escape hatch; compile() erases authoring shape. Per Volkan: agents = Opus HIGH (not xhigh), no "ultrathink" in agent prompts |
 | — | Phases 1–8 | NOT STARTED — Phase 1 is next; do not start before Volkan reviews §3/§4 |
