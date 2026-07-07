@@ -216,7 +216,6 @@ Status Module::setStates(setStates_t s, int &n, bool checkV, bool print)
   getStates(sorig); // #TODO actually we can getStates only one of the SUs we dont have to get all...
                     // I mean we of course get all of them to reset the previous ones but get them when needed.
 
-  int n_sorig = 0;
   //!< set the new cell states
   for (size_t i = 0; i < getNSUs(); i++) {
 
@@ -230,8 +229,13 @@ Status Module::setStates(setStates_t s, int &n, bool checkV, bool print)
         std::cerr << "ERROR in Module::setStates when setting the state of cell " << i
                   << ". Restoring the old states, status: " << getStatusMessage(status) << '\n';
 
+      //!< Restore children 0..i to their original states. Each child j must read ITS
+      //!< own slice of sorig, so n_sorig starts at 0 here and is advanced per child by
+      //!< the child's setStates. (Previously this used SUs[i] for every j and never
+      //!< restored children 0..i-1, silently corrupting their states.)
+      int n_sorig = 0;
       for (size_t j = 0; j <= i; j++)
-        SUs[i]->setStates(sorig, n_sorig, false, print); //!< restore the original states without checking validity (they should be valid)
+        SUs[j]->setStates(sorig, n_sorig, false, print); //!< restore the original states without checking validity (they should be valid)
 
       return status;
     }
