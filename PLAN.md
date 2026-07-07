@@ -187,6 +187,11 @@ class  StateArena {                                    // owns doubles; snapshot
 - A "cell" is `(batch_id, lane)`. Heterogeneous packs = several batches (one per distinct model composition).
   Per-cell parameters are also SoA rows (cell-to-cell variation stays vectorisable); parameters shared by the whole
   batch are scalars in the batch header.
+- **Stated assumption (Fable review 2026-07-07):** the batch-amortisation wins (PC-2's one indirect call per batch,
+  D-01's SIMD width) presume FEW compositions with MANY lanes each (realistic packs: 1–3 archetypes). Per-cell
+  heterogeneity in *composition* (not parameters — those are `varied()` rows) fragments the pack toward
+  single-lane batches ≈ the old per-cell dispatch. `compile()` emits a diagnostic ("N batches, min lanes = k")
+  and warns below a registered lane floor; per-lane ageing-mask rows are the escape hatch before fragmenting.
 - Cumulative quantities (`time, Ah, Wh`) are ordinary rows. Everything else observable (V, OCV, SOC, T_surface, R) is
   **derived on demand** — the recording system stores state snapshots, not observables (evidence: §2.1 last bullet).
 - Rollback: `Cycler`-level checkpoints become row-range memcpy of the arena (no per-cell traversal).
@@ -605,11 +610,14 @@ before the fix.
 ### Phase 1 — Core data model + SPM kernels (the keystone)
 Deliver: `StateArena`/`StateSpec`/`StateSlice`/`BatchBuilder`, `Domain`/`ElectrodeParams`, `SpectralDiffusion<NCH>`,
 `ThermalLumped`, ageing kernels (SEI/LAM/CS/plating ported mechanism-by-mechanism), composition registry + factory,
-legacy-Euler stepping mode. Single-cell `Simulation` façade.
-**Gates:** P1-G1 parity single-cell scenarios (§5.2 band). P1-G2 one batch of 10⁴ identical cells steps with ZERO
-per-step heap allocations (assert via allocation-counting new). P1-G3 Chebyshev external oracle: transient sphere
-diffusion with constant-flux BC vs the analytic series solution (Carslaw & Jaeger form), registered band rel. err
-< 1e-6 at nch=5,8,12; plus cross-check vs Howey Spectral_li-ion_SPM conventions.
+legacy-Euler stepping mode. Single-cell `Simulation` façade. Arena scalar behind `using real_t = double;` (Q1);
+`BatchBuilder` reserves the cross-batch thermal-flux seam — declaration only, D-21 designs it before Phase 2 (Q9).
+**Gates:** P1-G0 parity-drift pilot (Q8): 1-cell legacy-Euler 1C CC, measure |ΔV|/|Δstate| drift legacy vs v4 kernel;
+outcome closes Q8 (keep 1e-12 band, or pin op-order/`-ffp-contract=off`, or loosen with ulp argument) BEFORE P1-G1
+runs. P1-G1 parity single-cell scenarios (§5.2 band as resolved by P1-G0). P1-G2 one batch of 10⁴ identical cells
+steps with ZERO per-step heap allocations (assert via allocation-counting new). P1-G3 Chebyshev external oracle:
+transient sphere diffusion with constant-flux BC vs the analytic series solution (Carslaw & Jaeger form), registered
+band rel. err < 1e-6 at nch=5,8,12; plus cross-check vs Howey Spectral_li-ion_SPM conventions.
 
 ### Phase 2 — Pack layer
 Deliver: netlist combinators + `Pack::compile()` (flatten, sparsity, ladder detection, index-1 check), Mode A sparse
@@ -673,13 +681,15 @@ CHANGELOG consolidation. Gates defined when phase opens.
 
 | ID | Question | Current assumption |
 |----|----------|-------------------|
-| Q1 | float32 state option for GPU/memory? | ASSUMED f64 everywhere in v4.0; f32 storage + f64 accumulate later (dtw-cpp precedent) |
-| Q2 | Keep `Cell_ECM<N_RC>` template generality in v4 core? | ASSUMED yes as a composition (`ECM<NRC>`), it's cheap |
-| Q3 | Legacy API: keep as façade over core after parity, or hard-break at v4.0? | ASSUMED façade through v4.x, delete in v5 |
-| Q4 | KLU/SuiteSparse as optional dep acceptable? | ASSUMED yes (optional, Eigen SparseLU default) — matches non-negotiable #4 |
-| Q5 | GPU: CUDA-only first? | ASSUMED yes; SYCL/HIP revisit after CUDA lands |
+| Q1 | float32 state option for GPU/memory? | **DECIDED 2026-07-07 (Volkan)**: f64 everywhere in v4.0 — forced by the §5.2 parity band (≤1e-12 rel is unreachable in f32, ~1e-7 ulp); memory fine (10⁵ × ~300 B ≈ 30 MB ≪ PAY-3's 1 GB). Insurance: arena scalar behind a single `using real_t = double;` alias; mmap header type field width-aware — f32-storage/f64-accumulate later is a new arena instantiation, not a rewrite |
+| Q2 | Keep `Cell_ECM<N_RC>` template generality in v4 core? | **DECIDED 2026-07-07 (Volkan)**: yes — entailed by registered gates (P2-G5a linear-ECM arbiter, §5.2 3s2p ECM parity case, §3.4.1 Tier-0 constant-Jacobian shortcut). Cost = one registry entry (D-02) |
+| Q3 | Legacy API: keep as façade over core after parity, or hard-break at v4.0? | **DECIDED 2026-07-07 (Volkan)**: façade through v4.x, delete in v5 — the parity harness is every phase gate's arbiter (D-14, §5.2) and needs legacy compiled+runnable through Phase 8 |
+| Q4 | KLU/SuiteSparse as optional dep acceptable? | **DECIDED 2026-07-07 (Volkan)**: yes (optional, Eigen SparseLU default) — matches non-negotiable #4. Condition: Phase-2 CMake detection degrades silently to Eigen (no configure failure) on all 3 platforms (§1 goal 7) |
+| Q5 | GPU: CUDA-only first? | **DECIDED 2026-07-07 (Volkan)**: yes; SYCL/HIP revisit after CUDA lands. Only present-cost rule: no platform API in core without a portable seam (already required for WASM, §6 Beyond-v4) |
 | Q6 | Ross's analytical parallel solution — is `setCurrent_analytical_impl` (Nilsu 2024) the code you meant, or is there a separate derivation to recover? | **RESOLVED 2026-07-07 [confirmed]**: arXiv:2508.14454 (Lone, Atlan, Fasolato, Raimondo, Drummond 2025) — Nilsu co-authored it; her code implements it. Adopted as Mode-B upgrade (D-20) |
-| Q7 | PyBaMM version to target for the parameter absorption table? | ASSUMED latest stable at Phase 7 start; key-rename check mandatory |
+| Q7 | PyBaMM version to target for the parameter absorption table? | **DECIDED 2026-07-07 (Volkan)**: latest stable at Phase 7 start; key-rename check mandatory. PyBaMM is CalVer — pinning today buys nothing; absorption table already keyed to verified 26.6.2.0 names + deprecation aliases (§3.9) |
+| Q8 | Parity band (§5.2, ≤1e-12 rel) vs SoA kernel floating-point reassociation: different summation order + FMA contraction give O(1 ulp)/step, amplified over 10³–10⁴ Euler steps; 1e-12 rel ≈ 4 ulps. Pin legacy op-order + `-ffp-contract=off` in parity mode, or loosen the band? | **OPEN — decision rule registered 2026-07-07 (Volkan): pilot first.** P1-G0 (§6 Phase 1): 1-cell legacy-Euler pilot measures the actual drift between legacy `Cell_SPM` and the v4 kernel over a registered 1C CC scenario BEFORE the P1-G1 band is attempted. Drift ≤ 1e-12 rel → keep band as-is; > 1e-12 → choose between op-order pinning (+`-ffp-contract=off`, parity builds only) and a loosened band with an ulp-amplification argument, logged here. P1-G1 may not run before Q8 closes |
+| Q9 | Pack-level thermal coupling has no compiled representation (`Pack::compile()` emits an electrical netlist only), but legacy modules exchange heat between children + `CoolSystem`, and T-states sit inside P2-G1's parity band | **DECIDED 2026-07-07 (Volkan)**: reserve the seam now, design later — Phase 1 `BatchBuilder` reserves a cross-batch thermal-flux interface (declaration only, no implementation); a full D-21 (thermal adjacency compiled alongside the netlist) must be written and logged in §4 BEFORE Phase 2 opens. P2-G1 is unpassable until D-21 exists |
 
 ## 8. Status ledger
 
@@ -693,4 +703,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-07 | Solver-memory design (§3.4.1, D-18, P2-G4) | DONE — Volkan clarified the legacy statics were intentional quasi-Newton Jacobian memory; design keeps the memory, adds invalidation + thread safety. Agent cap now ≤2 (header) |
 | 2026-07-07 | Pack description layer (§3.4.2, D-19) | DONE — combinator tree + Netlist escape hatch; compile() erases authoring shape. Per Volkan: agents = Opus HIGH (not xhigh), no "ultrathink" in agent prompts |
 | 2026-07-07 | SOTA verification (report: `.claude/reports/sota-verification-2026-07-07.md`) | DONE — C1/C3/C5/C6 CONFIRMED, C2/C4 NUANCED (liionpack maintenance-mode; WR+Baumgarte combo unpublished = our synthesis), C7 PyBaMM 26.6.2.0 keys verified. Q6 RESOLVED, D-20 added (arXiv:2508.14454 Mode-B upgrade). Description-layer zero-cost pattern confirmed (CasADi/Eigen/Halide precedent) provided erasure is total |
-| — | Phases 1–8 | NOT STARTED — Phase 1 is next; do not start before Volkan reviews §3/§4 |
+| 2026-07-07 | §3/§4/§7 review + Q1–Q7 sign-off | DONE — Fable architecture review (agent acc785905bea7cbdf): all six ASSUMED defaults survive adversarial reading (Q1/Q2/Q3 entailed by registered gates); Volkan accepted all six. Two gaps found OUTSIDE the Q-ledger, logged as Q8 (parity band vs FP reassociation — OPEN, pilot-first rule, gates P1-G1) and Q9 (pack thermal coupling missing from compile() — seam reserved Phase 1, D-21 due before Phase 2). R3 (archetype fragmentation) closed with stated assumption + compile() diagnostic in §3.1. Phase 1 UNGATED |
+| — | Phases 1–8 | Phase 1 STARTED 2026-07-07 (StateArena/StateSpec/BatchBuilder first); Phases 2–8 not started |
