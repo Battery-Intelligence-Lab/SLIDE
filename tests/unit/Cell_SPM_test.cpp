@@ -58,13 +58,15 @@ TEST_CASE("test_getStates_SPM", "[CELL_SPM]")
   // Check if remaining states are as expected.
   REQUIRE_THAT(s.delta(), WithinAbs(1e-9, TOL_EQ));
   REQUIRE_THAT(s.LLI(), WithinAbs(0, TOL_EQ));
-  REQUIRE_THAT(s.thickp(), WithinAbs(70e-6, TOL_EQ));
-  REQUIRE_THAT(s.thickn(), WithinAbs(73.5e-6, TOL_EQ));
+  //!< Electrode thicknesses recalibrated in 147ee4c ("improved SOC estimation for
+  //!< SPM()", Aug 2024): 70e-6 -> 86.87357e-6 and 73.5e-6 -> 74.883947e-6.
+  REQUIRE_THAT(s.thickp(), WithinAbs(86.87357e-6, TOL_EQ));
+  REQUIRE_THAT(s.thickn(), WithinAbs(74.883947e-6, TOL_EQ));
   REQUIRE_THAT(s.ep(), WithinAbs(0.5, TOL_EQ));
   REQUIRE_THAT(s.en(), WithinAbs(0.5, TOL_EQ));
   REQUIRE_THAT(s.ap(), WithinAbs(1.5 / (8.5 * 1e-6), TOL_EQ));
   REQUIRE_THAT(s.an(), WithinAbs(1.5 / (1.25 * 1e-5), TOL_EQ));
-  REQUIRE_THAT(s.CS(), WithinAbs(0.01 * 1.5 / (1.25 * 1e-5) * 0.62 * 73.5 * 1e-6, TOL_EQ));
+  REQUIRE_THAT(s.CS(), WithinAbs(0.01 * 1.5 / (1.25 * 1e-5) * 0.62 * 74.883947e-6, TOL_EQ));
   REQUIRE_THAT(s.Dp(), WithinAbs(8e-14, TOL_EQ));
   REQUIRE_THAT(s.Dn(), WithinAbs(7e-14, TOL_EQ));
   REQUIRE_THAT(s.rDCp(), WithinAbs(0.0028, TOL_EQ));
@@ -81,11 +83,14 @@ TEST_CASE("test_getStates_SPM", "[CELL_SPM]")
   REQUIRE_THAT(c1.I(), WithinAbs(0, TOL_EQ));
   REQUIRE_THAT(c1.T(), WithinAbs(settings::T_ENV, TOL_EQ));
 
-  // Check CSurf values
+  // Check CSurf values. Uniform initial concentration -> csurf = x_init * Cmax with
+  // x_init = x_0 + 0.5*(x_100 - x_0) (lithium fractions recalibrated in 147ee4c):
+  //   pos: 0.5*(0.983999588653496 + 0.400145394039564) * 51385 = 35562.14
+  //   neg: 0.5*(0.029397569380507 + 0.932469496648387) * 30555 = 14694.92
   DPair cs;
   c1.getCSurf(cs, false);
-  REQUIRE_THAT(cs[pos], WithinAbs(35421.3, 0.1));
-  REQUIRE_THAT(cs[neg], WithinAbs(14644.5, 0.1));
+  REQUIRE_THAT(cs[pos], WithinAbs(35562.14, 0.1));
+  REQUIRE_THAT(cs[neg], WithinAbs(14694.92, 0.1));
   REQUIRE_THAT(c1.getRdc(), WithinAbs(0.001253, tol));
 }
 
