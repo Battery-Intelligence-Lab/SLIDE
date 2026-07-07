@@ -42,6 +42,10 @@ public:
 
   double getOCV() override { return transform_mean(SUs, free::get_OCV<SU_t>); }
   double getRtot() override;
+  //!< Terminal voltage: cell-0 voltage minus the drop across the first contact resistance,
+  //!< which carries the full module current I() = sum of all branch currents. This equals
+  //!< getVall()[0] (the terminal voltage seen along branch 0), i.e. it is consistent with the
+  //!< cumulative-drop equalisation model the solver uses (all getVall entries agree once solved).
   double V() override { return SUs.empty() ? 0 : SUs[0]->V() - I() * Rcontact[0]; }
 
   Status setCurrent(double Inew, bool checkV = true, bool print = true) override; //!< set a module current

@@ -113,6 +113,10 @@ public:
 
   CoolSystem *getCoolSystem() { return cool.get(); }
 
+  //!< Accumulated contact-resistance heat [J] since the last thermal-model solve.
+  //!< Reset to 0 by the thermal model; exposed for inspection/tests.
+  double getThermQcontact() const { return therm.Qcontact; }
+
   void setRcontact(std::span<double> Rc) //!< #TODO if ok.
   {
     /*
