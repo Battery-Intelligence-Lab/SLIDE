@@ -294,16 +294,18 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   int iter{}; // Current iteration
   const int nSU = getNSUs();
 
-  static Eigen::VectorXd Q(nSU);   // Battery Capacity in As
-  static Eigen::VectorXd F(nSU);   // RC circuit's R
-  static Eigen::VectorXd C(nSU);   // RC circuit's C
-  static Eigen::VectorXd r(nSU);   // Rdc.
-  static Eigen::VectorXd tau(nSU); // 1/(RC)
+  //!< Per-call locals (NOT static): static caches were shared across Module_p instances,
+  //!< so a second module would silently read the first module's cell parameters/matrices.
+  Eigen::VectorXd Q(nSU);   // Battery Capacity in As
+  Eigen::VectorXd F(nSU);   // RC circuit's R
+  Eigen::VectorXd C(nSU);   // RC circuit's C
+  Eigen::VectorXd r(nSU);   // Rdc.
+  Eigen::VectorXd tau(nSU); // 1/(RC)
 
-  static Eigen::VectorXd R(nSU);
+  Eigen::VectorXd R(nSU);
   R.fill(0.0); // Rcontant
 
-  static Eigen::VectorXd i_branch(nSU);
+  Eigen::VectorXd i_branch(nSU);
 
 
   // std::cout << "Q:\n"
@@ -317,22 +319,19 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   // std::cout << std::endl;
 
   /// ---------------------
-  static Eigen::MatrixXd A11, A12, A21, A22, m;
-  static bool is_init(false);
+  Eigen::MatrixXd A11, A12, A21, A22, m;
 
-  if (!is_init) {
-    for (int i{}; i < nSU; i++) {
-      auto cp = dynamic_cast<Cell_ECM<1> *>(SUs[i].get());
+  for (int i{}; i < nSU; i++) {
+    auto cp = dynamic_cast<Cell_ECM<1> *>(SUs[i].get());
+    if (cp == nullptr) return Status::Invalid_SUs; //!< analytical path only supports Cell_ECM<1> children; fail instead of dereferencing nullptr.
 
-      Q(i) = cp->Cap() * 3600;
-      r(i) = cp->getRtot();
-      F(i) = cp->getRp(0); // 0 -> because we have one RC pair.
-      C(i) = cp->getC(0);
-      tau(i) = 1 / (F(i) * C(i));
-    }
-    new_compute_A11_A12_A21_A22(nSU, R, C, Q, tau, r, A11, A12, A21, A22, m);
-    is_init = true;
+    Q(i) = cp->Cap() * 3600;
+    r(i) = cp->getRtot();
+    F(i) = cp->getRp(0); // 0 -> because we have one RC pair.
+    C(i) = cp->getC(0);
+    tau(i) = 1 / (F(i) * C(i));
   }
+  new_compute_A11_A12_A21_A22(nSU, R, C, Q, tau, r, A11, A12, A21, A22, m);
 
 
   if (printDebug) {
@@ -344,10 +343,11 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
 
 
   // ----------- parallel_model_dae5 -----
-  static Eigen::VectorXd w(nSU), v_mod(nSU);
+  Eigen::VectorXd w(nSU), v_mod(nSU);
 
   for (int i{}; i < nSU; i++) {
     auto cp = dynamic_cast<Cell_ECM<1> *>(SUs[i].get());
+    if (cp == nullptr) return Status::Invalid_SUs;
     v_mod(i) = cp->getOCV() + cp->getVr();
   }
 
@@ -356,7 +356,7 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   }
 
   // static Eigen::VectorXd i_branch(nSU)
-  static Eigen::VectorXd theta(nSU), rho(nSU);
+  Eigen::VectorXd theta(nSU), rho(nSU);
   theta(0) = 0;
   rho(0) = 0;
 
@@ -382,7 +382,7 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
   if (printDebug)
     std::cout << "cn : " << cn << std::endl;
 
-  static Eigen::VectorXd f(nSU);
+  Eigen::VectorXd f(nSU);
   f.fill(0);
 
   // for (int j = 0; j < nSU - 1; ++j) {
@@ -426,6 +426,7 @@ Status Module_p::setCurrent_analytical_impl(double Inew, bool checkV, bool print
 
   for (int i{}; i < nSU; i++) {
     auto cp = dynamic_cast<Cell_ECM<1> *>(SUs[i].get());
+    if (cp == nullptr) return Status::Invalid_SUs;
     StatusNow = std::max(StatusNow, cp->setCurrent(-i_branch(i)));
   }
 
@@ -477,9 +478,11 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
   using A_type = Eigen::MatrixXd;
   using b_type = Eigen::VectorXd;
 
-  static b_type b(nSU), Iolds(nSU), Ib(nSU), Va(nSU), Vb(nSU), r_est(nSU);
-
-  StatusNow = Status::Success; //!< reset at each iteration.
+  //!< Per-call locals (NOT static): the previous function-static Eigen objects were shared
+  //!< across every Module_p instance and thread. That gave wrong currents, out-of-bounds
+  //!< access when modules had different child counts, and data races under the parallel
+  //!< fan-out. Correctness requires per-call storage.
+  b_type b(nSU), Ib(nSU), Vb(nSU), r_est(nSU);
 
   const double tolerance = 1e-6;
   for (size_t i = SUs.size() - 1; i < SUs.size(); i--) {
@@ -497,7 +500,7 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
     else
       b(i) = Inew - Icumulative; // #TODO????
 
-    error += std::max(std::abs(b(i)), error);
+    error = std::max(std::abs(b(i)), error); //!< L-inf residual norm (was a sum of running maxes).
 
     r_est[i] = SUs[i]->getRtot(); // 100e-3; // Init the resistances high at the beginning. #TODO probably not robust for all cases.
   }
@@ -521,31 +524,9 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
   //   // return LU;
   // };
 
-  static A_type A(nSU, nSU);
-
-  static bool is_init = false;
-
-  if (!is_init) {
-    // Set up the A matrix in Ax = b
-    for (size_t j = 0; j < nSU; j++)
-      for (size_t i = 0; i < nSU; i++) {
-        if (i == 0)
-          A(i, j) = -1;
-        else if (i == j)
-          A(i, j) = -Rcontact[i] - r_est[i];
-        else if (i == j + 1)
-          A(i, j) = r_est[j];
-        else if (j > i)
-          A(i, j) = -Rcontact[i];
-        else
-          A(i, j) = 0;
-      }
-
-    is_init = true;
-  }
-
-  static b_type deltaI;
-  static Eigen::FullPivLU<A_type> LU(A);
+  A_type A(nSU, nSU);   //!< per-call Jacobian (NOT static).
+  b_type deltaI(nSU);
+  Eigen::FullPivLU<A_type> LU;
 
   while (iter < maxIteration) {
     double Icumulative{}, error{};
@@ -562,7 +543,25 @@ Status Module_p::setCurrent_previous_impl(double Inew, bool checkV, bool print)
 
     if (error < tolerance) break;
 
-    // Normally LU should be here but moved for ECM.
+    //!< Rebuild the Jacobian A from the secant-updated r_est and refactorise it EVERY
+    //!< iteration. Previously A/LU were built once from the initial r_est and never
+    //!< refreshed, degrading Newton to a chord iteration (slow / failed convergence).
+    for (size_t j = 0; j < nSU; j++)
+      for (size_t i = 0; i < nSU; i++) {
+        if (i == 0)
+          A(i, j) = -1;
+        else if (i == j)
+          A(i, j) = -Rcontact[i] - r_est[i];
+        else if (i == j + 1)
+          A(i, j) = r_est[j];
+        else if (j > i)
+          A(i, j) = -Rcontact[i];
+        else
+          A(i, j) = 0;
+      }
+
+    LU.compute(A);
+
     deltaI = LU.solve(b.matrix()).array();
 
 
