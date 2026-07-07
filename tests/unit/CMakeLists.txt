@@ -7,6 +7,9 @@ add_executable_with_coverage_and_test(unit_test_Chebyshev Chebyshev_test.cpp)
 add_executable_with_coverage_and_test(unit_test_Converter Converter_test.cpp)
 add_executable_with_coverage_and_test(unit_test_Module_p Module_p_test.cpp)
 
+# Phase 0 (agent B) regression test for bug B1
+add_executable_with_coverage_and_test(unit_test_CellDataStorage CellDataStorage_test.cpp)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

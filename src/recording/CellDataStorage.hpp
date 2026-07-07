@@ -10,6 +10,7 @@
 
 #include "../types/Histogram.hpp"
 #include "../settings/enum_definitions.hpp"
+#include "CellDataWriter.hpp" //!< must be included at global scope (it pulls in <variant> etc.)
 
 #include <utility>
 #include <iostream>
@@ -109,12 +110,12 @@ struct CellDataStorage<settings::CellDataStorageLevel::storeTimeData>
   {
     const auto throughputs = cell.getThroughputs();
     // #TODO just write all states, throughputs will be included.
-    data.assign(data.end(),
+    //!< APPEND this timestep's record; assign() would REPLACE the whole history
+    //!< (and the iterator + initializer-list form was ill-formed).
+    data.insert(data.end(),
                 { cell.I(), cell.V(), cell.SOC(), cell.T(), throughputs.time(), throughputs.Ah(), throughputs.Wh() });
   }
 };
-
-#include "CellDataWriter.hpp"
 
 /**
  * @brief Combined cell data storage and writing class
