@@ -5,6 +5,18 @@
 This changelog contains a non-exhaustive list of new features and notable bug-fixes (not all bug-fixes will be listed). 
 
 <br/><br/>
+# Unreleased
+
+## Fixed
+* **`Module::setStates` rollback** now restores each child to *its own* slice of the pre-set states. Previously the rollback loop re-applied `SUs[i]` for every index and never advanced the per-child offset, so when a child's state was rejected the already-set children were left corrupted. (bug A1)
+* **Parallel-module current solver (`Module_p::setCurrent`) is now instance/thread-safe.** The solver's working vectors and Jacobian matrix were function-`static`, i.e. shared across all `Module_p` instances and threads. This produced wrong branch currents, out-of-bounds access (Eigen assertion / crash) when modules had different child counts, and data races under the parallel time-step fan-out. They are now per-call locals. (bug A2)
+* **Parallel-solver Jacobian is refactorised every iteration.** The LU factorisation was computed once from the initial resistance estimate and never refreshed even though the secant estimates update each iteration, degrading Newton to a slow/failing chord iteration. The Jacobian is now rebuilt from the updated estimates and refactorised each iteration. (bug A3)
+* **Contact-resistance heat (`Module_p` `Qcontact`) no longer double-counts.** The cumulative branch-current accumulator was declared outside the per-resistor loop and never reset, so the contact heat grew quadratically. Each contact resistor now correctly sees the summed current of the cells behind it. (bug A4)
+* **`Module_p::setVoltage`** no longer keeps its solver vectors/matrix in function-`static` storage (same instance/thread-sharing hazard as A2). (bug A2)
+* **Analytical parallel-branch solver** returns `Status::Invalid_SUs` instead of dereferencing an unchecked `dynamic_cast` when a child is not a `Cell_ECM<1>`. (bug A5)
+* **Parallel-solver early-exit residual** uses a proper L∞ norm (`max`) instead of a malformed running sum of maxes. (bug A7)
+
+<br/><br/>
 # SLIDE v3.0.0 (aka slide-pack merged into SLIDE)
 
 ## New features and important updates
