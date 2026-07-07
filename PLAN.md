@@ -553,6 +553,23 @@ another scientist can trust".
    commit re-runs; report deltas ("2 failing {a,b} → 3: +c, caused by me").
 6. **No timing claims.** Machine runs concurrent jobs; performance evidence = allocation counts, iteration counts,
    complexity, vectorisation reports — never wall clock (until user provides a quiet machine).
+7. **Payoff checkpoints — the refactor must prove itself before it is allowed to grow (Volkan, 2026-07-07).**
+   Insurance first: the strangler strategy (item 1) means legacy stays green the whole time, so the worst case of an
+   underperforming v4 core is deleting `src/core/` — nothing user-facing is ever bet on it. On top of that, each
+   early phase ends with a **wall-clock checkpoint run by Volkan on a quiet machine** (the only trusted timing
+   source), with the band registered here BEFORE the run and an explicit abort threshold:
+   - **PAY-1 (Phase 1 exit):** 10⁴ identical Kokam SPM cells, 1C CC discharge, 1 h simulated — v4 batch vs a loop of
+     legacy `Cell_SPM`. Hypothesis [inferred, from devirtualisation + SoA + expm substep collapse; pouch-cell
+     precedent 26–52× on the integrator alone]: ≥5×. **Abort threshold: <2× → STOP; profile, find where the model
+     was wrong, redesign before any Phase-2 work.** No new phase on top of an unproven core.
+   - **PAY-2 (Phase 2 exit):** 16s4p heterogeneous pack, CC cycle — v4 compiled pack vs legacy `Module_s/Module_p`.
+     Hypothesis: ≥10× (flat solve replaces nested iteration, D-03; workspace kills refactorisations, D-18).
+     Abort threshold: <3× → stop and re-examine before Phases 3–4.
+   - **PAY-3 (Phase 4 exit):** 10⁵-cell pack advances on the quiet machine within memory budget (<1 GB state) —
+     feasibility, the original goal (§1). Fails → Mode C redesign before GPU work.
+   Structural proxies (allocations, virtual calls, iteration/factorisation counts, bytes/cell) are tracked
+   continuously as leading indicators; wall clock at the checkpoints is the confirming evidence. Rule: phase N+1
+   does not start before phase N's checkpoint passes or Volkan explicitly waives it.
 
 ## 6. Phased roadmap
 
