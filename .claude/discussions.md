@@ -153,6 +153,24 @@ This document tracks design decisions, architecture evolution, and session notes
 
 ---
 
+## 2026-07-08 — Phase 1: Q8 Release re-confirm + production diffusion kernel
+
+- **Q8 fully closed.** P1-G0 pilot re-run in Release/-O3 (`build-release`): decisive band rel ≤ 1e-12
+  HOLDS (max_rel 5.63e-15); exact bit-identity (Debug: 0) FALSIFIED under -O3 cross-TU FMA contraction
+  (max_abs 2.26e-17). `-ffp-contract=off` rejected — can't fix cross-TU on the test target alone, and
+  forcing it globally recompiles legacy (§5.1 forbids). Bonus hypothesis falsified & recorded; decisive
+  band untouched. Pilot's exact-zero CHECK scoped to Debug. See `handoff-2026-07-08-phase1-diffusion.md`.
+- **Production `SpectralDiffusion<NCH>` landed** (`src/core/SpectralDiffusion.hpp`): vectorised SoA
+  forward-Euler diffusion. Validated vs the legacy-shaped oracle — Debug bit-identical (proves math
+  identity), Release rel 3.8e-15 ≤ 1e-12. Two-statement inner form; once-allocated scratch (PC-1).
+- **Design decision surfaced (OPEN for Volkan/Fable):** ThermalLumped + ageing kernels are NOT
+  self-contained — they need the observable-reconstruction layer (c_surf = C·z + D·flux, overpotential,
+  dOCV, Rdc; §3.7/D-10) and the §3.11 BatchView/StepCtx interface, both DEFERRED this session (diffusion
+  took plain spans as a stopgap). Recommend designing that layer + doing **P1-G3 (Chebyshev/Carslaw &
+  Jaeger oracle)** — which exercises the same C/D output path — before porting thermal/ageing.
+- **Review channels down:** advisor unavailable, Fable agent out of usage credits — no external review
+  this session. Decisions rest on the Debug bit-identity arbiter + derived accumulation bounds.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook
