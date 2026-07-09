@@ -145,6 +145,13 @@ struct Model_SPM
     Eigen::Vector<double, N> D3 = Eigen::Vector<double, N>::Zero();
     D3(0) = Rp * D_;
 
+    // REVIEW-MARK(2026-07-09, Fable): v4 build() hardening targets (full audit:
+    // .claude/reports/chebyshev-math-audit-2026-07-09.md). (C1) es1/es3.info() unchecked — failed
+    // eigensolve consumed silently; (C2) imag-part contamination only warns to stderr then truncates
+    // via .real() — v4 build() must Status-fail (cold path); (C3) zero-mode index selection + the
+    // Release-silent assert below — superseded by checking eigenvalues against the ANALYTIC roots of
+    // tan(mu)=mu (audit §3; mass mode exact, modes matched by value not solver order). Legacy file
+    // behaviour unchanged per PLAN §5.1 — these land in the v4 per-batch model build.
     Eigen::EigenSolver<Eigen::Matrix<double, N - 1, N - 1>> es1(A1);
     {
       const double imag_max = es1.eigenvalues().imag().array().abs().maxCoeff();

@@ -1,6 +1,6 @@
 # SLIDE v4 — Architecture Refactor Plan (living document)
 
-> **Status:** ACTIVE. Last updated 2026-07-07 by Fable (architect). Implementation delegated to Opus 4.8 agents.
+> **Status:** ACTIVE. Last updated 2026-07-09 by Fable (architect). Implementation delegated to Opus 4.8 agents.
 > **How to use this document:** This is the single source of truth for the v4 refactor. Any session (Fable, Opus, human)
 > continuing this work must (1) read this file first, (2) execute the next unblocked item in §6, (3) update §8 status
 > ledger and this header. Requirements originate in `.claude/FABLE.md`. Do not re-litigate decisions in §4 without new
@@ -74,6 +74,12 @@ All claims below are **[confirmed]** by code inspection with the cited locations
   raising nch with fixed dt silently destabilises Euler.
 - Recording: `Cell::storeData/writeData` are empty no-ops for SPM (`src/cells/Cell.hpp:109-110`); only ECM records.
   Only `time/Ah/Wh` are path-dependent — V, OCV, SOC, T, R are all recomputable from the 29 states.
+  **CORRECTED 2026-07-09 [confirmed]:** the ageing/thermal port falsifies "only time/Ah/Wh" — legacy hides
+  path-dependent state OUTSIDE `State_SPM`: Dai-stress previous-step memory `sparam.s_dai_p_prev`
+  (`Cell_SPM_dstate.cpp:244`, CONSUMED by LAM via `|s_dai_p − s_dai_p_prev|/s_dt`, `Cell_SPM_degradation.cpp:377`)
+  and the `Therm_Qgen`/`Therm_time` accumulators (`Cell_SPM.hpp:62-64`, `Cell_SPM_dstate.cpp:290-291`). v4 RULE:
+  anything a later step reads MUST be an arena row (else D-10 lazy-derivation and checkpoint-restart break
+  silently). Gate P1-G4 (bitwise restart) exists to catch exactly this class.
 - Two error channels coexist: `Status` enum and `throw int` (codes 10,11,14,98,99,101,104,106,108).
 
 ### 2.2 Chebyshev "only works for nch=5" — root cause (SOLVED, verify remains)
@@ -186,7 +192,10 @@ class  StateArena {                                    // owns doubles; snapshot
   across cells. Layout is fixed after `build()`; never recomputed during simulation.
 - A "cell" is `(batch_id, lane)`. Heterogeneous packs = several batches (one per distinct model composition).
   Per-cell parameters are also SoA rows (cell-to-cell variation stays vectorisable); parameters shared by the whole
-  batch are scalars in the batch header.
+  batch are scalars in the batch header. **Dual use (named 2026-07-09):** lanes need not be electrically coupled —
+  the same machinery runs 10⁵ INDEPENDENT single-cell variants as one batch (UQ/Monte-Carlo over `varied()` spread,
+  fitting sweeps; DifferentialEquations.jl `EnsembleProblem` shape). One infrastructure, two products: packs and
+  parameter studies.
 - **Stated assumption (Fable review 2026-07-07):** the batch-amortisation wins (PC-2's one indirect call per batch,
   D-01's SIMD width) presume FEW compositions with MANY lanes each (realistic packs: 1–3 archetypes). Per-cell
   heterogeneity in *composition* (not parameters — those are `varied()` rows) fragments the pack toward
@@ -220,7 +229,10 @@ using Kokam_SPM = SPM<SpectralDiffusion<5>, ThermalLumped, AgingPack<SEI_Kinetic
 - **Extension axes (Volkan, 2026-07-07 — "COMSOL-lite": a fixed compiled menu, not a runtime PDE engine).** Each
   slot of the composition is an independent axis a future model plugs into without touching the others:
   *discretisation* (`SpectralDiffusion<NCH>` now; FVM/FDM particle grids, DFN/SPMe electrolyte discretisations later —
-  same slot, same `CellDesign` input); *geometry* (spherical particle now; plate/cylinder via a geometry tag the
+  same slot, same `CellDesign` input. Concrete menu recorded 2026-07-09, audit §5.4: conservative FVM — PyBaMM's
+  default, valuable for like-for-like P7-G1 parity; 3-parameter parabolic profile — ultra-cheap tier for 10⁵-cell
+  screening; eigenfunction/Duhamel modal basis — analytic λ from tan μ = μ, kills the eigensolve-conditioning
+  concern; Legendre–Galerkin — symmetric by construction); *geometry* (spherical particle now; plate/cylinder via a geometry tag the
   kernel is templated on — shape factors are compile-time constants); *thermal / heat transfer* (ThermalLumped now;
   Thermal1D-through-thickness and pack-coupled cooling later; `h_conv` is a §3.11 `ParamFn` so constant vs
   correlation vs user-injected costs the same at run time). New physics = new type in a slot + registry entry —
@@ -306,6 +318,22 @@ Three solver modes behind one interface, selected per pack (all operate on the s
   found — it is our synthesis; treat as a research contribution, gated on the Mode-A arbiter (P4-G1/G2). Mode C is
   only needed where B's conditions fail (arbitrary series-parallel meshes at 10⁴⁺ cells).
 
+**Solver robustness (added 2026-07-09, orthogonal review; SPICE solved all of these decades ago):**
+
+- **Consistent initialization:** `Pack::compile()` is followed by `Pack::initialize()` — a consistent-IC solve of the
+  branch currents at t=0 (heterogeneous initial SOC, cold workspace, `valid=false`) BEFORE the first step; a
+  checkpoint restore re-runs it through the `ws.invalidate()` path. (PyBaMM/IDA do the same consistent-IC solve.)
+- **Newton safeguarding:** damped updates with per-iteration TRIAL LIMITING — clamp trial branch currents/states so
+  OCV-table and Butler-Volmer evaluations stay inside their tabulated/asinh domains (SPICE `pnjlim` idiom). A trial
+  iterate outside the OCV table must be limited, never fed to interp/asinh to manufacture NaNs that a successful
+  factorisation then hides.
+- **Rescue path:** on non-convergence, source-stepping homotopy (ramp the applied terminal current from a solvable
+  problem; SPICE2 gmin/source stepping, Xyce continuation). If rescue fails: `Status` failure with DEFINED atomicity —
+  the staggered scheme rolls back ALL batches of the pack to the pre-step checkpoint; a half-stepped pack is never
+  observable.
+- **Detection on the compiled netlist:** ladder (Mode B) and index-1 (Mode C) checks run on the COMPILED netlist, so a
+  `Netlist::from_csv` input electrically equal to a ladder gets the same fast path as combinator input.
+
 NOT chosen: one monolithic 100k-state DAE handed to IDA/KLU — KLU is serial and a global Jacobian factorises poorly;
 liionpack deliberately avoids it too (§4 D-06).
 
@@ -348,6 +376,9 @@ struct SolverWorkspace {
 - **Refresh trigger:** `ρ_k > 0.5` or `k > 4` iterations → rebuild J from the current secant `r_eff` (O(nnz)
   fill, pattern unchanged), numeric refactorisation only, reset `age`. Worst case degenerates to today's
   refactor-per-iteration behaviour; typical case is one factorisation amortised over many steps.
+  **Divergence guard (2026-07-09):** ρ_k ≥ 1 on two consecutive iterations → force refresh; STILL ρ_k ≥ 1 →
+  escalate to damped full Newton (§3.4 safeguarding) — never iterate a diverging chord to the cap. `age` feeds the
+  temperature/SOC-threshold force-refresh row of the invalidation table (it was tracked-but-unused).
 - **Tier-0 shortcut:** a batch whose cells declare `linear == true` (ECM with fixed R) has a *constant* J →
   factor once at `compile()`, never refresh; the chord iteration is then exact Newton and converges in 1 step.
   Detected structurally at compile, not by runtime probing (fixes the A3 class of bug by construction).
@@ -418,6 +449,10 @@ pack.compile();   // ONE pass: archetype batching → flat netlist → sparsity 
   (Units: D[m²/s]·λ[1/m²] = 1/s; exponent dimensionless. ✓) This is unconditionally stable — it deletes the
   O(nch⁴) Euler stability cliff (§2.1) outright — and exact for CC segments, so substep counts collapse.
   pouch-cell-spectral measured 26–52× on the analogous structure.
+  **Numerical note (registered 2026-07-09 so Phase 3 doesn't rediscover it):** `(e^{Dλh}−1)/(Dλ)` cancels
+  catastrophically for |Dλh| ≪ 1 (slow modes hit this every step) — implement as `expm1(x)/x` with a φ₁ Taylor
+  branch below a small-|x| threshold (standard exponential-integrator practice), NOT `exp(x)−1`; otherwise the
+  cancellation noise eats the §5.3 validation band.
 - **Multirate (Strang):** electrical (µs–s scale) inner steps inside thermal/degradation (min–h scale) outer steps —
   formalising what the current code does ad hoc, but with O(h²) splitting error and an error-controlled outer step.
   Beware stiff-operator order reduction to O(h); acceptable since degradation rates are slow and weakly coupled.
@@ -440,15 +475,58 @@ violations surface as `Status` from `step()`, and the Cycler restores the arena 
   optional Arrow/Parquet behind `SLIDE_WITH_ARROW` (warning: dtw-cpp's Arrow-via-CPM breaks on Windows+Clang; prefer
   find_package-first).
 - Histograms remain as bounded lossy summaries; fixed (B2) and moved behind the Recorder.
+- **Async recording pipeline (Volkan 2026-07-09: "we don't stop") — the simulation NEVER blocks on I/O:**
+  snapshots go into a double/triple-buffered RING; the sim thread (or GPU) writes a snapshot and continues
+  immediately; a dedicated CPU recorder thread pool drains the ring — compress, then sink. On GPU: snapshots
+  leave on a side CUDA stream into PINNED host buffers, so the D2H copy overlaps compute. Compression: SoA rows
+  with byte-shuffle then LZ4/zstd blocks (the Blosc2 pattern — shuffle exposes the near-constant high bytes of
+  smoothly-evolving f64 states; delta-along-time optional on top); LOSSLESS default; blocks carry the D-12
+  header-CRC idiom. Cache hygiene: the snapshot copy uses streaming/non-temporal stores so recording never
+  evicts the hot arena from cache. **Backpressure is explicit, never silent:** sink can't keep up ⇒ policy
+  ∈ {block, thin the cadence + LOG the thinning count}, chosen per run — silently dropped frames violate the
+  §1 traceability standard.
 
 ### 3.8 Parallelism & device
 
 - Own minimal thread pool over batches (std::thread; no TBB dependency, no silent sequential fallback);
   `slide::test::parallelisation()` reports cores, backend, and a measured speedup smoke check.
+- **Determinism rule (2026-07-09):** every cross-batch reduction (pack current sums, thermal adjacency, residual
+  norms) uses FIXED-ORDER accumulation (serial or static-tree) — never scheduling-order-dependent atomics.
+  Run-to-run reproducibility at the 1e-12 parity scale depends on it (GROMACS/LAMMPS deterministic-reduction
+  precedent). Corollary: per-lane adaptive dt is REJECTED (destroys the SoA sweep) — batch-uniform step, error
+  controlled on the batch max-norm.
 - `device={cpu,gpu}` selected per Simulation (PyTorch-style, template = dtw-cpp `_api.py` lazy-dispatch design).
   GPU phase: one-cell-per-thread batched stepping (DiffEqGPU, arXiv:2304.06835, shows 20–100× vs vmap approaches for
   exactly this shape); MNA/relaxation coupling stays on host between batch steps. CUDA first; the SoA arena (§3.1) is
   already the correct device memory layout.
+- **GPU fit at pack scale (Volkan question 2026-07-09: 2·10⁴-cell packs on GPU?) — yes; memory is a non-issue.**
+  PC-6 gives 2·10⁴ × ~300 B ≈ 6 MB state; with params + ydot + observables scratch, tens of MB against GBs of VRAM.
+  The design is device-shaped by construction: SoA variable-major rows = coalesced access (thread c ↔ lane c); zero
+  virtuals/allocations/exceptions (PC-1/2/4/5) means kernels port as `__device__` free functions — virtual dispatch
+  is not even EXPRESSIBLE efficiently on device, so D-02 is a GPU prerequisite, not just a CPU optimisation; the
+  arena is ONE `cudaMalloc` at build. The four REAL concerns, recorded now so the CUDA phase starts honest:
+  (1) *occupancy* — 20k lanes alone under-fill a modern GPU (~10⁵⁺ threads to saturate): parallelise element-wise
+  over (row × lane) — the diffusion sweep is 29 × 20k ≈ 5.8·10⁵ elements — and/or run ensembles (§3.1 UQ framing);
+  (2) *coupling* — the staggered host solve needs one (ocv, r_eff) exchange per batch step (~320 KB at 20k lanes,
+  ~0.1 ms over PCIe): amortise with several device substeps per exchange (the multirate shape already does this), or
+  move Mode B's scan / Mode C's relaxation on-device and kill the transfer entirely (Mode C is the GPU-native mode —
+  O(n), Jacobi-style, no factorisation); (3) *launch overhead* — capture the per-step kernel sequence in a CUDA
+  Graph (µs-scale launch latency otherwise dominates µs-scale steps); (3b) *kernel fusion* (SOTA-kernel lever,
+  2026-07-09) — the §3.12 pipeline runs as separate row sweeps on CPU, but on device {observables → addRhs chain
+  → advance} FUSES into ONE kernel per batch step: arithmetic intensity is low, so every extra global-memory pass
+  costs ~a full step; the observables scratch lives in registers/shared memory inside the fused kernel (CUDA
+  Graphs is the launch lever, §3.7's async ring is the I/O-overlap lever); (4) *f64 throughput* — 1/32–1/64 of f32 on
+  consumer GPUs: the f32-storage instantiation (Q1 insurance + §3.12 scalar-generic kernels) is the consumer-GPU
+  path; datacenter parts (A100/H100 class) run f64 natively fine.
+  **Cache residency [inferred, roofline — NOT a timing claim; measured only at PAY checkpoints]:** the workload is
+  memory-bound (arithmetic intensity ~a few flops/byte), and a 2·10⁴-cell working set (state + ydot + obs ≈ 20–30 MB)
+  fits INSIDE the L2 of current GPUs (H100 50 MB, RTX 4090 72 MB) — stepping runs at cache bandwidth, not HBM.
+  Traffic ≈ 20k × ~32 rows × 8 B × 2 ≈ 10 MB/step ⇒ µs-scale per step at L2/HBM bandwidths. "Very quick very long"
+  simulations (Volkan 2026-07-09) are the PRODUCT of three multipliers, not GPU alone: exponential propagator (exact
+  on CC segments — substep count collapses, D-07) × multirate outer steps (thermal/ageing at min-scale, D-08) × GPU
+  batch stepping (per-cell cost collapses). Order-of-magnitude: 10 simulated years at ~10 s effective outer steps
+  ≈ 3·10⁷ steps × µs-scale ⇒ device time in minutes [inferred — every factor here is a stated assumption; the
+  hypothesis is registered as the GPU-phase PAY target, to be banded properly when that phase opens].
 
 ### 3.9 Language interfaces (CasADi-style symmetry)
 
@@ -465,12 +543,32 @@ violations surface as `Status` from `step()`, and the Cycler restores the arena 
   (`check_already_exists` deprecated v25.12.0); default constants no longer auto-added on construction (v25.12.0).
   Experiment grammar additions to cover: custom steps (v25.4.0), custom terminations (v25.10.0), `start_time`
   (v23.9). Solution additions: `.yp`, `.observe()` (v25.12.0) — out of scope v4.0, document as such.
+  **Same-parameters ⇒ same-results contract (Volkan 2026-07-09) — two unit-test layers, gate P7-G3:**
+  (1) *absorption round-trip*: every absorbed key (Chen2020 table, BPX file) goes PyBaMM-named value → internal
+  packs → `describe()` and must return the IDENTICAL SI value — exact equality, no simulation, runs in plain C++
+  CI. (2) *behavioural parity fixtures*: registered scenarios (C/50 quasi-static — essentially OCV replay — and
+  1C transient) compared against COMMITTED PyBaMM reference traces, generated once by a pinned-version script
+  and checked in (C++ CI stays hermetic, no Python dependency; an optional pytest job regenerates fixtures and
+  flags upstream drift). Bands registered per scenario BEFORE comparison. Honest limit, stated up front:
+  identical parameters CANNOT give bit-identical results across tools — Chebyshev-spectral vs FVM discretisation,
+  different OCV interpolants — so the band tests CONVERGED-model agreement (both discretisations → the same
+  continuum SPM as they refine), tightest at low C-rate [inferred: sub-mV at C/50; set after the converged run].
 - **Python:** nanobind + scikit-build-core wheels. `slide.Experiment`, `slide.ParameterValues("Chen2020")`,
   `slide.Simulation(...).solve()`, dict-like `Solution["Terminal voltage [V]"]` (+ `.entries`, call-interpolation,
   `.plot()`, `save_data(..., to_format="csv"|"matlab")`). Options dict (`{"SEI": "solvent-diffusion limited", ...}`)
   maps onto the composition registry (§3.2). Out of scope, documented as such: symbolic expression trees, arbitrary
   `spatial_methods`/`var_pts`, symbolic events.
 - **MATLAB:** MEX + `+slide` package mirroring the Python surface (Phase 8).
+- **Sensitivities / gradients — PyBOP entry (Volkan directive 2026-07-09: "we need to enter the PyBOP ecosystem").**
+  Deliverable: forward sensitivities `∂(V, observables)/∂θ` for a registered fitting-parameter set (Q10), surfaced
+  PyBaMM-style (`Solution` sensitivities; the `simulateS1`-shaped call PyBOP's gradient optimisers consume). Three
+  routes, ranked (D-24): (1) **dual-number forward mode** through the scalar-generic kernels (§3.12 — the mechanism
+  is already reserved; exact to roundoff, cost ≈ (1+n_θ)× per swept param, right for the few-parameter fits PyBOP
+  runs); (2) **analytic modal sensitivities** where structure permits — the diffusion update is LINEAR in z, so
+  ż_θ = D·A·z_θ + (∂_θ of coefficients) rides the SAME exponential propagator exactly, and ∂V/∂(z,T,δ,…) is
+  closed-form for SPM (chain rule through §3.12 observables) — cheapest and exact for CC segments; (3) adjoint for
+  many-parameter gradients — beyond v4.0 (recorded, not started). Arbiter for any route: central finite differences
+  on the same trajectory at registered step sizes.
 
 ### 3.10 v4 coding conventions (Volkan, 2026-07-07)
 
@@ -536,6 +634,65 @@ loose scalar arguments; adding a parameter never changes a kernel signature.
 library pack, which overrides, which tabulation error) — the COMSOL report equivalent, and the §1 "trail
 another scientist can trust".
 
+### 3.12 Kernel/integrator contract — RHS-form kernels over structs-of-spans, no framework (D-22)
+
+**Design principle (Volkan, 2026-07-09):** flexible, expandable classes with NO unnecessary abstraction; extreme
+speed; off-the-shelf ODE integrators/methods usable; intuitive, sparse structure. This section is the §6 Phase-1
+"observable layer + BatchView/StepCtx" blocker, resolved under that principle. **REVISED 2026-07-09 after orthogonal
+review (D-23) — three critical defects fixed before implementation.** The hot layer is a short list of plain
+constructs — no inheritance anywhere:
+
+1. **`BatchView` / `StepCtx` — structs of spans, REBINDABLE per eval.** Layout (slices, strides, param views) is
+   fixed at `compile()`; the (y, ydot) BASE POINTERS rebind per RHS call. Reason (D1, critical): an adaptive
+   integrator evaluates f at ITS OWN trial vectors — CVODE clones internal N_Vectors and never hands the arena back —
+   so views bound once to arena rows would silently integrate stale state. Rebinding = two pointer swaps on a fixed
+   layout (hot-safe). Zero-copy holds for the IC load and the accepted-step writeback, NOT for trial evals.
+2. **RHS-form kernels behind a FIXED eval pipeline.** Every RHS eval runs, in order: (i) **zero ydot** (one memset —
+   stepper's job); (ii) ONE shared **observables stage** `computeObservables(y, obs)` into a once-allocated per-batch
+   scratch — c_surf `= C·z + D·flux` + centre node, Butler-Volmer η, OCV/entropic dOCV, Rdc, V (SPICE "device load"
+   precedent: thermal AND every ageing mechanism read the same obs, computed once, never per-component); (iii) the
+   component `addRhs(y, ydot, obs, ctx)` chain. Accumulation is REQUIRED semantics — legacy SEI/plating add into the
+   same zn slots diffusion owns (`Cell_SPM_dstate.cpp:210`) — which is exactly why a missing zero pass is a
+   guaranteed wrong answer, not a style issue. Observables stay the ONE code path shared with the Recorder (D-10).
+   (`SpectralDiffusion::stepEuler` survives ONLY as the §5.2 parity special case, pinned to legacy op order.)
+3. **ODE-row mask.** `build()` marks which arena rows are integrable ODE states. Legacy's algebraic I/V slots and
+   kinked cumulative rows (d|Ah|/dt = |I|, nonsmooth at I=0) re-create the B5 bug class and make adaptive steppers
+   chatter — algebraic/cumulative rows are advanced by the stepper OUTSIDE the RHS, never handed to an integrator.
+4. **Steppers own time:** (a) `EulerLegacy` (parity, §5.2); (b) `ExponentialModal` (Phase 3, D-07 — exact, uses the
+   modal structure directly, not the generic RHS); (c) **generic RHS hook** — a plain `rhs(t, span y, span ydot)`
+   callable for ANY user integrator; (d) **CVODE adapter as ARBITER, not production path** (`SLIDE_WITH_SUNDIALS`,
+   optional; core ships (a)+(b)+(c) with no deps — non-negotiable #4). Scope (D5): small lane counts only — BDF needs
+   a linear solver, the batch Jacobian is block-diagonal (~30×30 per lane), and stock serial N_Vector/SUNLinSol
+   cannot exploit that at L=10⁴; a custom SUNLinSol is REJECTED bloat (if CVODE can't run it off-the-shelf, it stays
+   an arbiter). A Boost.odeint adapter is REJECTED (its state-type algebra requirements force resize/copy machinery
+   for no arbiter value beyond CVODE; hook (c) covers odeint users). Integrator calls are SEGMENT-SCOPED: never
+   across a current/power breakpoint (§3.5) — `CVodeSetStopTime` + re-init per segment, else BDF history across the
+   discontinuity collapses the order.
+5. **Events are first-class.** Termination/protection conditions (V reaches Vlim, T limit, plating onset η ≤ 0) are
+   declared zero-crossing functions g(y) = 0 located by root-finding (CVodeRootInit; Modelica state events) — not
+   the legacy per-step threshold checks, which overshoot by up to one dt. Feeds Phase 5 (Cycler v2 termination +
+   machine-readable termination REASON in `Solution`, needed for PyBaMM compat anyway).
+
+Two zero-cost insurance notes: kernels are `template<class Real>` (scalar-generic — Stan/CoDiPack/CppAD pattern);
+they are templates anyway, and NOT hardcoding `double` in kernel bodies keeps dual-number forward sensitivities
+(parameter fitting, PyBOP-style) and an f32 GPU instantiation open without retrofit — `real_t` is the default
+binding, not a commitment. And the {rhs, observables, event indicators} triple is deliberately congruent with the
+FMI Model-Exchange shape — keep it congruent (costs nothing), implement FMU export never-in-v4.
+
+Requirement check: *flexibility* — a new mechanism is one `StateSpec` + one free function, nothing else touched;
+*speed* — same vectorised row sweeps, zero virtuals, one ydot arena extra (PC-1/2/3/5 hold; per-batch dispatch
+unchanged); *off-the-shelf* — any integrator drives one RHS callback per batch per eval; *sparse/intuitive* — cold
+layer stays the §3.3 battery anatomy; hot layer is the constructs above.
+
+**Arbiter bonus (§5.3), with its stated limit (D4):** CVODE at rtol ~1e-12 on the same RHS is an independent
+converged reference for the exponential propagator — different mathematics, same model. Caveat: with `StepCtx`
+inputs frozen per outer segment, CVODE converges to the operator-SPLIT trajectory; it arbitrates INTEGRATOR error,
+not splitting error (splitting error is owned by D-08's outer-step controller and validated separately).
+
+**Boundary [stated]:** off-the-shelf *ODE* (not DAE) applies per batch because pack algebra (voltage-equality
+constraints) is solved by Modes A/B/C BETWEEN batch steps (staggered, liionpack-style, D-05); the monolithic-DAE
+hand-off stays rejected (D-06). Multirate (D-08) composes: outer and inner splits each expose their own RHS.
+
 ## 4. Decision log (do not re-litigate without overturning the evidence)
 
 | ID | Decision | Rationale | Rejected alternative |
@@ -560,6 +717,9 @@ another scientist can trust".
 | D-18 | Per-pack `SolverWorkspace`: warm start + chord/Shamanskii Jacobian reuse with contraction-monitored refresh + explicit invalidation (§3.4.1) | keeps the speed the legacy statics bought (Volkan's quasi-Newton memory) without their races/staleness; Kelley ch.5 grounds the refresh rule | (a) function-statics (races, cross-instance pollution — §2.4 A2/A4); (b) refactorise every iteration (current Phase-0 state: correct, memoryless, pays O(n³/nnz) per iteration) |
 | D-19 | Pack construction = value-type combinator tree + `Netlist` escape hatch; `compile()` erases authoring shape (§3.4.2) | intuitive generation AND solver independence from nesting style; liionpack netlist schema = free PyBaMM interop | (a) runtime tree solved recursively (today — nesting multiplies iterations); (b) netlist-only API (hostile for the 99% ladder case) |
 | D-20 | Mode B adopts the analytical DAE→ODE reformulation for parallel packs (Lone/Atlan/Fasolato/Raimondo/Drummond, arXiv:2508.14454) **PROVISIONALLY**: behind a compile()-verified regime check + flag, admitted only via measurement gate P2-G5 vs Mode A (Volkan 2026-07-07: never trust without measuring; paper's linearity/heterogeneity/known-R_k assumptions clash with SPM + `varied()` packs) | removes the algebraic constraint entirely — exact, no iteration — WHERE VALID; resolves Q6 (this IS Ross's solution, Nilsu's code implements it) | (a) unconditional adoption (regime unproven at our heterogeneity/scale/nonlinearity); (b) ignoring it (pays for a constraint the pure-parallel linear case doesn't need) |
+| D-22 | Kernels are RHS-form free functions over `BatchView`/`StepCtx` structs-of-spans; observables = shared free functions (one code path for RHS internals AND recording); steppers own time; generic RHS adapter exposes `arena.raw()` zero-copy to CVODE/odeint/user integrators as OPTIONAL deps (§3.12) | user requirements 2026-07-09 (flexible + expandable, no unnecessary abstraction, off-the-shelf integrators, sparse intuitive structure); arena contiguity makes flat-y interop free; PC-1/2/3/5 preserved; CVODE-at-tight-rtol doubles as the §5.3 converged-reference arbiter | (a) virtual Component hierarchy (per-cell dispatch — PC-2 violation, abstraction without need); (b) integration hard-wired inside kernels (today's Cell_SPM: blocks adaptive/implicit methods entirely); (c) required SUNDIALS dep (violates non-negotiable #4) |
+| D-24 | Forward sensitivities are a NAMED v4 surface (PyBOP entry, §3.9): dual-number forward mode through scalar-generic kernels as the general route; analytic modal sensitivities (same exponential propagator, linear-in-z structure; closed-form ∂V/∂states) where structure permits; central-FD as arbiter; adjoint deferred beyond v4.0; parameter set = Q10 | Volkan 2026-07-09: PyBOP ecosystem entry required; gradient optimisers need `simulateS1`-shaped sensitivities; §3.12 scalar-generic kernels make forward mode near-free to add; PyBaMM pays IDAS-sensitivity cost for the same surface | (a) FD-only "gradients" (noise floor wrecks optimiser line searches); (b) adjoint-first (right for n_θ ≫ 10, wrong for typical 3–8-parameter cell fits, much higher implementation risk); (c) full runtime AD dependency (CoDiPack/Enzyme as REQUIRED dep — violates non-negotiable #4) |
+| D-23 | §3.12 REVISED after orthogonal review (2026-07-09): rebindable BatchView (adaptive integrators evaluate f at THEIR trial vectors — CVODE clones internals, zero-copy holds only at IC/writeback); fixed eval pipeline {zero ydot → one shared observables stage → addRhs chain}; ODE-row mask (algebraic I/V + kinked cumulative rows never handed to an integrator); events as g(y)=0 root-finding; CVODE scoped to small-N ARBITER; kernels scalar-generic `template<class Real>` | D1/D2/D3 were guaranteed-wrong-answer defects if implemented as first drafted; legacy ageing accumulates into shared rows (`Cell_SPM_dstate.cpp:210`) and hides `_prev`/accumulator state (§2.1 correction); B5 precedent for algebraic rows; SPICE load-stage/limiting, Modelica events, SUNDIALS rootfinding, Stan/CoDiPack scalar-generic precedents | (a) view bound once to the arena (silently integrates stale state); (b) per-component observable recomputation (2–3× redundant asinh/interp per eval) or ad-hoc hidden scratch; (c) Boost.odeint adapter (state-type algebra forces copy machinery; the plain rhs hook covers odeint users); (d) custom SUNLinSol to run CVODE at pack scale (bloat — arbiter role only); (e) per-lane adaptive dt (destroys the SoA sweep) |
 
 ## 5. Migration strategy & verification discipline
 
@@ -568,12 +728,17 @@ another scientist can trust".
 2. **Parity harness (the arbiter).** `tests/parity/` runs registered scenarios through legacy AND core and
    digit-diffs: single Kokam SPM 1C CC discharge; CCCV cycle; 3s2p ECM pack with contact R; SPM pack 2p. For
    digit-diff, core runs in **legacy-Euler mode** (same scheme, same dt). Registered band, written BEFORE the run:
-   max |ΔV| ≤ 1e-12 V, max |Δstate| ≤ 1e-12 (rel) over the full trajectory.
+   max |ΔV| ≤ 1e-12 V, max |Δstate| ≤ 1e-12 (rel, with an abs floor of 1e-15 for states crossing zero — rel is
+   undefined at sign changes, and z-modes DO cross zero; floor ASSUMED 2026-07-09, tighten if a gate trips on it)
+   over the full trajectory.
 3. **Scheme upgrades validated separately** (never against loose-tolerance references — pouch-cell trap, logged
    twice): exponential propagator vs a tolerance-CONVERGED reference (tighten until the reference moves < 0.01 mV);
    registered band: |V_expm − V_ref| < 0.1 mV over a 1C discharge with a current step.
 4. **Oracles on non-degenerate cases:** parity scenarios include asymmetric electrodes, nonzero contact R,
-   heterogeneous initial SOC — never only the symmetric/uniform case.
+   heterogeneous initial SOC — never only the symmetric/uniform case. For COMPOSED kernels (diffusion + thermal +
+   ageing coupled) where no analytic series exists, the oracle is the **Method of Manufactured Solutions** (pick a
+   solution, derive the source term that makes it exact — Roache; Salari & Knupp): it covers the coupling terms
+   that P1-G3's single-physics series cannot, and is mathematics independent of both parity and CVODE references.
 5. **Baselines recorded first.** Before each phase: run full ctest, record failing-test names + counts in §8; every
    commit re-runs; report deltas ("2 failing {a,b} → 3: +c, caused by me").
 6. **No timing claims.** Machine runs concurrent jobs; performance evidence = allocation counts, iteration counts,
@@ -592,15 +757,26 @@ another scientist can trust".
      Abort threshold: <3× → stop and re-examine before Phases 3–4.
    - **PAY-3 (Phase 4 exit):** 10⁵-cell pack advances on the quiet machine within memory budget (<1 GB state) —
      feasibility, the original goal (§1). Fails → Mode C redesign before GPU work.
+   - **PAY-4 (Phase 7 exit; cross-tool positioning, quiet machine — registered TARGETS, not abort gates; Volkan
+     2026-07-09: "1000s× faster than liionpack, faster than PyBaMM at single cell"):**
+     (a) single-cell SPM, 1C discharge + CCCV cycle, vs PyBaMM 26.x on its FASTEST path (IDAKLU) — SLIDE faster
+     both per-solve AND including setup (PyBaMM pays seconds of model build; a compiled SLIDE composition builds
+     in µs). Hypothesis [inferred: expm exact on CC vs adaptive BDF, pouch-cell 26–52× precedent; no DAE
+     machinery]: ≥10× per-solve. (b) pack: identical netlist + SPM cells, 16s4p and ~100p, vs liionpack —
+     hypothesis [inferred: compiled SoA batches + cached sparse workspace vs Python orchestration + per-cell
+     casadi solves + per-step MNA in numpy/scipy]: ≥10³×. Protocol honesty: identical model + documented
+     tolerances; setup and solve timed separately; liionpack is maintenance-mode (§8 SOTA row) so this is
+     positioning, not a moving target; failure ⇒ profile and record, not stop.
    Structural proxies (allocations, virtual calls, iteration/factorisation counts, bytes/cell) are tracked
    continuously as leading indicators; wall clock at the checkpoints is the confirming evidence. Rule: phase N+1
-   does not start before phase N's checkpoint passes or Volkan explicitly waives it.
+   does not start before phase N's checkpoint passes or Volkan explicitly waives it (PAY-4 exempt from the
+   phase-blocking rule — it is a positioning measurement).
 
 ## 6. Phased roadmap
 
 Effort tags are relative. Every phase ends: tests green, CHANGELOG updated, §8 ledger updated, small commits pushed.
 
-### Phase 0 — Stabilise legacy (IN FLIGHT, 2 Opus agents, disjoint files)
+### Phase 0 — Stabilise legacy (DONE 2026-07-07, incl. follow-ups P0-C1..C6 — §8)
 Fix §2.4 bugs. Agent A (solver/state): A1–A7 in `src/modules/*` + regression tests + CHANGELOG. Agent B (data/misc):
 B1–B5 in `src/recording/`, `src/types/Histogram.hpp`, `src/procedures/Cycler.cpp`, degradation docs + tests;
 CHANGELOG lines to `.claude/changelog-phase0b.md` (avoid merge conflict; architect merges).
@@ -612,12 +788,52 @@ Deliver: `StateArena`/`StateSpec`/`StateSlice`/`BatchBuilder`, `Domain`/`Electro
 `ThermalLumped`, ageing kernels (SEI/LAM/CS/plating ported mechanism-by-mechanism), composition registry + factory,
 legacy-Euler stepping mode. Single-cell `Simulation` façade. Arena scalar behind `using real_t = double;` (Q1);
 `BatchBuilder` reserves the cross-batch thermal-flux seam — declaration only, D-21 designs it before Phase 2 (Q9).
+
+**Progress + critical path (2026-07-09 review, [confirmed] by code inspection of `src/core/` + `tests/unit/core_*`):**
+DONE: `StateArena`/`BatchBuilder` (+`q_ext` seam, tests), `SpectralDiffusionLegacy` parity kernel (P1-G0 both configs,
+Q8 closed), production `SpectralDiffusion<NCH>` (heterogeneous 8-lane oracle test). NOT STARTED: everything else in
+the Deliver list — `Domain`/`ElectrodeParams` (§3.3 Layer-1 types), `ThermalLumped`, ageing kernels, registry +
+factory, `Simulation` façade — and gates P1-G1/G2/G3.
+**BLOCKER (surfaced 2026-07-08 handoff): the observable-reconstruction layer.** Thermal and ageing kernels are not
+self-contained state→state maps: they need `c_surf = C·z + D·flux` (+ centre node, the §2.2 output path), Butler-
+Volmer overpotentials, OCV/entropic-coefficient interp, Rdc — i.e. the derived-observables layer (D-10, §3.7) plus
+the `BatchView`/`StepCtx` kernel interface (§3.11) that `SpectralDiffusion` deferred (plain spans as stopgap).
+**Ordering:** (1) observable layer + `BatchView`/`StepCtx` — **DESIGNED 2026-07-09 (§3.12, D-22: RHS-form kernels,
+structs of spans, off-the-shelf-integrator adapter); implementation is now unblocked Opus work** → (2) P1-G3 Chebyshev
+oracle FIRST (it validates exactly the C/D surface-concentration path the new layer exposes) → (3) `ThermalLumped`
+(as `addRhs`, §3.12) → (4) ageing kernels (same form; promote legacy `_prev`/accumulator members to arena rows —
+§2.1 correction) → (5) registry/factory + façade + `EulerLegacy` stepper → P1-G1/G2/G4 → PAY-1. Open code marks
+for Opus are grep-tagged `REVIEW-MARK(2026-07-09` (see §8 row).
 **Gates:** P1-G0 parity-drift pilot (Q8): 1-cell legacy-Euler 1C CC, measure |ΔV|/|Δstate| drift legacy vs v4 kernel;
 outcome closes Q8 (keep 1e-12 band, or pin op-order/`-ffp-contract=off`, or loosen with ulp argument) BEFORE P1-G1
 runs. P1-G1 parity single-cell scenarios (§5.2 band as resolved by P1-G0). P1-G2 one batch of 10⁴ identical cells
 steps with ZERO per-step heap allocations (assert via allocation-counting new). P1-G3 Chebyshev external oracle:
 transient sphere diffusion with constant-flux BC vs the analytic series solution (Carslaw & Jaeger form), registered
-band rel. err < 1e-6 at nch=5,8,12; plus cross-check vs Howey Spectral_li-ion_SPM conventions.
+band rel. err < 1e-6 at nch=5,8,12; plus cross-check vs Howey Spectral_li-ion_SPM conventions. **Extended
+2026-07-09 (math audit `.claude/reports/chebyshev-math-audit-2026-07-09.md`):** (a) analytic EIGENVALUE oracle —
+the folded operator's nonzero eigenvalues are known in closed form: λ_k·R² = −μ_k² with μ_k the roots of
+tan μ = μ (μ₁ ≈ 4.4934, μ₂ ≈ 7.7253; μ₀ = 0 is the mass mode, which is WHY forcing one zero eigenvalue is
+correct). Registered: rel err < 1e-10 for k ≤ nch/2 at nch = 5, 8, 12; all eigenvalues real (ratio < 1e-12) and
+negative. Validates the operator independent of ANY trajectory — different mathematics from both parity and the
+C&J series (which shares the same μ_k but tests A,B,C,D jointly).
+**IMPLEMENTED + band FALSIFIED/corrected 2026-07-09 (Opus)** — `tests/unit/core_ChebyshevEigenvalues_test.cpp`,
+14th test, green. The operator IS exactly the tan μ = μ spectrum (μ₁ matches to 3.6e-14 at nch=12), R1/R2/R3
+confirmed. But the ASSUMED "1e-10 @ k ≤ ⌈nch/2⌉" is **FALSIFIED** — accuracy is the honest Chebyshev
+spectral-convergence curve, not a flat floor. MEASURED (registered pre-run, recorded per CLAUDE.md §3): fundamental
+μ₁ rel err 1.98e-5 (nch=5) → 2.25e-10 (nch=8) → 3.63e-14 (nch=12), ~1.5 digits/node; modes resolved to rel < 1e-3
+= 1 / 3 / 6 (≈ ⌈nch/2⌉ — Fable's mode COUNT was right, the TOLERANCE should have been ~1e-3, not 1e-10). Notable
+[confirmed]: at the production default **nch=5 even the fundamental diffusion eigenvalue is accurate to only ~2e-5**
+(sub-mV on voltage, fine, but now quantified — a possible reason nch=5 was the historical "known-good" value).
+Re-registered bands (test-enforced, ~3× margin): fundamental < {5e-5, 1e-9, 1e-12}; resolved-to-1e-3 count ≥
+{1,3,6}; μ₁ rel err strictly monotone-decreasing in nch (spectral-convergence signature). STILL OPEN for full
+P1-G3: (b) Carslaw & Jaeger transient series incl. centre node c(0,t) — separate file, not yet written. (b) the trajectory check MUST include the
+CENTRE node c(0,t) — the `cc_coeff` output path (§2.2(a)) has no external oracle yet (audit C4). (c) v4
+`build()` adopts (a) as a Status-failing gate, replacing the Release-silent assert + unchecked `EigenSolver`
+(audit C1–C3; marked in `Model_SPM.hpp`). Once thermal/ageing kernels land, extend with an MMS check on the
+composed RHS (§5.4). **P1-G4 (added 2026-07-09) bitwise restart:**
+run 0→2T equals run 0→T + arena snapshot/restore + T→2T DIGIT-FOR-DIGIT — the cheapest test that catches hidden
+non-arena state (the §2.1-correction class: `s_dai_p_prev`, `Therm_Qgen`/`Therm_time`) and workspace-invalidation
+bugs; HPC checkpoint-restart discipline.
 
 ### Phase 2 — Pack layer
 Deliver: netlist combinators + `Pack::compile()` (flatten, sparsity, ladder detection, index-1 check), Mode A sparse
@@ -651,7 +867,9 @@ zero per-step allocations; no timing claim).
 Deliver: C++ PyBaMM-grammar parser, Experiment→segment compiler, CC/CV/CCCV/power/rest + drive cycles on the new core,
 termination conditions.
 **Gate P5-G1:** grammar round-trip test suite (every documented string form parses; malformed strings produce
-diagnostics); CCCV parity vs legacy Cycler.
+diagnostics); CCCV parity vs legacy Cycler. Terminations located by event root-finding (g(y)=0, §3.12 item 5), not
+post-step threshold checks; `Solution` carries a machine-readable termination REASON (event/limit/error/final-time —
+PyBaMM `solution.termination` equivalent, required for Phase-7 compat anyway).
 
 ### Phase 6 — Recording & I/O
 Deliver: Recorder (snapshot cadence + lazy derived), CSV sink, mmap binary sink (header-CRC idiom), optional Parquet.
@@ -660,10 +878,21 @@ mmap file survives the hardened-open validation tests (truncated/corrupt-header 
 
 ### Phase 7 — Python bindings + PyBaMM compat
 Deliver: nanobind module, wheels (scikit-build-core), `Experiment/ParameterValues/Simulation/Solution`, Chen2020
-absorption table, options→registry map, `device=` dispatch (dtw-cpp template), pytest in CI.
+absorption table, options→registry map, `device=` dispatch (dtw-cpp template), pytest in CI. **BPX JSON reader**
+(Faraday Institution standard) as a second parameter-absorption source next to the PyBaMM-name table — the
+ecosystem-neutral interop PyBaMM and BattMo already speak; one cold-path parser. Also surface the §3.1 ensemble
+framing in the Python API: `varied()` lanes ARE a UQ/parameter-sweep engine (10⁵ independent single-cell variants =
+one batch — DifferentialEquations.jl `EnsembleProblem` shape), not only manufacturing spread in packs.
 **Gate P7-G1:** the PyBaMM getting-started Tutorial-5 experiment script runs with `import slide as pybamm`-style swap
 and produces a voltage curve within a registered band of PyBaMM's own SPM (band set after a converged-reference run,
 expected ~10 mV model-difference scale — document, don't hide, the modelling differences).
+**Gate P7-G2 (PyBOP, added 2026-07-09):** (a) forward sensitivities vs central-finite-difference arbiter on the same
+trajectory — registered band set per parameter BEFORE the run (FD step chosen by the standard √ε·scale rule, checked
+for FD-noise floor); (b) one end-to-end PyBOP fitting example (e.g. GITT-style D_s + R identification on synthetic
+SLIDE data with known truth) recovers the truth within a registered tolerance using a GRADIENT-based optimiser — this
+is the "entered the ecosystem" proof, not an API checkbox.
+**Gate P7-G3 (parameter fidelity, added 2026-07-09):** the §3.9 same-parameters⇒same-results contract — absorption
+round-trip EXACT on every Chen2020/BPX key; fixture parity on the registered scenarios (bands per §3.9).
 
 ### Phase 8 — MATLAB MEX, GPU, docs, release
 MEX `+slide` package symmetric with Python; CUDA one-cell-per-thread batch stepping (host-side coupling); docs site
@@ -676,6 +905,10 @@ CHANGELOG consolidation. Gates defined when phase opens.
   keep open: core already must build with zero deps (non-negotiable #4), no threads assumed outside the pool (§3.8),
   no filesystem dependence in the hot path. Only rule it adds NOW: no platform API in core without a portable seam.
 - Thermal 1D/2D per-cell models; blended electrodes (`vector<ActiveMaterial>`); SYCL/HIP (Q5); f32 storage (Q1).
+- **FMU export (FMI Model-Exchange):** §3.12's {rhs, observables, event indicators} is already the FMI ME shape —
+  export is a thin wrapper later; only rule NOW: keep the contract FMI-congruent (costs nothing).
+- ~~Forward sensitivities / dual-number AD~~ **PROMOTED into v4 scope 2026-07-09** (Volkan: PyBOP entry required) —
+  now §3.9 sensitivities + D-24 + P7-G2 + Q10. Only the ADJOINT (many-parameter gradients) stays beyond v4.0.
 
 ## 7. Open questions for Volkan (OPEN/ASSUMED ledger)
 
@@ -689,6 +922,7 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | Q6 | Ross's analytical parallel solution — is `setCurrent_analytical_impl` (Nilsu 2024) the code you meant, or is there a separate derivation to recover? | **RESOLVED 2026-07-07 [confirmed]**: arXiv:2508.14454 (Lone, Atlan, Fasolato, Raimondo, Drummond 2025) — Nilsu co-authored it; her code implements it. Adopted as Mode-B upgrade (D-20) |
 | Q7 | PyBaMM version to target for the parameter absorption table? | **DECIDED 2026-07-07 (Volkan)**: latest stable at Phase 7 start; key-rename check mandatory. PyBaMM is CalVer — pinning today buys nothing; absorption table already keyed to verified 26.6.2.0 names + deprecation aliases (§3.9) |
 | Q8 | Parity band (§5.2, ≤1e-12 rel) vs SoA kernel floating-point reassociation: different summation order + FMA contraction give O(1 ulp)/step, amplified over 10³–10⁴ Euler steps; 1e-12 rel ≈ 4 ulps. Pin legacy op-order + `-ffp-contract=off` in parity mode, or loosen the band? | **RESOLVED 2026-07-07 [confirmed] — band KEPT at 1e-12; parity mode uses an op-order-pinned kernel.** P1-G0 pilot ran (`tests/unit/core_P1G0_pilot_test.cpp`, kernel `src/core/SpectralDiffusionLegacy.hpp`): 1200×1 s lockstep 1C steps, legacy `Cell_SPM` Euler vs op-order-replica core kernel → **max_abs = 0, max_rel = 0, bit-identical** (H0 confirmed, registered pre-run; ctest 12/12). Why cheap: the modal update `dz_k = D·A_k·z_k + B_k·j` is diagonal — NO dot products, so op-order pinning costs nothing. Standing conditions: (1) §5.2 parity runs use the legacy-shaped kernel (production vectorised kernels are validated via §5.3 converged-reference bands, NOT the 1e-12 digit-diff); (2) ~~pilot ran in Debug/-O0 — re-confirm drift==0 in the Release config before P1-G1 sign-off~~ **DISCHARGED 2026-07-08 [confirmed]**: Release/-O3 (`build-release`, clang-21) re-run gives **max_abs = 2.26e-17, max_rel = 5.63e-15** → decisive 1e-12 gate HOLDS (~3 orders margin); H0 (exact bit-identity) FALSIFIED under -O3 cross-TU FMA contraction (legacy update lives in the prebuilt `src` lib, kernel is header-only in the test TU; `-Ofast`/`-ffast-math` contracts them differently). `-ffp-contract=off` NOT applied: on the test target alone it cannot reach 0 (legacy `src` side stays contracted), and forcing it globally would recompile legacy — PLAN §5.1 forbids that. Drift is bounded (modal Euler map non-expansive for stable modes; mean-mode accumulation ~1e-15 over a 10-cycle run, ≥3 orders below the gate). Pilot's `max_abs==0` CHECK scoped to Debug (where it holds); decisive `rel≤1e-12` REQUIRE is the CI gate in both configs. P1-G1 UNBLOCKED — register its scenarios mid-SOC or check the steep-OCV tail (dV/dcs amplification watch-point) |
+| Q10 | Which parameters get first-class forward sensitivities in v4 (P7-G2)? Cost is per-parameter (dual-number sweep ≈ +1× per θ), so the set should be the fitting-relevant one, not everything | ASSUMED (2026-07-09, from typical PyBOP/GITT practice): solid diffusivities D_s(p,n), reaction rate constants k_ct(p,n), film/ohmic resistance, electrode capacities/stoichiometry limits (x_0, x_100), thermal h_conv — ~10 params. Volkan to confirm/trim when Phase 7 opens |
 | Q9 | Pack-level thermal coupling has no compiled representation (`Pack::compile()` emits an electrical netlist only), but legacy modules exchange heat between children + `CoolSystem`, and T-states sit inside P2-G1's parity band | **DECIDED 2026-07-07 (Volkan)**: reserve the seam now, design later — Phase 1 `BatchBuilder` reserves a cross-batch thermal-flux interface (declaration only, no implementation); a full D-21 (thermal adjacency compiled alongside the netlist) must be written and logged in §4 BEFORE Phase 2 opens. P2-G1 is unpassable until D-21 exists |
 
 ## 8. Status ledger
@@ -707,4 +941,10 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-07 | P1-G0 parity-drift pilot (Q8) | **PASSED — drift exactly 0 (bit-identical)** over 1200×1 s 1C lockstep steps, legacy `Cell_SPM` Euler vs `SpectralDiffusionLegacyKernel` on `StateArena`. H0 (==0) registered pre-run and CONFIRMED; Q8 closed, §5.2 band stays 1e-12. ctest 12/12 (baseline 11/11 + pilot). Residual: re-confirm in Release config before P1-G1 sign-off |
 | 2026-07-08 | P1-G0 Release re-confirm (Q8 standing condition 2) | **DISCHARGED.** `build-release` (clang-21, -O3/-Ofast). Release: max_abs=2.26e-17, max_rel=**5.63e-15** → decisive rel≤1e-12 HOLDS (~3 orders margin). H0 exact bit-identity FALSIFIED under -O3 cross-TU FMA (registered falsification, numbers recorded); Debug/-O0 still max_abs=0. Legacy NOT recompiled (-ffp-contract=off would need global legacy change, §5.1 forbids; test-target-only can't reach 0). Pilot's `max_abs==0` CHECK scoped `#ifndef NDEBUG`; both configs green (Release 1/1, Debug 1/1). **Q8 FULLY CLOSED; P1-G1 UNBLOCKED.** Watch-point logged: register P1-G1 mid-SOC or check steep-OCV tail |
 | 2026-07-08 | Production `SpectralDiffusion<NCH>` kernel (§3.2/§3.5) | DONE — vectorised-across-lanes forward-Euler diffusion on SoA `StateArena` rows; `DiffusionParams<NCH>` (batch-shared A/B/D0/D_T/a/thick/sgn), per-lane T/i_app spans, once-allocated D_eff/flux scratch (PC-1). Validated vs legacy-shaped oracle on a heterogeneous 8-lane batch (600 steps): **Debug max_abs=0** (H_math arbiter — vectorised sweep == legacy math exactly), **Release max_rel=3.8e-15** (Q8 rel≤1e-12 HOLDS, ~3 orders margin; sub-ulp vectorisation reassoc, expected per Q8). ctest Debug 13/13 (+1, no regressions). DEFERRED (needs review): §3.11 BatchView/StepCtx bundling — T/i_app passed as spans for now |
-| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0 pilot + Release re-confirm, production `SpectralDiffusion<NCH>`. NEXT: ThermalLumped, ageing kernels, composition registry + factory, single-cell `Simulation` façade, P1-G1..G3); Phases 2–8 not started |
+| 2026-07-09 | Progress review vs plan (Fable; advisor unavailable, no external review) | DONE — Phase-1 state written into §6 Phase 1 "Progress + critical path". 3 defects MARKED in code (grep `REVIEW-MARK(2026-07-09`), deliberately NOT fixed (Opus to fix): (1) `src/core/SpectralDiffusion.hpp` `stepEuler` lacks `assert(arena.n_lanes() == n_lanes_)` — lane-count mismatch = OOB write; (2) `src/core/StateArena.hpp` `at()` never asserts `s.row_begin + r < n_rows_` (foreign slice reads OOB silently) + moved-from arena keeps nonzero dims with null `data_` (row()/at() deref nullptr past asserts); (3) `tests/unit/core_SpectralDiffusion_test.cpp` header OUTCOME says "rel ~1e-16, ~4 orders" but recorded artifact is max_rel = 3.80e-15 (~3 orders) — comment must match the artifact. Noted, no mark (design nits, cold path): `BatchBuilder` invariants are assert-only (vanish in NDEBUG; acceptable for build-time code, revisit when the factory lands); test-side hand-reproduced `elec_surf = 0.1*0.2*31` literal duplicates protected `Geometry_SPM` data (breaks silently if geometry recalibrated — factory should own capture). Phase-0 header in §6 corrected (was still "IN FLIGHT") |
+| 2026-07-09 | Kernel/integrator contract designed (§3.12, D-22) | DONE — Volkan's requirements (flexible/expandable, no unnecessary abstraction, extreme speed, OFF-THE-SHELF integrators, sparse intuitive structure) resolved the Phase-1 observable-layer blocker: RHS-form kernels (`addRhs` into a once-allocated ydot arena) over `BatchView`/`StepCtx` structs-of-spans; observables = free functions shared by RHS + Recorder (one code path, D-10); steppers own time — EulerLegacy (parity) / ExponentialModal (Phase 3) / generic RHS adapter (`arena.raw()` zero-copy to CVODE `N_VMake_Serial`, Boost.odeint, or user callable; optional deps, core builds with none). CVODE at tight rtol doubles as the §5.3 converged-reference arbiter for expm validation. NOT reviewed externally (advisor down; Fable-only design) — Opus should read §3.12 critically before implementing |
+| 2026-07-09 | Orthogonal review of the plan (independent Fable critic agent a4c48623f018bf968 + cross-simulator harvest) | DONE — 13 defects, 3 critical, ALL in the fresh §3.12 (caught BEFORE implementation): D1 CVODE clones internal vectors → BatchView must REBIND per eval (the "zero-copy N_VMake_Serial" claim as first written was WRONG — recorded, corrected); D2 ydot zeroing contract was unstated (accumulate semantics + legacy shared-row adds `Cell_SPM_dstate.cpp:210` = guaranteed wrong answer); D3 [confirmed by grep] legacy hides path-dependent state outside `State_SPM` (`s_dai_p_prev` dstate:244 → LAM degradation:377; `Therm_Qgen`/`Therm_time` Cell_SPM.hpp:62-64) falsifying §2.1's "only time/Ah/Wh" — §2.1 corrected, v4 rule added (later-step reads ⇒ arena row). Fixes folded: §3.12 rewritten (D-23: rebindable view, eval pipeline, ODE-row mask, events-as-rootfinding, CVODE=arbiter-only, odeint REJECTED, scalar-generic kernels), §3.4 solver robustness (consistent init, SPICE-style trial limiting, source-stepping homotopy rescue, rollback atomicity, compiled-netlist detection), §3.4.1 divergence guard, §3.5 expm1/φ₁ cancellation note, §3.8 fixed-order reductions + GPU-fit analysis (2·10⁴ cells ≈ 6 MB state; occupancy/coupling/launch/f64 concerns recorded — answers Volkan's GPU question), §5.2 band abs floor (ASSUMED 1e-15), §5.4 MMS oracle for composed kernels, P1-G4 bitwise-restart gate, P5-G1 events + termination reason, Phase-7 BPX + ensemble API, §3.1 dual-use (packs AND UQ sweeps), Beyond-v4 FMI/AD notes |
+| 2026-07-09 | P1-G3 part (a) IMPLEMENTED (Opus) — Chebyshev eigenvalue oracle | DONE — `tests/unit/core_ChebyshevEigenvalues_test.cpp` (14th test, full suite 14/14 green, no regressions vs the 13/13 baseline). Independent-math oracle: `Model_SPM` A-eigenvalues vs analytic roots of tan μ = μ. Operator CONFIRMED (μ₁ to 3.6e-14 @ nch=12; one zero mass mode; rest real+negative). Fable's ASSUMED "1e-10 @ k ≤ ⌈nch/2⌉" band FALSIFIED with data (recorded, CLAUDE.md §3): true spectral convergence, fundamental 2.0e-5/2.3e-10/3.6e-14 @ nch 5/8/12, ~⌈nch/2⌉ modes to 1e-3. nch=5 fundamental only ~2e-5 accurate [confirmed]. Bands re-registered from the run. STILL OPEN: P1-G3 part (b) C&J transient series incl. centre node. Marks C1–C3 (Model_SPM build() hardening) still deferred to the v4 model build |
+| 2026-07-09 | Chebyshev math audit + speed targets + async recording + parameter fidelity (Volkan directives) | DONE — (1) **Chebyshev audit** `.claude/reports/chebyshev-math-audit-2026-07-09.md`: full derivation trail (u=rc → heat eq → odd folding → surface-node Schur condensation → nonsymmetric eigensolve → modal form) [confirmed vs Model_SPM.hpp]; KEY FIND: operator eigenvalues are analytic — λ_k·R² = −μ_k², tan μ_k = μ_k (mass mode = μ₀ = 0 explains the forced zero eigenvalue) → new P1-G3 eigenvalue oracle (rel 1e-10, k ≤ nch/2) + centre-node c(0,t) coverage (cc_coeff path had NO external oracle) + v4 build() Status-gate replacing Release-silent assert/unchecked EigenSolver (marks C1–C3 in Model_SPM.hpp, grep `REVIEW-MARK(2026-07-09`); discretisation menu added §3.2 (FVM/parabolic/Duhamel/Legendre). (2) **PAY-4** cross-tool targets (≥10³× liionpack, ≥10× per-solve vs PyBaMM IDAKLU single cell — hypotheses [inferred], positioning not abort gates). (3) **§3.7 async recording ring** (pinned buffers + side stream, Blosc-style shuffle+zstd, explicit backpressure, non-temporal snapshot copies) + §3.8(3b) GPU kernel fusion lever. (4) **§3.9 same-params⇒same-results contract** + P7-G3 (absorption round-trip exact; committed PyBaMM fixture parity; converged-model band honesty). Ageing-embedding question answered: declare()/StateSlice + addRhs IS the embedding design (§3.1+§3.12); ageing port itself still not started |
+| 2026-07-09 | PyBOP ecosystem entry (Volkan directive) + GPU speed/memory analysis | DONE — forward sensitivities promoted from beyond-v4 into v4 scope: §3.9 sensitivities surface (dual-number forward mode via §3.12 scalar-generic kernels; analytic modal sensitivities on the same exponential propagator where linear structure permits; central-FD arbiter), D-24 (adjoint deferred; FD-only and required-AD-dep rejected), P7-G2 gate (sensitivity band vs FD arbiter + end-to-end PyBOP gradient-fit recovering known truth on synthetic data), Q10 (fitting-parameter set, ASSUMED ~10 params, Volkan confirms at Phase 7). §3.8 GPU: cache-residency roofline recorded [inferred, no timing claim] — 20k-cell working set fits GPU L2; "very quick very long" = expm × multirate × GPU product, hypothesis registered for GPU-phase PAY banding |
+| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0 pilot + Release re-confirm, production `SpectralDiffusion<NCH>`, §3.12 kernel/integrator design REVISED per D-23. **NEXT (Opus-implementable): BatchView/StepCtx + observable free functions per §3.12 as revised**; then P1-G3 → ThermalLumped → ageing (promote `_prev`/accumulators to arena rows) → registry/factory + façade + EulerLegacy stepper → P1-G1/G2/G4 → PAY-1); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |

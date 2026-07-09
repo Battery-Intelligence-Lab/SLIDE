@@ -28,6 +28,10 @@
  *                       OUTCOME 2026-07-08: Release max_abs = 5.9e-17 (rel ~1e-16) -> HOLDS,
  *                       ~4 orders of margin. (Exact bit-identity is NOT expected at -O3 for a
  *                       vectorised kernel — that was the reason Q8 chose a rel band here.)
+ *                       REVIEW-MARK(2026-07-09, Fable): the "(rel ~1e-16) … ~4 orders" above
+ *                       contradicts the recorded run artifact (max_rel = 3.80e-15, ~3 orders —
+ *                       PLAN §8 2026-07-08 row + handoff): max_rel is dominated by small-|z|
+ *                       modes, not by max_abs/|z_typical|. Correct this comment to 3.8e-15.
  *
  *   Non-degeneracy:     lanes carry distinct T[c], i_app[c] and initial z; the lane-to-lane
  *                       spread of the final zp[0] must be > 0 (the sweep genuinely runs over

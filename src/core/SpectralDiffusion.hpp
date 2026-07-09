@@ -107,6 +107,8 @@ public:
   {
     assert(zp.rows == NCH && zn.rows == NCH);
     assert(static_cast<int>(T.size()) == n_lanes_ && static_cast<int>(i_app.size()) == n_lanes_);
+    // REVIEW-MARK(2026-07-09, Fable): missing guard `assert(arena.n_lanes() == n_lanes_)` —
+    // a kernel built for L lanes stepping a smaller arena writes past each row span (OOB).
     const std::array<StateSlice, 2> slice{ zp, zn };
     const int L = n_lanes_;
 

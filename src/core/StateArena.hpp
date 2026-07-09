@@ -102,6 +102,10 @@ public:
   }
 
   //!< Element access for cold paths and tests: row `r` (relative to the slice) of lane `c`.
+  // REVIEW-MARK(2026-07-09, Fable): assert checks r vs s.rows but never `s.row_begin + r < n_rows_`
+  // — a stale/foreign StateSlice reads OOB silently even in Debug. Add the arena-bounds assert
+  // (both overloads). Also: moved-from StateArena keeps n_rows_/n_lanes_ nonzero with null data_,
+  // so row()/at() pass asserts then deref nullptr — zero the dims in a move ctor/assign.
   real_t &at(StateSlice s, int r, int c)
   {
     assert(0 <= r && r < s.rows && 0 <= c && c < n_lanes_);
