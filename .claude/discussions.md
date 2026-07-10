@@ -218,6 +218,13 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Evidence:** the test-first Debug run failed 8 assertions, including the escaped exception. Focused Debug/Release passes 67/67; sequential full async binaries pass 233/233 each. The suite uses at most eight model steps and a bounded 50-enqueue pressure case.
 - **Deferred deliberately:** configuration path-copy fault atomicity and public shuffle preconditions remain open until their own red fault/UB tests are registered; this commit does not claim them.
 
+## 2026-07-10 — Phase 9B async configure fault atomicity
+
+- **Confirmed:** deterministic failure of the late `path_ = path` allocation returned `Numerical_failure` after `batch_` had already been published. `configured()` therefore remained true without a worker/output member, and a zstd build would also strand the still-local context.
+- **Test design:** warm one-time library state, measure the allocation size of copying the deliberately long path, and fail only that matching allocation. This avoids injecting into unrelated standard-library internals and produced one precise pre-fix assertion failure without timeouts.
+- **Fix/evidence:** copy the path locally before slot/file/context creation and swap it during no-throw member commit. The allocation executable passes 15/15 in Debug and Release, including successful reuse after failure and the original zero-allocation enqueue check.
+- **Still open:** public byte-shuffle preconditions, close-time errors, and concurrent finish/hook contracts remain separate ledger candidates.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

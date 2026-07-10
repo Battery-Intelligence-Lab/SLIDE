@@ -177,6 +177,7 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
     return slide::Status::Invalid_parameters;
 
   try {
+    std::filesystem::path candidate_path{ path };
     std::vector<Slot> slots(config.ring_slots);
     for (auto &slot : slots) {
       slot.values.resize(raw_values);
@@ -202,7 +203,7 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
 #endif
     batch_ = &batch;
     config_ = config;
-    path_ = path;
+    path_.swap(candidate_path);
     rows_ = batch.state().n_rows();
     lanes_ = batch.state().n_lanes();
     stride_ = batch.state().stride();
