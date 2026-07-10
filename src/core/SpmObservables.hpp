@@ -72,7 +72,9 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
                               const SpmStateLayout &layout,
                               const BasicStepCtx<Real> &ctx,
                               PerDomain<std::span<Real>>
-                                concentration)
+                                concentration,
+                              PerDomain<std::span<Real>> effective_diffusivity = {},
+                              PerDomain<std::span<Real>> molar_flux = {})
 {
   assert(domain_value(layout.z, Domain::pos).rows == NCH
          && domain_value(layout.z, Domain::neg).rows == NCH
@@ -88,6 +90,13 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
   constexpr int output_rows = NCH + 2; // surface + NCH interior + centre
   assert(static_cast<int>(concentration[0].size()) == output_rows * L
          && static_cast<int>(concentration[1].size()) == output_rows * L);
+  assert((effective_diffusivity[0].empty()
+          && effective_diffusivity[1].empty())
+         || (static_cast<int>(effective_diffusivity[0].size()) == L
+             && static_cast<int>(effective_diffusivity[1].size()) == L));
+  assert((molar_flux[0].empty() && molar_flux[1].empty())
+         || (static_cast<int>(molar_flux[0].size()) == L
+             && static_cast<int>(molar_flux[1].size()) == L));
 
   const std::span<const Real> T = state.row(layout.temperature.row_begin);
   using std::exp;
@@ -103,6 +112,10 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
       const Real flux_den = state.at(layout.specific_surface_area[d], 0, c) * p.n * p.F
                             * state.at(layout.electrode_thickness[d], 0, c);
       const Real molarFlux = sgnd * ctx.i_app[c] / flux_den;
+      if (!effective_diffusivity[d].empty())
+        effective_diffusivity[d][c] = Dt;
+      if (!molar_flux[d].empty())
+        molar_flux[d][c] = molarFlux;
 
       for (int node = 0; node < NCH + 1; ++node) {
         Real acc{};
@@ -141,6 +154,8 @@ template <class Real>
 struct BasicSpmObservables
 {
   PerDomain<std::span<Real>> concentration{}; //!< node-major: [node*n_lanes + lane]
+  PerDomain<std::span<Real>> effective_diffusivity{};
+  PerDomain<std::span<Real>> molar_flux{};
   PerDomain<std::span<Real>> surface_stoichiometry{};
   PerDomain<std::span<Real>> exchange_current_density{};
   PerDomain<std::span<Real>> overpotential{};
@@ -178,7 +193,9 @@ public:
     const auto L = static_cast<std::size_t>(n_lanes_);
     for (const Domain domain : domains)
       output.concentration[domain_index(domain)] = take(static_cast<std::size_t>(NCH + 2) * L);
-    for (auto *field : { &output.surface_stoichiometry,
+    for (auto *field : { &output.effective_diffusivity,
+                         &output.molar_flux,
+                         &output.surface_stoichiometry,
                          &output.exchange_current_density,
                          &output.overpotential,
                          &output.electrode_ocv })
@@ -202,7 +219,7 @@ public:
 private:
   static std::size_t required_size(int n_lanes)
   {
-    return static_cast<std::size_t>(n_lanes) * (2 * (NCH + 2) + 17);
+    return static_cast<std::size_t>(n_lanes) * (2 * (NCH + 2) + 21);
   }
 
   int n_lanes_{};
@@ -219,7 +236,13 @@ template <int NCH, class Real>
 {
   const int L = state.n_lanes();
   ctx.assert_valid_for(L);
-  computeSpmConcentrations(p.concentration, state, layout, ctx, output.concentration);
+  computeSpmConcentrations(p.concentration,
+                           state,
+                           layout,
+                           ctx,
+                           output.concentration,
+                           output.effective_diffusivity,
+                           output.molar_flux);
 
   const std::span<const Real> temperature = state.row(layout.temperature.row_begin);
   using std::asinh;

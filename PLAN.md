@@ -800,8 +800,8 @@ legacy parity exact, Release 2.665e-15, and 9.027e-15 analytic round-trip), all 
 `Domain`/physical-description/`ElectrodeParams` layer, and the shared kinetics/OCV/resistance/voltage/heat
 observable stage, `ThermalLumped` with arena-owned heat/time accumulators, SEI ageing mechanisms 1–4, surface-crack
 mechanisms 1–5, LAM mechanisms 1–4, porosity/diffusivity coupling, and shared Dai/Laresgoiti stress observables with explicit
-previous-step arena state. NOT
-STARTED: the rest of the Deliver list — registry + factory,
+previous-step arena state, plus the compile-time fixed composed SPM RHS pipeline (mandatory zeroing, shared
+observable/stress stages, rebind-safe trial-vector evaluation). NOT STARTED: the rest of the Deliver list — registry + factory,
 `Simulation` façade — and
 gates P1-G1/G2/G4.
 **DEPENDENCY (surfaced 2026-07-08 handoff): the observable-reconstruction layer.** Thermal and ageing kernels are not
@@ -811,8 +811,8 @@ the `BatchView`/`StepCtx` kernel interface (§3.11) that `SpectralDiffusion` def
 **Ordering:** (1) observable layer + `BatchView`/`StepCtx` — **DONE 2026-07-10: rebindable views, row roles,
 full concentration, kinetics, OCV, resistance, voltage, and heat** → (2) P1-G3 Chebyshev
 oracle FIRST (it validates exactly the C/D surface-concentration path the new layer exposes) → (3) `ThermalLumped`
-(as `addRhs`, §3.12) — **DONE 2026-07-10** → (4) ageing kernels (same form; promote legacy `_prev`/accumulator members to arena rows —
-§2.1 correction) → (5) registry/factory + façade + `EulerLegacy` stepper → P1-G1/G2/G4 → PAY-1. The three
+(as `addRhs`, §3.12) — **DONE 2026-07-10** → (4) ageing kernels + fixed composed pipeline (same form; promote legacy `_prev`/accumulator members to arena rows —
+§2.1 correction) — **DONE 2026-07-10** → (5) registry/factory + façade + `EulerLegacy` stepper → P1-G1/G2/G4 → PAY-1. The three
 2026-07-09 core review marks were resolved on 2026-07-10 (see §8 rows); Model_SPM build marks remain for the factory.
 **Gates:** P1-G0 parity-drift pilot (Q8): 1-cell legacy-Euler 1C CC, measure |ΔV|/|Δstate| drift legacy vs v4 kernel;
 outcome closes Q8 (keep 1e-12 band, or pin op-order/`-ffp-contract=off`, or loosen with ulp argument) BEFORE P1-G1
@@ -970,4 +970,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | Surface-crack mechanisms 1–5 | DONE — masked scalar-generic stage ports Laresgoiti, Dai, Deshpande–Bernardi, Barai, and Ekstrom laws plus optional negative-diffusivity loss. Additive RHS covers crack surface, crack-driven extra SEI flux/lithium loss, and `Dn`; all mechanisms × both diffusion settings match direct `Cell_SPM::CS` at rel≤1e-12 in Debug/Release. Sensitivity type is preserved below the legacy diffusion-rate cap. Full Debug 23/23. |
 | 2026-07-10 | LAM mechanisms 1–4 | DONE — ports Dai stress thinning, Delacourt–Safari flux loss, Kindermann dissolution, and Narayanrao active-area loss. Additive RHS composes direct area and `3ε/R` contributions. All six raw geometry rates per mechanism match direct `Cell_SPM::LAM` at rel≤1e-12 in Debug/Release. Full Debug 24/24. |
 | 2026-07-10 | Yang lithium plating | DONE — scalar-generic side-current matches direct `Cell_SPM::LiPlating` at rel≤1e-13 for charge/discharge in Debug/Release; additive RHS updates negative z, LLI, and explicit plated-layer thickness. All individual legacy SPM ageing mechanisms now have v4 kernels. Full Debug 25/25. |
-| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0, production `SpectralDiffusion<NCH>`, rebindable BatchView/StepCtx + row roles, physical description/Domain/ElectrodeParams, shared concentration/electrical/heat/stress observable stages, `ThermalLumped`, all SEI/crack/LAM/plating ageing mechanisms, P1-G3. **NEXT: composed SPM pipeline + registry/factory** → façade + EulerLegacy stepper → P1-G1/G2/G4 → PAY-1); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |
+| 2026-07-10 | Fixed composed SPM RHS pipeline | DONE — compile-time composition enforces zero-derivative → one shared observable pass → optional one shared stress pass → additive diffusion/thermal/SEI/crack/LAM/plating order. Diffusion consumes the observable stage's exact effective diffusivity and molar flux. Registered test proves mandatory whole-arena zeroing and trial-vector rebinding; all optional branches compile. Debug/Release pipeline gates green; full Debug 26/26. |
+| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0, production `SpectralDiffusion<NCH>`, rebindable BatchView/StepCtx + row roles, physical description/Domain/ElectrodeParams, shared concentration/electrical/heat/stress observable stages, `ThermalLumped`, all SEI/crack/LAM/plating ageing mechanisms, fixed composed SPM pipeline, P1-G3. **NEXT: registry/factory** → façade + EulerLegacy stepper → P1-G1/G2/G4 → PAY-1); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |
