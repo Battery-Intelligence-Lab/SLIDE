@@ -316,6 +316,9 @@ class Solution:
         self.t = np.asarray(data["time"], dtype=float)
         self.termination = str(data["termination"])
         self.segment = int(data["segment"])
+        self.sample_segment = np.asarray(
+            data.get("sample_segment", np.zeros_like(self.t, dtype=int)), dtype=int
+        )
         self._fields = {
             "Time [s]": np.asarray(data["time"], dtype=float),
             "Terminal voltage [V]": np.asarray(data["voltage"], dtype=float),

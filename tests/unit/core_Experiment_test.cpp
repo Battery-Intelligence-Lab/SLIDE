@@ -131,6 +131,9 @@ TEST_CASE("P5-G1 cycler executes power rest and drive-cycle controls",
   REQUIRE(solution.reason == core::TerminationReason::final_time);
   REQUIRE(solution.status == Status::Success);
   REQUIRE(solution.time.size() == 13);
+  REQUIRE(solution.sample_segment.size() == solution.time.size());
+  CHECK(solution.voltage[0] * solution.current[0]
+        == Catch::Approx(2.0).epsilon(1e-11));
   CHECK(solution.time.back() == Catch::Approx(3.0).margin(1e-14));
   CHECK(solution.voltage[1] * solution.current[1]
         == Catch::Approx(2.0).epsilon(1e-11));

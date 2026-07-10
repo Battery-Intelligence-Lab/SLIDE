@@ -406,6 +406,7 @@ slide::Status CyclerV2::run(const Experiment &experiment,
   solution.time.push_back(time);
   solution.voltage.push_back(voltage);
   solution.current.push_back(0.0);
+  solution.sample_segment.push_back(0);
 
   for (std::size_t segment_index = 0;
        segment_index < experiment.segments.size();
@@ -443,6 +444,13 @@ slide::Status CyclerV2::run(const Experiment &experiment,
       status = voltageAt(current, voltage);
       if (status != slide::Status::Success)
         break;
+      // Algebraic controls apply instantaneously. Match PyBaMM's solution
+      // convention by reporting the first sample under the first control,
+      // rather than a synthetic open-circuit point at the same state.
+      if (segment_index == 0 && local_time == 0.0) {
+        solution.voltage.front() = voltage;
+        solution.current.front() = current;
+      }
       auto indicator = [&](real_t event_voltage, real_t event_current) {
         if (segment.voltage_limit > 0.0)
           return segment.direction == Direction::charge
@@ -533,6 +541,7 @@ slide::Status CyclerV2::run(const Experiment &experiment,
       solution.time.push_back(time);
       solution.voltage.push_back(after_voltage);
       solution.current.push_back(after_current);
+      solution.sample_segment.push_back(segment_index);
       solution.segment = segment_index;
       if (event_reached)
         break;

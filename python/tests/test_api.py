@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -46,6 +47,43 @@ def test_tutorial_five_style_experiment_and_solution_surface(tmp_path):
         rows = list(csv.reader(stream))
     assert rows[0] == ["Time [s]", "Terminal voltage [V]", "Current [A]"]
     assert len(rows) == solution.t.size + 1
+
+
+def test_p7g1_tutorial_five_segment_local_parity():
+    reference = np.loadtxt(
+        Path(__file__).parents[2] / "tests" / "reference" / "pybamm_chen2020_tutorial5.csv",
+        delimiter=",",
+        skiprows=1,
+    )
+    steps = [
+        "Discharge at C/10 for 10 hours or until 3.3 V",
+        "Rest for 1 hour",
+        "Charge at 1 A until 4.1 V",
+        "Hold at 4.1 V until 50 mA",
+        "Rest for 1 hour",
+    ]
+    solution = slide.Simulation(
+        slide.SPM({"nch": 12}), experiment=slide.Experiment(steps, period="60 seconds")
+    ).solve(initial_soc=1.0)
+    voltage = solution["Terminal voltage [V]"].entries
+    errors = []
+    for segment in range(len(steps)):
+        reference_mask = reference[:, 0] == segment
+        slide_mask = solution.sample_segment == segment
+        start = 0.0 if segment == 0 else solution.t[solution.sample_segment == segment - 1][-1]
+        local_time = solution.t[slide_mask] - start
+        comparable = (
+            reference_mask
+            & (reference[:, 2] >= local_time[0] - 1e-9)
+            & (reference[:, 2] <= local_time[-1] + 1e-9)
+        )
+        errors.extend(
+            np.interp(reference[comparable, 2], local_time, voltage[slide_mask])
+            - reference[comparable, 4]
+        )
+    errors = np.asarray(errors)
+    assert np.max(np.abs(errors)) <= 15e-3
+    assert np.sqrt(np.mean(errors**2)) <= 8e-3
 
 
 def test_device_preflight_and_input_validation():

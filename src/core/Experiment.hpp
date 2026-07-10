@@ -64,6 +64,7 @@ struct ExperimentSolution
   std::vector<real_t> time{};
   std::vector<real_t> voltage{};
   std::vector<real_t> current{};
+  std::vector<std::size_t> sample_segment{};
   TerminationReason reason{ TerminationReason::final_time };
   slide::Status status{ slide::Status::Success };
   std::size_t segment{};

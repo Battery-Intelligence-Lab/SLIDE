@@ -129,6 +129,7 @@ nb::dict solveExperiment(
   result["time"] = nb::cast(std::move(solution.time));
   result["voltage"] = nb::cast(std::move(solution.voltage));
   result["current"] = nb::cast(std::move(solution.current));
+  result["sample_segment"] = nb::cast(std::move(solution.sample_segment));
   result["termination"] =
     reasons[static_cast<unsigned>(solution.reason)];
   result["segment"] = solution.segment;
@@ -364,6 +365,8 @@ nb::dict solveEnsemble(
   result["termination"] = "final time";
   result["segment"] = 0;
   result["status"] = 0;
+  result["sample_segment"] =
+    nb::cast(std::vector<std::size_t>(number_of_steps + 1));
   return result;
 }
 
