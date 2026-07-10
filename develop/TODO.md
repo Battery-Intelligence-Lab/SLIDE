@@ -7,7 +7,7 @@
 > **2026-07-10 — v4 refactor active.** The authoritative vision/roadmap is [/PLAN.md](../PLAN.md)
 > (architecture, decision log, phased gates, open questions). Phases 0–8 and 9A are complete;
 > Phase 9B systematic adversarial bug-hunt is active; its Experiment transaction,
-> recorder, pack-solver, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
+> recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
 
 ---

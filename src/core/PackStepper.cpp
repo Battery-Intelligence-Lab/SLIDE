@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <type_traits>
 
 namespace slide::core {
 
@@ -28,9 +29,10 @@ slide::Status PackStepper::configure(
     thermal_batch[cell.location.batch] |= static_cast<unsigned char>(cell.thermal);
   }
 
-  // A thermally uncoupled series of identical parallel-width layers preserves a repeated
-  // lane brick exactly. Validate before sizing the batch steppers so their rollback and
-  // cumulative workspaces also use only the unique brick.
+  // A thermally uncoupled series of identical parallel-width layers may preserve a repeated
+  // lane brick exactly. Derive the candidate here, but do not mutate the caller-owned batch
+  // until all Status-returning configure checks have passed.
+  int trusted_lane_period{};
   if (batches.size() == 1 && batches[0] != nullptr
       && topology.thermal.edges.empty()
       && topology.electrical.series_parallel_ladder
@@ -45,7 +47,7 @@ slide::Status PackStepper::configure(
                    - topology.electrical.ladder_offsets[layer]
                  == static_cast<std::uint32_t>(width);
     if (repeated)
-      (void)batches[0]->setTrustedLanePeriod(width);
+      trusted_lane_period = width;
   }
 
   std::vector<TheveninBatchView> views;
@@ -66,8 +68,6 @@ slide::Status PackStepper::configure(
     if (pipeline_thermal != (thermal_batch[batch] != 0))
       return slide::Status::Invalid_parameters;
     views.push_back(TheveninBatchView::bind(*batches[batch], required_lanes[batch]));
-    steppers.emplace_back(*batches[batch]);
-    exponential_steppers.emplace_back(*batches[batch]);
     current_density.emplace_back(static_cast<std::size_t>(required_lanes[batch]));
     checkpoint_offsets[batch + 1] = checkpoint_offsets[batch] + ptr->state().size();
   }
@@ -77,17 +77,62 @@ slide::Status PackStepper::configure(
   if (status != slide::Status::Success)
     return status;
 
-  topology_ = topology;
-  batches_.assign(batches.begin(), batches.end());
+  for (auto *batch : batches) {
+    steppers.emplace_back();
+    status = steppers.back().configure(*batch);
+    if (status != slide::Status::Success)
+      return status;
+    exponential_steppers.emplace_back();
+    status = exponential_steppers.back().configure(*batch);
+    if (status != slide::Status::Success)
+      return status;
+  }
+
+  CompiledPackTopology candidate_topology = topology;
+  std::vector<SpmBatch *> candidate_batches(batches.begin(), batches.end());
+  PackSolution solver_checkpoint_solution;
+  solver_checkpoint_solution.cell_current.assign(topology.cells.size(), 0.0);
+  solver_checkpoint_solution.node_voltage.assign(
+    topology.electrical.node_count, 0.0);
+  std::vector<real_t> checkpoint(checkpoint_offsets.back());
+  std::vector<real_t> cell_temperature(topology.cells.size());
+  std::vector<real_t> cell_external_heat(topology.cells.size());
+  std::vector<real_t> boundary_heat(topology.thermal.boundary_count);
+  std::vector<real_t> cell_external_heat_checkpoint(topology.cells.size());
+  std::vector<real_t> boundary_heat_checkpoint(topology.thermal.boundary_count);
+
+  if (trusted_lane_period > 0) {
+    const auto period_status = batches[0]->setTrustedLanePeriod(trusted_lane_period);
+    if (period_status == slide::Status::Success) {
+      // The first configure allocated full-lane capacity. Rebinding to the smaller trusted
+      // period only reuses those buffers, so the external batch mutation is the final
+      // potentially throwing boundary before no-throw member publication.
+      status = steppers[0].configure(*batches[0]);
+      if (status != slide::Status::Success)
+        return status;
+    } else if (period_status != slide::Status::Invalid_states) {
+      return period_status;
+    }
+  }
+
+  static_assert(std::is_nothrow_move_assignable_v<CompiledPackTopology>);
+  static_assert(std::is_nothrow_move_assignable_v<PackSolver>);
+  topology_ = std::move(candidate_topology);
+  batches_ = std::move(candidate_batches);
   steppers_ = std::move(steppers);
   exponential_steppers_ = std::move(exponential_steppers);
   solver_ = std::move(solver);
   current_density_ = std::move(current_density);
   checkpoint_offsets_ = std::move(checkpoint_offsets);
-  checkpoint_.assign(checkpoint_offsets_.back(), 0.0);
-  cell_temperature_.assign(topology.cells.size(), 0.0);
-  cell_external_heat_.assign(topology.cells.size(), 0.0);
-  boundary_heat_.assign(topology.thermal.boundary_count, 0.0);
+  checkpoint_ = std::move(checkpoint);
+  cell_temperature_ = std::move(cell_temperature);
+  cell_external_heat_ = std::move(cell_external_heat);
+  boundary_heat_ = std::move(boundary_heat);
+  solver_checkpoint_solution_ = std::move(solver_checkpoint_solution);
+  solver_checkpoint_diagnostics_ = {};
+  cell_external_heat_checkpoint_ = std::move(cell_external_heat_checkpoint);
+  boundary_heat_checkpoint_ = std::move(boundary_heat_checkpoint);
+  solver_checkpoint_has_solution_ = false;
   configured_ = true;
   return slide::Status::Success;
 }
@@ -98,6 +143,17 @@ void PackStepper::saveCheckpoint()
     const auto state = batches_[batch]->state().raw();
     std::memcpy(checkpoint_.data() + checkpoint_offsets_[batch], state.data(), state.size_bytes());
   }
+  solver_checkpoint_solution_.cell_current = solver_.solution_.cell_current;
+  solver_checkpoint_solution_.node_voltage = solver_.solution_.node_voltage;
+  solver_checkpoint_solution_.terminal_voltage = solver_.solution_.terminal_voltage;
+  solver_checkpoint_diagnostics_ = solver_.diagnostics_;
+  solver_checkpoint_has_solution_ = solver_.has_solution_;
+  std::copy(cell_external_heat_.begin(),
+            cell_external_heat_.end(),
+            cell_external_heat_checkpoint_.begin());
+  std::copy(boundary_heat_.begin(),
+            boundary_heat_.end(),
+            boundary_heat_checkpoint_.begin());
 }
 
 void PackStepper::restoreCheckpoint()
@@ -106,7 +162,18 @@ void PackStepper::restoreCheckpoint()
     auto state = batches_[batch]->state().raw();
     std::memcpy(state.data(), checkpoint_.data() + checkpoint_offsets_[batch], state.size_bytes());
   }
-  solver_.invalidate();
+  solver_.solution_.cell_current = solver_checkpoint_solution_.cell_current;
+  solver_.solution_.node_voltage = solver_checkpoint_solution_.node_voltage;
+  solver_.solution_.terminal_voltage = solver_checkpoint_solution_.terminal_voltage;
+  solver_.diagnostics_ = solver_checkpoint_diagnostics_;
+  solver_.has_solution_ = solver_checkpoint_has_solution_;
+  solver_.workspace_.invalidate();
+  std::copy(cell_external_heat_checkpoint_.begin(),
+            cell_external_heat_checkpoint_.end(),
+            cell_external_heat_.begin());
+  std::copy(boundary_heat_checkpoint_.begin(),
+            boundary_heat_checkpoint_.end(),
+            boundary_heat_.begin());
 }
 
 slide::Status PackStepper::checkpoint(std::span<real_t> destination) const

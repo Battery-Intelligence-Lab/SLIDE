@@ -246,6 +246,12 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Fix:** validate every derived build/sample/index quantity before conversion or commit, use a reference-based IEEE classifier for public floating inputs, and construct the invalid sentinel through an opaque no-inline integer path. Keep the ordinary interpolation expression unchanged.
 - **Evidence:** full CompiledCurve Debug and fast-math Release binaries each pass 163/163 assertions, including raw sentinel bits, invalid tolerance, extreme/tiny inputs, BPX endpoint resolution, and bit-exact legacy OCV interpolation. No model step or trajectory was run.
 
+## 2026-07-10 — Phase 9B PackStepper and thermal transaction pass
+
+- **Confirmed red:** both thermal overflow sections returned `Success`; a rejected configure changed the caller's trusted period 6→2; later-batch Euler/exponential failures restored arenas but leaked solver publication, diagnostics, and heat (12 failed postconditions). Review then found a corrupted incidence sign returning non-conservative `Success` and a compile-time mutable-solver ownership hole.
+- **Fix:** checkpoint the full public publication surface in preallocated storage, restore it while invalidating only workspace cache validity, assemble heat into trial buffers with endpoint/incidence proof, and defer caller metadata until candidate construction is complete. `PackStepper::solver()` is const-only.
+- **Evidence:** Debug and fast-math Release each pass PackTopology 66/66, PackStepper 172/172, and the P2-G1 zero-allocation gate 6/6. The rejection test takes one attempted step in each integrator; no trajectory or performance simulation was run.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

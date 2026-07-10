@@ -126,7 +126,10 @@ struct CompiledThermalGraph
   std::vector<ThermalEdge> edges{};
   std::vector<std::uint32_t> offsets{};
   std::vector<ThermalIncident> incidents{};
-  std::vector<real_t> edge_flux{};
+  std::vector<real_t> edge_flux{};                   //!< last successfully assembled edge fluxes
+  std::vector<real_t> trial_edge_flux{};             //!< preallocated transactional scratch
+  std::vector<real_t> trial_endpoint_heat{};         //!< preallocated transactional scratch
+  std::vector<unsigned char> trial_edge_incidence{}; //!< low/high membership bits
 
   [[nodiscard]] slide::Status assemble(std::span<const real_t> cell_temperature,
                                        std::span<const real_t> boundary_temperature,

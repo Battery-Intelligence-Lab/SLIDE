@@ -6,6 +6,7 @@
 #include "PackTopology.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <map>
 #include <numeric>
 #include <queue>
@@ -327,6 +328,9 @@ namespace {
       graph.incidents[cursor[pair.high]++] = { .edge = edge, .sign = -1 };
     }
     graph.edge_flux.resize(graph.edges.size());
+    graph.trial_edge_flux.resize(graph.edges.size());
+    graph.trial_endpoint_heat.resize(endpoint_count);
+    graph.trial_edge_incidence.resize(graph.edges.size());
     return slide::Status::Success;
   }
 
@@ -343,6 +347,17 @@ slide::Status CompiledThermalGraph::assemble(std::span<const real_t> cell_temper
   if (cell_temperature.size() != cell_count || q_ext.size() != cell_count
       || boundary_temperature.size() != boundary_count || boundary_heat.size() != boundary_count)
     return slide::Status::Invalid_parameters;
+  const auto endpoint_count = static_cast<std::size_t>(cell_count)
+                              + static_cast<std::size_t>(boundary_count);
+  if (offsets.size() != endpoint_count + 1 || offsets.empty()
+      || offsets.front() != 0 || offsets.back() != incidents.size()
+      || edges.size() > std::numeric_limits<std::size_t>::max() / 2
+      || incidents.size() != 2 * edges.size()
+      || edge_flux.size() != edges.size()
+      || trial_edge_flux.size() != edges.size()
+      || trial_endpoint_heat.size() != endpoint_count
+      || trial_edge_incidence.size() != edges.size())
+    return slide::Status::Invalid_parameters;
   for (const auto value : cell_temperature)
     if (!is_finite(value))
       return slide::Status::Invalid_states;
@@ -354,18 +369,59 @@ slide::Status CompiledThermalGraph::assemble(std::span<const real_t> cell_temper
     return endpoint < cell_count ? cell_temperature[endpoint]
                                  : boundary_temperature[endpoint - cell_count];
   };
-  for (std::size_t i = 0; i < edges.size(); ++i)
-    edge_flux[i] = edges[i].conductance
-                   * (temperature(edges[i].high) - temperature(edges[i].low));
-  std::fill(q_ext.begin(), q_ext.end(), 0.0);
-  std::fill(boundary_heat.begin(), boundary_heat.end(), 0.0);
-  const auto endpoint_count = static_cast<std::uint32_t>(cell_count + boundary_count);
-  for (std::uint32_t endpoint = 0; endpoint < endpoint_count; ++endpoint) {
+  for (std::size_t i = 0; i < edges.size(); ++i) {
+    const auto &edge = edges[i];
+    if (edge.low >= endpoint_count || edge.high >= endpoint_count
+        || edge.low >= edge.high || !is_finite(edge.conductance)
+        || !(edge.conductance > 0.0))
+      return slide::Status::Invalid_parameters;
+    const real_t difference = temperature(edge.high) - temperature(edge.low);
+    if (!is_finite(difference))
+      return slide::Status::Invalid_states;
+    const real_t flux = edge.conductance * difference;
+    if (!is_finite(flux))
+      return slide::Status::Invalid_states;
+    trial_edge_flux[i] = flux;
+  }
+  std::fill(trial_edge_incidence.begin(), trial_edge_incidence.end(), 0);
+  for (std::size_t endpoint = 0; endpoint < endpoint_count; ++endpoint) {
+    if (offsets[endpoint] > offsets[endpoint + 1]
+        || offsets[endpoint + 1] > incidents.size())
+      return slide::Status::Invalid_parameters;
     real_t total{};
     for (std::uint32_t i = offsets[endpoint]; i < offsets[endpoint + 1]; ++i) {
       const auto &incident = incidents[i];
-      total += static_cast<real_t>(incident.sign) * edge_flux[incident.edge];
+      if (incident.edge >= edges.size()
+          || (incident.sign != 1 && incident.sign != -1))
+        return slide::Status::Invalid_parameters;
+      const auto &edge = edges[incident.edge];
+      unsigned char incidence_bit{};
+      if (endpoint == edge.low && incident.sign == 1)
+        incidence_bit = 1;
+      else if (endpoint == edge.high && incident.sign == -1)
+        incidence_bit = 2;
+      else
+        return slide::Status::Invalid_parameters;
+      if ((trial_edge_incidence[incident.edge] & incidence_bit) != 0)
+        return slide::Status::Invalid_parameters;
+      trial_edge_incidence[incident.edge] |= incidence_bit;
+      const real_t contribution = static_cast<real_t>(incident.sign)
+                                  * trial_edge_flux[incident.edge];
+      const real_t updated = total + contribution;
+      if (!is_finite(contribution) || !is_finite(updated))
+        return slide::Status::Invalid_states;
+      total = updated;
     }
+    trial_endpoint_heat[endpoint] = total;
+  }
+  if (std::any_of(trial_edge_incidence.begin(),
+                  trial_edge_incidence.end(),
+                  [](unsigned char incidence) { return incidence != 3; }))
+    return slide::Status::Invalid_parameters;
+
+  std::copy(trial_edge_flux.begin(), trial_edge_flux.end(), edge_flux.begin());
+  for (std::size_t endpoint = 0; endpoint < endpoint_count; ++endpoint) {
+    const real_t total = trial_endpoint_heat[endpoint];
     if (endpoint < cell_count)
       q_ext[endpoint] = total;
     else

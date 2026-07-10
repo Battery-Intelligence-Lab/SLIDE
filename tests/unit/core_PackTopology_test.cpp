@@ -87,6 +87,84 @@ TEST_CASE("D-21 thermal compile is canonical and assemble conserves pair energy"
   REQUIRE(q_ext[0] + q_ext[1] + boundary_heat[0] == 0.0);
 }
 
+TEST_CASE("thermal assembly rejects finite derived overflow atomically",
+          "[core][pack][thermal][validation][P9-G4]")
+{
+  const auto root = core::cell({ .archetype = "thermal", .thermal = true });
+
+  SECTION("edge product overflow")
+  {
+    core::CompiledPackTopology pack;
+    REQUIRE(core::compilePackDescription(
+              { .root = root,
+                .thermal_boundaries = { { "hot" } },
+                .thermal_links = { { "c00", "hot", 2.0 } } },
+              pack)
+            == Status::Success);
+    constexpr std::array cell_temperature{ 1e-300 };
+    constexpr std::array boundary_temperature{ 1e308 };
+    std::array q_ext{ 17.0 };
+    std::array boundary_heat{ 23.0 };
+    const auto old_edge_flux = pack.thermal.edge_flux;
+
+    REQUIRE(pack.thermal.assemble(
+              cell_temperature, boundary_temperature, q_ext, boundary_heat)
+            == Status::Invalid_states);
+    REQUIRE(q_ext == std::array{ 17.0 });
+    REQUIRE(boundary_heat == std::array{ 23.0 });
+    REQUIRE(pack.thermal.edge_flux == old_edge_flux);
+  }
+
+  SECTION("endpoint accumulation overflow")
+  {
+    core::CompiledPackTopology pack;
+    REQUIRE(core::compilePackDescription(
+              { .root = root,
+                .thermal_boundaries = { { "hot-a" }, { "hot-b" } },
+                .thermal_links = { { "c00", "hot-a", 1.0 },
+                                   { "c00", "hot-b", 1.0 } } },
+              pack)
+            == Status::Success);
+    constexpr std::array cell_temperature{ 1e-300 };
+    constexpr std::array boundary_temperature{ 1e308, 1e308 };
+    std::array q_ext{ 17.0 };
+    std::array boundary_heat{ 23.0, 29.0 };
+    const auto old_edge_flux = pack.thermal.edge_flux;
+
+    REQUIRE(pack.thermal.assemble(
+              cell_temperature, boundary_temperature, q_ext, boundary_heat)
+            == Status::Invalid_states);
+    REQUIRE(q_ext == std::array{ 17.0 });
+    REQUIRE(boundary_heat == std::array{ 23.0, 29.0 });
+    REQUIRE(pack.thermal.edge_flux == old_edge_flux);
+  }
+
+  SECTION("incidence orientation")
+  {
+    core::CompiledPackTopology pack;
+    REQUIRE(core::compilePackDescription(
+              { .root = root,
+                .thermal_boundaries = { { "coolant" } },
+                .thermal_links = { { "c00", "coolant", 2.0 } } },
+              pack)
+            == Status::Success);
+    REQUIRE(pack.thermal.incidents.size() == 2);
+    pack.thermal.incidents[1].sign = 1;
+    constexpr std::array cell_temperature{ 300.0 };
+    constexpr std::array boundary_temperature{ 290.0 };
+    std::array q_ext{ 17.0 };
+    std::array boundary_heat{ 23.0 };
+    const auto old_edge_flux = pack.thermal.edge_flux;
+
+    REQUIRE(pack.thermal.assemble(
+              cell_temperature, boundary_temperature, q_ext, boundary_heat)
+            == Status::Invalid_parameters);
+    REQUIRE(q_ext == std::array{ 17.0 });
+    REQUIRE(boundary_heat == std::array{ 23.0 });
+    REQUIRE(pack.thermal.edge_flux == old_edge_flux);
+  }
+}
+
 TEST_CASE("pack cold validation is atomic", "[core][pack][validation]")
 {
   const auto root = core::parallel(2, core::cell({ .archetype = "thermal", .thermal = true }));

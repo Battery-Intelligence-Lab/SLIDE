@@ -45,7 +45,6 @@ public:
   const PackSolveDiagnostics &diagnostics() const { return solver_.diagnostics(); }
   std::span<const real_t> cellExternalHeat() const { return cell_external_heat_; }
   std::span<const real_t> boundaryHeat() const { return boundary_heat_; }
-  PackSolver &solver() { return solver_; }
   const PackSolver &solver() const { return solver_; }
 
 private:
@@ -71,6 +70,11 @@ private:
   std::vector<real_t> cell_temperature_{};
   std::vector<real_t> cell_external_heat_{};
   std::vector<real_t> boundary_heat_{};
+  PackSolution solver_checkpoint_solution_{};
+  PackSolveDiagnostics solver_checkpoint_diagnostics_{};
+  std::vector<real_t> cell_external_heat_checkpoint_{};
+  std::vector<real_t> boundary_heat_checkpoint_{};
+  bool solver_checkpoint_has_solution_{};
   bool configured_{};
 };
 

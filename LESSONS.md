@@ -51,3 +51,10 @@ This file records reusable findings from the v4 implementation and validation wo
 - Validate every floating intermediate before converting it to an integer. Finite knots do not imply a finite range, slope, reciprocal bin width, or scaled lookup index; extreme and denormal inputs independently break those implications.
 - A bit-safe finite predicate is necessary but not sufficient under `-ffinite-math-only`. If the guarded branch visibly returns a constexpr NaN, ThinLTO can declare that branch unreachable and replace the check with an assumption. Keep invalid sentinels opaque (or compile the boundary with strict FP) and inspect raw IEEE bits in the optimized regression.
 - Preserve the normal finite arithmetic path while hardening exceptional values. The CompiledCurve fix retains the existing operation order, so the legacy non-knot OCV oracle remains bit-exact rather than being weakened to a tolerance after the change.
+
+## Transaction rollback includes publication, not only physics rows
+
+- Restoring every arena byte is insufficient if a failed multi-batch step leaves the rejected solver solution, diagnostics, or heat outputs visible. Checkpoint the complete public observation surface; invalidate derived factorization caches rather than pretending their execution history rolled back.
+- Caller-owned optimization metadata belongs outside the fallible configure phase. Allocate and validate candidates first, apply the lane-period optimization last, and make the following member publication mechanically no-throw.
+- A graph's sizes and enum ranges do not prove its incidence semantics. Validate that each thermal edge appears exactly once at its low endpoint with `+1` and once at its high endpoint with `-1`; preallocated membership bits preserve the zero-allocation hot path.
+- Do not return a mutable subsolver from a composed transaction owner. Reconfiguration through that reference can invalidate topology and checkpoint invariants even if each class is locally valid.

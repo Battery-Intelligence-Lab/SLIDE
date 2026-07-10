@@ -176,6 +176,8 @@ private:
   real_t relaxation_alpha_{ 2.0 / 3.0 };
   bool configured_{};
   bool has_solution_{};
+
+  friend class PackStepper;
 };
 
 } // namespace slide::core
