@@ -35,21 +35,14 @@ constexpr std::size_t coreIndex(slide::Domain domain)
 }
 
 template <int NCH>
-core::SpmConcentrationParams<NCH> captureParams(Cell_SPM &cell, Model_SPM<NCH> &model,
-                                                double Tref)
+core::SpmConcentrationParams<NCH> captureParams(Model_SPM<NCH> &model, double Tref)
 {
-  auto &state = cell.getStateObj();
   core::SpmConcentrationParams<NCH> p;
   p.T_ref = Tref;
-  p.elec_surf = 0.1 * 0.2 * 31; // Geometry_SPM::Acell * 31; protected in legacy
   p.D_T[coreIndex(pos)] = 29000.0;
   p.D_T[coreIndex(neg)] = 35000.0 / 5.0;
   for (auto dom : { pos, neg }) {
     const auto d = coreIndex(dom);
-    p.D0[d] = state.D(dom);
-    p.a[d] = state.a(dom);
-    p.thick[d] = state.thick(dom);
-    p.sgn[d] = sign(dom);
     p.R[d] = (dom == pos) ? model.Rp : model.Rn;
     for (int node = 0; node < NCH + 1; ++node) {
       p.Dout[d][node] = model.D[dom](node);
@@ -76,27 +69,32 @@ TEST_CASE("SPM concentration observable reproduces legacy Cell_SPM::getC", "[cor
   double Tenv{}, Tref{};
   cell.getTemperatures(&Tenv, &Tref);
   auto *model = Model_SPM<>::makeModel();
-  const auto params = captureParams<NCH>(cell, *model, Tref);
+  const auto params = captureParams<NCH>(*model, Tref);
   const std::array legacy{ cell.getC(pos), cell.getC(neg) };
 
   auto &legacy_state = cell.getStateObj();
   core::BatchBuilder builder;
-  const auto zp = builder.declare({ "zp", NCH, core::Unit::none });
-  const auto zn = builder.declare({ "zn", NCH, core::Unit::none });
-  const auto temperature = builder.declare({ "T", 1, core::Unit::K });
+  const auto layout = core::declareSpmState<NCH>(builder);
   auto arena = builder.build(1);
   for (int mode = 0; mode < NCH; ++mode) {
-    arena.at(zp, mode, 0) = legacy_state.zp(mode);
-    arena.at(zn, mode, 0) = legacy_state.zn(mode);
+    arena.at(core::domain_value(layout.z, core::Domain::pos), mode, 0) = legacy_state.zp(mode);
+    arena.at(core::domain_value(layout.z, core::Domain::neg), mode, 0) = legacy_state.zn(mode);
   }
-  arena.at(temperature, 0, 0) = legacy_state.T();
+  arena.at(layout.temperature, 0, 0) = legacy_state.T();
+  for (const auto legacy_domain : { pos, neg }) {
+    const auto d = coreIndex(legacy_domain);
+    arena.at(layout.diffusion_coefficient[d], 0, 0) = legacy_state.D(legacy_domain);
+    arena.at(layout.specific_surface_area[d], 0, 0) = legacy_state.a(legacy_domain);
+    arena.at(layout.electrode_thickness[d], 0, 0) = legacy_state.thick(legacy_domain);
+  }
 
-  const std::array<double, 1> iapp{ cell.I() / params.elec_surf };
+  constexpr double electrode_area = 0.1 * 0.2 * 31;
+  const std::array<double, 1> iapp{ cell.I() / electrode_area };
   std::array<double, NCH + 2> cp{}, cn{};
   const core::ConstBatchView state{ core::BatchShape::from(arena),
                                     std::span<const core::real_t>{ arena.raw() } };
   const core::StepCtx ctx{ .time = 0.0, .dt = 0.0, .i_app = iapp };
-  core::computeSpmConcentrations(params, state, zp, zn, temperature, ctx, { std::span<core::real_t>{ cn }, std::span<core::real_t>{ cp } });
+  core::computeSpmConcentrations(params, state, layout, ctx, { std::span<core::real_t>{ cn }, std::span<core::real_t>{ cp } });
 
   const std::array output{ cp, cn };
   double max_rel = 0.0;
@@ -112,6 +110,28 @@ TEST_CASE("SPM concentration observable reproduces legacy Cell_SPM::getC", "[cor
               cn[0]);
   CAPTURE(max_rel);
   REQUIRE(max_rel <= 1e-12);
+
+  // Degradation changes D, a and thickness in State_SPM. The observable must therefore read
+  // them from the trial-vector arena, not from immutable archetype parameters.
+  const auto pos_index = coreIndex(pos);
+  const double baseline_surface = cp[0];
+  double modal_surface = 0.0;
+  for (int mode = 0; mode < NCH; ++mode)
+    modal_surface += params.C[pos_index][0][mode]
+                     * arena.at(layout.z[pos_index], mode, 0);
+  const double expected_half_correction = modal_surface
+                                          + 0.5 * (baseline_surface - modal_surface);
+
+  arena.at(layout.diffusion_coefficient[pos_index], 0, 0) *= 2.0;
+  core::computeSpmConcentrations(params, state, layout, ctx, { std::span<core::real_t>{ cn }, std::span<core::real_t>{ cp } });
+  REQUIRE(std::abs(cp[0] - expected_half_correction)
+          <= 1e-12 * std::abs(expected_half_correction));
+
+  arena.at(layout.diffusion_coefficient[pos_index], 0, 0) = legacy_state.D(pos);
+  arena.at(layout.specific_surface_area[pos_index], 0, 0) *= 2.0;
+  core::computeSpmConcentrations(params, state, layout, ctx, { std::span<core::real_t>{ cn }, std::span<core::real_t>{ cp } });
+  REQUIRE(std::abs(cp[0] - expected_half_correction)
+          <= 1e-12 * std::abs(expected_half_correction));
 }
 
 TEST_CASE("SPM concentration observable uniform round trip on heterogeneous lanes",
@@ -126,15 +146,14 @@ TEST_CASE("SPM concentration observable uniform round trip on heterogeneous lane
   double Tenv{}, Tref{};
   cell.getTemperatures(&Tenv, &Tref);
   auto *model = Model_SPM<>::makeModel();
-  const auto params = captureParams<NCH>(cell, *model, Tref);
+  const auto params = captureParams<NCH>(*model, Tref);
   const std::array<double, 2> cmax{ 51385.0, 30555.0 };
 
   core::BatchBuilder builder;
-  const auto zp = builder.declare({ "zp", NCH, core::Unit::none });
-  const auto zn = builder.declare({ "zn", NCH, core::Unit::none });
-  const auto temperature = builder.declare({ "T", 1, core::Unit::K });
+  const auto layout = core::declareSpmState<NCH>(builder);
   auto arena = builder.build(lanes);
-  const std::array slices{ zp, zn };
+  const std::array slices{ core::domain_value(layout.z, core::Domain::pos),
+                           core::domain_value(layout.z, core::Domain::neg) };
 
   std::array<std::array<double, lanes>, 2> expected{};
   for (int dom = 0; dom < 2; ++dom)
@@ -149,14 +168,22 @@ TEST_CASE("SPM concentration observable uniform round trip on heterogeneous lane
         arena.at(slices[dom], mode, lane) = (mode == model->zero) ? uniform_mode : 0.0;
     }
   for (int lane = 0; lane < lanes; ++lane)
-    arena.at(temperature, 0, lane) = cell.T() + 1.5 * lane;
+    arena.at(layout.temperature, 0, lane) = cell.T() + 1.5 * lane;
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    for (int lane = 0; lane < lanes; ++lane) {
+      arena.at(layout.diffusion_coefficient[d], 0, lane) = cell.getStateObj().D(domain == core::Domain::pos ? pos : neg);
+      arena.at(layout.specific_surface_area[d], 0, lane) = 1.0;
+      arena.at(layout.electrode_thickness[d], 0, lane) = 1.0;
+    }
+  }
 
   std::array<double, lanes> iapp{};
   std::array<double, (NCH + 2) * lanes> cp{}, cn{};
   const core::ConstBatchView state{ core::BatchShape::from(arena),
                                     std::span<const core::real_t>{ arena.raw() } };
   const core::StepCtx ctx{ .time = 0.0, .dt = 0.0, .i_app = iapp };
-  core::computeSpmConcentrations(params, state, zp, zn, temperature, ctx, { std::span<core::real_t>{ cn }, std::span<core::real_t>{ cp } });
+  core::computeSpmConcentrations(params, state, layout, ctx, { std::span<core::real_t>{ cn }, std::span<core::real_t>{ cp } });
 
   const std::array output{ cp, cn };
   double max_rel = 0.0;

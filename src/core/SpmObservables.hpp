@@ -8,10 +8,10 @@
  * path-dependent; everything here is a pure function of the arena state + operating point, so it
  * is reconstructed lazily instead of stored (D-10).
  *
- * This file lands the KEYSTONE observable: the complete particle concentration profile at
+ * The first stage reconstructs the complete particle concentration profile at
  * {surface, NCH interior nodes, centre}. The surface uses the Model_SPM C/D output map and the
  * centre uses its independent Cc/cc_coeff derivative identity (the historical nch!=5 bug path,
- * §2.2). Overpotential, OCV and V compose on the surface row (next increment).
+ * §2.2). Kinetics, OCV, resistance, terminal voltage and heat then compose on the surface row.
  *
  * SHAPE (mirrors SpectralDiffusion.hpp, deliberately): batch-shared cold-built params in a struct
  * of designated-initialisable named fields (D-15, no loose 15-arg call); a free-function kernel
@@ -25,11 +25,14 @@
 
 #include "BatchView.hpp"
 #include "CellDesign.hpp"
+#include "CompiledCurve.hpp"
+#include "SpmState.hpp"
 
 #include <array>
 #include <cassert>
 #include <cmath>
 #include <span>
+#include <vector>
 
 namespace slide::core {
 
@@ -47,18 +50,13 @@ struct SpmConcentrationParams
   real_t Rg{ 8.314 };  //!< ideal gas constant          [J mol⁻¹ K⁻¹]
   real_t n{ 1.0 };     //!< electrons in main reaction    [-]
   real_t T_ref{};      //!< Arrhenius reference temperature [K]
-  real_t elec_surf{};  //!< electrode surface area (geo.elec_surf) [m²]
 
   PerDomain<std::array<std::array<real_t, NCH>, NCH + 1>> C{};
   PerDomain<std::array<real_t, NCH + 1>> Dout{};
   std::array<real_t, NCH + 1> Cc{}; //!< centre-node derivative map over surface+interior values
   real_t cc_coeff{};
-  PerDomain<real_t> R{};     //!< particle radius [m]
-  PerDomain<real_t> D0{};    //!< st.D(dom): diffusion constant at T_ref [m²/s]
-  PerDomain<real_t> D_T{};   //!< electrode Arrhenius activation for D
-  PerDomain<real_t> a{};     //!< st.a(dom): effective surface area
-  PerDomain<real_t> thick{}; //!< st.thick(dom): electrode thickness [m]
-  PerDomain<int> sgn{};      //!< molar-flux sign: pos=-1, neg=+1
+  PerDomain<real_t> R{};   //!< particle radius [m]
+  PerDomain<real_t> D_T{}; //!< electrode Arrhenius activation for D
 };
 
 /**
@@ -71,38 +69,45 @@ struct SpmConcentrationParams
 template <int NCH, class Real>
 void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
                               const BasicBatchView<const Real> &state,
-                              StateSlice zp, StateSlice zn, StateSlice temperature,
+                              const SpmStateLayout &layout,
                               const BasicStepCtx<Real> &ctx,
-                              PerDomain<std::span<Real>> concentration)
+                              PerDomain<std::span<Real>>
+                                concentration)
 {
-  assert(zp.rows == NCH && zn.rows == NCH && temperature.rows == 1);
+  assert(domain_value(layout.z, Domain::pos).rows == NCH
+         && domain_value(layout.z, Domain::neg).rows == NCH
+         && layout.temperature.rows == 1
+         && domain_value(layout.diffusion_coefficient, Domain::pos).rows == 1
+         && domain_value(layout.diffusion_coefficient, Domain::neg).rows == 1
+         && domain_value(layout.specific_surface_area, Domain::pos).rows == 1
+         && domain_value(layout.specific_surface_area, Domain::neg).rows == 1
+         && domain_value(layout.electrode_thickness, Domain::pos).rows == 1
+         && domain_value(layout.electrode_thickness, Domain::neg).rows == 1);
   const int L = state.n_lanes();
   ctx.assert_valid_for(L);
   constexpr int output_rows = NCH + 2; // surface + NCH interior + centre
   assert(static_cast<int>(concentration[0].size()) == output_rows * L
          && static_cast<int>(concentration[1].size()) == output_rows * L);
 
-  PerDomain<StateSlice> slice{};
-  domain_value(slice, Domain::pos) = zp;
-  domain_value(slice, Domain::neg) = zn;
-  const std::span<const Real> T = state.row(temperature.row_begin);
+  const std::span<const Real> T = state.row(layout.temperature.row_begin);
   using std::exp;
 
   for (const Domain domain : domains) {
     const auto d = domain_index(domain);
-    const Real D0d = p.D0[d], D_Td = p.D_T[d];
-    const Real flux_den = p.a[d] * p.n * p.F * p.thick[d];
-    const Real sgnd = static_cast<Real>(p.sgn[d]);
+    const Real D_Td = p.D_T[d];
+    const Real sgnd = static_cast<Real>(molar_flux_sign(domain));
 
     for (int c = 0; c < L; ++c) {
       const Real Arr = (Real{ 1 } / p.T_ref - Real{ 1 } / T[c]) / p.Rg;
-      const Real Dt = D0d * exp(D_Td * Arr);
+      const Real Dt = state.at(layout.diffusion_coefficient[d], 0, c) * exp(D_Td * Arr);
+      const Real flux_den = state.at(layout.specific_surface_area[d], 0, c) * p.n * p.F
+                            * state.at(layout.electrode_thickness[d], 0, c);
       const Real molarFlux = sgnd * ctx.i_app[c] / flux_den;
 
       for (int node = 0; node < NCH + 1; ++node) {
         Real acc{};
         for (int j = 0; j < NCH; ++j)
-          acc += p.C[d][node][j] * state.at(slice[d], j, c);
+          acc += p.C[d][node][j] * state.at(layout.z[d], j, c);
         concentration[d][static_cast<std::size_t>(node) * L + c] = acc + p.Dout[d][node] * molarFlux / Dt;
       }
 
@@ -112,6 +117,179 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
       concentration[d][static_cast<std::size_t>(NCH + 1) * L + c] = p.cc_coeff * (centre_acc + molarFlux * p.R[d] / Dt);
     }
   }
+}
+
+template <int NCH>
+struct SpmElectricalParams
+{
+  SpmConcentrationParams<NCH> concentration{};
+  PerDomain<ElectrodeParams> electrode{};
+  PerDomain<IndexedPiecewiseLinear> electrode_ocv{};
+  IndexedPiecewiseLinear total_entropic_coefficient{};
+  IndexedPiecewiseLinear negative_entropic_coefficient{};
+
+  real_t F{ 96487.0 };
+  real_t Rg{ 8.314 };
+  real_t n{ 1.0 };
+  real_t electrolyte_concentration{ 1000.0 };
+  real_t reference_temperature{ 298.15 };
+  real_t electrode_area{};
+  real_t sei_resistivity_area{};
+};
+
+template <class Real>
+struct BasicSpmObservables
+{
+  PerDomain<std::span<Real>> concentration{}; //!< node-major: [node*n_lanes + lane]
+  PerDomain<std::span<Real>> surface_stoichiometry{};
+  PerDomain<std::span<Real>> exchange_current_density{};
+  PerDomain<std::span<Real>> overpotential{};
+  PerDomain<std::span<Real>> electrode_ocv{};
+  std::span<Real> entropic_coefficient{};
+  std::span<Real> negative_entropic_coefficient{};
+  std::span<Real> open_circuit_voltage{};
+  std::span<Real> resistance{};
+  std::span<Real> terminal_voltage{};
+  std::span<Real> reversible_heat{};
+  std::span<Real> reaction_heat{};
+  std::span<Real> ohmic_heat{};
+  std::span<Real> total_heat{};
+};
+
+template <int NCH, class Real = real_t>
+class SpmObservableScratch
+{
+public:
+  explicit SpmObservableScratch(int n_lanes)
+    : n_lanes_{ n_lanes }, storage_(required_size(n_lanes))
+  {
+    assert(n_lanes > 0);
+  }
+
+  BasicSpmObservables<Real> view()
+  {
+    BasicSpmObservables<Real> output;
+    std::size_t cursor = 0;
+    auto take = [&](std::size_t count) {
+      auto result = std::span<Real>{ storage_ }.subspan(cursor, count);
+      cursor += count;
+      return result;
+    };
+    const auto L = static_cast<std::size_t>(n_lanes_);
+    for (const Domain domain : domains)
+      output.concentration[domain_index(domain)] = take(static_cast<std::size_t>(NCH + 2) * L);
+    for (auto *field : { &output.surface_stoichiometry,
+                         &output.exchange_current_density,
+                         &output.overpotential,
+                         &output.electrode_ocv })
+      for (const Domain domain : domains)
+        (*field)[domain_index(domain)] = take(L);
+    output.entropic_coefficient = take(L);
+    output.negative_entropic_coefficient = take(L);
+    output.open_circuit_voltage = take(L);
+    output.resistance = take(L);
+    output.terminal_voltage = take(L);
+    output.reversible_heat = take(L);
+    output.reaction_heat = take(L);
+    output.ohmic_heat = take(L);
+    output.total_heat = take(L);
+    assert(cursor == storage_.size());
+    return output;
+  }
+
+  int n_lanes() const { return n_lanes_; }
+
+private:
+  static std::size_t required_size(int n_lanes)
+  {
+    return static_cast<std::size_t>(n_lanes) * (2 * (NCH + 2) + 17);
+  }
+
+  int n_lanes_{};
+  std::vector<Real> storage_{};
+};
+
+template <int NCH, class Real>
+[[nodiscard]] slide::Status computeSpmObservables(const SpmElectricalParams<NCH> &p,
+                                                  const BasicBatchView<const Real> &state,
+                                                  const SpmStateLayout &layout,
+                                                  const BasicStepCtx<Real> &ctx,
+                                                  BasicSpmObservables<Real>
+                                                    output)
+{
+  const int L = state.n_lanes();
+  ctx.assert_valid_for(L);
+  computeSpmConcentrations(p.concentration, state, layout, ctx, output.concentration);
+
+  const std::span<const Real> temperature = state.row(layout.temperature.row_begin);
+  using std::asinh;
+  using std::exp;
+  using std::sqrt;
+
+  for (int lane = 0; lane < L; ++lane) {
+    const Real T = temperature[lane];
+    const Real arrhenius = (Real{ 1 } / p.reference_temperature - Real{ 1 } / T) / p.Rg;
+
+    for (const Domain domain : domains) {
+      const auto d = domain_index(domain);
+      const auto &electrode = p.electrode[d];
+      const Real cs = output.concentration[d][lane];
+      const Real z_surface = cs / electrode.cs_max;
+      if (!(primal_value(z_surface) > 0.0 && primal_value(z_surface) < 1.0))
+        return slide::Status::Invalid_states;
+
+      const Real reaction_rate = electrode.reaction_rate_ref
+                                 * exp(electrode.reaction_activation * arrhenius);
+      const Real exchange_current = reaction_rate * p.n * p.F
+                                    * sqrt(p.electrolyte_concentration * cs
+                                           * (electrode.cs_max - cs));
+      const Real area = state.at(layout.specific_surface_area[d], 0, lane);
+      const Real thickness = state.at(layout.electrode_thickness[d], 0, lane);
+      const Real argument = Real{ 0.5 * molar_flux_sign(domain) } * ctx.i_app[lane]
+                            / (area * thickness * exchange_current);
+
+      output.surface_stoichiometry[d][lane] = z_surface;
+      output.exchange_current_density[d][lane] = exchange_current;
+      output.overpotential[d][lane] = Real{ 2 } * p.Rg * T / (p.n * p.F) * asinh(argument);
+      output.electrode_ocv[d][lane] = p.electrode_ocv[d].eval(z_surface);
+    }
+
+    const auto neg = domain_index(Domain::neg);
+    const auto pos = domain_index(Domain::pos);
+    const Real z_pos = output.surface_stoichiometry[pos][lane];
+    const Real d_ocv = p.total_entropic_coefficient.eval(z_pos);
+    const Real d_ocv_neg = p.negative_entropic_coefficient.eval(z_pos);
+    const Real ocv = output.electrode_ocv[pos][lane] - output.electrode_ocv[neg][lane]
+                     + (T - p.reference_temperature) * d_ocv;
+
+    const Real area_neg = state.at(layout.specific_surface_area[neg], 0, lane)
+                          * p.electrode_area
+                          * state.at(layout.electrode_thickness[neg], 0, lane);
+    const Real area_pos = state.at(layout.specific_surface_area[pos], 0, lane)
+                          * p.electrode_area
+                          * state.at(layout.electrode_thickness[pos], 0, lane);
+    const Real resistance = state.at(layout.sei_thickness, 0, lane) * p.sei_resistivity_area / area_neg
+                            + state.at(layout.specific_resistance[neg], 0, lane) / area_neg
+                            + state.at(layout.specific_resistance[pos], 0, lane) / area_pos
+                            + state.at(layout.current_collector_resistance, 0, lane) / p.electrode_area;
+    const Real current = ctx.i_app[lane] * p.electrode_area;
+    const Real reaction_heat = current
+                               * (output.overpotential[neg][lane] - output.overpotential[pos][lane]);
+    const Real reversible_heat = -current * T * d_ocv;
+    const Real ohmic_heat = current * current * resistance;
+
+    output.entropic_coefficient[lane] = d_ocv;
+    output.negative_entropic_coefficient[lane] = d_ocv_neg;
+    output.open_circuit_voltage[lane] = ocv;
+    output.resistance[lane] = resistance;
+    output.terminal_voltage[lane] = ocv + output.overpotential[pos][lane]
+                                    - output.overpotential[neg][lane] - resistance * current;
+    output.reversible_heat[lane] = reversible_heat;
+    output.reaction_heat[lane] = reaction_heat;
+    output.ohmic_heat[lane] = ohmic_heat;
+    output.total_heat[lane] = reversible_heat + reaction_heat + ohmic_heat;
+  }
+  return slide::Status::Success;
 }
 
 } // namespace slide::core

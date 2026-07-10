@@ -96,11 +96,7 @@ slide::core::SpmConcentrationParams<NCH> make_params(const slide::Model_SPM<NCH>
   for (int dom = 0; dom < 2; ++dom) {
     const auto d = core_index(dom);
     p.R[d] = (dom == slide::pos) ? model.Rp : model.Rn;
-    p.D0[d] = diffusivity;
     p.D_T[d] = 0.0;
-    p.a[d] = 1.0;
-    p.thick[d] = 1.0;
-    p.sgn[d] = 1;
     for (int node = 0; node < NCH + 1; ++node) {
       p.Dout[d][node] = model.D[dom](node);
       for (int mode = 0; mode < NCH; ++mode)
@@ -125,12 +121,17 @@ TEMPLATE_LIST_TEST_CASE("Chebyshev constant-flux transient matches analytic sphe
   const auto params = make_params(model, diffusivity);
 
   slide::core::BatchBuilder builder;
-  const auto zp = builder.declare({ "zp", NCH, slide::core::Unit::none });
-  const auto zn = builder.declare({ "zn", NCH, slide::core::Unit::none });
-  const auto temperature = builder.declare({ "T", 1, slide::core::Unit::K });
+  const auto layout = slide::core::declareSpmState<NCH>(builder);
   auto arena = builder.build(1);
-  const std::array slices{ zp, zn };
-  arena.at(temperature, 0, 0) = 1.0;
+  const std::array slices{ slide::core::domain_value(layout.z, slide::core::Domain::pos),
+                           slide::core::domain_value(layout.z, slide::core::Domain::neg) };
+  arena.at(layout.temperature, 0, 0) = 1.0;
+  for (const auto domain : slide::core::domains) {
+    const auto d = slide::core::domain_index(domain);
+    arena.at(layout.diffusion_coefficient[d], 0, 0) = diffusivity;
+    arena.at(layout.specific_surface_area[d], 0, 0) = 1.0;
+    arena.at(layout.electrode_thickness[d], 0, 0) = 1.0;
+  }
 
   const std::array<double, 1> iapp{ flux };
   const slide::core::StepCtx ctx{ .time = 0.0, .dt = 0.0, .i_app = iapp };
@@ -139,6 +140,10 @@ TEMPLATE_LIST_TEST_CASE("Chebyshev constant-flux transient matches analytic sphe
   for (const double tau : tau_values) {
     for (int dom = 0; dom < 2; ++dom) {
       const double radius = params.R[core_index(dom)];
+      const double signed_flux = slide::core::molar_flux_sign(
+                                   dom == slide::pos ? slide::core::Domain::pos
+                                                     : slide::core::Domain::neg)
+                                 * flux;
       Eigen::Vector<double, NCH> u;
       for (int node = 0; node < NCH; ++node)
         u(node) = radius * initial_concentration * model.xch(node);
@@ -147,7 +152,7 @@ TEMPLATE_LIST_TEST_CASE("Chebyshev constant-flux transient matches analytic sphe
 
       for (int mode = 0; mode < NCH; ++mode) {
         const double rate = diffusivity * model.A[dom](mode);
-        const double source = model.B[dom](mode) * flux;
+        const double source = model.B[dom](mode) * signed_flux;
         const double z = (rate == 0.0)
                            ? z0(mode) + source * physical_time
                            : std::exp(rate * physical_time) * z0(mode)
@@ -161,13 +166,17 @@ TEMPLATE_LIST_TEST_CASE("Chebyshev constant-flux transient matches analytic sphe
       std::span<const slide::core::real_t>{ arena.raw() }
     };
     slide::core::computeSpmConcentrations(
-      params, state, zp, zn, temperature, ctx, { std::span<slide::core::real_t>{ cn }, std::span<slide::core::real_t>{ cp } });
+      params, state, layout, ctx, { std::span<slide::core::real_t>{ cn }, std::span<slide::core::real_t>{ cp } });
 
     const std::array output{ cp, cn };
     double max_relative_error = 0.0;
     for (int dom = 0; dom < 2; ++dom) {
       const double radius = params.R[core_index(dom)];
-      const double scale = flux * radius / diffusivity;
+      const double signed_flux = slide::core::molar_flux_sign(
+                                   dom == slide::pos ? slide::core::Domain::pos
+                                                     : slide::core::Domain::neg)
+                                 * flux;
+      const double scale = signed_flux * radius / diffusivity;
       for (int node = 0; node < NCH + 2; ++node) {
         const double x = (node == 0)         ? 1.0
                          : (node == NCH + 1) ? 0.0

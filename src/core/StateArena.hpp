@@ -33,17 +33,20 @@ using real_t = double;
 //!< Unit tag carried by every declared state row (CLAUDE.md: dimensional consistency).
 //!< Cold-path metadata only — never touched by kernels.
 enum class Unit : int {
-  none, //!< dimensionless (lithium fractions, transformed z-modes, SOC)
-  A,    //!< Ampere
-  V,    //!< Volt
-  K,    //!< Kelvin
-  s,    //!< second
-  Ah,   //!< Ampere-hour (cumulative charge throughput)
-  Wh,   //!< Watt-hour (cumulative energy throughput)
-  W,    //!< Watt (heat flows)
-  m,    //!< metre (layer thicknesses, SEI thickness)
-  m2,   //!< square metre (crack surface)
-  mol_m3 //!< mol/m^3 (concentrations)
+  none,   //!< dimensionless (lithium fractions, transformed z-modes, SOC)
+  A,      //!< Ampere
+  V,      //!< Volt
+  K,      //!< Kelvin
+  s,      //!< second
+  Ah,     //!< Ampere-hour (cumulative charge throughput)
+  Wh,     //!< Watt-hour (cumulative energy throughput)
+  W,      //!< Watt (heat flows)
+  m,      //!< metre (layer thicknesses, SEI thickness)
+  m2,     //!< square metre (crack surface)
+  m2_s,   //!< square metre per second (solid diffusion coefficient)
+  inv_m,  //!< inverse metre (specific interfacial area, m2/m3)
+  ohm_m2, //!< area-specific resistance
+  mol_m3  //!< mol/m^3 (concentrations)
 };
 
 //!< Integration role for a state row (PLAN.md §3.12, D-23). The role is cold-path
@@ -58,15 +61,17 @@ enum class StateRole : unsigned char {
 
 //!< A model component's declaration of one state variable (PLAN.md §3.1).
 //!< `name` must outlive the builder that receives it — use string literals.
-struct StateSpec {
-  std::string_view name{};  //!< unique within a batch, e.g. "zp", "T", "delta"
-  int rows{ 1 };            //!< e.g. "zn" has nch rows
+struct StateSpec
+{
+  std::string_view name{}; //!< unique within a batch, e.g. "zp", "T", "delta"
+  int rows{ 1 };           //!< e.g. "zn" has nch rows
   Unit unit{ Unit::none };
   StateRole role{ StateRole::ode };
 };
 
 //!< Integer handle a model component holds after layout (PLAN.md §3.1).
-struct StateSlice {
+struct StateSlice
+{
   int row_begin{ 0 };
   int rows{ 0 };
 };
@@ -155,14 +160,12 @@ public:
   void snapshot(StateSlice s, real_t *dst) const
   {
     assert(0 <= s.row_begin && s.row_begin + s.rows <= n_rows_);
-    std::memcpy(dst, data_.get() + static_cast<std::size_t>(s.row_begin) * stride_,
-                slice_size(s) * sizeof(real_t));
+    std::memcpy(dst, data_.get() + static_cast<std::size_t>(s.row_begin) * stride_, slice_size(s) * sizeof(real_t));
   }
   void restore(StateSlice s, const real_t *src)
   {
     assert(0 <= s.row_begin && s.row_begin + s.rows <= n_rows_);
-    std::memcpy(data_.get() + static_cast<std::size_t>(s.row_begin) * stride_, src,
-                slice_size(s) * sizeof(real_t));
+    std::memcpy(data_.get() + static_cast<std::size_t>(s.row_begin) * stride_, src, slice_size(s) * sizeof(real_t));
   }
 
   //!< Whole-arena view (recording snapshots, whole-batch rollback).
@@ -180,7 +183,8 @@ private:
     return ((n_lanes + lanes_per_block - 1) / lanes_per_block) * lanes_per_block;
   }
 
-  struct AlignedDelete {
+  struct AlignedDelete
+  {
     void operator()(real_t *p) const { ::operator delete[](p, std::align_val_t{ alignment }); }
   };
 

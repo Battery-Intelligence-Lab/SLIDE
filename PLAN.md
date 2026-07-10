@@ -797,15 +797,16 @@ DONE: `StateArena`/`BatchBuilder` (+`q_ext` seam, tests), `SpectralDiffusionLega
 Q8 closed), production `SpectralDiffusion<NCH>` (heterogeneous 8-lane oracle test), rebindable `BatchView`/`StepCtx`
 and ODE-row roles (§3.12/D-23), the shared full particle-concentration observable (surface/interior/centre: Debug
 legacy parity exact, Release 2.665e-15, and 9.027e-15 analytic round-trip), all of P1-G3, and the §3.3
-`Domain`/physical-description/`ElectrodeParams` layer. NOT STARTED: the rest of the Deliver list — remaining
-kinetics/voltage observables, `ThermalLumped`, ageing kernels, registry + factory, `Simulation` façade — and
+`Domain`/physical-description/`ElectrodeParams` layer, and the shared kinetics/OCV/resistance/voltage/heat
+observable stage. NOT STARTED: the rest of the Deliver list — `ThermalLumped`, ageing kernels, registry + factory,
+`Simulation` façade — and
 gates P1-G1/G2/G4.
 **DEPENDENCY (surfaced 2026-07-08 handoff): the observable-reconstruction layer.** Thermal and ageing kernels are not
 self-contained state→state maps: they need `c_surf = C·z + D·flux` (+ centre node, the §2.2 output path), Butler-
 Volmer overpotentials, OCV/entropic-coefficient interp, Rdc — i.e. the derived-observables layer (D-10, §3.7) plus
 the `BatchView`/`StepCtx` kernel interface (§3.11) that `SpectralDiffusion` deferred (plain spans as stopgap).
-**Ordering:** (1) observable layer + `BatchView`/`StepCtx` — **IN PROGRESS: rebindable views, row roles, and full
-particle concentration implemented 2026-07-10; kinetics/voltage remain** → (2) P1-G3 Chebyshev
+**Ordering:** (1) observable layer + `BatchView`/`StepCtx` — **DONE 2026-07-10: rebindable views, row roles,
+full concentration, kinetics, OCV, resistance, voltage, and heat** → (2) P1-G3 Chebyshev
 oracle FIRST (it validates exactly the C/D surface-concentration path the new layer exposes) → (3) `ThermalLumped`
 (as `addRhs`, §3.12) → (4) ageing kernels (same form; promote legacy `_prev`/accumulator members to arena rows —
 §2.1 correction) → (5) registry/factory + façade + `EulerLegacy` stepper → P1-G1/G2/G4 → PAY-1. The three
@@ -959,4 +960,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | P1-G3(b) analytic transient + centre observable | DONE — full surface/interior/centre concentration reconstruction matches legacy exactly in Debug and to 2.665e-15 in Release, with a 9.027e-15 all-node uniform round trip. Independent constant-flux spherical series validates A/B/C/D and `Cc/cc_coeff` jointly at nch={5,8,12}; registered rel≤1e-6 holds (worst 8.254e-7 at nch=5, τ=0.2; nch=8/12 ≤3.949e-12). P1-G3 is complete; full Debug suite 16/16 and affected Release tests 2/2 green. |
 | 2026-07-10 | Physical description hierarchy + canonical Domain | DONE — added value-semantic ActiveMaterial/Electrode/Separator/Electrolyte/Thermal/Cell designs and hot `ElectrodeParams`. Resolved a plan-vs-legacy ordering hazard: scoped v4 Domain is negative-first; legacy is positive-first; all bridges map explicitly and tests prevent silent electrode swaps. Full Debug suite 17/17 and affected Release tests 4/4 green. |
 | 2026-07-10 | Compiled parameter-curve forms (D-16) | DONE — exact nonuniform piecewise-linear tables now use an O(1) uniform segment-index accelerator and reproduce legacy Kokam OCV interpolation bit-for-bit; smooth injected curves compile to a validated ≤4096-point uniform LUT. Malformed/tolerance-failing builds return the common Status channel and invalidate prior data atomically. Also fixed missing self-contained includes in `FixedData.hpp`. Full Debug suite 18/18 and Release curve target green. |
-| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0, production `SpectralDiffusion<NCH>`, rebindable BatchView/StepCtx + row roles, physical description/Domain/ElectrodeParams, full concentration observable, P1-G3. **NEXT: kinetics/OCV/voltage observables and `ThermalLumped`**; then ageing (promote `_prev`/accumulators to arena rows) → registry/factory + façade + EulerLegacy stepper → P1-G1/G2/G4 → PAY-1); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |
+| 2026-07-10 | Shared SPM electrical observables | DONE — canonical negative-first arena layout now includes all evolving inputs needed by reconstruction (`D`, thickness, active area, SEI/electrode/current-collector resistance). One scalar-generic stage computes concentrations, stoichiometry, exchange current, overpotentials, electrode/cell OCV, resistance, terminal voltage, and heat without hot allocations. Legacy parity at zero/discharge/charge and two temperatures: OCV/R exact, max voltage error 4.441e-16 Debug and zero Release. Invalid concentrations return Status. Full Debug suite 19/19; affected Release 4/4. |
+| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0, production `SpectralDiffusion<NCH>`, rebindable BatchView/StepCtx + row roles, physical description/Domain/ElectrodeParams, shared concentration/electrical/heat observable stage, P1-G3. **NEXT: `ThermalLumped`**; then ageing (promote `_prev`/accumulators to arena rows) → registry/factory + façade + EulerLegacy stepper → P1-G1/G2/G4 → PAY-1); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |
