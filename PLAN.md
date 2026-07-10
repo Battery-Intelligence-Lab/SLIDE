@@ -1052,7 +1052,54 @@ installed-wheel pytest is 10/10 (one external PyBOP/SciPy deprecation warning).
 ### Phase 8 — MATLAB MEX, GPU, docs, release
 MEX `+slide` package symmetric with Python; CUDA one-cell-per-thread batch stepping (host-side coupling); docs site
 update (installation, quickstarts ×3 languages, "add a cell model", "add an ageing mechanism"); v4.0.0 SemVer release,
-CHANGELOG consolidation. Gates defined when phase opens.
+CHANGELOG consolidation. Gates below were defined at phase opening.
+
+**Phase-8 gates registered 2026-07-10 BEFORE implementation/decisive runs. Available closure hardware is MATLAB
+R2025b plus CUDA 13.0 on an RTX 4000 Ada 20 GB; absence paths remain mandatory because both are optional:**
+
+- **P8-G0 — optionality/portability:** the unchanged dependency-free configuration and `SLIDE_CORE_ONLY` build
+  with MATLAB/CUDA/zstd disabled and pass the full CPU suite. `SLIDE_WITH_MATLAB`, `SLIDE_WITH_CUDA`, and compressed
+  recording are opt-in, find-package-first seams; an unavailable optional toolchain produces an explicit disabled
+  capability (or an error only when the user explicitly requires it), never a broken default configure. Linux,
+  macOS, and Windows installed-wheel CI remains green; no CUDA/Matlab header leaks into public CPU headers.
+- **P8-G1 — MATLAB symmetry:** `+slide` exposes `Experiment`, `ParameterValues` (Chen2020/BPX/update), `SPM`,
+  `Simulation`, `Solution`, processed-variable access/interpolation/plot/save, `varied`, and device preflight over one
+  MEX dispatcher; parsing/physics stay in C++. In MATLAB batch mode, the P7 Tutorial-5 script with language-only
+  syntax changes clears the already-registered 15/8 mV PyBaMM band, and a 1C/600 s `nch=12` trace matches the Python
+  wheel sample-for-sample within `2e-12 V` with identical time/current arrays. Invalid options/BPX/steps fail with a
+  stable `slide:*` identifier and do not poison the next solve; 50 construct/solve/destroy repetitions complete.
+- **P8-G2 — CUDA correctness/device dispatch:** a fused base-isothermal SPM kernel maps one lane to one CUDA thread
+  over the SoA arena, with one device arena allocation at build and zero allocations/synchronisations in an accepted
+  device step; electrical pack coupling remains the tested host `PackSolver` seam. For 10,003 heterogeneous lanes
+  (non-block-multiple; SOC 0.2–0.9, ±5% D, varied contact R), 600 s at 1C and `dt=10 s`, GPU vs CPU final arena rows
+  satisfy `|Δy| ≤ 1e-12 + 2e-10·max(|y_cpu|,|y_gpu|)` and terminal voltage `≤2 µV`; inventory drift remains
+  `≤1e-9 Ah`. A 16s4p/60-step host-coupled case stays within `2 µV` pack voltage and `2 µA` branch current and a
+  rejected step restores host/device checkpoint bytes exactly. Python `device="cuda"` selects this implementation;
+  `available_devices()` is truthful. A CPU-only build still rejects CUDA at preflight without delayed failure.
+  **GPU PAY target (positioning, not a physics gate):** Release, 100,000 heterogeneous cells, 360 × 10 s 1C steps,
+  warmed steady-state kernel vs the CPU exponential batch on a quiet machine, setup/H2D/solve/D2H separate: ≥5×
+  solve speedup (≥2× minimum useful threshold). Failure triggers profile + recorded bottleneck and optimisation before
+  sign-off, not band widening; consumer-Ada f64 throughput and launch cost are explicit qualifications.
+- **P8-G3 — asynchronous compressed recording:** a preallocated ≥3-slot ring supports explicit `block` (lossless)
+  and `thin` (never silent; exact count) backpressure. Byte-shuffle + zstd round-trips every f64 snapshot bitwise;
+  block headers retain magic/version/endian/CRC and corrupted/truncated blocks fail atomically. After configuration,
+  enqueue/worker drain performs zero heap allocations in the simulation thread. With a deliberately slow sink,
+  `thin` completes without producer-side I/O and reports thinning, while `block` emits every frame in order. CUDA
+  recording uses pinned host slots plus a non-default stream/event; a gate verifies no device-wide sync is issued and
+  decoded GPU snapshots equal the accepted device arena. CPU-only compressed recording remains fully functional.
+- **P8-G4 — owned parallel runtime:** one persistent `std::thread` pool (no TBB, no per-call fan-out) executes batch
+  tasks exactly once, propagates failure, shuts down cleanly, and fixed-order reductions are bit-repeatable across
+  worker counts. `slide::test::parallelisation()` reports logical cores, selected backend/workers, serial/parallel
+  timings, and measured speedup; timing is diagnostic rather than a flaky pass/fail threshold.
+- **P8-G5 — docs:** the docs site contains tested installation instructions, C++/Python/MATLAB quickstarts, and the
+  two extension guides ("add a cell model", "add an ageing mechanism"), including optional-dependency and declared
+  PyBaMM gaps (`.yp`, `.observe()`, arbitrary model expression trees). Every quickstart is extracted/compiled or run
+  in its available toolchain; internal links and Doxygen/Jekyll build pass.
+- **P8-G6 — v4.0.0 release:** CMake/package/MATLAB versions agree exactly on `4.0.0` with no `.dev`; CHANGELOG has a
+  consolidated `SLIDE v4.0.0` section and migration/known-limit notes; dependency licenses and release artifacts
+  (CPU wheel, CUDA-capable wheel/build instructions, MEX package) are reproducible. Final Debug/Release CPU,
+  installed-wheel Python, MATLAB batch, CUDA correctness/rollback, async-recording corruption, and release-consistency
+  checks are green before the annotated `v4.0.0` tag is created. Legacy v3 façades remain compiled/runnable per Q3.
 
 ### Beyond v4.0 (recorded so design choices don't foreclose them)
 
@@ -1143,4 +1190,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | Python installed-wheel CI | COMPLETE — Python 3.10/3.13 × Linux/macOS/Windows matrix builds a wheel, installs only that artifact, and runs pytest; PyBOP runs within its declared `<3.13` range. A pinned PyBaMM 26.6.2.0 job regenerates C/50, 1C, and Tutorial-5 fixtures and numerically flags upstream/platform drift. Local regenerated fixtures are exactly identical. |
 | 2026-07-10 | Real BPX closure smoke | PASSED — official PyBaMM NMC pouch BPX 1.0/DFN file exposed a one-bin D-16 boundary bug (1/65,536 knot spacing needs 65,537 bins). Bounded accelerator budget raised to 131,072 with regression; the real file now absorbs, builds at nch=12, and solves a finite 10 s discharge (4.2005→4.1583 V). Rebuilt wheel Python 10/10. |
 | 2026-07-10 | Phase-7 closure | COMPLETE — wheel/API/options/device/ensemble, Chen2020/BPX, custom/scheduled Experiment, P7-G1/G2/G3, PyBOP, PAY-4, and installed-wheel CI all discharged. Clean wheel and official BPX smoke pass; Debug/Release 46/46 and Python 10/10. |
-| — | Phases 1–8 | **Phases 1–7 COMPLETE. Phase 8 NEXT:** register gates, then MATLAB MEX, CUDA batch stepping/async recording, docs, and v4.0.0 release. |
+| 2026-07-10 | Phase-8 gates | REGISTERED BEFORE IMPLEMENTATION — P8-G0 optionality, G1 MATLAB symmetry, G2 CUDA correctness/host coupling/PAY, G3 async shuffle+zstd CPU/GPU recording, G4 thread pool/diagnostic, G5 tested docs, G6 release consistency/tag. Closure machine has MATLAB R2025b, CUDA 13.0, RTX 4000 Ada. |
+| — | Phases 1–8 | **Phases 1–7 COMPLETE. Phase 8 ACTIVE:** gates registered; next MATLAB MEX, CUDA batch stepping/async recording, docs, and v4.0.0 release. |
