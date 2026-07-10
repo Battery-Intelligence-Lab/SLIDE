@@ -78,5 +78,16 @@ This file records reusable findings from the v4 implementation and validation wo
 - A committed corpus must actually enter success paths. The Experiment byte adapter originally turned a normal final newline into an extra empty step, so its documented seed only exercised rejection until the adapter was corrected.
 - Parser success must imply runner admissibility. A one-line voltage-control/voltage-event seed exposed syntax that parsed successfully but was rejected by `CyclerV2`; reuse the semantic descriptor validator before parser publication.
 - Small mutation campaigns and resource boundaries are different tests. Keep fast 65,536-byte campaigns, then replay generated 65,537-byte and 4 MiB-plus inputs so documented limits are reached without committing multi-megabyte blobs.
-- Disable C++ module dependency scanning on targets that contain no modules. CMake 3.31 otherwise requires `clang-scan-deps`, which is not part of Ubuntu's base Clang package and adds a needless CI dependency.
+- Disable C++ module dependency scanning at project scope when the project contains no modules. A target-only setting fixed fuzz compilation but not `FindThreads`: CMake 3.31 also scans its `try_compile` probes and otherwise requires the separately packaged `clang-scan-deps` executable.
 - Scope platform caveats exactly. Windows LLVM required disabling incompatible MSVC STL container annotations, while full ASan+UBSan+LSan ran on Linux; cross-platform evidence should state that difference rather than blending the lanes.
+
+## A thread pool is not integrated until production work overlaps
+
+- A standalone pool and speed diagnostic do not satisfy an architecture that promises parallel batches. Use a bounded overlap oracle in the real Thevenin path; the original implementation was green in isolation while production stayed completely serial.
+- Parallelize only ownership-disjoint archetype kernels. Gather inputs, scatter outputs, assemble thermal edges, reduce residuals, and cross substep boundaries in canonical order so worker scheduling cannot alter pack numerics.
+- Prove ownership disjointness at configuration. Two distinct archetype slots are not evidence of two distinct objects; reject duplicate type-erased identities and duplicate concrete batch pointers before any worker can touch scratch or arena state.
+- Make the execution context movable without moving live worker synchronization objects. A heap-owned persistent pool inside a movable `BatchExecutor` lets `PackSolver` retain exception-atomic candidate publication.
+- “First failure” must name an order. Scheduling-first CAS is nondeterministic; lowest task index matches serial semantics and can be selected after all tasks finish.
+- Source-order reduction syntax is not an order guarantee under fast-math. A long cancellation oracle made the unprotected loop return 5.0 instead of +0.0; strict-FP scope and volatile scalar stages are part of the implementation contract.
+- Hardware discovery may legally return zero. Normalize that explicitly, cap workers to available tasks, and never let an exception cross a worker entry point: join first, then rethrow through the caller's channel.
+- One worker and many workers need the same failure contract. The first legacy fix completed all tasks only in the threaded branch; a 1-vs-2 regression exposed the serial branch stopping at its first throw.

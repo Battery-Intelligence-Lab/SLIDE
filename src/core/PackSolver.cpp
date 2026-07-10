@@ -140,6 +140,9 @@ slide::Status PackTheveninSystem::configure(
   for (std::size_t batch = 0; batch < batches.size(); ++batch) {
     if (!batches[batch].valid() || batches[batch].lanes() != required_lanes[batch])
       return slide::Status::Invalid_parameters;
+    for (std::size_t prior = 0; prior < batch; ++prior)
+      if (batches[batch].identity() == batches[prior].identity())
+        return slide::Status::Invalid_parameters;
     scratch[batch].view = batches[batch];
     scratch[batch].current.resize(static_cast<std::size_t>(required_lanes[batch]));
     scratch[batch].ocv.resize(static_cast<std::size_t>(required_lanes[batch]));
@@ -154,7 +157,8 @@ slide::Status PackTheveninSystem::linearize(std::span<const real_t> cell_current
                                             std::span<real_t>
                                               cell_ocv,
                                             std::span<real_t>
-                                              cell_resistance)
+                                              cell_resistance,
+                                            BatchExecutor &executor)
 {
   if (cell_current.size() != cells_.size() || cell_ocv.size() != cells_.size()
       || cell_resistance.size() != cells_.size())
@@ -163,11 +167,14 @@ slide::Status PackTheveninSystem::linearize(std::span<const real_t> cell_current
     const auto location = cells_[cell].location;
     batches_[location.batch].current[location.lane] = cell_current[cell];
   }
-  for (auto &batch : batches_) {
-    const auto status = batch.view.linearize(batch.current, batch.ocv, batch.resistance);
-    if (status != slide::Status::Success)
-      return status;
-  }
+  const auto status = executor.parallelFor(
+    batches_.size(),
+    [&](std::size_t index) {
+      auto &batch = batches_[index];
+      return batch.view.linearize(batch.current, batch.ocv, batch.resistance);
+    });
+  if (status != slide::Status::Success)
+    return status;
   for (std::size_t cell = 0; cell < cells_.size(); ++cell) {
     const auto location = cells_[cell].location;
     const auto ocv = batches_[location.batch].ocv[location.lane];
@@ -235,19 +242,26 @@ slide::Status SolverWorkspace::configure(const CompiledElectricalNetlist &netlis
 
 slide::Status PackSolver::configure(const CompiledPackTopology &topology,
                                     std::span<const TheveninBatchView>
-                                      batches)
+                                      batches,
+                                    unsigned workers)
 {
   PackTheveninSystem thevenin;
-  auto status = thevenin.configure(topology.cells, topology.batch_archetypes, batches);
+  auto status = thevenin.configure(
+    topology.cells, topology.batch_archetypes, batches);
   if (status != slide::Status::Success)
     return status;
   SolverWorkspace workspace;
   status = workspace.configure(topology.electrical, topology.cells.size());
   if (status != slide::Status::Success)
     return status;
+  BatchExecutor batch_executor;
+  status = batch_executor.configure(batches.size(), workers);
+  if (status != slide::Status::Success)
+    return status;
 
   topology_ = topology;
   thevenin_ = std::move(thevenin);
+  batch_executor_ = std::move(batch_executor);
   workspace_ = std::move(workspace);
   const auto cells = topology.cells.size();
   const auto nodes = topology.electrical.node_count;
@@ -326,7 +340,8 @@ slide::Status PackSolver::solveImpl(real_t applied_current, PackSolveMode mode,
   int consecutive_divergence{};
   const int factorization_at_entry = workspace_.numericFactorizations();
   for (int iteration = 0; iteration < max_iterations; ++iteration) {
-    auto status = thevenin_.linearize(current_guess_, ocv_, resistance_);
+    auto status = thevenin_.linearize(
+      current_guess_, ocv_, resistance_, batch_executor_);
     if (status != slide::Status::Success) {
       workspace_.invalidate();
       return status;

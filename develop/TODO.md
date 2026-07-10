@@ -10,6 +10,7 @@
 > BPX parser/allocation, recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
 > The bounded liionpack CSV importer and P9-G2 parser gate are complete: three isolated ASan+UBSan fuzz targets, poisoned/independent oracles, corpora/dictionaries, Debug+Release limit replays, mutation checks, and exact 60-second Linux campaigns are green. The matching hosted workflow is committed but awaits its first pushed run. P9-G1 (full sanitizer/TSan lanes), P9-G3 (measured Status-branch coverage), and P9-G4 (remaining subsystem ledger) are next.
+> The ThreadPool runtime/integration audit is complete: production Thevenin/PackStepper batch work now uses one persistent movable executor, failure selection and strict-FP reductions are deterministic, 1/2/7-worker pack outputs are bit-identical, and the legacy facade cannot silently select zero workers. Before P9-G1, fault-inject standalone `PackSolver::configure` to close the independent review's remaining allocation-publication candidate; then wire TSan/full sanitizers.
 
 ---
 

@@ -10,48 +10,100 @@
 
 #include "../settings/settings.hpp"
 
+#include <algorithm>
+#include <exception>
+#include <limits>
 #include <thread>
 #include <vector>
 
 namespace slide {
 
+namespace legacy_parallel_detail {
+
+  inline unsigned workerCount(unsigned requested,
+                              unsigned hardware,
+                              unsigned tasks) noexcept
+  {
+    if (tasks == 0)
+      return 0;
+    hardware = std::max(1U, hardware);
+    if (requested == 0)
+      requested = hardware;
+    return std::max(1U, std::min({ requested, hardware, tasks }));
+  }
+
+} // namespace legacy_parallel_detail
+
 template <typename Tfun> // #TODO change with parallel algorithms.
 void run(Tfun task_indv, int i_end, unsigned int numMaxParallelWorkers = settings::numMaxParallelWorkers)
 {
-
-  auto task_par = [&](int i_begin, int i_end_, int Nth) {
-    while (i_begin < i_end_) {
-      task_indv(i_begin);
-      i_begin += Nth;
-    }
-  };
+  if (i_end <= 0)
+    return;
 
   if constexpr (settings::isParallel) {
-    if (numMaxParallelWorkers == 1)
-      task_par(0, i_end, 1);
-    else {
-      if (numMaxParallelWorkers < 1)
-        numMaxParallelWorkers = std::thread::hardware_concurrency();
+    const unsigned workers = legacy_parallel_detail::workerCount(
+      numMaxParallelWorkers,
+      std::thread::hardware_concurrency(),
+      static_cast<unsigned>(i_end));
+    if (workers == 1) {
+      std::exception_ptr first;
+      for (int index = 0; index < i_end; ++index)
+        try {
+          task_indv(index);
+        } catch (...) {
+          if (first == nullptr)
+            first = std::current_exception();
+        }
+      if (first != nullptr)
+        std::rethrow_exception(first);
+      return;
+    }
 
-      const unsigned int N_th_max = std::min(numMaxParallelWorkers, std::thread::hardware_concurrency());
-
-      std::vector<std::thread> threads;
-      threads.reserve(N_th_max);
-
-      for (unsigned int i_begin = 0; i_begin < N_th_max; i_begin++) //!< indices for the threads
-      {
-        //!< Multi threaded simul:
-
-        threads.emplace_back(task_par, i_begin, i_end, N_th_max);
+    struct Failure
+    {
+      int index{ std::numeric_limits<int>::max() };
+      std::exception_ptr exception{};
+    };
+    std::vector<Failure> failures(workers);
+    std::vector<std::thread> threads;
+    threads.reserve(workers);
+    const auto task = [&](unsigned worker) {
+      const auto end = static_cast<unsigned>(i_end);
+      for (unsigned index = worker; index < end; index += workers) {
+        try {
+          task_indv(static_cast<int>(index));
+        } catch (...) {
+          if (failures[worker].exception == nullptr) {
+            failures[worker].index = static_cast<int>(index);
+            failures[worker].exception = std::current_exception();
+          }
+        }
       }
-
+    };
+    try {
+      for (unsigned worker = 0; worker < workers; ++worker)
+        threads.emplace_back(task, worker);
+    } catch (...) {
       for (auto &th : threads) {
         if (th.joinable())
           th.join();
       }
+      throw;
     }
+    for (auto &thread : threads)
+      if (thread.joinable())
+        thread.join();
+
+    const Failure *first{};
+    for (const auto &failure : failures)
+      if (failure.exception != nullptr
+          && (first == nullptr || failure.index < first->index))
+        first = &failure;
+    if (first != nullptr)
+      std::rethrow_exception(first->exception);
   } else {
-    task_par(0, i_end, 1);
+    for (int index = 0; index < i_end; ++index)
+      task_indv(index);
   }
 }
 } // namespace slide

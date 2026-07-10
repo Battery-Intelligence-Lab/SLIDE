@@ -1,5 +1,7 @@
 include_guard(GLOBAL)
 
+find_package(Threads REQUIRED)
+
 # Keep the dependency-light core source set in one place. Fuzzing builds a
 # separately instrumented copy so sanitizer and Windows runtime/iterator ABI
 # settings can never leak into the production slide_core target.
@@ -22,5 +24,5 @@ function(slide_add_core_library target)
   target_include_directories(${target}
     PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
   target_compile_features(${target} PUBLIC cxx_std_20)
-  target_link_libraries(${target} PUBLIC Eigen3::Eigen)
+  target_link_libraries(${target} PUBLIC Eigen3::Eigen Threads::Threads)
 endfunction()

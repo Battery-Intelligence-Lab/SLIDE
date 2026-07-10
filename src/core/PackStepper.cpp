@@ -14,7 +14,8 @@ namespace slide::core {
 slide::Status PackStepper::configure(
   const CompiledPackTopology &topology,
   std::span<SpmBatch *const>
-    batches)
+    batches,
+  unsigned workers)
 {
   if (topology.cells.empty() || batches.size() != topology.batch_archetypes.size())
     return slide::Status::Invalid_parameters;
@@ -61,7 +62,11 @@ slide::Status PackStepper::configure(
   current_density.reserve(batches.size());
   for (std::size_t batch = 0; batch < batches.size(); ++batch) {
     const auto *ptr = batches[batch];
-    if (ptr == nullptr || !ptr->valid() || ptr->n_lanes() != required_lanes[batch])
+    if (ptr == nullptr || !ptr->valid() || ptr->n_lanes() != required_lanes[batch]
+        || std::find(batches.begin(),
+                     batches.begin() + static_cast<std::ptrdiff_t>(batch),
+                     ptr)
+             != batches.begin() + static_cast<std::ptrdiff_t>(batch))
       return slide::Status::Invalid_parameters;
     const bool pipeline_thermal = ptr->composition() == SpmComposition::thermal
                                   || ptr->composition() == SpmComposition::thermal_ageing;
@@ -73,7 +78,7 @@ slide::Status PackStepper::configure(
   }
 
   PackSolver solver;
-  auto status = solver.configure(topology, views);
+  auto status = solver.configure(topology, views, workers);
   if (status != slide::Status::Success)
     return status;
 
@@ -273,16 +278,25 @@ slide::Status PackStepper::stepImpl(
                      static_cast<int>(location.lane)) = cell_external_heat_[cell];
   }
 
-  for (int substep = 0; substep < substeps; ++substep)
-    for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
-      status = exponential
+  for (int substep = 0; substep < substeps; ++substep) {
+    status = solver_.batch_executor_.parallelFor(
+      batches_.size(),
+      [&](std::size_t batch) {
+        return exponential
                  ? exponential_steppers_[batch].step(
-                     *batches_[batch], current_density_[batch], time + static_cast<real_t>(substep) * dt, dt)
+                     *batches_[batch],
+                     current_density_[batch],
+                     time + static_cast<real_t>(substep) * dt,
+                     dt)
                  : steppers_[batch].step(
-                     *batches_[batch], current_density_[batch], time + static_cast<real_t>(substep) * dt, dt);
-      if (status != slide::Status::Success)
-        return fail(status);
-    }
+                     *batches_[batch],
+                     current_density_[batch],
+                     time + static_cast<real_t>(substep) * dt,
+                     dt);
+      });
+    if (status != slide::Status::Success)
+      return fail(status);
+  }
   return slide::Status::Success;
 }
 

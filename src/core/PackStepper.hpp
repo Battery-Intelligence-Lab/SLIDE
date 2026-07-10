@@ -19,7 +19,8 @@ class PackStepper
 public:
   [[nodiscard]] slide::Status configure(
     const CompiledPackTopology &topology,
-    std::span<SpmBatch *const> batches);
+    std::span<SpmBatch *const> batches,
+    unsigned workers = 0);
 
   [[nodiscard]] slide::Status step(
     real_t applied_current,
@@ -46,6 +47,7 @@ public:
   std::span<const real_t> cellExternalHeat() const { return cell_external_heat_; }
   std::span<const real_t> boundaryHeat() const { return boundary_heat_; }
   const PackSolver &solver() const { return solver_; }
+  unsigned batchWorkerCount() const { return solver_.batchWorkerCount(); }
 
 private:
   [[nodiscard]] slide::Status stepImpl(real_t applied_current,

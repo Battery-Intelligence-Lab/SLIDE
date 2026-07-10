@@ -6,6 +6,7 @@
 #pragma once
 
 #include "PackTopology.hpp"
+#include "ThreadPool.hpp"
 
 #include <memory>
 #include <span>
@@ -33,6 +34,7 @@ public:
   }
 
   bool valid() const { return object_ != nullptr && lanes_ > 0 && linearize_ != nullptr; }
+  const void *identity() const { return object_; }
   int lanes() const { return lanes_; }
   [[nodiscard]] slide::Status linearize(std::span<const real_t> current,
                                         std::span<real_t> ocv,
@@ -52,7 +54,8 @@ public:
                                         std::span<const TheveninBatchView> batches);
   [[nodiscard]] slide::Status linearize(std::span<const real_t> cell_current,
                                         std::span<real_t> cell_ocv,
-                                        std::span<real_t> cell_resistance);
+                                        std::span<real_t> cell_resistance,
+                                        BatchExecutor &executor);
 
 private:
   struct BatchScratch
@@ -125,7 +128,8 @@ class PackSolver
 {
 public:
   [[nodiscard]] slide::Status configure(const CompiledPackTopology &topology,
-                                        std::span<const TheveninBatchView> batches);
+                                        std::span<const TheveninBatchView> batches,
+                                        unsigned workers = 0);
   [[nodiscard]] slide::Status solve(real_t applied_current,
                                     PackSolveMode mode = PackSolveMode::sparse_newton,
                                     real_t current_tolerance = 1e-10,
@@ -140,6 +144,7 @@ public:
   const PackSolution &solution() const { return solution_; }
   const PackSolveDiagnostics &diagnostics() const { return diagnostics_; }
   const SolverWorkspace &workspace() const { return workspace_; }
+  unsigned batchWorkerCount() const { return batch_executor_.workerCount(); }
 
 private:
   [[nodiscard]] slide::Status solveImpl(real_t applied_current,
@@ -156,6 +161,7 @@ private:
 
   CompiledPackTopology topology_{};
   PackTheveninSystem thevenin_{};
+  BatchExecutor batch_executor_{};
   SolverWorkspace workspace_{};
   PackSolution solution_{};
   PackSolveDiagnostics diagnostics_{};

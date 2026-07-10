@@ -72,7 +72,8 @@ TEST_CASE("compiled pack step couples thermal batches and restore invalidates th
           == Status::Success);
   std::array<core::SpmBatch *, 2> batches{ &cold, &hot };
   core::PackStepper stepper;
-  REQUIRE(stepper.configure(topology, batches) == Status::Success);
+  REQUIRE(stepper.configure(topology, batches, 2) == Status::Success);
+  REQUIRE(stepper.batchWorkerCount() == 2);
 
   std::vector<double> initial(stepper.checkpointSize());
   REQUIRE(stepper.checkpoint(initial) == Status::Success);
@@ -94,6 +95,99 @@ TEST_CASE("compiled pack step couples thermal batches and restore invalidates th
           == 0);
 }
 
+TEST_CASE("real multi-archetype pack steps are bit-repeatable across worker counts",
+          "[core][pack][thread-pool][determinism][P9-B32]")
+{
+  struct Result
+  {
+    std::vector<double> state{};
+    core::PackSolution solution{};
+    core::PackSolveDiagnostics diagnostics{};
+    std::vector<double> cell_heat{};
+    std::vector<double> boundary_heat{};
+  };
+
+  const auto run = [&](unsigned workers) {
+    const auto root = core::parallel(std::vector{
+      core::cell({ .archetype = "cold", .thermal = true }),
+      core::cell({ .archetype = "hot", .thermal = true }) });
+    core::CompiledPackTopology topology;
+    REQUIRE(core::compilePackDescription(
+              { .root = root,
+                .thermal_boundaries = { { "coolant" } },
+                .thermal_links = { { "p00", "p01", 2.0 },
+                                   { "p01", "coolant", 0.5 } } },
+              topology)
+            == Status::Success);
+    core::SpmBatch cold, hot;
+    const core::SpmModelOptions options{ .nch = 5, .thermal = true };
+    REQUIRE(core::buildSpmBatch(thermalKokam(300.0), options, 1, cold)
+            == Status::Success);
+    REQUIRE(core::buildSpmBatch(thermalKokam(310.0), options, 1, hot)
+            == Status::Success);
+    std::array<core::SpmBatch *, 2> batches{ &cold, &hot };
+    core::PackStepper stepper;
+    REQUIRE(stepper.configure(topology, batches, workers) == Status::Success);
+    REQUIRE(stepper.batchWorkerCount() == workers);
+    constexpr std::array boundary{ 295.0 };
+    for (int step = 0; step < 4; ++step)
+      REQUIRE(stepper.step(20.0,
+                           static_cast<double>(step) * 0.1,
+                           0.1,
+                           boundary,
+                           core::PackSolveMode::ladder)
+              == Status::Success);
+
+    Result result;
+    result.state.insert(
+      result.state.end(), cold.state().raw().begin(), cold.state().raw().end());
+    result.state.insert(
+      result.state.end(), hot.state().raw().begin(), hot.state().raw().end());
+    result.solution = stepper.solution();
+    result.diagnostics = stepper.diagnostics();
+    result.cell_heat.assign(
+      stepper.cellExternalHeat().begin(), stepper.cellExternalHeat().end());
+    result.boundary_heat.assign(
+      stepper.boundaryHeat().begin(), stepper.boundaryHeat().end());
+    return result;
+  };
+
+  const auto serial = run(1);
+  const auto parallel = run(2);
+  REQUIRE(parallel.state.size() == serial.state.size());
+  CHECK(std::memcmp(parallel.state.data(),
+                    serial.state.data(),
+                    serial.state.size() * sizeof(double))
+        == 0);
+  REQUIRE(parallel.solution.cell_current.size()
+          == serial.solution.cell_current.size());
+  CHECK(std::memcmp(parallel.solution.cell_current.data(),
+                    serial.solution.cell_current.data(),
+                    serial.solution.cell_current.size() * sizeof(double))
+        == 0);
+  REQUIRE(parallel.solution.node_voltage.size()
+          == serial.solution.node_voltage.size());
+  CHECK(std::memcmp(parallel.solution.node_voltage.data(),
+                    serial.solution.node_voltage.data(),
+                    serial.solution.node_voltage.size() * sizeof(double))
+        == 0);
+  CHECK(std::memcmp(&parallel.solution.terminal_voltage,
+                    &serial.solution.terminal_voltage,
+                    sizeof(double))
+        == 0);
+  CHECK(sameDiagnostics(parallel.diagnostics, serial.diagnostics));
+  REQUIRE(parallel.cell_heat.size() == serial.cell_heat.size());
+  CHECK(std::memcmp(parallel.cell_heat.data(),
+                    serial.cell_heat.data(),
+                    serial.cell_heat.size() * sizeof(double))
+        == 0);
+  REQUIRE(parallel.boundary_heat.size() == serial.boundary_heat.size());
+  CHECK(std::memcmp(parallel.boundary_heat.data(),
+                    serial.boundary_heat.data(),
+                    serial.boundary_heat.size() * sizeof(double))
+        == 0);
+}
+
 TEST_CASE("one archetype cannot mix thermal and isothermal lanes",
           "[core][pack][compile][validation]")
 {
@@ -104,6 +198,29 @@ TEST_CASE("one archetype cannot mix thermal and isothermal lanes",
                 core::cell({ .archetype = "spm", .thermal = false }) }) },
             topology)
           == Status::Invalid_parameters);
+}
+
+TEST_CASE("parallel pack step configuration rejects aliased batch arenas",
+          "[core][pack][thread-pool][alias][P9-B36]")
+{
+  core::SpmBatch shared;
+  REQUIRE(core::buildSpmBatch(
+            test_support::make_legacy_kokam_input(0.55, 298.0, 298.0),
+            { .nch = 5 },
+            1,
+            shared)
+          == Status::Success);
+  core::CompiledPackTopology topology;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::series(std::vector{
+                core::cell({ .archetype = "a" }),
+                core::cell({ .archetype = "b" }) }) },
+            topology)
+          == Status::Success);
+  std::array<core::SpmBatch *, 2> batches{ &shared, &shared };
+  core::PackStepper stepper;
+  CHECK(stepper.configure(topology, batches, 2)
+        == Status::Invalid_parameters);
 }
 
 TEST_CASE("compiled repeated ladder bricks preserve their trusted lane period",
@@ -199,7 +316,8 @@ TEST_CASE("failed later pack batch restores solver publication and heat diagnost
             == Status::Success);
     std::array<core::SpmBatch *, 2> batches{ &first, &second };
     core::PackStepper stepper;
-    REQUIRE(stepper.configure(topology, batches) == Status::Success);
+    REQUIRE(stepper.configure(topology, batches, 2) == Status::Success);
+    REQUIRE(stepper.batchWorkerCount() == 2);
 
     constexpr std::array baseline_boundary{ 298.0 };
     REQUIRE(stepper.step(

@@ -6,6 +6,11 @@ project(SLIDE VERSION "3.0.0"
   HOMEPAGE_URL https://github.com/Battery-Intelligence-Lab/SLIDE/
   LANGUAGES CXX)
 
+# The project contains no C++20 modules. Disabling dependency scanning globally
+# also keeps CMake try_compile probes (for example FindThreads) independent of
+# the separately packaged clang-scan-deps executable.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+
 option(SLIDE_CORE_ONLY "Configure only the dependency-light v4 core" OFF)
 option(SLIDE_WITH_CUDA "Enable the optional CUDA SPM batch backend" OFF)
 option(SLIDE_WITH_MATLAB "Build the optional MATLAB MEX and +slide package" OFF)

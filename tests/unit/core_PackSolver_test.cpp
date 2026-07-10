@@ -11,9 +11,14 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
+#include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <cstring>
 #include <limits>
+#include <mutex>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -27,11 +32,41 @@ static_assert(std::is_same_v<
 
 namespace {
 
+struct BatchOverlapProbe
+{
+  void enter()
+  {
+    std::unique_lock lock{ mutex };
+    ++active;
+    max_active = std::max(max_active, active);
+    ready.notify_all();
+    if (!wait_claimed) {
+      wait_claimed = true;
+      ready.wait_for(lock,
+                     std::chrono::milliseconds{ 100 },
+                     [&] { return max_active >= 2; });
+    }
+  }
+
+  void leave()
+  {
+    const std::lock_guard lock{ mutex };
+    --active;
+  }
+
+  std::mutex mutex{};
+  std::condition_variable ready{};
+  int active{};
+  int max_active{};
+  bool wait_claimed{};
+};
+
 struct AffineBatch
 {
   std::vector<double> ocv;
   std::vector<double> resistance;
   int calls{};
+  BatchOverlapProbe *overlap{};
 
   Status linearizeThevenin(std::span<const double> current,
                            std::span<double>
@@ -41,9 +76,13 @@ struct AffineBatch
   {
     if (current.size() != ocv.size())
       return Status::Invalid_parameters;
+    if (overlap != nullptr)
+      overlap->enter();
     ++calls;
     std::copy(ocv.begin(), ocv.end(), output_ocv.begin());
     std::copy(resistance.begin(), resistance.end(), output_resistance.begin());
+    if (overlap != nullptr)
+      overlap->leave();
     return Status::Success;
   }
 };
@@ -153,16 +192,82 @@ TEST_CASE("Thevenin system dispatches once per archetype batch", "[core][pack][t
     core::cell({ .archetype = "b" }), core::cell({ .archetype = "a" }), core::cell({ .archetype = "b" }), core::cell({ .archetype = "a" }) });
   const auto topology = compile(root);
   REQUIRE(topology.batch_archetypes == std::vector<std::string>{ "a", "b" });
-  AffineBatch a{ .ocv = { 4.0, 4.0 }, .resistance = { 0.1, 0.1 } };
-  AffineBatch b{ .ocv = { 4.0, 4.0 }, .resistance = { 0.1, 0.1 } };
+  BatchOverlapProbe overlap;
+  AffineBatch a{ .ocv = { 4.0, 4.0 },
+                 .resistance = { 0.1, 0.1 },
+                 .overlap = &overlap };
+  AffineBatch b{ .ocv = { 4.0, 4.0 },
+                 .resistance = { 0.1, 0.1 },
+                 .overlap = &overlap };
   const std::array<core::TheveninBatchView, 2> batches{
     core::TheveninBatchView::bind(a, 2), core::TheveninBatchView::bind(b, 2)
   };
   core::PackSolver solver;
-  REQUIRE(solver.configure(topology, batches) == Status::Success);
+  REQUIRE(solver.configure(topology, batches, 2) == Status::Success);
   REQUIRE(solver.solve(1.0) == Status::Success);
   REQUIRE(a.calls == solver.diagnostics().iterations);
   REQUIRE(b.calls == solver.diagnostics().iterations);
+  REQUIRE(overlap.max_active >= 2);
+}
+
+TEST_CASE("parallel Thevenin configuration rejects aliased batch objects",
+          "[core][pack][thevenin][alias][P9-B36]")
+{
+  const auto topology = compile(core::parallel(std::vector{
+    core::cell({ .archetype = "a" }),
+    core::cell({ .archetype = "b" }) }));
+  AffineBatch shared{ .ocv = { 4.0 }, .resistance = { 0.1 } };
+  const std::array<core::TheveninBatchView, 2> views{
+    core::TheveninBatchView::bind(shared, 1),
+    core::TheveninBatchView::bind(shared, 1)
+  };
+  core::PackSolver solver;
+  CHECK(solver.configure(topology, views, 2) == Status::Invalid_parameters);
+}
+
+TEST_CASE("production batch execution is bit-repeatable across worker counts",
+          "[core][pack][thevenin][determinism][P9-B32]")
+{
+  std::vector<core::PackNode> cells;
+  std::vector<AffineBatch> batches;
+  cells.reserve(7);
+  batches.reserve(7);
+  for (int index = 0; index < 7; ++index) {
+    cells.push_back(core::cell(
+      { .archetype = "worker-" + std::to_string(index) }));
+    batches.push_back(
+      { .ocv = { 3.8 + 0.05 * index },
+        .resistance = { 0.08 + 0.01 * index } });
+  }
+  const auto topology = compile(core::parallel(std::move(cells)));
+  std::vector<core::TheveninBatchView> views;
+  views.reserve(batches.size());
+  for (auto &batch : batches)
+    views.push_back(core::TheveninBatchView::bind(batch, 1));
+
+  core::PackSolution reference;
+  for (const unsigned workers : { 1U, 2U, 7U }) {
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views, workers) == Status::Success);
+    REQUIRE(solver.batchWorkerCount() == workers);
+    REQUIRE(solver.solve(3.0, core::PackSolveMode::ladder) == Status::Success);
+    if (reference.cell_current.empty()) {
+      reference = solver.solution();
+      continue;
+    }
+    REQUIRE(solver.solution().cell_current.size()
+            == reference.cell_current.size());
+    REQUIRE(solver.solution().node_voltage.size()
+            == reference.node_voltage.size());
+    for (std::size_t index = 0; index < reference.cell_current.size(); ++index)
+      CHECK(std::bit_cast<std::uint64_t>(solver.solution().cell_current[index])
+            == std::bit_cast<std::uint64_t>(reference.cell_current[index]));
+    for (std::size_t index = 0; index < reference.node_voltage.size(); ++index)
+      CHECK(std::bit_cast<std::uint64_t>(solver.solution().node_voltage[index])
+            == std::bit_cast<std::uint64_t>(reference.node_voltage[index]));
+    CHECK(std::bit_cast<std::uint64_t>(solver.solution().terminal_voltage)
+          == std::bit_cast<std::uint64_t>(reference.terminal_voltage));
+  }
 }
 
 TEST_CASE("pack solver rejects invalid modes and malformed compiled netlists atomically",

@@ -281,6 +281,17 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Decision:** D-29 records isolated instrumentation, poisoned/independent oracles, both build types, and separate boundary replays. P9-G2 is PASSED; P9-G1/G3/G4 remain active.
 - **Next:** audit/fix ThreadPool integration and determinism, then complete TSan/full sanitizer lanes and measured Status-branch coverage.
 
+## 2026-07-10 — Phase 9B production ThreadPool audit
+
+- **Confirmed red:** failure status was scheduling-dependent; a const callback did not compile; the production overlap oracle reported `max_active=1`; and removing strict-FP protection made a 3,072-value Release cancellation sum return 5.0 instead of +0.0. The v3 facade could also select zero workers when hardware discovery returned zero and let worker exceptions terminate the process.
+- **Decision:** D-30 owns one movable `BatchExecutor` per configured solver. It runs only independent archetype linearization/advance work concurrently and leaves every gather, scatter, reduction, thermal assembly, and substep barrier in fixed serial order. Worker count is capped, explicit, and configurable.
+- **Evidence:** Debug and fast-math Release each pass ThreadPool 586, PackSolver 702, PackStepper 175, and pack-allocation 14 assertions. Production overlap reaches two workers, 1/2/7-worker pack solutions are bit-identical, both serial and parallel accepted steps allocate zero, and the legacy exception test completes all six tasks before rethrowing the lowest-index error.
+- **Boundary:** the retained v3 `slide::run` remains create/join-per-call under the strangler strategy, but its correctness hazards are fixed; new v4 production work uses the persistent executor. TSan is not claimed yet.
+- **Linux portability:** the first fresh Clang 18 core-only configure failed before pthread detection because CMake 3.31 tried to module-scan `FindThreads` probes with an unavailable `clang-scan-deps`. Moving the truthful no-modules setting to project scope fixes the probe; the fresh configure/build and core-only smoke pass 1/1.
+- **Independent-review correction:** duplicate type-erased/concrete batch handles would race the same scratch or arena, default-worker overlap tests assumed a multi-core host, and the legacy one-worker branch stopped after its first exception. Two configure regressions were red before identity checks; concurrency tests now request two workers explicitly, default selection is only bounded to `[1,batches]`, and one/two-worker exception completion matches.
+- **Real-model determinism:** four accepted thermal pack steps with two archetypes are byte-identical at one and two workers across both padded arenas, solver solution/diagnostics, cell heat, and boundary heat.
+- **Open follow-up:** standalone `PackSolver::configure` still publishes several members before later vector allocations; fault-inject reconfiguration next and make the whole operation transactional if the candidate is confirmed. Then implement isolated full ASan+UBSan and focused ThreadPool/AsyncRecorder/PackStepper TSan lanes for P9-G1.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

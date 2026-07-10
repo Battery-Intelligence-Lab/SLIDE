@@ -47,13 +47,57 @@ ThreadPool::~ThreadPool()
       worker.join();
 }
 
+BatchExecutor::BatchExecutor(BatchExecutor &&other) noexcept
+  : pool_{ std::move(other.pool_) },
+    batches_{ std::exchange(other.batches_, 0) },
+    workers_{ std::exchange(other.workers_, 0) },
+    configured_{ std::exchange(other.configured_, false) }
+{}
+
+BatchExecutor &BatchExecutor::operator=(BatchExecutor &&other) noexcept
+{
+  if (this != &other) {
+    pool_ = std::move(other.pool_);
+    batches_ = std::exchange(other.batches_, 0);
+    workers_ = std::exchange(other.workers_, 0);
+    configured_ = std::exchange(other.configured_, false);
+  }
+  return *this;
+}
+
+slide::Status BatchExecutor::configure(std::size_t batches, unsigned workers)
+{
+  if (batches == 0)
+    return slide::Status::Invalid_parameters;
+  if (workers == 0)
+    workers = std::thread::hardware_concurrency();
+  if (workers == 0)
+    workers = 1;
+  workers = static_cast<unsigned>(
+    std::min<std::size_t>(workers, batches));
+
+  std::unique_ptr<ThreadPool> pool;
+  try {
+    if (workers > 1)
+      pool = std::make_unique<ThreadPool>(workers);
+  } catch (...) {
+    return slide::Status::Numerical_failure;
+  }
+  pool_ = std::move(pool);
+  batches_ = batches;
+  workers_ = workers;
+  configured_ = true;
+  return slide::Status::Success;
+}
+
 slide::Status ThreadPool::submit(std::size_t count,
                                  void *context,
                                  Invoke invoke)
 {
   if (count == 0)
     return slide::Status::Success;
-  if (context == nullptr || invoke == nullptr || workers_.empty())
+  if (context == nullptr || invoke == nullptr || workers_.empty()
+      || count > std::numeric_limits<std::size_t>::max() - workers_.size())
     return slide::Status::Invalid_parameters;
 
   std::unique_lock lock{ mutex_ };
@@ -64,8 +108,8 @@ slide::Status ThreadPool::submit(std::size_t count,
   context_ = context;
   invoke_ = invoke;
   next_.store(0, std::memory_order_relaxed);
-  first_status_.store(static_cast<int>(slide::Status::Success),
-                      std::memory_order_relaxed);
+  failure_index_ = count;
+  first_status_ = slide::Status::Success;
   workers_pending_ = workers_.size();
   ++generation_;
   lock.unlock();
@@ -73,8 +117,7 @@ slide::Status ThreadPool::submit(std::size_t count,
 
   lock.lock();
   done_.wait(lock, [this] { return !running_; });
-  return static_cast<slide::Status>(
-    first_status_.load(std::memory_order_relaxed));
+  return first_status_;
 }
 
 void ThreadPool::workerLoop()
@@ -103,10 +146,11 @@ void ThreadPool::workerLoop()
         status = slide::Status::Unknown_problem;
       }
       if (status != slide::Status::Success) {
-        int expected = static_cast<int>(slide::Status::Success);
-        first_status_.compare_exchange_strong(expected,
-                                              static_cast<int>(status),
-                                              std::memory_order_relaxed);
+        const std::lock_guard failure_lock{ mutex_ };
+        if (index < failure_index_) {
+          failure_index_ = index;
+          first_status_ = status;
+        }
       }
     }
 
@@ -121,13 +165,28 @@ void ThreadPool::workerLoop()
   }
 }
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma float_control(precise, on, push)
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+__attribute__((optimize("no-fast-math")))
+#endif
 real_t fixedOrderSum(std::span<const real_t> values)
 {
-  real_t sum{};
-  for (const real_t value : values)
-    sum += value;
+#if defined(__clang__)
+#pragma clang fp reassociate(off)
+#pragma clang fp contract(off)
+#endif
+  volatile real_t sum{};
+  for (const real_t value : values) {
+    volatile real_t updated = sum + value;
+    sum = updated;
+  }
   return sum;
 }
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma float_control(pop)
+#endif
 
 } // namespace slide::core
 

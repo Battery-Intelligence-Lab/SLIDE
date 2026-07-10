@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdlib>
 #include <new>
+#include <vector>
 
 static std::atomic<std::size_t> allocation_count{ 0 };
 
@@ -94,6 +95,48 @@ TEST_CASE("P2-G1 coupled thermal pack step allocates nothing",
   std::array<core::SpmBatch *, 1> batches{ &batch };
   core::PackStepper stepper;
   REQUIRE(stepper.configure(topology, batches) == Status::Success);
+  REQUIRE(stepper.step(20.0, 0.0, 0.1) == Status::Success);
+
+  const auto before = allocation_count.load(std::memory_order_relaxed);
+  const auto status = stepper.step(20.0, 0.1, 0.1);
+  const auto after = allocation_count.load(std::memory_order_relaxed);
+  REQUIRE(status == Status::Success);
+  REQUIRE(after == before);
+}
+
+TEST_CASE("P9-B32 parallel multi-archetype pack step allocates nothing",
+          "[core][pack][thread-pool][allocation][P9-B32]")
+{
+  auto make_input = [](double temperature) {
+    auto input = test_support::make_legacy_kokam_input(
+      0.55, temperature, 298.0);
+    input.design.thermal.density = 1626.0;
+    input.design.thermal.heat_capacity = 750.0;
+    input.design.thermal.volume = 1e-4;
+    input.design.thermal.surface_area = 0.0;
+    input.design.thermal.h_conv = 0.0;
+    input.design.thermal.environment_temperature = 298.0;
+    return input;
+  };
+
+  core::SpmBatch cold, hot;
+  const core::SpmModelOptions options{ .nch = 5, .thermal = true };
+  REQUIRE(core::buildSpmBatch(make_input(300.0), options, 1, cold)
+          == Status::Success);
+  REQUIRE(core::buildSpmBatch(make_input(310.0), options, 1, hot)
+          == Status::Success);
+  core::CompiledPackTopology topology;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::parallel(std::vector{
+                core::cell({ .archetype = "cold", .thermal = true }),
+                core::cell({ .archetype = "hot", .thermal = true }) }),
+              .thermal_links = { { "p00", "p01", 2.0 } } },
+            topology)
+          == Status::Success);
+  std::array<core::SpmBatch *, 2> batches{ &cold, &hot };
+  core::PackStepper stepper;
+  REQUIRE(stepper.configure(topology, batches, 2) == Status::Success);
+  REQUIRE(stepper.batchWorkerCount() == 2);
   REQUIRE(stepper.step(20.0, 0.0, 0.1) == Status::Success);
 
   const auto before = allocation_count.load(std::memory_order_relaxed);
