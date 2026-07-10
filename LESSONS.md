@@ -45,3 +45,9 @@ This file records reusable findings from the v4 implementation and validation wo
 - A read-only diagnostics accessor must not also expose movable/reconfigurable solver ownership. Const public surfaces are a correctness boundary, not only an API-style preference.
 - A regression must distinguish the old bug. The first extreme-value test already failed on the old solver and was rejected during review; the replacement keeps current deltas finite while terminal accumulation alone overflows, and mutation testing makes it red.
 - An assert is not a public error contract. Low-level transforms reachable by callers need validated sizes, widths, and aliasing plus a propagated `Status`; otherwise Release turns a simple bad argument into divide-by-zero or out-of-bounds UB.
+
+## Fast-math safety includes control-flow provenance
+
+- Validate every floating intermediate before converting it to an integer. Finite knots do not imply a finite range, slope, reciprocal bin width, or scaled lookup index; extreme and denormal inputs independently break those implications.
+- A bit-safe finite predicate is necessary but not sufficient under `-ffinite-math-only`. If the guarded branch visibly returns a constexpr NaN, ThinLTO can declare that branch unreachable and replace the check with an assumption. Keep invalid sentinels opaque (or compile the boundary with strict FP) and inspect raw IEEE bits in the optimized regression.
+- Preserve the normal finite arithmetic path while hardening exceptional values. The CompiledCurve fix retains the existing operation order, so the legacy non-knot OCV oracle remains bit-exact rather than being weakened to a tolerance after the change.

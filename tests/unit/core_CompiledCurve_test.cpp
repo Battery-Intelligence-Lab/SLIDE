@@ -12,6 +12,7 @@
 #include <bit>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 using namespace slide;
 
@@ -83,4 +84,77 @@ TEST_CASE("Compiled curves reject malformed input without becoming valid", "[cor
   const std::array nan_y{ 1.0, nan, 3.0 };
   REQUIRE(curve.build(valid_x, nan_y) == Status::Invalid_parameters);
   REQUIRE(lut.build(valid_x, nan_y) == Status::Invalid_parameters);
+}
+
+TEST_CASE("Compiled curves reject unrepresentable accelerators before integer conversion",
+          "[core][parameters][curve][P9]")
+{
+  const double maximum = std::numeric_limits<double>::max();
+  const std::array extreme_x{ -maximum, 0.0, maximum };
+  const std::array ordinary_y{ 1.0, 2.0, 3.0 };
+  const std::array ordinary_x{ 0.0, 1.0 };
+  const std::array extreme_y{ -maximum, maximum };
+  const double denormal = std::bit_cast<double>(UINT64_C(1));
+  const double twice_denormal = std::bit_cast<double>(UINT64_C(2));
+  const std::array tiny_x{ 0.0, denormal, twice_denormal };
+
+  for (const auto &x : { extreme_x, tiny_x }) {
+    core::IndexedPiecewiseLinear curve;
+    core::UniformLut lut;
+    CHECK(curve.build(x, ordinary_y) == Status::Invalid_parameters);
+    CHECK(lut.build(x, ordinary_y) == Status::Invalid_parameters);
+    CHECK_FALSE(curve.valid());
+    CHECK_FALSE(lut.valid());
+  }
+
+  core::IndexedPiecewiseLinear curve;
+  core::UniformLut lut;
+  CHECK(curve.build(ordinary_x, extreme_y) == Status::Invalid_parameters);
+  CHECK(lut.build(ordinary_x, extreme_y) == Status::Invalid_parameters);
+}
+
+TEST_CASE("Compiled curve domain edges never cast NaN to an index",
+          "[core][parameters][curve][P9]")
+{
+  const std::array x{ 0.0, 1.0 };
+  const std::array y{ 2.0, 4.0 };
+  core::IndexedPiecewiseLinear curve;
+  core::UniformLut lut;
+  REQUIRE(curve.build(x, y) == Status::Success);
+  REQUIRE(lut.build(x, y) == Status::Success);
+
+  CHECK(curve.eval(-1.0) == y.front());
+  CHECK(curve.eval(0.0) == y.front());
+  CHECK(curve.eval(1.0) == y.back());
+  CHECK(curve.eval(2.0) == y.back());
+  CHECK(curve.derivative(0.0) == 2.0);
+  CHECK(curve.derivative(1.0) == 2.0);
+
+  const double nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  constexpr std::uint64_t exponent_mask = UINT64_C(0x7ff0000000000000);
+  core::UniformLut invalid_tolerance_lut;
+  CHECK(invalid_tolerance_lut.build(x, y, nan) == Status::Invalid_parameters);
+  CHECK_FALSE(invalid_tolerance_lut.valid());
+
+  SECTION("indexed evaluation")
+  {
+    const double result = curve.eval(nan);
+    const auto bits = std::bit_cast<std::uint64_t>(result);
+    CAPTURE(bits);
+    CHECK((bits & exponent_mask) == exponent_mask);
+  }
+  SECTION("indexed derivative")
+  {
+    const double result = curve.derivative(nan);
+    const auto bits = std::bit_cast<std::uint64_t>(result);
+    CAPTURE(bits);
+    CHECK((bits & exponent_mask) == exponent_mask);
+  }
+  SECTION("uniform evaluation")
+  {
+    const double result = lut.eval(nan);
+    const auto bits = std::bit_cast<std::uint64_t>(result);
+    CAPTURE(bits);
+    CHECK((bits & exponent_mask) == exponent_mask);
+  }
 }

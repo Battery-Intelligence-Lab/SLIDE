@@ -239,6 +239,13 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Fix:** both transforms return `Status`, validate width/shape/divisibility/non-overlap, and have writer/reader callers propagate unexpected failures. The direct involution test now checks successful statuses.
 - **Evidence:** full AsyncRecorder Debug and Release binaries pass 238/238; the degenerate test is eight bytes and performs no model step.
 
+## 2026-07-10 — Phase 9B compiled-curve index safety
+
+- **Confirmed red:** the no-simulation Debug regression failed 6/21 assertions. A denormal domain published an infinite accelerator reciprocal, extreme finite ordinates admitted a non-finite segment slope, and NaN derivative lookup reached a float-to-integer conversion.
+- **Optimized-build finding:** the first guarded implementation passed Debug but access-violated in Release. ThinLTO had turned the finite guard into `llvm.assume` because its rejected branch visibly returned a constexpr NaN under `-ffinite-math-only`.
+- **Fix:** validate every derived build/sample/index quantity before conversion or commit, use a reference-based IEEE classifier for public floating inputs, and construct the invalid sentinel through an opaque no-inline integer path. Keep the ordinary interpolation expression unchanged.
+- **Evidence:** full CompiledCurve Debug and fast-math Release binaries each pass 163/163 assertions, including raw sentinel bits, invalid tolerance, extreme/tiny inputs, BPX endpoint resolution, and bit-exact legacy OCV interpolation. No model step or trajectory was run.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

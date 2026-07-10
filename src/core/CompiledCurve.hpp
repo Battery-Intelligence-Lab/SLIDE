@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -18,6 +19,38 @@
 #include <vector>
 
 namespace slide::core {
+
+namespace detail {
+
+  inline constexpr real_t default_lut_tolerance = 1e-6;
+
+  inline bool curve_is_finite(const real_t &value) noexcept
+  {
+    constexpr std::uint64_t exponent_mask = UINT64_C(0x7ff0000000000000);
+    // A by-value floating-point parameter can acquire LLVM `nofpclass` attributes under
+    // `-ffinite-math-only`, making a NaN call undefined before its body can classify the bits.
+    // Keep this boundary reference-based, then retain the integer barrier.
+    volatile std::uint64_t bits = std::bit_cast<std::uint64_t>(value);
+    return (bits & exponent_mask) != exponent_mask;
+  }
+
+#if defined(_MSC_VER)
+  __declspec(noinline)
+#elif defined(__GNUC__)
+  __attribute__((noinline))
+#endif
+  inline real_t curve_nan() noexcept
+  {
+    static_assert(sizeof(real_t) == sizeof(std::uint64_t));
+    // Keep the sentinel opaque to the finite-math optimiser. If this were a constexpr NaN,
+    // Clang could delete the guarding branch because `-ffinite-math-only` declares a NaN return
+    // unreachable, exposing the float-to-index conversion again.
+    volatile std::uint64_t bits = UINT64_C(0x7ff8000000000000);
+    const std::uint64_t copied_bits = bits;
+    return std::bit_cast<real_t>(copied_bits);
+  }
+
+} // namespace detail
 
 /**
  * Exact piecewise-linear table with a uniform segment-index accelerator. This preserves measured
@@ -35,40 +68,60 @@ public:
     y_.clear();
     segment_.clear();
     inv_bin_width_ = 0.0;
-    if (x.size() != y.size() || x.size() < 2)
-      return slide::Status::Invalid_parameters;
-
-    real_t min_spacing = x[1] - x[0];
-    if (!is_finite(x[0]) || !is_finite(y[0]) || min_spacing <= 0.0)
-      return slide::Status::Invalid_parameters;
-    for (std::size_t i = 1; i < x.size(); ++i) {
-      if (!is_finite(x[i]) || !is_finite(y[i]) || x[i] <= x[i - 1])
-        return slide::Status::Invalid_parameters;
-      min_spacing = std::min(min_spacing, x[i] - x[i - 1]);
-    }
-
-    const real_t range = x.back() - x.front();
-    const auto required_bins = static_cast<std::size_t>(std::ceil(range / min_spacing)) + 1;
     // Adaptive BPX functions can legitimately contain a 1/65536-wide segment,
     // which needs 65537 endpoint-covering bins. Keep a bounded 512 KiB index
     // budget while admitting that canonical 4096-knot refinement result.
     constexpr std::size_t max_bins = 131'072;
-    if (required_bins > max_bins)
+    if (x.size() != y.size() || x.size() < 2 || x.size() > max_bins)
       return slide::Status::Invalid_parameters;
+
+    if (!detail::curve_is_finite(x[0]) || !detail::curve_is_finite(y[0]))
+      return slide::Status::Invalid_parameters;
+
+    real_t min_spacing = 0.0;
+    for (std::size_t i = 1; i < x.size(); ++i) {
+      if (!detail::curve_is_finite(x[i]) || !detail::curve_is_finite(y[i]))
+        return slide::Status::Invalid_parameters;
+      const real_t spacing = x[i] - x[i - 1];
+      const real_t delta_y = y[i] - y[i - 1];
+      if (!detail::curve_is_finite(spacing) || !(spacing > 0.0)
+          || !detail::curve_is_finite(delta_y))
+        return slide::Status::Invalid_parameters;
+      const real_t slope = delta_y / spacing;
+      if (!detail::curve_is_finite(slope))
+        return slide::Status::Invalid_parameters;
+      min_spacing = i == 1 ? spacing : std::min(min_spacing, spacing);
+    }
+
+    const real_t range = x.back() - x.front();
+    if (!detail::curve_is_finite(range) || !(range > 0.0))
+      return slide::Status::Invalid_parameters;
+    const real_t bin_ratio = range / min_spacing;
+    if (!detail::curve_is_finite(bin_ratio) || !(bin_ratio > 0.0)
+        || bin_ratio > static_cast<real_t>(max_bins - 1))
+      return slide::Status::Invalid_parameters;
+    const auto required_bins = static_cast<std::size_t>(std::ceil(bin_ratio)) + 1;
+
+    const std::size_t bins = std::max<std::size_t>(256, required_bins);
+    const real_t inv_bin_width = static_cast<real_t>(bins) / range;
+    if (!detail::curve_is_finite(inv_bin_width) || !(inv_bin_width > 0.0))
+      return slide::Status::Invalid_parameters;
+
+    std::vector<std::uint32_t> candidate_segment(bins);
+    std::size_t segment_index = 0;
+    for (std::size_t bin = 0; bin < bins; ++bin) {
+      const real_t left = x.front() + static_cast<real_t>(bin) / inv_bin_width;
+      if (!detail::curve_is_finite(left))
+        return slide::Status::Invalid_parameters;
+      while (segment_index + 1 < x.size() - 1 && x[segment_index + 1] <= left)
+        ++segment_index;
+      candidate_segment[bin] = static_cast<std::uint32_t>(segment_index);
+    }
 
     x_.assign(x.begin(), x.end());
     y_.assign(y.begin(), y.end());
-    const std::size_t bins = std::max<std::size_t>(256, required_bins);
-    segment_.resize(bins);
-    inv_bin_width_ = static_cast<real_t>(bins) / range;
-
-    std::size_t segment = 0;
-    for (std::size_t bin = 0; bin < bins; ++bin) {
-      const real_t left = x_.front() + static_cast<real_t>(bin) / inv_bin_width_;
-      while (segment + 1 < x_.size() - 1 && x_[segment + 1] <= left)
-        ++segment;
-      segment_[bin] = static_cast<std::uint32_t>(segment);
-    }
+    segment_ = std::move(candidate_segment);
+    inv_bin_width_ = inv_bin_width;
     return slide::Status::Success;
   }
 
@@ -77,6 +130,8 @@ public:
   {
     assert(valid());
     const real_t xp = primal_value(x);
+    if (!detail::curve_is_finite(xp))
+      return static_cast<Real>(detail::curve_nan());
     if (xp <= x_.front())
       return static_cast<Real>(y_.front());
     if (xp >= x_.back())
@@ -97,9 +152,12 @@ public:
   }
 
   /** Piecewise-constant slope using the same O(1) segment lookup as eval(). */
-  real_t derivative(real_t x) const
+  real_t derivative(const real_t &query) const
   {
     assert(valid());
+    if (!detail::curve_is_finite(query))
+      return detail::curve_nan();
+    real_t x = query;
     if (x <= x_.front())
       x = x_.front();
     else if (x >= x_.back())
@@ -136,7 +194,7 @@ class UniformLut
 public:
   [[nodiscard]] slide::Status build(std::span<const real_t> x,
                                     std::span<const real_t> y,
-                                    real_t relative_tolerance = 1e-6,
+                                    const real_t &relative_tolerance = detail::default_lut_tolerance,
                                     std::size_t points = 4096)
   {
     values_.clear();
@@ -144,7 +202,8 @@ public:
     x_max_ = 0.0;
     inv_dx_ = 0.0;
     max_relative_error_ = 0.0;
-    if (!(relative_tolerance > 0.0) || points < 2 || points > 4096)
+    if (!detail::curve_is_finite(relative_tolerance) || !(relative_tolerance > 0.0)
+        || points < 2 || points > 4096)
       return slide::Status::Invalid_parameters;
 
     IndexedPiecewiseLinear source;
@@ -155,30 +214,57 @@ public:
     std::vector<real_t> candidate(points);
     const real_t xmin = x.front();
     const real_t xmax = x.back();
-    const real_t dx = (xmax - xmin) / static_cast<real_t>(points - 1);
-    for (std::size_t i = 0; i < points; ++i)
-      candidate[i] = source.eval(xmin + static_cast<real_t>(i) * dx);
+    const real_t range = xmax - xmin;
+    if (!detail::curve_is_finite(range) || !(range > 0.0))
+      return slide::Status::Invalid_parameters;
+    const real_t dx = range / static_cast<real_t>(points - 1);
+    if (!detail::curve_is_finite(dx) || !(dx > 0.0))
+      return slide::Status::Invalid_parameters;
+    const real_t inv_dx = real_t{ 1 } / dx;
+    if (!detail::curve_is_finite(inv_dx) || !(inv_dx > 0.0))
+      return slide::Status::Invalid_parameters;
+    for (std::size_t i = 0; i < points; ++i) {
+      const real_t query = xmin + static_cast<real_t>(i) * dx;
+      if (!detail::curve_is_finite(query))
+        return slide::Status::Numerical_failure;
+      candidate[i] = source.eval(query);
+      if (!detail::curve_is_finite(candidate[i]))
+        return slide::Status::Numerical_failure;
+    }
 
     auto candidate_eval = [&](real_t query) {
+      if (!detail::curve_is_finite(query)) return detail::curve_nan();
       if (query <= xmin) return candidate.front();
       if (query >= xmax) return candidate.back();
       const real_t scaled = (query - xmin) / dx;
+      if (!detail::curve_is_finite(scaled) || !(scaled >= 0.0))
+        return detail::curve_nan();
       const auto i = std::min(static_cast<std::size_t>(scaled), points - 2);
       return candidate[i] + (candidate[i + 1] - candidate[i]) * (query - (xmin + static_cast<real_t>(i) * dx)) / dx;
     };
 
     real_t max_relative_error = 0.0;
+    auto observe_error = [&](real_t query) {
+      const real_t expected = source.eval(query);
+      const real_t actual = candidate_eval(query);
+      const real_t difference = actual - expected;
+      const real_t denominator = std::max(std::abs(expected), real_t{ 1e-12 });
+      const real_t relative_error = std::abs(difference) / denominator;
+      if (!detail::curve_is_finite(expected) || !detail::curve_is_finite(actual)
+          || !detail::curve_is_finite(difference)
+          || !detail::curve_is_finite(denominator)
+          || !detail::curve_is_finite(relative_error))
+        return false;
+      max_relative_error = std::max(max_relative_error, relative_error);
+      return true;
+    };
     for (std::size_t i = 0; i < x.size(); ++i) {
-      const real_t expected = source.eval(x[i]);
-      max_relative_error = std::max(max_relative_error,
-                                    std::abs(candidate_eval(x[i]) - expected)
-                                      / std::max(std::abs(expected), real_t{ 1e-12 }));
+      if (!observe_error(x[i]))
+        return slide::Status::Numerical_failure;
       if (i + 1 < x.size()) {
-        const real_t midpoint = 0.5 * (x[i] + x[i + 1]);
-        const real_t mid_expected = source.eval(midpoint);
-        max_relative_error = std::max(max_relative_error,
-                                      std::abs(candidate_eval(midpoint) - mid_expected)
-                                        / std::max(std::abs(mid_expected), real_t{ 1e-12 }));
+        const real_t midpoint = x[i] + real_t{ 0.5 } * (x[i + 1] - x[i]);
+        if (!observe_error(midpoint))
+          return slide::Status::Numerical_failure;
       }
     }
     if (max_relative_error > relative_tolerance)
@@ -187,7 +273,7 @@ public:
     values_ = std::move(candidate);
     x_min_ = xmin;
     x_max_ = xmax;
-    inv_dx_ = real_t{ 1 } / dx;
+    inv_dx_ = inv_dx;
     max_relative_error_ = max_relative_error;
     return slide::Status::Success;
   }
@@ -197,9 +283,13 @@ public:
   {
     assert(valid());
     const real_t xp = primal_value(x);
+    if (!detail::curve_is_finite(xp))
+      return static_cast<Real>(detail::curve_nan());
     if (xp <= x_min_) return static_cast<Real>(values_.front());
     if (xp >= x_max_) return static_cast<Real>(values_.back());
     const real_t scaled = (xp - x_min_) * inv_dx_;
+    if (!detail::curve_is_finite(scaled) || !(scaled >= 0.0))
+      return static_cast<Real>(detail::curve_nan());
     const auto i = std::min(static_cast<std::size_t>(scaled), values_.size() - 2);
     const Real fraction = (x - static_cast<Real>(x_min_)) * static_cast<Real>(inv_dx_)
                           - static_cast<Real>(i);
