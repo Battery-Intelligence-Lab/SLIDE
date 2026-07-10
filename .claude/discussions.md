@@ -203,6 +203,13 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Evidence:** the registered tests were written first and the pre-fix `[P9]` run produced 13 assertion failures. The corrected Debug and `-Ofast` Release binaries each pass the complete Experiment subsystem: 183 assertions in 9 cases. The focused slice is 42/42 P9 assertions plus 56/56 parser-atomicity assertions.
 - **Next:** continue the PackSolver/topology, PackStepper, recorder, curve, parser-fuzz, sanitizer, and Status-coverage passes; do not close 9B until P9-G1..G4 all pass.
 
+## 2026-07-10 — Phase 9B synchronous Recorder pass
+
+- **Confirmed:** once the fixed-capacity recorder entered `thin`, ordering was checked only against the last stored slot. Duplicate and backward omitted steps therefore succeeded and inflated the thinned count.
+- **Confirmed:** `record()` validated total current but copied a non-finite elapsed time and could derive infinite current density from individually finite area/current. An invalid `BackpressurePolicy` also configured successfully by falling through as `stop`.
+- **Fix:** mirror the async monotonic watermark, reset it on `clear()`, validate time and current-density quotients before advancing it or touching storage, and exhaustively validate the policy enum during atomic configuration.
+- **Evidence:** the initial registered P9 run failed 7 assertions; after those fixes, the added invalid-enum test failed 2 assertions while the earlier cases passed. Final focused Debug/Release gates pass 20/20, and sequential full Recorder binaries pass 98/98 in each build. Parallel full-binary execution was deliberately rejected as evidence because both configurations share fixed temporary filenames and collided at the filesystem layer.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

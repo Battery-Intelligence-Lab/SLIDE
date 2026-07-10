@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -22,10 +23,12 @@ using namespace slide;
 
 namespace {
 
-core::SpmBatch makeBatch()
+core::SpmBatch makeBatch(double electrode_area = -1.0)
 {
   core::SpmBatch batch;
-  const auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  if (electrode_area > 0.0)
+    input.design.electrode_area = electrode_area;
   REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
   return batch;
 }
@@ -61,6 +64,67 @@ void flipByte(const std::filesystem::path &path, std::uint64_t offset)
 }
 
 } // namespace
+
+TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering",
+          "[core][recorder][validation][P9]")
+{
+  SECTION("invalid backpressure policy is rejected before configuration")
+  {
+    auto batch = makeBatch();
+    core::Recorder recorder;
+    CHECK(recorder.configure(
+            batch,
+            { .capacity = 1,
+              .backpressure = static_cast<core::BackpressurePolicy>(255) })
+          == Status::Invalid_parameters);
+    CHECK_FALSE(recorder.configured());
+  }
+
+  SECTION("thin mode tracks the last omitted cadence point")
+  {
+    auto batch = makeBatch();
+    core::Recorder recorder;
+    REQUIRE(recorder.configure(
+              batch,
+              { .capacity = 1,
+                .backpressure = core::BackpressurePolicy::thin })
+            == Status::Success);
+    const std::array current{ 1.0, -1.0 };
+    REQUIRE(recorder.record(0, current) == Status::Success);
+    REQUIRE(recorder.record(2, current) == Status::Success);
+    REQUIRE(recorder.thinnedSnapshots() == 1);
+    CHECK(recorder.record(2, current) == Status::Invalid_parameters);
+    CHECK(recorder.record(1, current) == Status::Invalid_parameters);
+    CHECK(recorder.thinnedSnapshots() == 1);
+
+    recorder.clear();
+    CHECK(recorder.record(0, current) == Status::Success);
+  }
+
+  SECTION("non-finite elapsed time is rejected atomically")
+  {
+    auto batch = makeBatch();
+    core::Recorder recorder;
+    REQUIRE(recorder.configure(batch, { .capacity = 1 })
+            == Status::Success);
+    batch.state().at(batch.layout().elapsed_time, 0, 0) =
+      std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+    const std::array current{ 1.0, -1.0 };
+    CHECK(recorder.record(0, current) == Status::Invalid_parameters);
+    CHECK(recorder.size() == 0);
+  }
+
+  SECTION("finite current and area cannot store infinite current density")
+  {
+    auto batch = makeBatch(1e-300);
+    core::Recorder recorder;
+    REQUIRE(recorder.configure(batch, { .capacity = 1 })
+            == Status::Success);
+    const std::array current{ 1e300, -1e300 };
+    CHECK(recorder.record(0, current) == Status::Invalid_parameters);
+    CHECK(recorder.size() == 0);
+  }
+}
 
 TEST_CASE("P6-G1 recorded states lazily reproduce live voltage",
           "[core][recorder][lazy][P6-G1]")

@@ -260,7 +260,9 @@ namespace {
 
 slide::Status Recorder::configure(SpmBatch &batch, RecorderConfig config)
 {
-  if (!batch.valid() || config.cadence == 0 || config.capacity == 0)
+  if (!batch.valid() || config.cadence == 0 || config.capacity == 0
+      || !(config.backpressure == BackpressurePolicy::stop
+           || config.backpressure == BackpressurePolicy::thin))
     return slide::Status::Invalid_parameters;
   const std::size_t state_values = batch.state().size();
   const auto lanes = static_cast<std::size_t>(batch.n_lanes());
@@ -281,6 +283,8 @@ slide::Status Recorder::configure(SpmBatch &batch, RecorderConfig config)
     state_values_ = state_values;
     count_ = 0;
     thinned_ = 0;
+    previous_step_ = 0;
+    has_previous_step_ = false;
     accepted_steps_ = std::move(steps);
     times_ = std::move(times);
     current_density_ = std::move(currents);
@@ -299,11 +303,18 @@ slide::Status Recorder::record(std::uint64_t accepted_step,
     return slide::Status::Invalid_parameters;
   if (accepted_step % config_.cadence != 0)
     return slide::Status::Success;
-  if (count_ > 0 && accepted_step <= accepted_steps_[count_ - 1])
+  const real_t time = batch_->state().at(batch_->layout().elapsed_time, 0, 0);
+  if (!is_finite(time))
     return slide::Status::Invalid_parameters;
-  for (const real_t current : total_current_A)
-    if (!is_finite(current))
+  for (const real_t current : total_current_A) {
+    if (!is_finite(current)
+        || !is_finite(current / batch_->electrode_area()))
       return slide::Status::Invalid_parameters;
+  }
+  if (has_previous_step_ && accepted_step <= previous_step_)
+    return slide::Status::Invalid_parameters;
+  previous_step_ = accepted_step;
+  has_previous_step_ = true;
   if (count_ == config_.capacity) {
     if (config_.backpressure == BackpressurePolicy::thin) {
       ++thinned_;
@@ -312,7 +323,7 @@ slide::Status Recorder::record(std::uint64_t accepted_step,
     return slide::Status::Numerical_failure;
   }
   accepted_steps_[count_] = accepted_step;
-  times_[count_] = batch_->state().at(batch_->layout().elapsed_time, 0, 0);
+  times_[count_] = time;
   const std::size_t current_offset = count_ * static_cast<std::size_t>(lanes_);
   for (int lane = 0; lane < lanes_; ++lane)
     current_density_[current_offset + static_cast<std::size_t>(lane)] = total_current_A[static_cast<std::size_t>(lane)] / batch_->electrode_area();
@@ -339,6 +350,8 @@ void Recorder::clear()
 {
   count_ = 0;
   thinned_ = 0;
+  previous_step_ = 0;
+  has_previous_step_ = false;
 }
 
 slide::Status Recorder::terminalVoltage(std::size_t index,

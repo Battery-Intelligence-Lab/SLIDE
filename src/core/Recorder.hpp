@@ -81,6 +81,8 @@ private:
   std::size_t state_values_{};
   std::size_t count_{};
   std::uint64_t thinned_{};
+  std::uint64_t previous_step_{};
+  bool has_previous_step_{};
   std::vector<std::uint64_t> accepted_steps_{};
   std::vector<real_t> times_{};
   std::vector<real_t> current_density_{};
