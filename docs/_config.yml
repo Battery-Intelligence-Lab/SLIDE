@@ -1,13 +1,13 @@
 title: SLIDE
 description: Official documentation of SLIDE software.
-remote_theme: Battery-Intelligence-Lab/bil-jekyll-rtd-theme
-
-# Theme settings:
-site_author: SLIDE authors
-repo_url: "https://github.com/Battery-Intelligence-Lab/SLIDE/"
-edit_on_github: true
-github_docs_folder: true
-sticky_navigation: true
-prev_next_buttons_location: bottom
-search_enabled: true
-hljs_style: github-gist
+url: https://battery-intelligence-lab.github.io
+baseurl: /SLIDE
+remote_theme: Battery-Intelligence-Lab/bil-jekyll-rtd-theme@640a185d7819012d804945832cd9d3edcd7336ca
+repository: Battery-Intelligence-Lab/SLIDE
+plugins:
+  - jekyll-remote-theme
+  - jekyll-github-metadata
+github:
+  source:
+    branch: master
+    path: docs

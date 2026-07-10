@@ -6,6 +6,8 @@ nav_order: 1
 
 
 # Advanced changes to the code 
+
+> The pages in this section describe legacy v3 internals. For v4, use [Add a cell model](../v4/extending-cell-model.html) and [Add an ageing mechanism](../v4/extending-ageing.html). v4 uses compiled batches and scalar-generic kernels, not runtime `Cell_user`/`DEG_ID` registration.
 <p style='text-align: justify;'>
 This document gives some explanation of how to do advanced changes to the code. It is highly recommended you do not attempt this unless you know how to program in C++ (including object-oriented programming) and you understand how the code in this project works.
 

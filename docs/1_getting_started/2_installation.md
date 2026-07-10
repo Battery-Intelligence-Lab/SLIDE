@@ -6,6 +6,8 @@ nav_order: 2
 
 # Installation
 
+> **Legacy v3 instructions.** They are retained for existing applications. New v4 users should follow [v4 installation](../v4/installation.html); it corrects the repository URL, CMake command placement, C++20 requirement, and language-wrapper status.
+
 SLIDE is yet to offer any binaries or wrappers in any other languages; therefore, the only way to install SLIDE is to compile it from C++ source files. 
 
 ## Building from the source

@@ -5,8 +5,8 @@
 > **Disclaimer**: Some items are informal notes. Priority may shift based on user needs.
 >
 > **2026-07-10 — v4 refactor active.** The authoritative vision/roadmap is [/PLAN.md](../PLAN.md)
-> (architecture, decision log, phased gates, open questions). Phases 0–7 and P8-G0–G4 are complete;
-> P8-G5 documentation is next, followed by the Phase-9 adversarial audit. Historical "Critical Bugs"
+> (architecture, decision log, phased gates, open questions). Phases 0–8 are complete;
+> Phase 9A audit-debt closure is next. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
 
 ---
@@ -145,7 +145,7 @@
 
 ### Documentation
 - [ ] Renew MATLAB scripts to read results
-- [ ] Documentation of new features
+- [x] Documentation of v4 features (tested P8-G5 installation, quickstarts, compatibility, and extension guides)
 - [ ] Automatise SOC -> OCV conversion
 
 ---

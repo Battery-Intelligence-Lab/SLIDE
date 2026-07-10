@@ -178,6 +178,14 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Evidence:** root core-only smoke 1/1, nested consumer 1/1, optional-off Debug 49/49, optional-off Release 49/49, and rebuilt installed CPython 3.13 wheel 9 passed/2 expected optional skips on Windows. Existing installed-wheel CI remains Linux/macOS/Windows × Python 3.10/3.13; `cmake/**` now triggers it. Cross-platform jobs require a push before GitHub can execute them.
 - **Next:** P8-G5 tested v4 documentation.
 
+## 2026-07-10 — P8-G5 executable v4 documentation
+
+- **Finding:** the published tree was v3-only, the old docs workflow did not execute examples, and a nominal local Jekyll success could still emit unthemed pages. Adversarial validation also found a missing Liquid-tag plugin, a blank Doxygen main page, a broken custom Doxygen header, shell-dependent wheel globs, and several over-broad compatibility claims.
+- **Decision:** make `docs/v4` dominant while retaining explicit v3 banners; treat fenced quickstarts as source code through one standard-library extractor; check local links, heading fragments, and required Jekyll layout metadata; pin the remote theme and scope Pages/OIDC permissions to deployment. Keep MATLAB on the licensed machine rather than claiming an unverified hosted MEX lane.
+- **Evidence:** the fresh C++ external consumer passes 1/1; installed-wheel Python and MATLAB R2025b each return 7 finite samples and final voltage 3.879196 V. Doxygen 1.14 returns zero generator errors and renders the v4 main page (123 retained v3 source-comment warnings); production Jekyll emits 8 themed v4 pages with `/SLIDE` URLs and `master/docs` edit links. Ruff, yamllint, actionlint, link/front-matter validation, and `git diff --check` pass.
+- **Review:** an independent read-only adversarial pass checked documentation claims against CMake, C++, Python, and MATLAB sources and reported no remaining P8-G5 blocker after fixes.
+- **Next:** Phase 9A audit-debt closure (AUD-1, AUD-2, AUD-4; AUD-3 remains Q11).
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

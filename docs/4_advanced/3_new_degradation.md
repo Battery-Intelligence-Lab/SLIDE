@@ -6,6 +6,8 @@ nav_order: 3
 
 
 # Degradation
+
+> **Legacy v3 guide.** Do not edit `DEG_ID`, `cell.cpp`, or `main.cpp` to add v4 physics. See the [v4 ageing-mechanism guide](../v4/extending-ageing.html).
 ## New degradation model
 If you find a new degradation model for an existing mechanism (e.g. a new SEI-growth model) and want to implement it, follow these steps:
 

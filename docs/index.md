@@ -1,94 +1,35 @@
 ---
 layout: default
-title: Index
-nav_exclude: true
+title: SLIDE documentation
+nav_order: 0
 ---
 
-![](slide_logo.png){:width="80%" }
+# SLIDE
 
+SLIDE is a C++20 simulator for lithium-ion cells and packs. The v4 core combines a spectral single-particle model, compile-time physics composition, contiguous structure-of-arrays state, flat compiled pack topology, Python and MATLAB interfaces, optional CUDA execution, and memory-aware recording.
 
-About _Slide_
-===========================
+> v4 is still a development preview. Python reports `4.0.0.dev0` and these docs report `4.0.0-dev`; the root CMake project deliberately remains `3.0.0` until the Phase-11 release gate aligns every public version and creates the tag together.
 
-To cite this code, check the lastesta release DOI at https://zenodo.org/badge/latestdoi/185216614.
+## Start with v4
 
-_Slide_ (simulator for lithium-ion degradation) is a code project mainly written in C++ to do fast simulations of degradation of lithium-ion batteries.
-Simulating 5000 1C CC cycles should take less than 1 minute; adding a CV phase doubles the calculation time to below 2 minutes. The project uses object oriented programming in C++, see documentation for more details. 
+- [Install or build the preview](v4/installation.html)
+- [C++ quickstart](v4/quickstart-cpp.html)
+- [Python quickstart](v4/quickstart-python.html)
+- [MATLAB quickstart](v4/quickstart-matlab.html)
+- [Optional dependencies and PyBaMM compatibility](v4/compatibility.html)
+- [Add a cell-model family](v4/extending-cell-model.html)
+- [Add an ageing mechanism](v4/extending-ageing.html)
 
-The underlying battery model is the Single Particle Model (SPM) with a coupled bulk thermal model. 
-A spectral implementation of the SPM in MATLAB was developed by Bizeray and Howey and is [available separately on GitHub](https://github.com/davidhowey/Spectral_li-ion_SPM). _Slide_ adds various degradation models on top of the SPM. The equations were taken from literature and implemented in one large coupled model. Users can easily select which models they want to include in their simulations. They can set the values of the fitting parameters of those degradation models to fit their own data.
+The three quickstarts are extracted directly from these pages and executed by `scripts/test_docs_quickstarts.py`; they are not illustrative pseudocode.
 
-_Slide_ is written to behave similarly to a battery tester. It offers functions to load cells with a constant current, a current profile or a constant voltage such that users can program their own degradation procedures. Some standard procedures have already been implemented (for calendar ageing and cycle ageing with regular CCCV cycles or with drive cycles). Also some reference performance tests have already been coded (to simulate a the capacity measurement, OCV curves, pulse discharge, etc.). Users can choose to store data points (current, voltage, temperature) at fixed time intervals during the degradation experiments, similar to how a battery tester stores such data.
+## Architecture in one paragraph
 
-The results from the simulations are written to csv files. Users can write their own code to read and plot these results, but MATLAB-scripts are provided for this too.
+User-friendly descriptions and language wrappers run on the cold path. At `build()`/`compile()`, they become homogeneous batches over a 64-byte-aligned state arena, concrete physics kernels, and a flat pack netlist. The hot path contains spans, row indices, preallocated workspace, and at most one indirect call per batch—never one virtual dispatch per cell.
 
-Detailed documentation is provided in the pdf documents. The code itself is also extensively documented.
+## Legacy v3 documentation
 
-If you use _Slide_ in your work, please cite our paper:
+The older **Getting Started**, **Usage**, and **Pack Simulation** sections describe the retained v3 façade. They remain useful for existing applications, but they are not the v4 API. v3 stays compiled and runnable through v4.x; its planned removal is v5.
 
-J.M. Reniers, G. Mulder, D.A. Howey, "Review and performance comparison of mechanical-chemical degradation models for lithium-ion batteries", Journal of The Electrochemical Society, 166(14), A3189, 2019, DOI [10.1149/2.0281914jes](https://doi.org/10.1149/2.0281914jes).
+## Citation
 
-This code has been developed at the Department of Engineering Science of 
-the University of Oxford. 
-For information about our lithium-ion battery research, visit the [Battery Intelligence Lab](https://howey.eng.ox.ac.uk) website. 
-
-For more information and comments, please contact 
-[david.howey@eng.ox.ac.uk](david.howey@eng.ox.ac.uk).
-
-
-Requirements
-============
-You will need a C++ programming environment to edit, compile and run the code.
-Eclipse is the environment used to develop the code, but other environments should work as well.
-Your computer must also have a C++ compiler installed.
-The code has been tested using g++.
-Extensive guidelines on how to install those programs is provided in the documentation.
-
-To display the results, various MATLAB scripts are provided.
-To run those, you will need to have installed MATLAB. 
-The code has been tested using MATLAB R2018a, but should work with other releases with no or minor modifications.
-
-To calculate the spatial discretisation, two open-source MATLAB functions developped by others are being used.
-If you don't change the discretisation, you will not need them.
-If you do change the discretisation, please read the license files attached to those two functions ('license chebdif.txt' and 'lisence cumsummat.txt').
-
- 
-Installation
-============
-### Option 1 - Downloading a .zip file ###
-[Download a .zip file of the code](https://github.com/davidhowey/SLIDE/archive/master.zip)
-
-Then, unzip the folder in a chosen directory on your computer.
-
-### Option 2 - Cloning the repository with Git ###
-To clone the repository, you will first need to have [Git][6] installed on 
-your computer. Then, navigate to the directory where you want to clone the 
-repository in a terminal, and type:
-```bash
-git clone https://github.com/davidhowey/SLIDE.git
-```
-The folder containing all the files should appear in your chosen directory.
-
-
-Getting started
-===============
-Detailed instructions on how to get started are in the documentation.
-You first have to import the code to your programming environment and make sure the settings are correct (e.g. to allow enough memory for the calculation).
-Then you can open main.cpp, which implements the main-function. In this function you choose what to simulate by uncommenting the thing you want to do (and commenting all other lines). 
-It is recommended to start with the CCCV-function, which simulates a few CCCV cycles.
-You will then have to build (or compile) the code, which might take a while the first time you do this.
-Now you can run the code (either locally in the programming environment or by running the executable which was created by the compiler).
-While the simulation is running, csv files with the results are written in one or multiple subfolders.
-When the simulation has finished, you can run the corresponding MATLAB-script (e.g. readCCCV.m) to plot the outcomes.
-
-Much more detailed documentation can be found in the documentation (from '1 Getting started' to '7 appendixes; debugging, basics of C++, object oriented programming'). These guides are mostly independent of each other, so you don't have to read all of them.
-Also the code itself is extensively commented, so you might not have to read the guides at all.
-
-
-License
-=======
-This open-source C++ and MATLAB code is published under the BSD 3-clause License,
-please read `LICENSE.txt` file for more information.
-
-Two MATLAB functions used by the code to produce the spatial discretisation have been developed by others.
-They come with their own licence, see 'license chebdif.txt' and 'licence cumsummat.txt'.
+If you use SLIDE in research, cite J. M. Reniers, G. Mulder, and D. A. Howey, “Review and performance comparison of mechanical-chemical degradation models for lithium-ion batteries,” *Journal of The Electrochemical Society* 166(14), A3189 (2019), DOI [10.1149/2.0281914jes](https://doi.org/10.1149/2.0281914jes).

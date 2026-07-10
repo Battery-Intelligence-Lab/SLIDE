@@ -1,8 +1,8 @@
 # SLIDE v4 — Architecture Refactor Plan (living document)
 
-> **Status:** ACTIVE. Last updated 2026-07-10 (P8-G0 portability gate complete). Phases 0–7 COMPLETE,
-> Phase 8 gates G0–G4 complete; remaining work: P8-G5, then NEW Phases 9 (bug-hunt + simplification),
-> 10 (PyBOP integration tests), 11 (v4.0.0 release).
+> **Status:** ACTIVE. Last updated 2026-07-10 (Phase 8 complete). Phases 0–8 COMPLETE;
+> remaining work: NEW Phases 9 (bug-hunt + simplification), 10 (PyBOP integration tests),
+> and 11 (v4.0.0 release).
 > **How to use this document:** single source of truth for the v4 refactor. Any session (Fable, Codex, Opus, human)
 > continuing this work must (1) read this file first, (2) execute the next unblocked item in §6, (3) update §8 and
 > this header. Requirements originate in `.claude/FABLE.md`. Do not re-litigate decisions in §4 without new evidence.
@@ -93,7 +93,7 @@ Deviations found — each is a Phase-9A work item:
 | AUD-2 | Phase-5 numeric bands (0.2 µV / 20 µA / 0.2 µAh, 2e-12 V events) first appear in the SAME commit (`09e8ec5`) as implementation + test — post-hoc registration risk, unflagged in the ledger | moderate |
 | AUD-3 | PAY-1/2/4 timings self-run on the busy dev machine; the §5.7 quiet-machine/Volkan protocol was not literally honoured and no waiver is recorded (disclosed as "qualified" in the ledger, so honest but non-compliant) | moderate |
 | AUD-4 | The §5.3/§3.12 CVODE converged-reference arbiter was never built; P3-G1 closed against an independent closed-form oracle instead (mathematically stronger, but the registered arbiter is absent and unwaived) | minor |
-| AUD-5 | `docs/` is still v3-era; P8-G5 unstarted | minor |
+| AUD-5 | `docs/` was still v3-era; resolved by the tested v4 user/contributor guide and docs CI in P8-G5 | resolved |
 
 ### 2.3 Architecture quality assessment (2026-07-10, Fable, [confirmed] by direct inspection)
 
@@ -812,7 +812,7 @@ Gate simulations obey the header rule: SHORT registered scenarios; think first, 
   11.577/2.028 mV; **PAY-4 18.13×/71.4× vs PyBaMM IDAKLU, ~1,165×/1,111× conservative vs liionpack (qualified,
   dev machine)**; installed-wheel CI (3 OS × Python 3.10/3.13) + pinned-fixture drift job.
 
-### Phase 8 — MATLAB, CUDA, recording, runtime (G0–G4 DONE; G5 remains; G6 moved to Phase 11)
+### Phase 8 — MATLAB, CUDA, recording, runtime (COMPLETE; G6 moved to Phase 11)
 
 DONE 2026-07-10: **P8-G0** optional-toolchain-free root and nested-superproject core builds now run a real
 external-consumer smoke (1/1 on Windows) with CUDA/zstd/Arrow disabled-capability checks; public CPU headers contain
@@ -828,10 +828,14 @@ device dispatch through Python. **P8-G3** async compressed recording, CPU ring +
 block/thin backpressure, bitwise round-trips. **P8-G4** persistent thread pool, fixed-order reductions
 bit-repeatable across worker counts.
 
-REMAINING (registered text unchanged — archive):
-- **P8-G5 docs:** the v3-era `docs/` tree gains v4 installation, C++/Python/MATLAB quickstarts, and the two
-  extension guides ("add a cell model", "add an ageing mechanism") incl. optional-dep matrix and declared PyBaMM
-  gaps; every quickstart extracted and compiled/run in its available toolchain; Doxygen/Jekyll build passes.
+DONE 2026-07-10: **P8-G5 docs** adds v4 installation, C++/Python/MATLAB quickstarts, cell-model and ageing
+extension guides, an optional-dependency matrix, and explicit PyBaMM-shaped API gaps while retaining clearly
+labelled v3 pages. One standard-library extractor checks links/front matter and runs the exact fenced snippets:
+C++ external consumer 1/1, installed-wheel Python, and licensed MATLAB R2025b all produce seven finite samples
+(Python/MATLAB final voltage 3.879196 V). Doxygen 1.14 builds a non-blank v4 API landing page with zero generator
+errors (123 pre-existing `src/` comment warnings remain); production Jekyll/GitHub Pages builds eight themed v4
+pages with the pinned theme, `/SLIDE` base URL, and correct edit links. CI runs C++/Python fences and scopes Pages
+write/OIDC permission to deployment; MATLAB remains a licensed-machine gate.
 
 ### Phase 9 — Adversarial bug-hunt + code-quality hardening (NEW 2026-07-10 — release gate-keeper)
 
@@ -976,4 +980,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-10 | Implementation audit of the 67 Codex commits (agent + Fable, artifact-checked); architecture quality assessment; full ctest Debug 49/49 + Release 49/49 | DONE — verdict §2.2/§2.3; AUD-1..5 opened as Phase-9A items |
 | 2026-07-10 | PLAN.md compressed + Phases 9/10/11 added (bug-hunt+simplification, PyBOP integration, release); short-simulation operating rule added; P8-G6 → Phase 11 | DONE (this revision; archive created) |
 | 2026-07-10 | P8-G0 optionality/portability | PASSED — core-only and nested external-consumer smoke 1/1 on Windows; Debug/Release optional-off CPU 49/49; rebuilt installed CPython 3.13 wheel 9 passed/2 expected skips; private CUDA metadata; no optional SDK header leaks; installed-Eigen-first/pinned fallback; 3-OS core and installed-wheel CI matrices cover CMake changes. Cross-platform jobs are committed but cannot run until pushed. |
-| — | NEXT | P8-G5 docs → Phase 9 (9A audit debt → 9B hunt → 9C simplification) → Phase 10 → Phase 11 release |
+| 2026-07-10 | P8-G5 tested v4 documentation | PASSED — exact C++/Python/MATLAB fences run in available toolchains (7 finite samples each); 20 local links/front matter checked; Doxygen 0 generator errors with a rendered main page; production Jekyll build emits 8 themed v4 pages; docs workflow linted and least-privilege. AUD-5 resolved. |
+| — | NEXT | Phase 9A audit debt → 9B bug-hunt → 9C simplification → Phase 10 → Phase 11 release |

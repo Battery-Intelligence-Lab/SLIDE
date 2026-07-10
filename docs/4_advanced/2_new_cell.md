@@ -6,6 +6,8 @@ nav_order: 2
 
 # Adding new cell type
 
+> **Legacy v3 guide.** Do not use these steps to register a v4 cell model. See the [v4 cell-model guide](../v4/extending-cell-model.html).
+
 There are in total 4 types of cells
 
 - `Cell_fit`: this cell is used when fitting the characterisation parameters (see [Characterisation parametrisation](../3_using/5_character_parametrisation.html))

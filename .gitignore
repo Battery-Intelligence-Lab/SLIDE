@@ -25,4 +25,8 @@ bin/*
 nul
 /build-*
 .cache/
+.sass-cache/
 *.mexw64
+*.mexa64
+*.mexmaci64
+*.mexmaca64

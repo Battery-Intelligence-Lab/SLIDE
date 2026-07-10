@@ -7,6 +7,8 @@ nav_order: 3
 
 # Running Slide
 
+> **Legacy v3 instructions.** The v4 preview does not use the edit-and-uncomment `main.cpp` workflow. Start from a tested [v4 quickstart](../v4/index.html).
+
 After installing SLIDE and compiling the code, running it is as easy as executing the executable output in ```Release``` (by default) folder. 
 
 To have a nice working environment, we suggest using [Visual Studio Code (VScode)](https://code.visualstudio.com/) for all platforms. 

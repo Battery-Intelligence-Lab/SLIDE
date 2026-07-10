@@ -1,85 +1,99 @@
-name: Build, test and generate docs
+name: Documentation and quickstarts
+
 on:
   push:
-    branches:
-      - master
+    branches: [master, develop]
     paths:
-      - 'src/**'
-      - 'docs/**'
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+      - "src/**"
+      - "python/**"
+      - "matlab/**"
+      - "docs/**"
+      - "scripts/test_docs_quickstarts.py"
+      - "README.md"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "pyproject.toml"
+      - ".github/workflows/documentation.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "python/**"
+      - "matlab/**"
+      - "docs/**"
+      - "scripts/test_docs_quickstarts.py"
+      - "README.md"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "pyproject.toml"
+      - ".github/workflows/documentation.yml"
+  workflow_dispatch:
+
 permissions:
   contents: read
-  pages: write
-  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: read
     steps:
-      - name: Checkout current branch
-        uses: actions/checkout@v5
-      - name: Setup Pages
-        uses: actions/configure-pages@v2
-      - name: Build master with Jekyll
-        uses: actions/jekyll-build-pages@v1
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          source: 'docs'
-          destination: ./_site
-      - run: sudo rm -rf build
-      - run: mkdir build
-      - name: Create Doxygen Files
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install Python build dependencies
+        run: python -m pip install --upgrade pip build numpy
+
+      - name: Extract, compile, and run the C++ quickstart
+        run: >-
+          python scripts/test_docs_quickstarts.py
+          --output build/docs-quickstarts
+          --language cpp
+
+      - name: Build and install only the wheel artifact
+        run: |
+          python -m build --wheel --outdir build/docs-wheel
+          python -m pip install --force-reinstall --no-deps build/docs-wheel/*.whl
+
+      - name: Run the extracted Python quickstart
+        run: >-
+          python scripts/test_docs_quickstarts.py
+          --output build/docs-quickstarts
+          --language python
+
+      - name: Build Doxygen API documentation
         uses: mattnotmitt/doxygen-action@v1.9.5
         with:
-          doxyfile-path: 'docs/Doxyfile'
-      - run: sudo sed -ri 's/<div id="projectname">(.*)/<div id="projectname"><a href="..\/index.html">\1 <\/a>/g' ./build/Doxygen/html/index.html
-      - run: sudo mv ./build/Doxygen/html ./_site/Doxygen
-      # Create a coverage report and upload to the website! 
-      - name: update
-        run: sudo apt update
+          doxyfile-path: docs/Doxyfile
 
-      - name: install compiler and dependencies
-        run: sudo apt install gcc-11 g++-11 lcov
+      - uses: actions/configure-pages@v6
 
-      - name: make build directory
-        run: mkdir build_dir
+      - name: Build Jekyll site
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: docs
+          destination: _site
 
-      - name: cmake configure
-        run: cmake .. -DCMAKE_BUILD_TYPE=Debug -DSLIDE_ENABLE_COVERAGE:BOOL=TRUE
-        working-directory: build_dir
-        env:
-          CC: gcc-11
-          CXX: g++-11
+      - name: Attach generated API documentation
+        run: mv build/Doxygen/html _site/Doxygen
 
-      - name: cmake build
-        run: cmake --build . --parallel 2
-        working-directory: build_dir
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
 
-      - name: cmake test
-        run: ctest -j2 -C Debug --output-on-failure
-        working-directory: build_dir
-      
-      - name: upload coverage results
-        run: |
-          lcov --directory . --capture --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' '*/tests/*' --output-file coverage.info
-          lcov --list coverage.info
-          bash <(curl https://codecov.io/bash) -f coverage.info
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        working-directory: build_dir
-
-      - name: generate html report for website
-        run: genhtml coverage.info -o Coverage
-        working-directory: build_dir
-      - run: sudo mv ./build_dir/Coverage ./_site/Coverage
-        
-      # Upload the website:
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
-
-  # Publication job
   publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -88,4 +102,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v5
