@@ -56,3 +56,19 @@ target_link_libraries(benchmark_PAY2_pack
   project_warnings
   project_options
 )
+
+add_executable(benchmark_PAY4_slide_pack benchmark_PAY4_slide_pack.cpp)
+target_link_libraries(benchmark_PAY4_slide_pack
+  PRIVATE
+  slide_core
+  project_warnings
+  project_options
+)
+
+add_executable(benchmark_PAY4_slide_single benchmark_PAY4_slide_single.cpp)
+target_link_libraries(benchmark_PAY4_slide_single
+  PRIVATE
+  slide_core
+  project_warnings
+  project_options
+)

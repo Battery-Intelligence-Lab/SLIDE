@@ -825,6 +825,13 @@ hand-off stays rejected (D-06). Multirate (D-08) composes: outer and inner split
      casadi solves + per-step MNA in numpy/scipy]: ≥10³×. Protocol honesty: identical model + documented
      tolerances; setup and solve timed separately; liionpack is maintenance-mode (§8 SOTA row) so this is
      positioning, not a moving target; failure ⇒ profile and record, not stop.
+     **MEASURED 2026-07-10 (development machine; qualified, reproducible harness):** PyBaMM 26.6.2.0 IDAKLU
+     (`rtol=1e-6`, `atol=1e-8`) warm solve median 12.373 ms vs SLIDE 0.682 ms = **18.13×**; cold
+     setup-plus-first-solve ratio **71.4×**. liionpack 0.3.12/CasadiManager (its pinned PyBaMM 24.9.0) vs SLIDE:
+     16s4p median **1,363×**, conservative comparator-solve/SLIDE-max **1,165×**; 1s100p **1,160×** median,
+     **1,111×** conservative. Both targets clear. Common Chen2020/SOC/current/timestep and 100 µΩ cell resistance
+     were used; liionpack's required 0.1 nΩ connectors, older pinned PyBaMM, and mandatory output recording are
+     explicit qualifications. Final pack voltage difference is 0.90 mV/cell. See `benchmark/PAY4.md`.
    Structural proxies (allocations, virtual calls, iteration/factorisation counts, bytes/cell) are tracked
    continuously as leading indicators; wall clock at the checkpoints is the confirming evidence. Rule: phase N+1
    does not start before phase N's checkpoint passes or Volkan explicitly waives it (PAY-4 exempt from the
@@ -1121,4 +1128,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | P7-G1/P7-G3 PyBaMM behaviour parity | PASSED — pinned 26.6.2.0 Chen2020 fixtures generated after band registration. C/50 max/RMS 0.134/0.034 mV; 1C 11.577/2.028 mV; full Tutorial-5 sequence compared within continuous control segments 0.778/0.221 mV. Event-duration drift is explicit (worst 30.02 s in the CV hold), and no interpolation crosses duplicate-time control jumps. Initial decisive comparison caught/fixed SLIDE's synthetic open-circuit first sample. |
 | 2026-07-10 | P7-G2 sensitivity/fit bands | REGISTERED BEFORE RUN — ten-parameter dual/FD normalized sensitivity gate `2 µV + 2e-4 relative`, primal `2e-12 V`; PyBOP 25.11 L-BFGS-B synthetic D/R recovery 2%/0.5%. Implementation and decisive runs are next. |
 | 2026-07-10 | P7-G2 forward sensitivities + PyBOP | PASSED — dependency-free dual propagation for the resolved ten-parameter set; primal is bit-identical to production and worst normalized difference across FD `h/2,h,2h` is 53 nV. PyBOP 25.11 BaseSimulator/Problem/SSE/SciPyMinimize L-BFGS-B uses `simulateS1` gradients and recovers D/R to ~2.1e-9/~9.4e-10 relative in 16 iterations/21 evaluations, far inside 2%/0.5%. Q10 resolved; thermal h_conv sensitivity is correctly deferred from the isothermal surface. |
+| 2026-07-10 | PAY-4 cross-tool positioning | TARGETS MET (qualified development-machine run) — reproducible JSON harness separates setup and solve. Single SPM discharge+CCCV: 18.13× warm solve and 71.4× cold vs PyBaMM 26.6.2.0 IDAKLU. Pack CC: conservative 1,165× at 16s4p and 1,111× at 1s100p vs liionpack 0.3.12/CasadiManager. Parameters/protocols/tolerances/versions, output-overhead asymmetry, connector approximation, and ~0.90 mV/cell final voltage difference are recorded in `benchmark/PAY4.md`. |
 | — | Phases 1–8 | **Phases 1–6 COMPLETE. Phase 7 NEXT:** **NEXT: Python/PyBaMM compatibility, parameter absorption, BPX, and sensitivities.** Phases 7–8 not started. |
