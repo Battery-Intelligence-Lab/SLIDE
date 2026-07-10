@@ -67,6 +67,11 @@ struct SpmPipelineLayout
 template <int NCH>
 struct SpmPipelineParams
 {
+  bool enable_stress{ true };
+  bool enable_sei{ true };
+  bool enable_surface_crack{ true };
+  bool enable_lam{ true };
+  bool enable_lithium_plating{ true };
   SpmDiffusionRhsParams<NCH> diffusion{};
   SpmElectricalParams<NCH> electrical{};
   ThermalLumpedParams thermal{};
@@ -137,13 +142,15 @@ public:
 
     BasicSpmStress<real_t> stress_view;
     if constexpr (needs_stress) {
-      stress_view = stress_.view();
-      status = computeSpmStress(params_.stress,
-                                observable_view,
-                                n_lanes_,
-                                stress_view);
-      if (status != slide::Status::Success)
-        return status;
+      if (params_.enable_stress) {
+        stress_view = stress_.view();
+        status = computeSpmStress(params_.stress,
+                                  observable_view,
+                                  n_lanes_,
+                                  stress_view);
+        if (status != slide::Status::Success)
+          return status;
+      }
     }
 
     addSpmDiffusionRhs(params_.diffusion,
@@ -167,19 +174,28 @@ public:
     if constexpr (needs_sei_scratch)
       sei_view = sei_.view();
     if constexpr (WithSei) {
-      status = computeSei(params_.sei.mechanism,
-                          views.y,
-                          layout_.spm,
-                          ctx,
-                          observable_view,
-                          sei_view);
-      if (status != slide::Status::Success)
-        return status;
-      addSeiRhs(params_.sei,
-                views.y,
-                views.ydot,
-                layout_.spm,
-                sei_view);
+      if (params_.enable_sei) {
+        status = computeSei(params_.sei.mechanism,
+                            views.y,
+                            layout_.spm,
+                            ctx,
+                            observable_view,
+                            sei_view);
+        if (status != slide::Status::Success)
+          return status;
+        addSeiRhs(params_.sei,
+                  views.y,
+                  views.ydot,
+                  layout_.spm,
+                  sei_view);
+      } else if constexpr (WithSurfaceCrack) {
+        std::fill(sei_view.side_reaction_current.begin(),
+                  sei_view.side_reaction_current.end(),
+                  real_t{});
+        std::fill(sei_view.active_fraction_rate.begin(),
+                  sei_view.active_fraction_rate.end(),
+                  real_t{});
+      }
     } else if constexpr (WithSurfaceCrack) {
       std::fill(sei_view.side_reaction_current.begin(),
                 sei_view.side_reaction_current.end(),
@@ -190,54 +206,60 @@ public:
     }
 
     if constexpr (WithSurfaceCrack) {
-      auto crack_view = surface_crack_.view();
-      status = computeSurfaceCrack(params_.surface_crack.mechanism,
-                                   views.y,
-                                   layout_.spm,
-                                   layout_.stress_history,
-                                   ctx,
-                                   observable_view,
-                                   stress_view,
-                                   crack_view);
-      if (status != slide::Status::Success)
-        return status;
-      addSurfaceCrackRhs(params_.surface_crack,
-                         views.y,
-                         views.ydot,
-                         layout_.spm,
-                         sei_view,
-                         crack_view);
-    }
-
-    if constexpr (WithLam) {
-      auto lam_view = lam_.view();
-      status = computeLam(params_.lam,
-                          views.y,
-                          layout_.spm,
-                          layout_.stress_history,
-                          ctx,
-                          observable_view,
-                          stress_view,
-                          lam_view);
-      if (status != slide::Status::Success)
-        return status;
-      addLamRhs(params_.lam, views.ydot, layout_.spm, lam_view);
-    }
-
-    if constexpr (WithLithiumPlating) {
-      status = computeLithiumPlating(params_.lithium_plating.mechanism,
+      if (params_.enable_surface_crack) {
+        auto crack_view = surface_crack_.view();
+        status = computeSurfaceCrack(params_.surface_crack.mechanism,
                                      views.y,
                                      layout_.spm,
+                                     layout_.stress_history,
                                      ctx,
                                      observable_view,
-                                     std::span<real_t>{ plating_current_ });
-      if (status != slide::Status::Success)
-        return status;
-      addLithiumPlatingRhs(params_.lithium_plating,
+                                     stress_view,
+                                     crack_view);
+        if (status != slide::Status::Success)
+          return status;
+        addSurfaceCrackRhs(params_.surface_crack,
                            views.y,
                            views.ydot,
                            layout_.spm,
-                           std::span<const real_t>{ plating_current_ });
+                           sei_view,
+                           crack_view);
+      }
+    }
+
+    if constexpr (WithLam) {
+      if (params_.enable_lam) {
+        auto lam_view = lam_.view();
+        status = computeLam(params_.lam,
+                            views.y,
+                            layout_.spm,
+                            layout_.stress_history,
+                            ctx,
+                            observable_view,
+                            stress_view,
+                            lam_view);
+        if (status != slide::Status::Success)
+          return status;
+        addLamRhs(params_.lam, views.ydot, layout_.spm, lam_view);
+      }
+    }
+
+    if constexpr (WithLithiumPlating) {
+      if (params_.enable_lithium_plating) {
+        status = computeLithiumPlating(params_.lithium_plating.mechanism,
+                                       views.y,
+                                       layout_.spm,
+                                       ctx,
+                                       observable_view,
+                                       std::span<real_t>{ plating_current_ });
+        if (status != slide::Status::Success)
+          return status;
+        addLithiumPlatingRhs(params_.lithium_plating,
+                             views.y,
+                             views.ydot,
+                             layout_.spm,
+                             std::span<const real_t>{ plating_current_ });
+      }
     }
     return slide::Status::Success;
   }
@@ -246,6 +268,8 @@ public:
   void storeStressHistory(BatchView state, real_t interval)
   {
     if constexpr (needs_stress) {
+      if (!params_.enable_stress)
+        return;
       assert(state.n_lanes() == n_lanes_ && interval > 0.0);
       const auto stress_view = stress_.view();
       for (int lane = 0; lane < n_lanes_; ++lane) {

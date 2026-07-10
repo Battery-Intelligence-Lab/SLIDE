@@ -1,6 +1,6 @@
 # v4 core (slide::core) — grows alongside legacy src/ (strangler pattern, PLAN.md §5).
-# Header-only for now; legacy targets do NOT link this.
-add_library(slide_core INTERFACE)
-target_include_directories(slide_core INTERFACE ${CMAKE_SOURCE_DIR}/src)
-target_compile_features(slide_core INTERFACE cxx_std_20)
-target_link_libraries(slide_core INTERFACE Eigen3::Eigen)
+# The registry is compiled once so downstream callers do not instantiate every common composition.
+add_library(slide_core STATIC SpmFactory.cpp)
+target_include_directories(slide_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_compile_features(slide_core PUBLIC cxx_std_20)
+target_link_libraries(slide_core PUBLIC Eigen3::Eigen)
