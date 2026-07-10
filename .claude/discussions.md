@@ -233,6 +233,12 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Numerical correction:** strict-FP compensated accumulation reduces PAY-3 100k KCL drift from `4.986991736e-6` to `2.54658516e-9` Debug and `2.61934474e-9` Release. The first Kahan attempt failed Release because `-Ofast` reassociated it; compiler-scoped strict-FP controls fixed that rather than loosening the `1e-8` gate.
 - **Evidence:** pre-fix invalid-mode/kind, tiny-gain, diagnostic, and publication checks failed; the two-series overflow regression is mutation-red when the new ladder/publication guards are disabled. Final Debug and Release binaries pass PackTopology 50/50, PackSolver 667/667, and ModeC 52/52; the 100k gates take 7.9/8.7 s Debug and 2.1/2.7 s Release.
 
+## 2026-07-10 — Phase 9B byte-shuffle public contract
+
+- **Confirmed red:** Release terminated on `byteShuffle({}, {}, 0)`; the only guards were Debug assertions, and undersized/overlapping output could write out of bounds.
+- **Fix:** both transforms return `Status`, validate width/shape/divisibility/non-overlap, and have writer/reader callers propagate unexpected failures. The direct involution test now checks successful statuses.
+- **Evidence:** full AsyncRecorder Debug and Release binaries pass 238/238; the degenerate test is eight bytes and performs no model step.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

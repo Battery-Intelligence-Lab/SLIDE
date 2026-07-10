@@ -49,14 +49,12 @@ struct AsyncRecorderConfig
 bool compressionCodecAvailable(CompressionCodec codec);
 
 /** Reversible Blosc-style byte transpose for homogeneous fixed-width values. */
-void byteShuffle(std::span<const std::byte> input,
-                 std::span<std::byte>
-                   output,
-                 std::size_t element_width);
-void byteUnshuffle(std::span<const std::byte> input,
-                   std::span<std::byte>
-                     output,
-                   std::size_t element_width);
+[[nodiscard]] slide::Status byteShuffle(std::span<const std::byte> input,
+                                        std::span<std::byte> output,
+                                        std::size_t element_width);
+[[nodiscard]] slide::Status byteUnshuffle(std::span<const std::byte> input,
+                                          std::span<std::byte> output,
+                                          std::size_t element_width);
 
 class AsyncRecorder
 {
@@ -122,8 +120,10 @@ private:
   void drainLoop();
   slide::Status enqueueValues(std::uint64_t accepted_step,
                               real_t time,
-                              std::span<const real_t> currents,
-                              std::span<const real_t> state,
+                              std::span<const real_t>
+                                currents,
+                              std::span<const real_t>
+                                state,
                               bool currents_are_density);
   slide::Status drainSlot(Slot &slot);
   slide::Status finalizeFile();

@@ -122,30 +122,60 @@ bool compressionCodecAvailable(CompressionCodec codec)
 #endif
 }
 
-void byteShuffle(std::span<const std::byte> input,
-                 std::span<std::byte>
-                   output,
-                 std::size_t element_width)
+namespace {
+
+  bool spansOverlap(std::span<const std::byte> input,
+                    std::span<std::byte>
+                      output)
+  {
+    if (input.empty())
+      return false;
+    const auto less = std::less<const std::byte *>{};
+    const auto *input_begin = input.data();
+    const auto *input_end = input_begin + input.size();
+    const auto *output_begin = output.data();
+    const auto *output_end = output_begin + output.size();
+    return less(input_begin, output_end) && less(output_begin, input_end);
+  }
+
+  bool validShuffleArguments(std::span<const std::byte> input,
+                             std::span<std::byte>
+                               output,
+                             std::size_t element_width)
+  {
+    return element_width > 0 && input.size() == output.size()
+           && input.size() % element_width == 0
+           && !spansOverlap(input, output);
+  }
+
+} // namespace
+
+slide::Status byteShuffle(std::span<const std::byte> input,
+                          std::span<std::byte>
+                            output,
+                          std::size_t element_width)
 {
-  assert(element_width > 0 && input.size() == output.size()
-         && input.size() % element_width == 0);
+  if (!validShuffleArguments(input, output, element_width))
+    return slide::Status::Invalid_parameters;
   const std::size_t elements = input.size() / element_width;
   for (std::size_t byte = 0; byte < element_width; ++byte)
     for (std::size_t element = 0; element < elements; ++element)
       output[byte * elements + element] = input[element * element_width + byte];
+  return slide::Status::Success;
 }
 
-void byteUnshuffle(std::span<const std::byte> input,
-                   std::span<std::byte>
-                     output,
-                   std::size_t element_width)
+slide::Status byteUnshuffle(std::span<const std::byte> input,
+                            std::span<std::byte>
+                              output,
+                            std::size_t element_width)
 {
-  assert(element_width > 0 && input.size() == output.size()
-         && input.size() % element_width == 0);
+  if (!validShuffleArguments(input, output, element_width))
+    return slide::Status::Invalid_parameters;
   const std::size_t elements = input.size() / element_width;
   for (std::size_t byte = 0; byte < element_width; ++byte)
     for (std::size_t element = 0; element < elements; ++element)
       output[element * element_width + byte] = input[byte * elements + element];
+  return slide::Status::Success;
 }
 
 AsyncRecorder::~AsyncRecorder()
@@ -348,7 +378,9 @@ void AsyncRecorder::setWorkerFailure(slide::Status status)
 slide::Status AsyncRecorder::drainSlot(Slot &slot)
 {
   const auto raw = std::as_bytes(std::span{ slot.values });
-  byteShuffle(raw, slot.shuffled, sizeof(real_t));
+  if (byteShuffle(raw, slot.shuffled, sizeof(real_t))
+      != slide::Status::Success)
+    return slide::Status::Invalid_states;
   std::span<const std::byte> payload;
   if (config_.codec == CompressionCodec::none) {
     std::memcpy(slot.compressed.data(), slot.shuffled.data(), slot.shuffled.size());
@@ -584,7 +616,9 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
         return slide::Status::NotImplementedYet;
 #endif
       }
-      byteUnshuffle(shuffled, raw, sizeof(real_t));
+      if (byteUnshuffle(shuffled, raw, sizeof(real_t))
+          != slide::Status::Success)
+        return slide::Status::Invalid_parameters;
       if (block.raw_crc32 != crc32(raw))
         return slide::Status::Invalid_parameters;
       steps[index] = block.accepted_step;

@@ -120,6 +120,18 @@ std::vector<std::byte> readBytes(const std::filesystem::path &path)
   return bytes;
 }
 
+template <class Function>
+Status checkedShuffleCall(Function &&function)
+{
+  using Result = std::invoke_result_t<Function &>;
+  if constexpr (std::is_same_v<Result, Status>)
+    return function();
+  else {
+    function();
+    return Status::Success;
+  }
+}
+
 } // namespace
 
 TEST_CASE("Async recorder rejects adversarial metadata without exceptions",
@@ -230,9 +242,35 @@ TEST_CASE("P8-G3 byte shuffle is a bitwise involution",
   };
   const auto bytes = std::as_bytes(std::span{ values });
   std::vector<std::byte> shuffled(bytes.size()), restored(bytes.size());
-  core::byteShuffle(bytes, shuffled, sizeof(double));
-  core::byteUnshuffle(shuffled, restored, sizeof(double));
+  REQUIRE(core::byteShuffle(bytes, shuffled, sizeof(double))
+          == Status::Success);
+  REQUIRE(core::byteUnshuffle(shuffled, restored, sizeof(double))
+          == Status::Success);
   CHECK(std::equal(bytes.begin(), bytes.end(), restored.begin(), restored.end()));
+}
+
+TEST_CASE("byte shuffle rejects degenerate public spans",
+          "[core][async-recorder][shuffle][P9]")
+{
+  std::array<std::byte, 8> storage{};
+  CHECK(checkedShuffleCall([&] {
+          return core::byteShuffle({}, {}, 0);
+        })
+        == Status::Invalid_parameters);
+  CHECK(checkedShuffleCall([&] {
+          return core::byteShuffle(
+            std::span<const std::byte>{ storage },
+            std::span<std::byte>{ storage }.first(7),
+            sizeof(double));
+        })
+        == Status::Invalid_parameters);
+  CHECK(checkedShuffleCall([&] {
+          return core::byteUnshuffle(
+            std::span<const std::byte>{ storage },
+            std::span<std::byte>{ storage },
+            sizeof(double));
+        })
+        == Status::Invalid_parameters);
 }
 
 TEST_CASE("P8-G3 async blocks round-trip accepted snapshots bitwise",
