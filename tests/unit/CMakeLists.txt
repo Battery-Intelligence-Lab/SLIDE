@@ -58,6 +58,10 @@ target_link_libraries(unit_test_core_ThermalLumped PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_Sei core_Sei_test.cpp)
 target_link_libraries(unit_test_core_Sei PRIVATE slide_core)
 
+# Phase 1 ageing: shared Dai/Laresgoiti observables + restart-safe stress history
+add_executable_with_coverage_and_test(unit_test_core_SpmStress core_SpmStress_test.cpp)
+target_link_libraries(unit_test_core_SpmStress PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)
