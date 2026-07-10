@@ -914,7 +914,14 @@ descriptions into one immutable cell/resistor netlist; compile assigns stable pa
 canonical nodal sparsity, connectivity/index-1 metadata, and ladder eligibility. D-21's independent canonical
 cell/boundary pair list + CSR incident gather is implemented with fixed-order allocation-free assembly and atomic
 cold validation. Nested p-in-p-in-s, explicit link resistors, canonical reorder, analytic energy conservation, and
-failure atomicity pass Debug/Release. **NEXT:** Thevenin batch surface + `SolverWorkspace`, then Mode A/B.
+failure atomicity pass Debug/Release.
+**Solver foundation DONE 2026-07-10:** `PackSolver` gathers/scatters through one Thevenin callback per compiled
+archetype batch. Mode A uses the global flat netlist, Eigen SparseLU symbolic analysis once, persistent numeric
+factorization/warm-current memory, counters, and explicit invalidation. Compile detects a positive→negative path of
+parallel cell layers; Mode B solves those layers analytically without factorization or hot allocation. Affine gates:
+Mode A/B currents agree ≤1e-12 A; nested p-in-p-in-s solves in one global loop (≤2 iterations); invalidation
+digit-matches the prior/cold solve; 100 repeated heterogeneous solves keep one numeric factorization. **NEXT:** SPM
+Thevenin linearization + contraction-monitored chord refresh/safeguards, then full P2-G1 parity and P2-G5 admission.
 **Gates:** P2-G1 parity vs legacy `Module_s`/`Module_p` on 3s2p (band §5.2) + rollback-invalidation test (solve after
 restore digit-matches cold solve). P2-G2 Mode B ≡ Mode A on ladders to
 1e-10 A. P2-G3 nested-constructed pack (p-in-p-in-s) compiles flat and solves in ONE Newton loop (no nested
@@ -1045,4 +1052,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | PAY-1 Phase-1 payoff | PASSED — reproducible 10⁴-lane × 3600-step Kokam 1C harness, three alternating Release repetitions. Core median 0.460 s vs legacy 3.209 s = 6.97×; conservative min(legacy)/max(core) = 6.16×, above the ≥5× target. Max state error 8.67e-19, max |ΔV| 8.88e-16 V. The initial 0.43× result triggered redesign: surface-only base observables, self-invalidating transport cache, precise row roles, compact rollback, fused Euler, and exact checked lane coalescing with heterogeneous fallback. Full suites 32/32 both configurations. |
 | 2026-07-10 | D-21 compiled pack thermal adjacency design (Q9) | DONE before Phase 2 — independent canonical cell/boundary thermal graph; sorted static pair list + CSR incident gather; one flux evaluation per edge; fixed-order `q_ext` accumulation without atomics; explicit stage, snapshot, rollback, and off-the-shelf-integrator split contracts; five registered Phase-2 thermal gates. Logged in §3.4 and §4. |
 | 2026-07-10 | Phase-2 pack compile + D-21 implementation foundation | DONE — value-semantic series/parallel combinators flatten to one explicit cell/resistor netlist; stable hierarchical paths and archetype batch/lane locations; canonical sparsity, connectivity/index-1 metadata, ladder eligibility; independent canonical thermal cell/boundary graph with fixed-order allocation-free assembly. Nested flattening, link resistors, byte-identical reorder, analytic energy conservation, and atomic validation green. Full suites 33/33 both configurations. |
-| — | Phases 1–8 | **Phase 1 COMPLETE. Phase 2 IN PROGRESS:** pack compile + D-21 graph DONE; **NEXT: Thevenin batch interface + SolverWorkspace → Mode A/B.** Phases 3–8 not started. |
+| 2026-07-10 | Phase-2 affine Thevenin + Mode A/B + workspace | DONE — one callback per archetype batch; global SparseLU Mode A with one symbolic analysis, persistent factorization/warm start/invalidation; compile-detected series-of-parallel analytical Mode B. Affine P2-G2 ≤1e-12 A; nested global solve ≤2 iterations; invalidation digit-identical; 100-step 4p/nested segments use one numeric factorization. Full suites 34/34 both configurations. |
+| — | Phases 1–8 | **Phase 1 COMPLETE. Phase 2 IN PROGRESS:** compile/D-21 + affine Thevenin/Mode A/Mode B/workspace DONE; **NEXT: SPM Thevenin + chord safeguards → P2-G1/P2-G5.** Phases 3–8 not started. |

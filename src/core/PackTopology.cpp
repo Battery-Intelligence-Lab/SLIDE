@@ -192,6 +192,72 @@ namespace {
       return value != 0;
     });
     netlist.index1_candidate = netlist.connected;
+
+    netlist.series_parallel_ladder = false;
+    if (!netlist.connected
+        || std::any_of(netlist.branches.begin(), netlist.branches.end(), [](const auto &branch) {
+             return branch.kind != ElectricalBranchKind::cell;
+           }))
+      return;
+    std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<std::uint32_t>> layers;
+    std::vector<std::vector<std::uint32_t>> simple_adjacency(node_count);
+    for (const auto &branch : netlist.branches) {
+      const auto endpoints = std::minmax(branch.node_positive, branch.node_negative);
+      auto &cells = layers[{ endpoints.first, endpoints.second }];
+      if (cells.empty()) {
+        simple_adjacency[endpoints.first].push_back(endpoints.second);
+        simple_adjacency[endpoints.second].push_back(endpoints.first);
+      }
+      cells.push_back(branch.cell);
+    }
+    if (layers.size() + 1 != node_count
+        || simple_adjacency[netlist.terminal_positive].size() != 1
+        || simple_adjacency[netlist.terminal_negative].size() != 1)
+      return;
+    for (std::uint32_t node = 0; node < node_count; ++node)
+      if (node != netlist.terminal_positive && node != netlist.terminal_negative
+          && simple_adjacency[node].size() != 2)
+        return;
+
+    netlist.ladder_offsets.push_back(0);
+    netlist.ladder_nodes.push_back(netlist.terminal_positive);
+    std::uint32_t previous = node_count;
+    std::uint32_t current = netlist.terminal_positive;
+    while (current != netlist.terminal_negative) {
+      const auto &neighbors = simple_adjacency[current];
+      const auto next_it = std::find_if(neighbors.begin(), neighbors.end(), [&](std::uint32_t node) {
+        return node != previous;
+      });
+      if (next_it == neighbors.end()) {
+        netlist.ladder_offsets.clear();
+        netlist.ladder_cells.clear();
+        netlist.ladder_nodes.clear();
+        return;
+      }
+      const auto next = *next_it;
+      const auto endpoints = std::minmax(current, next);
+      auto cells = layers.at({ endpoints.first, endpoints.second });
+      std::sort(cells.begin(), cells.end());
+      for (const auto cell : cells) {
+        const auto branch = std::find_if(netlist.branches.begin(), netlist.branches.end(), [&](const auto &candidate) {
+          return candidate.kind == ElectricalBranchKind::cell
+                 && candidate.cell == cell;
+        });
+        if (branch == netlist.branches.end() || branch->node_positive != current
+            || branch->node_negative != next) {
+          netlist.ladder_offsets.clear();
+          netlist.ladder_cells.clear();
+          netlist.ladder_nodes.clear();
+          return;
+        }
+        netlist.ladder_cells.push_back(cell);
+      }
+      netlist.ladder_offsets.push_back(static_cast<std::uint32_t>(netlist.ladder_cells.size()));
+      netlist.ladder_nodes.push_back(next);
+      previous = current;
+      current = next;
+    }
+    netlist.series_parallel_ladder = netlist.ladder_cells.size() == pack.cells.size();
   }
 
   slide::Status compileThermal(const PackDescription &description,
@@ -301,7 +367,6 @@ slide::Status compilePackDescription(const PackDescription &description,
                                      CompiledPackTopology &output)
 {
   CompileContext context;
-  context.result.electrical.series_parallel_ladder = true;
   context.compile(description.root, 0, 1, {});
   if (!context.valid || context.result.cells.empty())
     return slide::Status::Invalid_parameters;

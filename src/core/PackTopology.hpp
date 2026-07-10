@@ -98,6 +98,9 @@ struct CompiledElectricalNetlist
   std::uint32_t terminal_negative{ 1 };
   std::vector<CompiledElectricalBranch> branches{};
   std::vector<std::pair<std::uint32_t, std::uint32_t>> nodal_sparsity{};
+  std::vector<std::uint32_t> ladder_offsets{}; //!< layer -> range in ladder_cells
+  std::vector<std::uint32_t> ladder_cells{};   //!< cell indices, positive-to-negative
+  std::vector<std::uint32_t> ladder_nodes{};   //!< positive-to-negative path nodes
   bool connected{};
   bool index1_candidate{};
   bool series_parallel_ladder{};

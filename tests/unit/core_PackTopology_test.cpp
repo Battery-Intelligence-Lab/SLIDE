@@ -23,6 +23,7 @@ TEST_CASE("nested pack combinators compile to one flat netlist", "[core][pack][c
   REQUIRE(pack.electrical.connected);
   REQUIRE(pack.electrical.index1_candidate);
   REQUIRE(pack.electrical.series_parallel_ladder);
+  REQUIRE(pack.electrical.ladder_offsets == std::vector<std::uint32_t>{ 0, 4, 8 });
   REQUIRE(pack.cells.front().path == "s00.p00.p00");
   REQUIRE(pack.cells.back().path == "s01.p01.p01");
   for (std::size_t lane = 0; lane < pack.cells.size(); ++lane) {
