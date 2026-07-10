@@ -40,8 +40,10 @@ enum class Unit : int {
   s,      //!< second
   Ah,     //!< Ampere-hour (cumulative charge throughput)
   Wh,     //!< Watt-hour (cumulative energy throughput)
+  C,      //!< Coulomb / Ampere-second (lost lithium inventory)
   W,      //!< Watt (heat flows)
   J,      //!< Joule (integrated heat)
+  Pa,     //!< Pascal (stress-history states used by ageing models)
   m,      //!< metre (layer thicknesses, SEI thickness)
   m2,     //!< square metre (crack surface)
   m2_s,   //!< square metre per second (solid diffusion coefficient)
