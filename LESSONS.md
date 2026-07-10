@@ -17,3 +17,12 @@ This file records reusable findings from the v4 implementation and validation wo
 - Cross-platform commands must avoid shell-expanded wheel globs. Select the local artifact with pip's `--no-index --find-links=dist` interface instead.
 - Do not turn a licensed local MATLAB result into an unverified hosted-runner claim. The same extractor supports the gate, but MEX execution remains on an explicitly provisioned licensed machine.
 - Doxygen's 123 current warnings all originate in retained v3 `src/` comments. The v4 docs gate removes generator errors and new-page/configuration warnings without pretending that this legacy debt is already zero.
+
+## Numerical gates need provenance as well as tight numbers
+
+- Never silently loosen a registered numerical band in the assertion. P2-G1's `1e-10` voltage/current checks looked harmless beside tiny observed drift, but the corrected `1e-12` current gate has only 2.71× Debug headroom and can catch a materially smaller regression.
+- A threshold introduced in the same commit as its implementation is a post-hoc empirical regression sentinel, not a preregistered accuracy oracle. Keep useful sentinels, but label their provenance and derive only what the contracts support.
+- Dimensional consistency is not logical implication. The Phase-5 `0.2 µAh` envelope is consistent with `20 µA × 30 s = 0.1667 µAh`, yet a final-current check cannot bound the whole integrated trajectory; the charge assertion remains independent.
+- Prefer an exact analytic oracle over a tolerance-converged numerical reference when the isolated subproblem is genuinely linear and closed form. Independence still matters: evaluate through a different branch and operation order, and state what shared coefficients define the ODE rather than pretending the oracle validates them.
+- Scope every waiver narrowly. D-26 replaces CVODE only for the frozen diagonal modal subflow; it does not validate a generic RHS adapter, nonlinear integration, or splitting. D-27 waives a historical timing protocol, not the need to label development-host timings as qualified evidence.
+- Busy-host noise has no guaranteed direction in a ratio. Preserve raw timing ranges, repeat both tools, and require a named stable host before making an unqualified performance claim.

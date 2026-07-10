@@ -186,6 +186,15 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Review:** an independent read-only adversarial pass checked documentation claims against CMake, C++, Python, and MATLAB sources and reported no remaining P8-G5 blocker after fixes.
 - **Next:** Phase 9A audit-debt closure (AUD-1, AUD-2, AUD-4; AUD-3 remains Q11).
 
+## 2026-07-10 — Phase 9A audit-debt closure
+
+- **Finding:** P2-G1 carried unexplained `1e-10` V/I assertions despite Phase 9A's `1e-12` requirement. The tightened Debug/Release gate passes, but worst current drift uses 36.95% of the band, proving the correction is material. An independent read-only audit also confirmed that `09e8ec5` introduced the Phase-5 implementation and every numeric band together.
+- **Decision:** retain the Phase-5 bands as useful empirical regression sentinels while explicitly labelling them post-hoc. The `0.2 µAh` scale is consistent with `20 µA × 30 s = 0.1667 µAh`; the 45-iteration event bisection leaves at most a `2.84e-14 s` bracket for the tested one-second step. Neither derivation turns the values into universal accuracy guarantees.
+- **Decision:** D-26 waives mandatory CVODE only for the exact frozen diagonal modal subflow. P3-G1 now evaluates the closed form through long-double `exp` and `expm1(rate·h)/rate`, with an exact zero-rate limit and no copied production Taylor branch. The unrun full 1C/current-step voltage comparison remains explicitly unclaimed.
+- **Decision:** D-27 resolves Q11 by waiving the historical quiet-host/operator condition for v4.0, while retaining PAY-1/2/4 as qualified development-host evidence. The claim that quiet conditions could only improve a ratio was removed. PAY-4 raw JSON is now committed; no weak rerun on the same busy host was performed.
+- **Evidence:** targeted Debug and Release CTest each pass 3/3 (`P2G1_pack`, `core_Experiment`, `core_ExponentialModal`). Release Phase-5 reproduction observes 0.101674 µV, 12.479451 µA, and 0.116939 µAh against the unchanged empirical envelopes. Full derivation: `.claude/reports/p9a-audit-debt-2026-07-10.md`.
+- **Next:** Phase 9B systematic adversarial bug-hunt.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

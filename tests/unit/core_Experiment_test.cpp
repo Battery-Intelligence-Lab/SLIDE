@@ -197,7 +197,11 @@ TEST_CASE("P5-G1 Euler CC-CV sequence remains in the legacy Cycler parity band",
 {
   // Compare the current actually applied over the final interval. CyclerV2 also
   // reports the next algebraic CV current, while legacy leaves the applied value
-  // in Cell_SPM::I(). Registered bands: 0.2 microvolt, 20 microampere, 0.2 uAh.
+  // in Cell_SPM::I(). AUD-2 found that commit 09e8ec5 introduced the following
+  // empirical regression envelopes with the implementation; they were not
+  // registered before the decisive run. The 0.2-uAh scale is consistent with
+  // 20 uA sustained for 30 s (= 0.1667 uAh), but this test compares only the
+  // final applied current, not a trajectory-wide current bound.
   constexpr double dt = 1.0;
   constexpr double cc_current = -8.0;
   constexpr double cc_duration = 30.0;

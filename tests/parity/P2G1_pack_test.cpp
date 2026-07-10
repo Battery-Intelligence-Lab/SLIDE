@@ -160,7 +160,9 @@ TEST_CASE("P2-G1 compiled 3s2p Kokam trajectory matches legacy modules",
               drift.worst_core,
               core_pack.solver().workspace().numericFactorizations());
   CAPTURE(drift.voltage, drift.current, drift.state_scaled);
-  REQUIRE(drift.voltage <= 1e-10);
-  REQUIRE(drift.current <= 1e-10);
+  // PLAN §5.2 registers voltage digit parity at 1e-12; Phase 9A explicitly
+  // adopts the same scale for branch current. Do not add silent headroom.
+  REQUIRE(drift.voltage <= 1e-12);
+  REQUIRE(drift.current <= 1e-12);
   REQUIRE(drift.state_ok);
 }

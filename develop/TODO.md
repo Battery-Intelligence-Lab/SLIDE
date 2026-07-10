@@ -5,8 +5,8 @@
 > **Disclaimer**: Some items are informal notes. Priority may shift based on user needs.
 >
 > **2026-07-10 — v4 refactor active.** The authoritative vision/roadmap is [/PLAN.md](../PLAN.md)
-> (architecture, decision log, phased gates, open questions). Phases 0–8 are complete;
-> Phase 9A audit-debt closure is next. Historical "Critical Bugs"
+> (architecture, decision log, phased gates, open questions). Phases 0–8 and 9A are complete;
+> Phase 9B systematic adversarial bug-hunt is next. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
 
 ---

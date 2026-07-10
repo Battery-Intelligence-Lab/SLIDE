@@ -56,14 +56,26 @@ void exactModalGate()
                         / (area * 96487.0 * electrode.thickness);
     const double diffusivity = electrode.active_material.D_s.reference_value;
     for (int mode = 0; mode < NCH; ++mode) {
-      const double x = diffusivity * model.A[d][static_cast<std::size_t>(mode)] * dt;
-      const double phi1 = std::abs(x) < 1e-7
-                            ? 1.0 + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))
-                            : std::expm1(x) / x;
-      const double expected = std::exp(x) * initial[d][static_cast<std::size_t>(mode)]
-                              + dt * phi1 * model.B[d][static_cast<std::size_t>(mode)] * flux;
+      // Evaluate the diagonal closed form through a deliberately independent
+      // path: long-double libm, with no copy of the production small-x Taylor
+      // branch. The shared compiled A/B coefficients are the ODE definition;
+      // this gate arbitrates the time propagator, not spectral compilation.
+      const long double rate =
+        static_cast<long double>(diffusivity)
+        * static_cast<long double>(model.A[d][static_cast<std::size_t>(mode)]);
+      const long double forcing =
+        static_cast<long double>(model.B[d][static_cast<std::size_t>(mode)])
+        * static_cast<long double>(flux);
+      const long double h = static_cast<long double>(dt);
+      const long double z0 =
+        static_cast<long double>(initial[d][static_cast<std::size_t>(mode)]);
+      const long double expected_long = rate == 0.0L
+                                          ? z0 + h * forcing
+                                          : std::exp(rate * h) * z0
+                                              + std::expm1(rate * h) / rate * forcing;
+      const double expected = static_cast<double>(expected_long);
       const double actual = batch.state().at(batch.layout().spm.z[d], mode, 0);
-      CAPTURE(NCH, d, mode, x, expected, actual);
+      CAPTURE(NCH, d, mode, rate, expected, actual);
       REQUIRE(std::abs(actual - expected)
               <= 2e-12 * std::max(1.0, std::abs(expected)));
     }

@@ -1,0 +1,123 @@
+{
+  "benchmark": "PAY-4",
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "python": "3.13.9"
+  },
+  "packs": [
+    {
+      "conservative_solve_speedup": 1165.3128841446892,
+      "liionpack": {
+        "cell_resistance_ohm": 0.0001,
+        "cells": 64,
+        "connector_resistance_ohm": 1e-10,
+        "manager": "CasadiManager",
+        "pandas_version": "2.2.3",
+        "parallel": 4,
+        "pybamm_version": "24.9.0",
+        "samples": 61,
+        "series": 16,
+        "setup_s": 0.2049620000179857,
+        "solve_s": 1.023843900009524,
+        "steps_requested": 60,
+        "terminal_voltage_V": 59.030269622802734,
+        "tool": "liionpack",
+        "version": "0.3.12"
+      },
+      "setup_speedup": 69.49749085107341,
+      "slide": {
+        "cells": 64,
+        "parallel": 4,
+        "repetitions": 5,
+        "series": 16,
+        "setup_s": 0.0029492000000000003,
+        "solve_max_s": 0.0008786000000000001,
+        "solve_median_s": 0.0007511000000000001,
+        "solve_min_s": 0.0007468,
+        "steps": 60,
+        "terminal_voltage_V": 59.04464703992838,
+        "tool": "slide"
+      },
+      "solve_speedup": 1363.1259486213871,
+      "terminal_voltage_difference_V": 0.014377417125643888
+    },
+    {
+      "conservative_solve_speedup": 1110.5091501221737,
+      "liionpack": {
+        "cell_resistance_ohm": 0.0001,
+        "cells": 100,
+        "connector_resistance_ohm": 1e-10,
+        "manager": "CasadiManager",
+        "pandas_version": "2.2.3",
+        "parallel": 100,
+        "pybamm_version": "24.9.0",
+        "samples": 61,
+        "series": 1,
+        "setup_s": 0.28633249999256805,
+        "solve_s": 1.7051868000125978,
+        "steps_requested": 60,
+        "terminal_voltage_V": 3.6893880367279053,
+        "tool": "liionpack",
+        "version": "0.3.12"
+      },
+      "setup_speedup": 95.23781805839616,
+      "slide": {
+        "cells": 100,
+        "parallel": 100,
+        "repetitions": 5,
+        "series": 1,
+        "setup_s": 0.0030065,
+        "solve_max_s": 0.0015355000000000002,
+        "solve_median_s": 0.0014695,
+        "solve_min_s": 0.0014667,
+        "steps": 60,
+        "terminal_voltage_V": 3.6902904399955254,
+        "tool": "slide"
+      },
+      "solve_speedup": 1160.3857094335472,
+      "terminal_voltage_difference_V": 0.0009024032676201443
+    }
+  ],
+  "protocol": {
+    "pack": "600 s equivalent: 60 x 10 s CC at 5 A/cell",
+    "parameters": "Chen2020; nch=12 in SLIDE; initial SOC 1.0 single, 0.8 pack",
+    "single": [
+      "Discharge at 1 C until 2.5 V",
+      "Charge at 1 C until 4.2 V",
+      "Hold at 4.2 V until C/20"
+    ]
+  },
+  "single": {
+    "cold_setup_plus_solve_speedup": 71.42477080264896,
+    "per_solve_speedup": 18.134691495400304,
+    "pybamm": {
+      "atol": 1e-08,
+      "duration_s": 9011.523162201813,
+      "first_solve_s": 0.07286859999294393,
+      "rtol": 1e-06,
+      "samples": 905,
+      "setup_s": 0.16553299999213777,
+      "solver": "IDAKLUSolver",
+      "terminal_voltage_V": 4.200000000418019,
+      "tool": "pybamm",
+      "version": "26.6.2.0",
+      "warm_solve_max_s": 0.013989500002935529,
+      "warm_solve_median_s": 0.012373300007311627,
+      "warm_solve_min_s": 0.01137870000093244
+    },
+    "slide": {
+      "case": "single_spm_1C_discharge_cccv",
+      "duration_s": 9004.561687872223,
+      "repetitions": 5,
+      "samples": 903,
+      "setup_s": 0.0026555000000000003,
+      "solve_max_s": 0.000688,
+      "solve_median_s": 0.0006823,
+      "solve_min_s": 0.0006774000000000001,
+      "terminal_voltage_V": 4.2,
+      "tool": "slide"
+    }
+  },
+  "timing_qualification": "Targets are positioning measurements, not gates; rerun on a quiet machine. liionpack records all outputs during solve while the SLIDE pack harness advances state only."
+}
