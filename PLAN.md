@@ -1015,6 +1015,16 @@ trajectory — registered band set per parameter BEFORE the run (FD step chosen 
 for FD-noise floor); (b) one end-to-end PyBOP fitting example (e.g. GITT-style D_s + R identification on synthetic
 SLIDE data with known truth) recovers the truth within a registered tolerance using a GRADIENT-based optimiser — this
 is the "entered the ecosystem" proof, not an API checkbox.
+**P7-G2 bands registered 2026-07-10, before implementation/decisive runs:** the first-class set is the ten practical
+SPM fit parameters `{D_s,n, D_s,p, k_ct,n, k_ct,p, R_contact, Q, x_n,0, x_n,100, x_p,0, x_p,100}`; `h_conv` is
+deferred from this isothermal first surface until the thermal sensitivity composition is enabled. At SOC 0.8, 1C,
+600 s, `dt=10 s`, and `R_contact=1 mΩ`, compare normalized sensitivities `θ·∂V/∂θ` from dual propagation against
+centered FD with `h=√ε·max(|θ|, characteristic_scale)`, and repeat at `h/2` and `2h` to expose the noise floor.
+Per sample/parameter gate: `|S_dual−S_FD| ≤ 2 µV + 2e-4·|S_FD|`; the dual trajectory primal must match the production
+exponential trajectory within 2e-12 V. Fit gate: noiseless 1C/1,800 s synthetic data with truth
+`D_s,n=4.0e-14 m²/s`, `R_contact=1.5 mΩ`, initial guess `2.5e-14/2.5 mΩ`, bounded log/scaled parameters, and an
+L-BFGS-B gradient supplied only by `simulateS1` must recover D within 2% and R within 0.5%. The example must run
+through PyBOP 25.11's `BaseSimulator → Problem → SumSquaredError → SciPyMinimize` surface, not merely SciPy directly.
 **Gate P7-G3 (parameter fidelity, added 2026-07-09):** the §3.9 same-parameters⇒same-results contract — absorption
 round-trip EXACT on every Chen2020/BPX key; fixture parity on the registered scenarios (bands per §3.9).
 **Fixture bands registered 2026-07-10, before generation/comparison:** Chen2020 SPM, isothermal 298.15 K, initial
@@ -1109,4 +1119,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | Phase-6 Recorder + I/O | COMPLETE — preallocated cadence snapshots and explicit backpressure; production-kernel lazy observables; CSV; native mmap with CRC/version/endian/offset validation; optional find-package-first Parquet. Exact derived/live equality, corruption gates, and zero record allocations; full Debug/Release 43/43. Async compression/GPU drain remains bound to Phase 8. |
 | 2026-07-10 | Phase-7 PyBaMM parity bands | REGISTERED BEFORE RUN — P7-G1 Tutorial-5 SPM max/RMS 15/8 mV; P7-G3 C/50 max/RMS 2/1 mV and 1C max/RMS 15/8 mV. Pinned fixture generation and decisive comparisons are next. |
 | 2026-07-10 | P7-G1/P7-G3 PyBaMM behaviour parity | PASSED — pinned 26.6.2.0 Chen2020 fixtures generated after band registration. C/50 max/RMS 0.134/0.034 mV; 1C 11.577/2.028 mV; full Tutorial-5 sequence compared within continuous control segments 0.778/0.221 mV. Event-duration drift is explicit (worst 30.02 s in the CV hold), and no interpolation crosses duplicate-time control jumps. Initial decisive comparison caught/fixed SLIDE's synthetic open-circuit first sample. |
+| 2026-07-10 | P7-G2 sensitivity/fit bands | REGISTERED BEFORE RUN — ten-parameter dual/FD normalized sensitivity gate `2 µV + 2e-4 relative`, primal `2e-12 V`; PyBOP 25.11 L-BFGS-B synthetic D/R recovery 2%/0.5%. Implementation and decisive runs are next. |
 | — | Phases 1–8 | **Phases 1–6 COMPLETE. Phase 7 NEXT:** **NEXT: Python/PyBaMM compatibility, parameter absorption, BPX, and sensitivities.** Phases 7–8 not started. |
