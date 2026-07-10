@@ -225,6 +225,14 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Fix/evidence:** copy the path locally before slot/file/context creation and swap it during no-throw member commit. The allocation executable passes 15/15 in Debug and Release, including successful reuse after failure and the original zero-allocation enqueue check.
 - **Still open:** public byte-shuffle preconditions, close-time errors, and concurrent finish/hook contracts remain separate ledger candidates.
 
+## 2026-07-10 — Phase 9B PackSolver/Mode-C adversarial pass
+
+- **Confirmed:** Mode C accepted tiny-gain stagnation from current delta alone while KCL remained large. It measured only terminal KCL, so an internal residual could be hidden. The historical general `(1-α)^k` diagnostic was not valid for coupled networks.
+- **Confirmed:** invalid solve/node/branch metadata reached plausible fallthroughs; malformed compiled indices, connectivity, sparsity, lane mappings, and ladder tables were trusted. Sparse/ladder/relaxation paths could derive non-finite values without a bit-safe publication guard, and diagnostics leaked across modes.
+- **Independent review blockers fixed before commit:** remove mutable `workspace()` ownership (compile-time red contract), reject graph dimensions before proportional allocation/signed indexing, clear stale terminal voltage on successful reconfigure, replace the non-discriminating one-cell overflow test, and add an internal-node KCL construction whose terminal equation is satisfied.
+- **Numerical correction:** strict-FP compensated accumulation reduces PAY-3 100k KCL drift from `4.986991736e-6` to `2.54658516e-9` Debug and `2.61934474e-9` Release. The first Kahan attempt failed Release because `-Ofast` reassociated it; compiler-scoped strict-FP controls fixed that rather than loosening the `1e-8` gate.
+- **Evidence:** pre-fix invalid-mode/kind, tiny-gain, diagnostic, and publication checks failed; the two-series overflow regression is mutation-red when the new ladder/publication guards are disabled. Final Debug and Release binaries pass PackTopology 50/50, PackSolver 667/667, and ModeC 52/52; the 100k gates take 7.9/8.7 s Debug and 2.1/2.7 s Release.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

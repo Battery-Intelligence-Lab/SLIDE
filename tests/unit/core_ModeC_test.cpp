@@ -14,6 +14,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <new>
 #include <vector>
 
@@ -108,6 +109,14 @@ core::CompiledPackTopology parallelTopology(int lanes)
   return topology;
 }
 
+core::CompiledPackTopology compileTopology(const core::PackNode &root)
+{
+  core::CompiledPackTopology topology;
+  REQUIRE(core::compilePackDescription({ .root = root }, topology)
+          == Status::Success);
+  return topology;
+}
+
 AffineBatch heterogeneous(int lanes)
 {
   AffineBatch batch;
@@ -157,7 +166,7 @@ TEST_CASE("P4-G1 Mode C agrees with Mode A on heterogeneous 16p",
   REQUIRE(relaxation.workspace().numericFactorizations() == 0);
 }
 
-TEST_CASE("P4-G2 Baumgarte gain bounds parallel constraint drift",
+TEST_CASE("P4-G2 one-node relaxation follows its analytic contraction",
           "[core][pack][mode-c][baumgarte][P4-G2]")
 {
   constexpr int lanes = 16;
@@ -168,15 +177,37 @@ TEST_CASE("P4-G2 Baumgarte gain bounds parallel constraint drift",
   };
   core::PackSolver solver;
   REQUIRE(solver.configure(topology, view) == Status::Success);
-  REQUIRE(solver.setRelaxationGain(0.5) == Status::Success);
-  REQUIRE(solver.solve(160.0, core::PackSolveMode::relaxation, 1e-8, 40)
+  constexpr double applied_current = 160.0;
+  constexpr double alpha = 0.5;
+  double initial_kcl = applied_current;
+  double operation_scale = std::abs(applied_current);
+  for (std::size_t lane = 0; lane < batch.ocv.size(); ++lane) {
+    initial_kcl -= batch.ocv[lane] / batch.resistance[lane];
+    operation_scale += std::abs(batch.ocv[lane] / batch.resistance[lane]);
+  }
+  initial_kcl = std::abs(initial_kcl);
+
+  REQUIRE(solver.setRelaxationGain(alpha) == Status::Success);
+  REQUIRE(solver.solve(applied_current,
+                       core::PackSolveMode::relaxation,
+                       1e-8,
+                       40)
           == Status::Success);
   CAPTURE(solver.diagnostics().iterations,
           solver.diagnostics().constraint_drift,
           solver.diagnostics().constraint_bound);
+  const double analytic_drift = initial_kcl
+                                * std::pow(1.0 - alpha,
+                                           solver.diagnostics().iterations);
+  const double arithmetic_allowance = 512.0
+                                      * std::numeric_limits<double>::epsilon()
+                                      * operation_scale
+                                      * solver.diagnostics().iterations;
   REQUIRE(solver.diagnostics().constraint_drift
-          <= solver.diagnostics().constraint_bound);
-  REQUIRE(solver.diagnostics().relaxation_gain == 0.5);
+          <= analytic_drift + arithmetic_allowance);
+  REQUIRE(solver.diagnostics().constraint_drift <= 1e-8);
+  REQUIRE(solver.diagnostics().residual_norm <= 1e-8);
+  REQUIRE(solver.diagnostics().relaxation_gain == alpha);
 
   auto refused = topology;
   refused.electrical.index1_candidate = false;
@@ -184,6 +215,69 @@ TEST_CASE("P4-G2 Baumgarte gain bounds parallel constraint drift",
   REQUIRE(invalid.configure(refused, view) == Status::Success);
   REQUIRE(invalid.solve(160.0, core::PackSolveMode::relaxation)
           == Status::Invalid_parameters);
+}
+
+TEST_CASE("Mode C checks internal-node KCL, not only the terminal",
+          "[core][pack][mode-c][residual][P9-G4]")
+{
+  constexpr int parallel_cells = 3;
+  const auto topology = compileTopology(core::series(std::vector{
+    core::cell({ .archetype = "affine" }),
+    core::parallel(
+      parallel_cells, core::cell({ .archetype = "affine" })) }));
+  AffineBatch batch{ .ocv = std::vector<double>(1 + parallel_cells, 4.0),
+                     .resistance = std::vector<double>(1 + parallel_cells, 1.0) };
+  const std::array<core::TheveninBatchView, 1> view{
+    core::TheveninBatchView::bind(batch, 1 + parallel_cells)
+  };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, view) == Status::Success);
+  REQUIRE(solver.solve(0.0, core::PackSolveMode::ladder) == Status::Success);
+  const auto expected_current = solver.solution().cell_current;
+  const auto expected_voltage = solver.solution().node_voltage;
+  const auto expected_terminal = solver.solution().terminal_voltage;
+
+  constexpr double branch_change = 1e-3;
+  batch.ocv[0] += parallel_cells * branch_change;
+  for (int lane = 1; lane <= parallel_cells; ++lane)
+    batch.ocv[static_cast<std::size_t>(lane)] += branch_change;
+  REQUIRE(solver.setRelaxationGain(1.0) == Status::Success);
+  REQUIRE(solver.solve(0.0,
+                       core::PackSolveMode::relaxation,
+                       1.5 * branch_change,
+                       1)
+          != Status::Success);
+  REQUIRE(solver.diagnostics().residual_norm <= 1.5 * branch_change);
+  REQUIRE(solver.diagnostics().constraint_drift
+          > 1.5 * branch_change);
+  REQUIRE(solver.solution().cell_current == expected_current);
+  REQUIRE(solver.solution().node_voltage == expected_voltage);
+  REQUIRE(solver.solution().terminal_voltage == expected_terminal);
+}
+
+TEST_CASE("Mode C cannot converge on update stagnation while KCL is violated",
+          "[core][pack][mode-c][residual][P9-G4]")
+{
+  const auto topology = parallelTopology(1);
+  AffineBatch batch{ .ocv = { 4.0 }, .resistance = { 1.0 } };
+  const std::array<core::TheveninBatchView, 1> view{
+    core::TheveninBatchView::bind(batch, 1)
+  };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, view) == Status::Success);
+  REQUIRE(solver.solve(0.0, core::PackSolveMode::ladder) == Status::Success);
+  const auto expected_current = solver.solution().cell_current;
+  const auto expected_voltage = solver.solution().node_voltage;
+  const auto expected_terminal = solver.solution().terminal_voltage;
+
+  REQUIRE(solver.setRelaxationGain(1e-20) == Status::Success);
+  REQUIRE(solver.solve(1.0, core::PackSolveMode::relaxation, 1e-12, 2)
+          != Status::Success);
+  REQUIRE(solver.diagnostics().constraint_drift > 1e-6);
+  REQUIRE(solver.diagnostics().constraint_bound == 1e-12);
+  REQUIRE(solver.solution().cell_current == expected_current);
+  REQUIRE(solver.solution().node_voltage == expected_voltage);
+  REQUIRE(solver.solution().terminal_voltage == expected_terminal);
 }
 
 TEST_CASE("P4-G3 100k-cell Mode C is sub-GB and allocation-free",
@@ -225,8 +319,15 @@ TEST_CASE("PAY-3 100k SPM cells complete an accepted pack advance",
   REQUIRE(stepper.configure(topology, batches) == Status::Success);
   REQUIRE(batch.state().size() * sizeof(double)
           < static_cast<std::size_t>(1'000'000'000));
-  REQUIRE(stepper.step(100'000.0, 0.0, 0.1, {}, core::PackSolveMode::relaxation, 1e-8)
-          == Status::Success);
+  const auto first_status = stepper.step(
+    100'000.0, 0.0, 0.1, {}, core::PackSolveMode::relaxation, 1e-8);
+  CAPTURE(static_cast<int>(first_status),
+          stepper.diagnostics().iterations,
+          stepper.diagnostics().residual_norm,
+          stepper.diagnostics().constraint_drift,
+          stepper.diagnostics().constraint_bound);
+  REQUIRE(first_status == Status::Success);
+  REQUIRE(stepper.diagnostics().constraint_drift <= 1e-8);
 
   const auto before = allocation_count.load(std::memory_order_relaxed);
   const auto status = stepper.step(100'000.0, 0.1, 0.1, {}, core::PackSolveMode::relaxation, 1e-8);

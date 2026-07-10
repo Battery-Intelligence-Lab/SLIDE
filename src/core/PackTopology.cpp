@@ -85,6 +85,11 @@ namespace {
         valid = false;
         return;
       }
+      if (node.kind != PackNodeKind::cell && node.kind != PackNodeKind::series
+          && node.kind != PackNodeKind::parallel) {
+        valid = false;
+        return;
+      }
       if (node.kind == PackNodeKind::cell) {
         if (node.cell.archetype.empty() || !node.children.empty()) {
           valid = false;

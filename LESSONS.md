@@ -36,3 +36,11 @@ This file records reusable findings from the v4 implementation and validation wo
 - Validate serialized discriminants at their wire width before narrowing to an in-memory enum. A CRC proves bytes were preserved; it does not prevent `256` from aliasing byte-sized value `0` after a premature cast.
 - Bound allocation counts by the bytes that must physically exist in the input before constructing vectors. Arithmetic-overflow checks alone still permit `vector(max_size)` and an escaping `length_error` when a tiny file claims an impossible count.
 - Exception atomicity is easiest when every throwing copy/allocation happens in locals before the first public member is committed. Move/swap only through the no-throw commit phase; deterministic allocation faults should also prove the object can be configured successfully afterward.
+
+## Iteration convergence requires the equation residual
+
+- A small update can mean convergence or merely a tiny relaxation gain. Mode C must gate on both current-update size and the KCL residual at every independent node; terminal KCL alone can be exactly zero while an internal node violates conservation.
+- Do not promote a one-unknown contraction identity into a theorem for a coupled graph. Keep the exact `(1-α)^k` oracle on the topology where it is derivable, and measure the governing residual directly elsewhere.
+- Fast-math may reassociate even a textbook compensated sum. A compensation kernel needs a scoped strict-FP implementation plus Debug/Release evidence; its roundoff diagnostic should be labelled an estimate, not a portable theorem.
+- A read-only diagnostics accessor must not also expose movable/reconfigurable solver ownership. Const public surfaces are a correctness boundary, not only an API-style preference.
+- A regression must distinguish the old bug. The first extreme-value test already failed on the old solver and was rejected during review; the replacement keeps current deltas finite while terminal accumulation alone overflows, and mutation testing makes it red.

@@ -13,9 +13,17 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <limits>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 using namespace slide;
+
+static_assert(std::is_same_v<
+                decltype(std::declval<core::PackSolver &>().workspace()),
+                const core::SolverWorkspace &>,
+              "PackSolver must not expose mutable workspace ownership");
 
 namespace {
 
@@ -155,6 +163,152 @@ TEST_CASE("Thevenin system dispatches once per archetype batch", "[core][pack][t
   REQUIRE(solver.solve(1.0) == Status::Success);
   REQUIRE(a.calls == solver.diagnostics().iterations);
   REQUIRE(b.calls == solver.diagnostics().iterations);
+}
+
+TEST_CASE("pack solver rejects invalid modes and malformed compiled netlists atomically",
+          "[core][pack][solver][validation][P9-G4]")
+{
+  const auto topology = compile(core::cell({ .archetype = "affine" }));
+  AffineBatch batch{ .ocv = { 4.0 }, .resistance = { 0.1 } };
+  const std::array<core::TheveninBatchView, 1> batches{
+    core::TheveninBatchView::bind(batch, 1)
+  };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, batches) == Status::Success);
+  REQUIRE(solver.solve(1.0) == Status::Success);
+  const auto expected_current = solver.solution().cell_current;
+  const auto expected_voltage = solver.solution().node_voltage;
+  const auto expected_terminal = solver.solution().terminal_voltage;
+
+  const auto require_unchanged = [&] {
+    REQUIRE(solver.solution().cell_current == expected_current);
+    REQUIRE(solver.solution().node_voltage == expected_voltage);
+    REQUIRE(solver.solution().terminal_voltage == expected_terminal);
+  };
+
+  REQUIRE(solver.solve(1.0, static_cast<core::PackSolveMode>(255))
+          == Status::Invalid_parameters);
+  require_unchanged();
+
+  const auto reject_reconfigure = [&](core::CompiledPackTopology malformed) {
+    REQUIRE(solver.configure(malformed, batches) == Status::Invalid_parameters);
+    require_unchanged();
+    REQUIRE(solver.solve(1.0) == Status::Success);
+    require_unchanged();
+  };
+
+  auto bad_terminal = topology;
+  bad_terminal.electrical.terminal_positive = bad_terminal.electrical.node_count;
+  reject_reconfigure(std::move(bad_terminal));
+
+  auto bad_node = topology;
+  bad_node.electrical.branches[0].node_positive = bad_node.electrical.node_count;
+  reject_reconfigure(std::move(bad_node));
+
+  auto bad_cell = topology;
+  bad_cell.electrical.branches[0].cell = static_cast<std::uint32_t>(bad_cell.cells.size());
+  reject_reconfigure(std::move(bad_cell));
+
+  auto bad_kind = topology;
+  bad_kind.electrical.branches[0].kind = static_cast<core::ElectricalBranchKind>(255);
+  reject_reconfigure(std::move(bad_kind));
+
+  auto bad_ladder = topology;
+  bad_ladder.electrical.ladder_cells[0] = static_cast<std::uint32_t>(bad_ladder.cells.size());
+  reject_reconfigure(std::move(bad_ladder));
+
+  auto impossible_node_count = topology;
+  impossible_node_count.electrical.node_count =
+    static_cast<std::uint32_t>(std::numeric_limits<int>::max()) + 1U;
+  reject_reconfigure(std::move(impossible_node_count));
+
+  REQUIRE(solver.configure(topology, batches) == Status::Success);
+  REQUIRE(std::all_of(solver.solution().cell_current.begin(),
+                      solver.solution().cell_current.end(),
+                      [](double value) { return value == 0.0; }));
+  REQUIRE(std::all_of(solver.solution().node_voltage.begin(),
+                      solver.solution().node_voltage.end(),
+                      [](double value) { return value == 0.0; }));
+  REQUIRE(solver.solution().terminal_voltage == 0.0);
+}
+
+TEST_CASE("ladder terminal overflow cannot publish a finite-current trial",
+          "[core][pack][solver][finite][P9-G4]")
+{
+  const auto topology = compile(core::series(
+    2, core::cell({ .archetype = "affine" })));
+  AffineBatch batch{ .ocv = { 4.0, 4.0 }, .resistance = { 1.0, 1.0 } };
+  const std::array<core::TheveninBatchView, 1> batches{
+    core::TheveninBatchView::bind(batch, 2)
+  };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, batches) == Status::Success);
+  REQUIRE(solver.solve(0.0, core::PackSolveMode::ladder) == Status::Success);
+  const auto expected_current = solver.solution().cell_current;
+  const auto expected_voltage = solver.solution().node_voltage;
+  const auto expected_terminal = solver.solution().terminal_voltage;
+
+  batch.ocv = { 1e308, 1e308 };
+  REQUIRE(solver.solve(0.0, core::PackSolveMode::ladder, 1e-12, 2)
+          != Status::Success);
+  REQUIRE(solver.solution().cell_current == expected_current);
+  REQUIRE(solver.solution().node_voltage == expected_voltage);
+  REQUIRE(solver.solution().terminal_voltage == expected_terminal);
+}
+
+TEST_CASE("all solver modes reject extreme derived values without publishing a trial",
+          "[core][pack][solver][finite][P9-G4]")
+{
+  const auto topology = compile(core::cell({ .archetype = "affine" }));
+
+  const auto exercise = [&](core::PackSolveMode mode,
+                            double overflow_ocv,
+                            double overflow_resistance,
+                            double applied_current) {
+    AffineBatch batch{ .ocv = { 4.0 }, .resistance = { 1.0 } };
+    const std::array<core::TheveninBatchView, 1> batches{
+      core::TheveninBatchView::bind(batch, 1)
+    };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, batches) == Status::Success);
+    REQUIRE(solver.solve(1.0, mode, 1e-12, 4) == Status::Success);
+    const auto expected_current = solver.solution().cell_current;
+    const auto expected_voltage = solver.solution().node_voltage;
+    const auto expected_terminal = solver.solution().terminal_voltage;
+
+    batch.ocv[0] = overflow_ocv;
+    batch.resistance[0] = overflow_resistance;
+    REQUIRE(solver.solve(applied_current, mode, 1e-12, 2) != Status::Success);
+    REQUIRE(solver.solution().cell_current == expected_current);
+    REQUIRE(solver.solution().node_voltage == expected_voltage);
+    REQUIRE(solver.solution().terminal_voltage == expected_terminal);
+  };
+
+  exercise(core::PackSolveMode::sparse_newton, 0.0, 1e308, 2.0);
+  exercise(core::PackSolveMode::ladder, 0.0, 1e308, 2.0);
+  exercise(core::PackSolveMode::relaxation, 0.0, 1e308, 2.0);
+}
+
+TEST_CASE("pack solve diagnostics are reset when changing modes",
+          "[core][pack][solver][diagnostics][P9-G4]")
+{
+  const auto topology = compile(core::cell({ .archetype = "affine" }));
+  AffineBatch batch{ .ocv = { 4.0 }, .resistance = { 1.0 } };
+  const std::array<core::TheveninBatchView, 1> batches{
+    core::TheveninBatchView::bind(batch, 1)
+  };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, batches) == Status::Success);
+  REQUIRE(solver.solve(1.0, core::PackSolveMode::sparse_newton, 2.0, 2)
+          == Status::Success);
+  REQUIRE(solver.diagnostics().residual_norm > 0.0);
+
+  REQUIRE(solver.solve(1.0, core::PackSolveMode::ladder, 1e-12, 2)
+          == Status::Success);
+  REQUIRE(solver.diagnostics().residual_norm == 0.0);
+  REQUIRE(solver.diagnostics().constraint_drift == 0.0);
+  REQUIRE(solver.diagnostics().constraint_bound == 0.0);
+  REQUIRE(solver.diagnostics().relaxation_gain == 0.0);
 }
 
 TEST_CASE("SPM batches expose a nonlinear Thevenin tangent to the pack solver",

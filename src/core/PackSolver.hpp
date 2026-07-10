@@ -79,6 +79,7 @@ struct PackSolveDiagnostics
   int source_steps{};
   real_t residual_norm{};
   real_t constraint_drift{};
+  /** max(user KCL tolerance, floating-point roundoff estimate); not a general contraction proof */
   real_t constraint_bound{};
   real_t relaxation_gain{};
 };
@@ -138,7 +139,6 @@ public:
 
   const PackSolution &solution() const { return solution_; }
   const PackSolveDiagnostics &diagnostics() const { return diagnostics_; }
-  SolverWorkspace &workspace() { return workspace_; }
   const SolverWorkspace &workspace() const { return workspace_; }
 
 private:
@@ -152,8 +152,7 @@ private:
                                           int iteration,
                                           int consecutive_divergence);
   [[nodiscard]] slide::Status solveLadder(real_t applied_current);
-  [[nodiscard]] slide::Status solveRelaxation(real_t applied_current,
-                                              int iteration);
+  [[nodiscard]] slide::Status solveRelaxation(real_t applied_current);
 
   CompiledPackTopology topology_{};
   PackTheveninSystem thevenin_{};
@@ -171,10 +170,10 @@ private:
   std::vector<real_t> relaxation_diagonal_{};
   std::vector<real_t> relaxation_rhs_{};
   std::vector<real_t> relaxation_target_{};
+  std::vector<real_t> relaxation_compensation_{};
   real_t candidate_terminal_voltage_{};
   real_t residual_norm_{};
   real_t relaxation_alpha_{ 2.0 / 3.0 };
-  real_t initial_constraint_drift_{};
   bool configured_{};
   bool has_solution_{};
 };

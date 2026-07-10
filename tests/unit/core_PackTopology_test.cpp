@@ -102,4 +102,12 @@ TEST_CASE("pack cold validation is atomic", "[core][pack][validation]")
   REQUIRE(core::compilePackDescription({ .root = core::series(0, core::cell()) }, output)
           == Status::Invalid_parameters);
   REQUIRE(output.cells.size() == old_cells);
+
+  core::PackNode invalid_kind{
+    .kind = static_cast<core::PackNodeKind>(255),
+    .children = { core::cell() }
+  };
+  REQUIRE(core::compilePackDescription({ .root = invalid_kind }, output)
+          == Status::Invalid_parameters);
+  REQUIRE(output.cells.size() == old_cells);
 }
