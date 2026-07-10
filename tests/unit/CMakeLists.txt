@@ -154,6 +154,13 @@ target_link_libraries(unit_test_core_ForwardSensitivity PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_ThreadPool core_ThreadPool_test.cpp)
 target_link_libraries(unit_test_core_ThreadPool PRIVATE slide_core)
 
+# Phase 8 P8-G3: asynchronous shuffled/compressed recording and producer allocations
+add_executable_with_coverage_and_test(unit_test_core_AsyncRecorder core_AsyncRecorder_test.cpp)
+target_link_libraries(unit_test_core_AsyncRecorder PRIVATE slide_core)
+
+add_executable_with_coverage_and_test(unit_test_core_AsyncRecorderAllocation core_AsyncRecorderAllocation_test.cpp)
+target_link_libraries(unit_test_core_AsyncRecorderAllocation PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

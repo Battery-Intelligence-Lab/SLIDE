@@ -1,6 +1,6 @@
 # v4 core (slide::core) — grows alongside legacy src/ (strangler pattern, PLAN.md §5).
 # The registry is compiled once so downstream callers do not instantiate every common composition.
-add_library(slide_core STATIC Experiment.cpp ForwardSensitivity.cpp PackSolver.cpp PackStepper.cpp PackTopology.cpp ParameterSet.cpp Recorder.cpp SpmFactory.cpp Simulation.cpp ThreadPool.cpp)
+add_library(slide_core STATIC AsyncRecorder.cpp Experiment.cpp ForwardSensitivity.cpp PackSolver.cpp PackStepper.cpp PackTopology.cpp ParameterSet.cpp Recorder.cpp SpmFactory.cpp Simulation.cpp ThreadPool.cpp)
 set_target_properties(slide_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(slide_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_compile_features(slide_core PUBLIC cxx_std_20)
@@ -27,4 +27,34 @@ if(SLIDE_WITH_ARROW)
   endif()
   target_compile_definitions(slide_core PUBLIC SLIDE_WITH_ARROW=1)
   target_link_libraries(slide_core PUBLIC ${SLIDE_ARROW_TARGET} ${SLIDE_PARQUET_TARGET})
+endif()
+
+option(SLIDE_WITH_ZSTD "Enable shuffled zstd async recording blocks" OFF)
+if(SLIDE_WITH_ZSTD)
+  find_package(zstd CONFIG QUIET)
+  if(TARGET zstd::libzstd_static)
+    set(SLIDE_ZSTD_TARGET zstd::libzstd_static)
+  elseif(TARGET zstd::libzstd_shared)
+    set(SLIDE_ZSTD_TARGET zstd::libzstd_shared)
+  elseif(TARGET libzstd_static)
+    set(SLIDE_ZSTD_TARGET libzstd_static)
+  else()
+    CPMAddPackage(
+      NAME zstd
+      GITHUB_REPOSITORY facebook/zstd
+      GIT_TAG v1.5.7
+      SOURCE_SUBDIR build/cmake
+      OPTIONS
+        "ZSTD_BUILD_PROGRAMS OFF"
+        "ZSTD_BUILD_SHARED OFF"
+        "ZSTD_BUILD_STATIC ON"
+        "ZSTD_BUILD_TESTS OFF"
+    )
+    set(SLIDE_ZSTD_TARGET libzstd_static)
+  endif()
+  if(NOT TARGET ${SLIDE_ZSTD_TARGET})
+    message(FATAL_ERROR "SLIDE_WITH_ZSTD=ON but no zstd library target is available")
+  endif()
+  target_compile_definitions(slide_core PUBLIC SLIDE_WITH_ZSTD=1)
+  target_link_libraries(slide_core PRIVATE ${SLIDE_ZSTD_TARGET})
 endif()
