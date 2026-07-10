@@ -30,6 +30,10 @@ target_link_libraries(unit_test_core_SpectralDiffusion PRIVATE slide_core)
 # Phase 1 P1-G3 (part a): analytic Chebyshev eigenvalue oracle (roots of tan(mu)=mu) — needs Model_SPM
 add_executable_with_coverage_and_test(unit_test_core_ChebyshevEigenvalues core_ChebyshevEigenvalues_test.cpp)
 
+# Phase 1 P1-G3 (part b): constant-flux spherical transient incl. centre-node output oracle
+add_executable_with_coverage_and_test(unit_test_core_ChebyshevTransient core_ChebyshevTransient_test.cpp)
+target_link_libraries(unit_test_core_ChebyshevTransient PRIVATE slide_core)
+
 # Phase 1: observable-reconstruction layer — surface concentration vs legacy Cell_SPM + analytic round-trip
 add_executable_with_coverage_and_test(unit_test_core_SpmObservables core_SpmObservables_test.cpp)
 target_link_libraries(unit_test_core_SpmObservables PRIVATE slide_core)
