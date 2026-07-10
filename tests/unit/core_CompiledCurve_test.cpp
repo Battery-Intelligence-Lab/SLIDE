@@ -9,7 +9,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
 
 using namespace slide;
 
@@ -66,4 +68,9 @@ TEST_CASE("Compiled curves reject malformed input without becoming valid", "[cor
   REQUIRE(lut.build(x, y) == Status::Invalid_parameters);
   REQUIRE_FALSE(curve.valid());
   REQUIRE_FALSE(lut.valid());
+
+  const double nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  const std::array nan_y{ 1.0, nan, 3.0 };
+  REQUIRE(curve.build(valid_x, nan_y) == Status::Invalid_parameters);
+  REQUIRE(lut.build(valid_x, nan_y) == Status::Invalid_parameters);
 }

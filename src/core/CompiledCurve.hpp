@@ -6,6 +6,7 @@
 #pragma once
 
 #include "../types/Status.hpp"
+#include "Numeric.hpp"
 #include "StateArena.hpp"
 
 #include <algorithm>
@@ -17,12 +18,6 @@
 #include <vector>
 
 namespace slide::core {
-
-template <class Real>
-constexpr real_t primal_value(const Real &value)
-{
-  return static_cast<real_t>(value);
-}
 
 /**
  * Exact piecewise-linear table with a uniform segment-index accelerator. This preserves measured
@@ -44,10 +39,10 @@ public:
       return slide::Status::Invalid_parameters;
 
     real_t min_spacing = x[1] - x[0];
-    if (!std::isfinite(x[0]) || !std::isfinite(y[0]) || min_spacing <= 0.0)
+    if (!is_finite(x[0]) || !is_finite(y[0]) || min_spacing <= 0.0)
       return slide::Status::Invalid_parameters;
     for (std::size_t i = 1; i < x.size(); ++i) {
-      if (!std::isfinite(x[i]) || !std::isfinite(y[i]) || x[i] <= x[i - 1])
+      if (!is_finite(x[i]) || !is_finite(y[i]) || x[i] <= x[i - 1])
         return slide::Status::Invalid_parameters;
       min_spacing = std::min(min_spacing, x[i] - x[i - 1]);
     }

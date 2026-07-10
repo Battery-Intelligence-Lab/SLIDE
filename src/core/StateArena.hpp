@@ -41,6 +41,7 @@ enum class Unit : int {
   Ah,     //!< Ampere-hour (cumulative charge throughput)
   Wh,     //!< Watt-hour (cumulative energy throughput)
   W,      //!< Watt (heat flows)
+  J,      //!< Joule (integrated heat)
   m,      //!< metre (layer thicknesses, SEI thickness)
   m2,     //!< square metre (crack surface)
   m2_s,   //!< square metre per second (solid diffusion coefficient)
