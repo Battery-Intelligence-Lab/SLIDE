@@ -23,3 +23,6 @@ bin/*
 *.pyc
 *.asv
 nul
+/build-*
+.cache/
+*.mexw64

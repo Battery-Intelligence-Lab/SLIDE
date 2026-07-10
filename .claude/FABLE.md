@@ -1,0 +1,42 @@
+# Volkan's instructions. 
+
+Now we are doing a huge-refactor and upgrade our SLIDE library. 
+
+I want a very detailed analysis and a plan for Opus 4.8 -effort=xhigh to implement. Please you do yourself do not implement the plan but call it as the subagent to implement (but not more than 3 agents in parallel, otherwise they all need to read the same code and finish all the limit). Your output tokens are very valuable. So you need to focus on high-level thinking and guiding other agents. Not implementing things yourself nor bloating your context. I want following things
+
+
+1) Top-to-down library and interface redesign. 
+
+2) Interface is consistent in all languages (C++, MATLAB and Python, like how Casadi is doing) 
+
+3) Go through the whole library to find bugs and replications. My several issues with this library are: 
+
+- The interface is too sloppy. For example instead of making every variable "_p" and "_n" versions we could have for example "Electrode" class and the battery class could have two electrodes for negative and positive. Then we could have similar interfaces inside. The ageing functions could be injected. The discretisations etc. all could be members. In future I will add 3D models, spectral models, DFN and SPMe etc. We need to make the interface robust and stable. 
+
+- Speed is topmost priority because this library will simulate 10s or 100s of thousands cells in different configurations. So I would say we should use lightweight patterns, try to reduce data amount. So it doesn't become a bottleneck. 
+
+- As I say interface for creating battery packs is very stupid, we are creating it but depending how it is created solving the algebraic equation becomes a mess. We have kinda tree-structure to hold the the battery instead of a sparse matrix, so we also cannot use the off-the-self solvers or variable step solvers. 
+
+- I want an interface pybamm compatible, so the existing pybamm users should be able to easily switch to us, like having "Experiment" class like they have, or parameter absorptions and meaning of parameters. 
+
+- We also have somehere Ross's analytical solution to the parallel circuits, my cached newton raphsons but they are like very structure dependent. 
+
+- We also have some idea from Jorn that "PI" control. So instead of solving the algebraic equations every step we just shift the currents every time step a bit, like for example the cells are not in balance but just adjusting current a bit by a bit every time step. I know Jorn made this up but I guess there must be a much better version in the existing literature. 
+
+- How to hold data, mmap objects, histograms, etc. are important. We could also calculate some of the data from the states so we don't hold everything. So we need to be very memory-aware. Also when we are dumping results into memory we may consider compressing them to hdf5 or parquet. See "C:\D\git\dtw-cpp\" library for mmap, hdf5 parquet etc. Also portability. Also I have an idea like pytorch like you could say device=cpu, device=gpu and device=hpc. See the idea there "C:\D\git\dtw-cpp\.claude\TODO.md". If we could pull off this improvements amazing.
+
+- I think the spectral Chebyshev method doesn't really work. It works only for N=5 find bugs. See https://github.com/davidhowey/Spectral_li-ion_SPM for a proper spectral SPM implementation. 
+
+- For ageing functions I think we should be able to not do like this but more like injection. We should be able to inject also semi-empirical ageing functions etc. So should be ageing class etc. So the batteries storage units etc should hold several probably several points (shared or unique need to decide) so they point to the models. Maybe some states then the model type or something, so it has the necessary states. Or maybe a vector of states and pointers to the correct models, so that models could just directly work with these states. I thought about this a lot but couldn't think of a good way of representing things. I really need your intelligence here. I could just for example keep states as vectors inside the storage units, so more model you add then the states would large, and every model could have for example int beg, end; So that it is integer based operation and they could just operate around states[beg:end]. A new model inclusion would just go from states.size() to  states.size()+N_new_states. So that adding a new model would be easy, and changing vector point wouldn't affect the underlying models. However, once you change the model in between then you would need to shift all as the number of states change. But we could always write proper functions to add the models so that they would change all the included models and state intervals. However, an even better method could be that maybe if we add the model into a parent model, it just merges its states with the parent and if we detach then it just allocates its own state vector. If this happens for example, we could keep all the states in the parent at the top. So that all the states would be contagiously stored and it would be easy to copy, and easy to traverse, and cache friendly, as well as roll back the states etc. However, I am unsure if this still would be the best option or just instead of tree just put a sparse matrix, so we could also be able to use the sparse matrix libraries and parallel working. But I want multi-rate integrators, I want so many advanced things. I also want nice off-the-shelf-optimisers. I want this library to be crazy fast, microseconds level fast. However, data structure decisions or algorithm decisions are really a huge bottleneck I couldn't decide. So we need a huge refactor, so that we could have the modular structure as well as the top speed. This library should be built for large-scale simulation not just one cell simulation. I don't even know for example if after the whole creating circuit should be compile it I mean if one guy creates parallel, parallel then parallel for example instead of just having a parallel thing, then our existing parallel branch solver will struggle a lot solving nested algebraic equations. So we need the ultimate cache friendly nicest algorithm without any bugs. So the system should be flexible enough, so you could change the discretisation or ageing equations, or some solution methods etc. However, it should work with top speed. Think a lot in architectural design. Then we could implement it with Opus xhigh. 
+
+5) The code is cross-platform, works on all supported platforms (windows, macos (both intel and amd), Linux (ubuntu)). 
+
+6) All parallelisation etc. things work out of the box. I don't want it to cannot activate parallelisation due to missing oneTBB etc. then fall back to sequential. Otherwise I would be happier probably for using std algorithms but this was the issue. Maybe we could make user-facing test interface like. dtwc.test.parallelisation() so this tries how many cores and how we can use it. Same for GPU testing. Once these functions are called it can just report back how many gpu what it is using etc. 
+
+7) See literature and other abilities we can add.
+
+8) Zero overhead abstraction. So if we have the ability to choose L1 and L2 norms or inject another cost function. These should have nearly zero cost, you could in C++ especially inject things with compile time. And in other languages you could compile multiple options then the main function can select so the selection is not on the hotpath. Or anything that doesn't sacrifice speed. I want this library to be the fastest available battery simulation library. PS: I am running multiple things at the same time now so the benchmarking could be misleading. 
+
+10) Once everything is there, we should update the documentation website. 
+
+11) Please think deeply and also remind me if I forgot anything. Like maybe you could write huge CUDA kernels other things or improve some algorithms to make this library EVEN FASTER. Like GPU implementation of this library would be crazy. Think about solving 100-000 batteries in seconds. It would be a mazing. You could use some profiler some other thing see cache hit etc. You are free to change data types, how to hold data, how to do things. As long as this library is very fast, accurate, and portable. 
