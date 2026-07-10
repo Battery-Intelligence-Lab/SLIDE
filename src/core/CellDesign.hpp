@@ -57,6 +57,8 @@ struct OCVCurve
 {
   std::vector<real_t> stoichiometry{};
   std::vector<real_t> value{};
+
+  friend bool operator==(const OCVCurve &, const OCVCurve &) = default;
 };
 
 struct Arrhenius
