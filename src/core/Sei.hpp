@@ -149,7 +149,7 @@ template <class Real>
                                          output)
 {
   const int lanes = state.n_lanes();
-  const auto count = static_cast<std::size_t>(lanes);
+  [[maybe_unused]] const auto count = static_cast<std::size_t>(lanes);
   assert(output.side_reaction_current.size() == count
          && output.active_fraction_rate.size() == count);
   assert(observables.negative_entropic_coefficient.size() == count);

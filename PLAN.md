@@ -751,10 +751,14 @@ hand-off stays rejected (D-06). Multirate (D-08) composes: outer and inner split
    underperforming v4 core is deleting `src/core/` — nothing user-facing is ever bet on it. On top of that, each
    early phase ends with a **wall-clock checkpoint run by Volkan on a quiet machine** (the only trusted timing
    source), with the band registered here BEFORE the run and an explicit abort threshold:
-   - **PAY-1 (Phase 1 exit):** 10⁴ identical Kokam SPM cells, 1C CC discharge, 1 h simulated — v4 batch vs a loop of
+   - **PAY-1 (Phase 1 exit) — PASSED 2026-07-10:** 10⁴ identical Kokam SPM cells, 1C CC discharge, 1 h simulated — v4 batch vs a loop of
      legacy `Cell_SPM`. Hypothesis [inferred, from devirtualisation + SoA + expm substep collapse; pouch-cell
      precedent 26–52× on the integrator alone]: ≥5×. **Abort threshold: <2× → STOP; profile, find where the model
-     was wrong, redesign before any Phase-2 work.** No new phase on top of an unproven core.
+     was wrong, redesign before any Phase-2 work.** No new phase on top of an unproven core. The reproducible Release
+     harness alternates core/legacy order and validates equal final work. Three full 36·10⁶-cell-step repetitions:
+     core 0.436–0.471 s (median 0.460), legacy 2.900–3.466 s (median 3.209), median speedup 6.97× and conservative
+     `min(legacy)/max(core)` 6.16×; max mapped-state error 8.67e-19 and max |ΔV| 8.88e-16 V. Target and abort gate
+     both clear even under the conservative range calculation.
    - **PAY-2 (Phase 2 exit):** 16s4p heterogeneous pack, CC cycle — v4 compiled pack vs legacy `Module_s/Module_p`.
      Hypothesis: ≥10× (flat solve replaces nested iteration, D-03; workspace kills refactorisations, D-18).
      Abort threshold: <3× → stop and re-examine before Phases 3–4.
@@ -803,7 +807,7 @@ mechanisms 1–5, LAM mechanisms 1–4, porosity/diffusivity coupling, and share
 previous-step arena state, plus the compile-time fixed composed SPM RHS pipeline (mandatory zeroing, shared
 observable/stress stages, rebind-safe trial-vector evaluation), and the D-02 explicit composition registry + cold factory
 (12 entries: nch={5,8,12} × isothermal/thermal × base/ageing-capable), `EulerLegacy`, the single-batch
-constant-current `Simulation` façade, and P1-G1/G2/G4. Remaining: PAY-1.
+constant-current `Simulation` façade, P1-G1/G2/G4, and PAY-1. **PHASE 1 COMPLETE 2026-07-10.**
 **DEPENDENCY (surfaced 2026-07-08 handoff): the observable-reconstruction layer.** Thermal and ageing kernels are not
 self-contained state→state maps: they need `c_surf = C·z + D·flux` (+ centre node, the §2.2 output path), Butler-
 Volmer overpotentials, OCV/entropic-coefficient interp, Rdc — i.e. the derived-observables layer (D-10, §3.7) plus
@@ -812,7 +816,7 @@ the `BatchView`/`StepCtx` kernel interface (§3.11) that `SpectralDiffusion` def
 full concentration, kinetics, OCV, resistance, voltage, and heat** → (2) P1-G3 Chebyshev
 oracle FIRST (it validates exactly the C/D surface-concentration path the new layer exposes) → (3) `ThermalLumped`
 (as `addRhs`, §3.12) — **DONE 2026-07-10** → (4) ageing kernels + fixed composed pipeline (same form; promote legacy `_prev`/accumulator members to arena rows —
-§2.1 correction) — **DONE 2026-07-10** → (5) registry/factory + façade + `EulerLegacy` stepper — **DONE 2026-07-10** → P1-G1/G2/G4 — **ALL DONE 2026-07-10** → PAY-1. The three
+§2.1 correction) — **DONE 2026-07-10** → (5) registry/factory + façade + `EulerLegacy` stepper — **DONE 2026-07-10** → P1-G1/G2/G4 — **ALL DONE 2026-07-10** → PAY-1 — **PASSED 2026-07-10**. The three
 2026-07-09 core review marks and Model_SPM build audit C1–C3 were resolved on 2026-07-10 (see §8 rows).
 **Gates:** P1-G0 parity-drift pilot (Q8): 1-cell legacy-Euler 1C CC, measure |ΔV|/|Δstate| drift legacy vs v4 kernel;
 outcome closes Q8 (keep 1e-12 band, or pin op-order/`-ffp-contract=off`, or loosen with ulp argument) BEFORE P1-G1
@@ -985,4 +989,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | P1-G2 zero-allocation 10⁴-lane gate | PASSED — all global scalar/array/aligned new forms counted; after cold build + warm-up, one accepted EulerLegacy step changes allocation count by exactly 0 in Debug and Release. Arena state is 240 B/cell ≤300 B. Full suites 30/30 both configurations. |
 | 2026-07-10 | P1-G4 bitwise arena restart gate | PASSED — coupled thermal + SEI + stress-crack + stress-LAM + plating run split by full padded-arena snapshot, destruction/cold rebuild, and arena-only restore is byte-identical to the continuous run, including final terminal voltages, in Debug and Release. Full suites 31/31 both configurations. |
 | 2026-07-10 | P1-G1 Kokam single-cell trajectory parity | PASSED — production factory + composed pipeline + EulerLegacy vs legacy Cell_SPM over mid-SOC 1200 s 1C and low-SOC steep-tail 300 s discharges. Max |ΔV| 4.44e-16 V Debug / 8.88e-16 V Release; every mapped physical/cumulative state meets the registered band. Parameter-fidelity check caught and removed an erroneous 298.15 K adapter assumption: legacy Kokam uses 298.0 K. Full suites 32/32 both configurations. |
-| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0/G1/G2/G3/G4, production `SpectralDiffusion<NCH>`, rebindable BatchView/StepCtx + row roles, physical description/Domain/ElectrodeParams, shared concentration/electrical/heat/stress observable stages, `ThermalLumped`, all SEI/crack/LAM/plating ageing mechanisms, fixed composed SPM pipeline, validated spectral build, D-02 registry/factory, `EulerLegacy`, single-batch Simulation façade. **NEXT: PAY-1**); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |
+| 2026-07-10 | PAY-1 Phase-1 payoff | PASSED — reproducible 10⁴-lane × 3600-step Kokam 1C harness, three alternating Release repetitions. Core median 0.460 s vs legacy 3.209 s = 6.97×; conservative min(legacy)/max(core) = 6.16×, above the ≥5× target. Max state error 8.67e-19, max |ΔV| 8.88e-16 V. The initial 0.43× result triggered redesign: surface-only base observables, self-invalidating transport cache, precise row roles, compact rollback, fused Euler, and exact checked lane coalescing with heterogeneous fallback. Full suites 32/32 both configurations. |
+| — | Phases 1–8 | **Phase 1 COMPLETE** (StateArena/BatchBuilder, P1-G0/G1/G2/G3/G4, production diffusion/observables/thermal/all legacy ageing, fixed pipeline, validated spectral build, registry/factory, EulerLegacy, Simulation façade, PAY-1). **NEXT: D-21 design gate, then Phase 2.** Phases 2–8 not started. |

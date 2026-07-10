@@ -32,6 +32,7 @@
 #include <cassert>
 #include <cmath>
 #include <span>
+#include <type_traits>
 #include <vector>
 
 namespace slide::core {
@@ -58,6 +59,147 @@ struct SpmConcentrationParams
   PerDomain<real_t> R{};   //!< particle radius [m]
   PerDomain<real_t> D_T{}; //!< electrode Arrhenius activation for D
 };
+
+/** Derived transport cache. Exact state-value keys make it restart-safe and self-invalidating. */
+struct SpmTransportCache
+{
+  explicit SpmTransportCache(int lanes)
+    : lanes_{ lanes }, valid_(static_cast<std::size_t>(2 * lanes)),
+      temperature_(static_cast<std::size_t>(2 * lanes)),
+      diffusion_reference_(static_cast<std::size_t>(2 * lanes)),
+      specific_area_(static_cast<std::size_t>(2 * lanes)),
+      thickness_(static_cast<std::size_t>(2 * lanes)),
+      effective_diffusivity_(static_cast<std::size_t>(2 * lanes)),
+      flux_denominator_(static_cast<std::size_t>(2 * lanes))
+  {}
+
+  int lanes() const { return lanes_; }
+
+  std::size_t index(Domain domain, int lane) const
+  {
+    return domain_index(domain) * static_cast<std::size_t>(lanes_)
+           + static_cast<std::size_t>(lane);
+  }
+
+  int lanes_{};
+  std::vector<unsigned char> valid_{};
+  std::vector<real_t> temperature_{};
+  std::vector<real_t> diffusion_reference_{};
+  std::vector<real_t> specific_area_{};
+  std::vector<real_t> thickness_{};
+  std::vector<real_t> effective_diffusivity_{};
+  std::vector<real_t> flux_denominator_{};
+};
+
+template <int NCH, class Real>
+void computeSpmTransportLane(const SpmConcentrationParams<NCH> &p,
+                             const BasicBatchView<const Real> &state,
+                             const SpmStateLayout &layout,
+                             const BasicStepCtx<Real> &ctx,
+                             Domain domain,
+                             int lane,
+                             Real &effective_diffusivity,
+                             Real &molar_flux,
+                             SpmTransportCache *cache)
+{
+  const auto d = domain_index(domain);
+  const Real temperature = state.at(layout.temperature, 0, lane);
+  const Real diffusion_reference = state.at(layout.diffusion_coefficient[d], 0, lane);
+  const Real specific_area = state.at(layout.specific_surface_area[d], 0, lane);
+  const Real thickness = state.at(layout.electrode_thickness[d], 0, lane);
+  if constexpr (std::is_same_v<std::remove_cv_t<Real>, real_t>) {
+    if (cache != nullptr) {
+      assert(cache->lanes() == state.n_lanes());
+      const auto i = cache->index(domain, lane);
+      if (cache->valid_[i] != 0 && cache->temperature_[i] == temperature
+          && cache->diffusion_reference_[i] == diffusion_reference
+          && cache->specific_area_[i] == specific_area
+          && cache->thickness_[i] == thickness) {
+        effective_diffusivity = cache->effective_diffusivity_[i];
+        molar_flux = static_cast<Real>(molar_flux_sign(domain)) * ctx.i_app[lane]
+                     / cache->flux_denominator_[i];
+        return;
+      }
+      using std::exp;
+      const Real arrhenius = (Real{ 1 } / p.T_ref - Real{ 1 } / temperature) / p.Rg;
+      effective_diffusivity = diffusion_reference * exp(p.D_T[d] * arrhenius);
+      const Real denominator = specific_area * p.n * p.F * thickness;
+      molar_flux = static_cast<Real>(molar_flux_sign(domain)) * ctx.i_app[lane]
+                   / denominator;
+      cache->temperature_[i] = temperature;
+      cache->diffusion_reference_[i] = diffusion_reference;
+      cache->specific_area_[i] = specific_area;
+      cache->thickness_[i] = thickness;
+      cache->effective_diffusivity_[i] = effective_diffusivity;
+      cache->flux_denominator_[i] = denominator;
+      cache->valid_[i] = 1;
+      return;
+    }
+  }
+  using std::exp;
+  const Real arrhenius = (Real{ 1 } / p.T_ref - Real{ 1 } / temperature) / p.Rg;
+  effective_diffusivity = diffusion_reference * exp(p.D_T[d] * arrhenius);
+  const Real denominator = specific_area * p.n * p.F * thickness;
+  molar_flux = static_cast<Real>(molar_flux_sign(domain)) * ctx.i_app[lane]
+               / denominator;
+}
+
+/** Compute only the transport terms required by the diffusion RHS. */
+template <int NCH, class Real>
+void computeSpmTransport(const SpmConcentrationParams<NCH> &p,
+                         const BasicBatchView<const Real> &state,
+                         const SpmStateLayout &layout,
+                         const BasicStepCtx<Real> &ctx,
+                         PerDomain<std::span<Real>>
+                           effective_diffusivity,
+                         PerDomain<std::span<Real>>
+                           molar_flux,
+                         SpmTransportCache *cache = nullptr)
+{
+  const int lanes = state.n_lanes();
+  ctx.assert_valid_for(lanes);
+  assert(static_cast<int>(effective_diffusivity[0].size()) == lanes
+         && static_cast<int>(effective_diffusivity[1].size()) == lanes
+         && static_cast<int>(molar_flux[0].size()) == lanes
+         && static_cast<int>(molar_flux[1].size()) == lanes);
+  for (const Domain domain : domains) {
+    const auto d = domain_index(domain);
+    for (int lane = 0; lane < lanes; ++lane)
+      computeSpmTransportLane(p, state, layout, ctx, domain, lane, effective_diffusivity[d][lane], molar_flux[d][lane], cache);
+  }
+}
+
+/** Reconstruct only surface concentration plus transport for voltage/kinetics paths. */
+template <int NCH, class Real>
+void computeSpmSurfaceConcentrations(const SpmConcentrationParams<NCH> &p,
+                                     const BasicBatchView<const Real> &state,
+                                     const SpmStateLayout &layout,
+                                     const BasicStepCtx<Real> &ctx,
+                                     PerDomain<std::span<Real>>
+                                       concentration,
+                                     PerDomain<std::span<Real>>
+                                       effective_diffusivity,
+                                     PerDomain<std::span<Real>>
+                                       molar_flux,
+                                     SpmTransportCache *cache = nullptr)
+{
+  const int lanes = state.n_lanes();
+  ctx.assert_valid_for(lanes);
+  for (const Domain domain : domains) {
+    const auto d = domain_index(domain);
+    for (int lane = 0; lane < lanes; ++lane) {
+      Real diffusivity{};
+      Real flux{};
+      computeSpmTransportLane(p, state, layout, ctx, domain, lane, diffusivity, flux, cache);
+      effective_diffusivity[d][lane] = diffusivity;
+      molar_flux[d][lane] = flux;
+      Real surface{};
+      for (int mode = 0; mode < NCH; ++mode)
+        surface += p.C[d][0][mode] * state.at(layout.z[d], mode, lane);
+      concentration[d][lane] = surface + p.Dout[d][0] * flux / diffusivity;
+    }
+  }
+}
 
 /**
  * Reconstruct Li concentration at surface, interior nodes and centre for every lane/electrode.
@@ -87,7 +229,7 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
          && domain_value(layout.electrode_thickness, Domain::neg).rows == 1);
   const int L = state.n_lanes();
   ctx.assert_valid_for(L);
-  constexpr int output_rows = NCH + 2; // surface + NCH interior + centre
+  [[maybe_unused]] constexpr int output_rows = NCH + 2; // surface + NCH interior + centre
   assert(static_cast<int>(concentration[0].size()) == output_rows * L
          && static_cast<int>(concentration[1].size()) == output_rows * L);
   assert((effective_diffusivity[0].empty()
@@ -232,17 +374,19 @@ template <int NCH, class Real>
                                                   const SpmStateLayout &layout,
                                                   const BasicStepCtx<Real> &ctx,
                                                   BasicSpmObservables<Real>
-                                                    output)
+                                                    output,
+                                                  SpmTransportCache *cache = nullptr)
 {
   const int L = state.n_lanes();
   ctx.assert_valid_for(L);
-  computeSpmConcentrations(p.concentration,
-                           state,
-                           layout,
-                           ctx,
-                           output.concentration,
-                           output.effective_diffusivity,
-                           output.molar_flux);
+  computeSpmSurfaceConcentrations(p.concentration,
+                                  state,
+                                  layout,
+                                  ctx,
+                                  output.concentration,
+                                  output.effective_diffusivity,
+                                  output.molar_flux,
+                                  cache);
 
   const std::span<const Real> temperature = state.row(layout.temperature.row_begin);
   using std::asinh;

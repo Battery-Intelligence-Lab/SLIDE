@@ -106,11 +106,18 @@ class SpmPipeline
 public:
   static constexpr bool needs_stress = WithSurfaceCrack || WithLam;
   static constexpr bool needs_sei_scratch = WithSei || WithSurfaceCrack;
+  static constexpr bool needs_full_rhs_observables = WithThermal || WithSei
+                                                     || WithSurfaceCrack || WithLam
+                                                     || WithLithiumPlating;
+  static constexpr bool supports_fused_euler = !needs_full_rhs_observables;
 
   static SpmPipelineLayout declareLayout(BatchBuilder &builder)
   {
     SpmPipelineLayout layout;
-    layout.spm = declareSpmState<NCH>(builder);
+    layout.spm = declareSpmState<NCH>(builder,
+                                      WithThermal,
+                                      WithSei || WithSurfaceCrack || WithLam
+                                        || WithLithiumPlating);
     if constexpr (WithThermal)
       layout.thermal = declareThermalLumped(builder, layout.spm.temperature);
     if constexpr (needs_stress)
@@ -127,6 +134,8 @@ public:
     : params_{ std::move(params) }, layout_{ layout }, n_lanes_{ n_lanes },
       observables_{ n_lanes }, stress_{ n_lanes }, sei_{ n_lanes },
       surface_crack_{ n_lanes }, lam_{ n_lanes },
+      transport_cache_{ n_lanes },
+      single_observables_{ 1 }, single_transport_cache_{ 1 },
       plating_current_(WithLithiumPlating ? static_cast<std::size_t>(n_lanes) : 0)
   {
     assert(n_lanes > 0);
@@ -138,16 +147,35 @@ public:
     views.zero_derivative();
 
     auto observable_view = observables_.view();
-    auto status = computeSpmObservables(params_.electrical,
-                                        views.y,
-                                        layout_.spm,
-                                        ctx,
-                                        observable_view);
-    if (status != slide::Status::Success)
-      return status;
+    slide::Status status = slide::Status::Success;
+    if constexpr (needs_full_rhs_observables) {
+      status = computeSpmObservables(params_.electrical,
+                                     views.y,
+                                     layout_.spm,
+                                     ctx,
+                                     observable_view,
+                                     &transport_cache_);
+      if (status != slide::Status::Success)
+        return status;
+    } else {
+      computeSpmTransport(params_.electrical.concentration,
+                          views.y,
+                          layout_.spm,
+                          ctx,
+                          observable_view.effective_diffusivity,
+                          observable_view.molar_flux,
+                          &transport_cache_);
+    }
 
     BasicSpmStress<real_t> stress_view;
     if constexpr (needs_stress) {
+      computeSpmConcentrations(params_.electrical.concentration,
+                               views.y,
+                               layout_.spm,
+                               ctx,
+                               observable_view.concentration,
+                               observable_view.effective_diffusivity,
+                               observable_view.molar_flux);
       if (params_.enable_stress) {
         stress_view = stress_.view();
         status = computeSpmStress(params_.stress,
@@ -270,6 +298,73 @@ public:
     return slide::Status::Success;
   }
 
+  /** Fuse transport, diffusion RHS, and Euler update for the base isothermal archetype. */
+  [[nodiscard]] slide::Status advanceEuler(BatchView state,
+                                           const StepCtx &ctx,
+                                           real_t dt,
+                                           std::span<real_t> terminal_voltage)
+    requires(supports_fused_euler)
+  {
+    assert(static_cast<int>(terminal_voltage.size()) == n_lanes_);
+    const ConstBatchView current{ state.shape(), std::span<const real_t>{ state.raw() } };
+    const bool coalesced = lanesEqual(current, ctx);
+    auto observable_view = coalesced ? single_observables_.view() : observables_.view();
+    const BatchShape evaluation_shape = coalesced
+                                          ? BatchShape{ state.n_rows(), 1, state.stride() }
+                                          : state.shape();
+    const ConstBatchView evaluation_state{ evaluation_shape,
+                                           std::span<const real_t>{ state.raw() } };
+    const StepCtx evaluation_ctx{ .time = ctx.time,
+                                  .dt = ctx.dt,
+                                  .i_app = coalesced ? ctx.i_app.first(1) : ctx.i_app };
+    auto *cache = coalesced ? &single_transport_cache_ : &transport_cache_;
+    computeSpmTransport(params_.electrical.concentration,
+                        evaluation_state,
+                        layout_.spm,
+                        evaluation_ctx,
+                        observable_view.effective_diffusivity,
+                        observable_view.molar_flux,
+                        cache);
+    const int evaluated_lanes = coalesced ? 1 : n_lanes_;
+    for (const Domain domain : domains) {
+      const auto d = domain_index(domain);
+      for (int mode = 0; mode < NCH; ++mode) {
+        const real_t A = params_.diffusion.A[d][static_cast<std::size_t>(mode)];
+        const real_t B = params_.diffusion.B[d][static_cast<std::size_t>(mode)];
+        auto state_row = state.row(layout_.spm.z[d].row_begin + mode);
+        for (int lane = 0; lane < evaluated_lanes; ++lane) {
+          const auto i = static_cast<std::size_t>(lane);
+          auto &z = state_row[i];
+          z += dt * (observable_view.effective_diffusivity[d][i] * A * z + B * observable_view.molar_flux[d][i]);
+        }
+        if (coalesced)
+          std::fill(state_row.begin() + 1, state_row.end(), state_row.front());
+      }
+    }
+
+    const ConstBatchView accepted_state{ evaluation_shape,
+                                         std::span<const real_t>{ state.raw() } };
+    const StepCtx accepted_ctx{ .time = ctx.time + dt,
+                                .dt = 0.0,
+                                .i_app = evaluation_ctx.i_app };
+    auto status = computeSpmObservables(params_.electrical,
+                                        accepted_state,
+                                        layout_.spm,
+                                        accepted_ctx,
+                                        observable_view,
+                                        cache);
+    if (status != slide::Status::Success)
+      return status;
+    if (coalesced) {
+      std::fill(terminal_voltage.begin(), terminal_voltage.end(), observable_view.terminal_voltage.front());
+    } else {
+      std::copy(observable_view.terminal_voltage.begin(),
+                observable_view.terminal_voltage.end(),
+                terminal_voltage.begin());
+    }
+    return status;
+  }
+
   [[nodiscard]] slide::Status observeTerminalVoltage(
     const ConstBatchView &state,
     const StepCtx &ctx,
@@ -283,7 +378,8 @@ public:
                                               state,
                                               layout_.spm,
                                               ctx,
-                                              observable_view);
+                                              observable_view,
+                                              &transport_cache_);
     if (status != slide::Status::Success)
       return status;
     std::copy(observable_view.terminal_voltage.begin(),
@@ -318,6 +414,22 @@ public:
   int n_lanes() const { return n_lanes_; }
 
 private:
+  bool lanesEqual(const ConstBatchView &state, const StepCtx &ctx) const
+  {
+    if (n_lanes_ <= 1)
+      return true;
+    for (int lane = 1; lane < n_lanes_; ++lane)
+      if (ctx.i_app[static_cast<std::size_t>(lane)] != ctx.i_app.front())
+        return false;
+    for (int row = 0; row < state.n_rows(); ++row) {
+      const auto values = state.row(row);
+      for (int lane = 1; lane < n_lanes_; ++lane)
+        if (values[static_cast<std::size_t>(lane)] != values.front())
+          return false;
+    }
+    return true;
+  }
+
   SpmPipelineParams<NCH> params_;
   SpmPipelineLayout layout_{};
   int n_lanes_{};
@@ -327,6 +439,9 @@ private:
   std::conditional_t<WithSurfaceCrack, SurfaceCrackScratch<>, EmptyPipelineScratch>
     surface_crack_;
   std::conditional_t<WithLam, LamScratch<>, EmptyPipelineScratch> lam_;
+  SpmTransportCache transport_cache_;
+  SpmObservableScratch<NCH> single_observables_;
+  SpmTransportCache single_transport_cache_;
   std::vector<real_t> plating_current_{};
 };
 

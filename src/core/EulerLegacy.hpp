@@ -31,7 +31,21 @@ public:
   {
     if (!batch.valid())
       return slide::Status::Invalid_parameters;
-    backup_.resize(batch.state().size());
+    ode_rows_.clear();
+    rollback_rows_.clear();
+    const bool ageing = batch.composition() == SpmComposition::isothermal_ageing
+                        || batch.composition() == SpmComposition::thermal_ageing;
+    const auto roles = batch.roles();
+    for (int row = 0; row < batch.state().n_rows(); ++row) {
+      const auto role = roles[static_cast<std::size_t>(row)];
+      if (role == StateRole::ode)
+        ode_rows_.push_back(row);
+      if (ageing || role == StateRole::ode || role == StateRole::cumulative)
+        rollback_rows_.push_back(row);
+    }
+    lanes_ = batch.n_lanes();
+    state_rows_ = batch.state().n_rows();
+    backup_.resize(rollback_rows_.size() * static_cast<std::size_t>(lanes_));
     terminal_voltage_.resize(static_cast<std::size_t>(batch.n_lanes()));
     return slide::Status::Success;
   }
@@ -41,7 +55,8 @@ public:
                                    real_t time,
                                    real_t dt)
   {
-    if (!batch.valid() || batch.state().size() != backup_.size()
+    if (!batch.valid() || batch.n_lanes() != lanes_
+        || batch.state().n_rows() != state_rows_
         || static_cast<int>(current_density.size()) != batch.n_lanes()
         || terminal_voltage_.size() != current_density.size()
         || !is_finite(time) || !is_finite(dt) || !(dt > 0.0))
@@ -50,29 +65,38 @@ public:
       if (!is_finite(current))
         return slide::Status::Invalid_parameters;
 
-    std::copy(batch.state().raw().begin(), batch.state().raw().end(), backup_.begin());
+    backup(batch);
     const StepCtx ctx{ .time = time, .dt = dt, .i_app = current_density };
-    auto status = batch.evaluate(ctx);
-    if (status != slide::Status::Success)
+    slide::Status status;
+    bool voltage_ready = false;
+    if (batch.hasFusedEuler()) {
+      status = batch.fusedEuler(ctx, dt, terminal_voltage_);
+      voltage_ready = status == slide::Status::Success;
+    } else {
+      status = batch.evaluate(ctx);
+      if (status == slide::Status::Success) {
+        for (const int row : ode_rows_) {
+          auto state_row = batch.state().row(row);
+          const auto derivative_row = batch.derivative().row(row);
+          for (int lane = 0; lane < batch.n_lanes(); ++lane)
+            state_row[static_cast<std::size_t>(lane)] += dt * derivative_row[static_cast<std::size_t>(lane)];
+        }
+      }
+    }
+    if (status != slide::Status::Success) {
+      restore(batch);
       return status;
-
-    const auto roles = batch.roles();
-    for (int row = 0; row < batch.state().n_rows(); ++row) {
-      if (roles[static_cast<std::size_t>(row)] != StateRole::ode)
-        continue;
-      auto state_row = batch.state().row(row);
-      const auto derivative_row = batch.derivative().row(row);
-      for (int lane = 0; lane < batch.n_lanes(); ++lane)
-        state_row[static_cast<std::size_t>(lane)] += dt * derivative_row[static_cast<std::size_t>(lane)];
     }
 
-    const StepCtx accepted_ctx{ .time = time + dt,
-                                .dt = 0.0,
-                                .i_app = current_density };
-    status = batch.terminalVoltage(accepted_ctx, terminal_voltage_);
-    if (status != slide::Status::Success) {
-      std::copy(backup_.begin(), backup_.end(), batch.state().raw().begin());
-      return status;
+    if (!voltage_ready) {
+      const StepCtx accepted_ctx{ .time = time + dt,
+                                  .dt = 0.0,
+                                  .i_app = current_density };
+      status = batch.terminalVoltage(accepted_ctx, terminal_voltage_);
+      if (status != slide::Status::Success) {
+        restore(batch);
+        return status;
+      }
     }
 
     const auto &layout = batch.layout();
@@ -86,7 +110,7 @@ public:
 
     status = batch.storeStressHistory(dt);
     if (status != slide::Status::Success) {
-      std::copy(backup_.begin(), backup_.end(), batch.state().raw().begin());
+      restore(batch);
       return status;
     }
     return slide::Status::Success;
@@ -95,8 +119,34 @@ public:
   std::span<const real_t> terminalVoltage() const { return terminal_voltage_; }
 
 private:
+  void backup(const SpmBatch &batch)
+  {
+    std::size_t offset{};
+    for (const int row : rollback_rows_) {
+      const auto source = batch.state().row(row);
+      std::copy(source.begin(), source.end(), backup_.begin() + static_cast<std::ptrdiff_t>(offset));
+      offset += source.size();
+    }
+  }
+
+  void restore(SpmBatch &batch)
+  {
+    std::size_t offset{};
+    for (const int row : rollback_rows_) {
+      auto destination = batch.state().row(row);
+      std::copy(backup_.begin() + static_cast<std::ptrdiff_t>(offset),
+                backup_.begin() + static_cast<std::ptrdiff_t>(offset + destination.size()),
+                destination.begin());
+      offset += destination.size();
+    }
+  }
+
   std::vector<real_t> backup_{};
   std::vector<real_t> terminal_voltage_{};
+  std::vector<int> ode_rows_{};
+  std::vector<int> rollback_rows_{};
+  int lanes_{};
+  int state_rows_{};
 };
 
 } // namespace slide::core

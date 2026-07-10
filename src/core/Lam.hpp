@@ -130,7 +130,7 @@ template <class Real>
                                          output)
 {
   const int lanes = state.n_lanes();
-  const auto L = static_cast<std::size_t>(lanes);
+  [[maybe_unused]] const auto L = static_cast<std::size_t>(lanes);
   ctx.assert_valid_for(lanes);
   for (auto *field : { &output.thickness_rate,
                        &output.active_fraction_rate,

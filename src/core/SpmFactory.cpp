@@ -19,6 +19,7 @@ SpmBatch::SpmBatch(void *implementation,
                    EvaluateFn evaluate,
                    ObserveVoltageFn observe_voltage,
                    StoreStressFn store_stress,
+                   FusedEulerFn fused_euler,
                    DestroyFn destroy,
                    int nch,
                    real_t capacity_Ah,
@@ -31,7 +32,7 @@ SpmBatch::SpmBatch(void *implementation,
                      roles)
   : implementation_{ implementation }, evaluate_{ evaluate },
     observe_voltage_{ observe_voltage },
-    store_stress_{ store_stress }, destroy_{ destroy }, nch_{ nch },
+    store_stress_{ store_stress }, fused_euler_{ fused_euler }, destroy_{ destroy }, nch_{ nch },
     capacity_Ah_{ capacity_Ah }, electrode_area_{ electrode_area },
     composition_{ composition }, layout_{ layout }, state_{ std::move(state) },
     derivative_{ std::move(derivative) }, roles_{ std::move(roles) }
@@ -47,6 +48,7 @@ SpmBatch::SpmBatch(SpmBatch &&other) noexcept
     evaluate_{ std::exchange(other.evaluate_, nullptr) },
     observe_voltage_{ std::exchange(other.observe_voltage_, nullptr) },
     store_stress_{ std::exchange(other.store_stress_, nullptr) },
+    fused_euler_{ std::exchange(other.fused_euler_, nullptr) },
     destroy_{ std::exchange(other.destroy_, nullptr) },
     nch_{ std::exchange(other.nch_, 0) },
     capacity_Ah_{ std::exchange(other.capacity_Ah_, 0.0) },
@@ -64,6 +66,7 @@ SpmBatch &SpmBatch::operator=(SpmBatch &&other) noexcept
     evaluate_ = std::exchange(other.evaluate_, nullptr);
     observe_voltage_ = std::exchange(other.observe_voltage_, nullptr);
     store_stress_ = std::exchange(other.store_stress_, nullptr);
+    fused_euler_ = std::exchange(other.fused_euler_, nullptr);
     destroy_ = std::exchange(other.destroy_, nullptr);
     nch_ = std::exchange(other.nch_, 0);
     capacity_Ah_ = std::exchange(other.capacity_Ah_, 0.0);
@@ -85,6 +88,7 @@ void SpmBatch::reset() noexcept
   evaluate_ = nullptr;
   observe_voltage_ = nullptr;
   store_stress_ = nullptr;
+  fused_euler_ = nullptr;
   destroy_ = nullptr;
   nch_ = 0;
   capacity_Ah_ = 0.0;
@@ -112,6 +116,17 @@ slide::Status SpmBatch::rhs(std::span<const real_t> trial_state,
 slide::Status SpmBatch::evaluate(const StepCtx &ctx)
 {
   return rhs(std::span<const real_t>{ state_.raw() }, derivative_.raw(), ctx);
+}
+
+slide::Status SpmBatch::fusedEuler(const StepCtx &ctx, real_t dt,
+                                   std::span<real_t> terminal_voltage)
+{
+  if (!valid() || fused_euler_ == nullptr || static_cast<int>(ctx.i_app.size()) != n_lanes()
+      || static_cast<int>(terminal_voltage.size()) != n_lanes()
+      || !is_finite(ctx.time) || !is_finite(ctx.dt) || !is_finite(dt) || !(dt > 0.0))
+    return slide::Status::Invalid_parameters;
+  BatchView state_view{ BatchShape::from(state_), state_.raw() };
+  return fused_euler_(implementation_, state_view, ctx, dt, terminal_voltage);
 }
 
 slide::Status SpmBatch::terminalVoltage(const StepCtx &ctx,
@@ -152,6 +167,12 @@ struct SpmBatchFactoryAccess
   {
     using Concrete = std::remove_cvref_t<Pipeline>;
     auto *implementation = new Concrete(std::forward<Pipeline>(pipeline));
+    SpmBatch::FusedEulerFn fused_euler = nullptr;
+    if constexpr (Concrete::supports_fused_euler)
+      fused_euler = [](void *object, BatchView state_view, const StepCtx &ctx, real_t dt, std::span<real_t> terminal_voltage) {
+        return static_cast<Concrete *>(object)->advanceEuler(
+          state_view, ctx, dt, terminal_voltage);
+      };
     return { implementation,
              [](void *object, RhsViews &views, const StepCtx &ctx) {
                return static_cast<Concrete *>(object)->evaluate(views, ctx);
@@ -163,6 +184,7 @@ struct SpmBatchFactoryAccess
              [](void *object, BatchView state_view, real_t interval) {
                static_cast<Concrete *>(object)->storeStressHistory(state_view, interval);
              },
+             fused_euler,
              [](void *object) { delete static_cast<Concrete *>(object); },
              nch,
              capacity_Ah,

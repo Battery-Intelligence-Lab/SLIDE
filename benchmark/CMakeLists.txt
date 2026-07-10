@@ -38,3 +38,12 @@ target_link_libraries(benchmark_LP_cases
   project_options
   Boost::boost
 )
+
+add_executable(benchmark_PAY1_spm benchmark_PAY1_spm.cpp)
+target_link_libraries(benchmark_PAY1_spm
+  PRIVATE
+  src
+  slide_core
+  project_warnings
+  project_options
+)

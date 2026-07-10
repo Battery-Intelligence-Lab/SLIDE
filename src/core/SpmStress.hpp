@@ -53,7 +53,7 @@ template <int NCH>
   if (!p.laresgoiti_negative.valid())
     return slide::Status::Invalid_parameters;
   for (const Domain domain : domains) {
-    const auto d = domain_index(domain);
+    [[maybe_unused]] const auto d = domain_index(domain);
     if (!(is_finite(p.partial_molar_volume[d])
           && is_finite(p.youngs_modulus[d]) && p.youngs_modulus[d] > 0.0
           && is_finite(p.poisson_ratio[d]) && p.poisson_ratio[d] < 1.0))
@@ -108,7 +108,7 @@ template <int NCH, class Real>
   constexpr int centre = NCH + 1;
   const auto L = static_cast<std::size_t>(n_lanes);
   for (const Domain domain : domains) {
-    const auto d = domain_index(domain);
+    [[maybe_unused]] const auto d = domain_index(domain);
     assert(observables.concentration[d].size() == static_cast<std::size_t>(half_nodes) * L);
     assert(output.dai_maximum_hydrostatic[d].size() == L);
   }

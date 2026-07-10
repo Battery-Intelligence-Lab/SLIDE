@@ -98,6 +98,9 @@ public:
                                   std::span<real_t> trial_derivative,
                                   const StepCtx &ctx);
   [[nodiscard]] slide::Status evaluate(const StepCtx &ctx);
+  bool hasFusedEuler() const { return fused_euler_ != nullptr; }
+  [[nodiscard]] slide::Status fusedEuler(const StepCtx &ctx, real_t dt,
+                                         std::span<real_t> terminal_voltage);
   [[nodiscard]] slide::Status terminalVoltage(const StepCtx &ctx,
                                               std::span<real_t> output);
   [[nodiscard]] slide::Status storeStressHistory(real_t interval);
@@ -107,12 +110,15 @@ private:
   using ObserveVoltageFn = slide::Status (*)(void *, const ConstBatchView &,
                                              const StepCtx &, std::span<real_t>);
   using StoreStressFn = void (*)(void *, BatchView, real_t);
+  using FusedEulerFn = slide::Status (*)(void *, BatchView, const StepCtx &, real_t,
+                                         std::span<real_t>);
   using DestroyFn = void (*)(void *);
 
   SpmBatch(void *implementation,
            EvaluateFn evaluate,
            ObserveVoltageFn observe_voltage,
            StoreStressFn store_stress,
+           FusedEulerFn fused_euler,
            DestroyFn destroy,
            int nch,
            real_t capacity_Ah,
@@ -129,6 +135,7 @@ private:
   EvaluateFn evaluate_{};
   ObserveVoltageFn observe_voltage_{};
   StoreStressFn store_stress_{};
+  FusedEulerFn fused_euler_{};
   DestroyFn destroy_{};
   int nch_{};
   real_t capacity_Ah_{};

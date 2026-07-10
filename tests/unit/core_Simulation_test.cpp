@@ -102,6 +102,77 @@ TEST_CASE("EulerLegacy advances only ODE rows and owns cumulative updates",
   }
 }
 
+TEST_CASE("EulerLegacy fused base path preserves coalesced and heterogeneous lanes",
+          "[core][stepper][coalescing]")
+{
+  constexpr int lanes = 4;
+  constexpr double dt = 0.5;
+  const auto input = make_simulation_input();
+
+  auto run = [&](bool heterogeneous) {
+    core::SpmBatch batch;
+    REQUIRE(core::buildSpmBatch(input, {}, lanes, batch) == Status::Success);
+    REQUIRE(batch.hasFusedEuler());
+    const auto &layout = batch.layout();
+    std::array<double, lanes> current{ 1.0, 1.0, 1.0, 1.0 };
+    if (heterogeneous) {
+      current[1] = 1.25;
+      batch.state().at(layout.spm.z[core::domain_index(core::Domain::neg)], 0, 2) += 1e-7;
+    }
+
+    const core::StepCtx ctx{ .time = 0.0, .dt = dt, .i_app = current };
+    REQUIRE(batch.evaluate(ctx) == Status::Success);
+    std::vector<double> expected;
+    expected.reserve(static_cast<std::size_t>(2 * batch.nch() * lanes));
+    for (const auto domain : core::domains) {
+      const auto d = core::domain_index(domain);
+      for (int mode = 0; mode < batch.nch(); ++mode)
+        for (int lane = 0; lane < lanes; ++lane)
+          expected.push_back(batch.state().at(layout.spm.z[d], mode, lane)
+                             + dt * batch.derivative().at(layout.spm.z[d], mode, lane));
+    }
+
+    core::EulerLegacy stepper{ batch };
+    REQUIRE(stepper.step(batch, current, 0.0, dt) == Status::Success);
+    std::size_t cursor{};
+    for (const auto domain : core::domains) {
+      const auto d = core::domain_index(domain);
+      for (int mode = 0; mode < batch.nch(); ++mode)
+        for (int lane = 0; lane < lanes; ++lane) {
+          const double actual = batch.state().at(layout.spm.z[d], mode, lane);
+          const double tolerance = 1e-15 + 1e-12 * std::abs(expected[cursor]);
+          CAPTURE(heterogeneous, d, mode, lane, actual, expected[cursor]);
+          REQUIRE(std::abs(actual - expected[cursor++]) <= tolerance);
+        }
+    }
+    std::array<double, lanes> observed{};
+    const core::StepCtx accepted{ .time = dt, .dt = 0.0, .i_app = current };
+    REQUIRE(batch.terminalVoltage(accepted, observed) == Status::Success);
+    for (int lane = 0; lane < lanes; ++lane)
+      REQUIRE(std::abs(observed[static_cast<std::size_t>(lane)]
+                       - stepper.terminalVoltage()[static_cast<std::size_t>(lane)])
+              <= 1e-12);
+    if (!heterogeneous)
+      for (int lane = 1; lane < lanes; ++lane)
+        REQUIRE(observed[static_cast<std::size_t>(lane)] == observed.front());
+  };
+
+  run(false);
+  run(true);
+}
+
+TEST_CASE("EulerLegacy rolls back a failed fused accepted-state observation",
+          "[core][stepper][rollback]")
+{
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(make_simulation_input(), {}, 2, batch) == Status::Success);
+  core::EulerLegacy stepper{ batch };
+  const std::vector<double> before(batch.state().raw().begin(), batch.state().raw().end());
+  constexpr std::array extreme_current{ 1e12, 1e12 };
+  REQUIRE(stepper.step(batch, extreme_current, 0.0, 1.0) == Status::Invalid_states);
+  REQUIRE(std::equal(before.begin(), before.end(), batch.state().raw().begin()));
+}
+
 TEST_CASE("Simulation façade solves a partial final CC step", "[core][simulation]")
 {
   core::Simulation simulation;
