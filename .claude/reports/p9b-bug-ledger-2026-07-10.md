@@ -46,6 +46,22 @@ remain recorded so a later pass does not revive them without new evidence.
 | Cycler misses an event exactly on a step boundary. | Indicator root exactly at 1 s with a 1 s step terminates at exactly 1 s. | REFUTED |
 | Pack topology accepts empty/zero groups or duplicate thermal endpoints. | Compile-time validation paths reject the malformed descriptors before workspace mutation. | REFUTED (read-only audit; mechanised tests pending ledger expansion) |
 | Ordinary finite thermal spans and one-cell/zero-thermal-edge packs are intrinsically invalid. | Compile validation and the scalar topology algebra support these cases; no failing invariant was found. | REFUTED (read-only audit) |
+| Sparse external CSV node labels require allocation through the maximum label. | Labels up to `UINT32_MAX` are sorted, zero-wire representatives are contracted, and only the two dense representatives are allocated in the registered case. | REFUTED (mechanised Debug/Release) |
+| A zero-ohm CSV resistor can simply be dropped. | Dropping the row disconnects or changes the graph; union-find contraction preserves the ideal-wire topology and admits the sparse-label regression. | REFUTED (mutation-sensitive construction) |
+
+## Import compatibility limits
+
+- `NetlistCsv` imports liionpack's DataFrame CSV schema, not its LTSpice
+  `.cir`/`.txt` reader format.
+- Every positive `R*` row, including `Ri*`, remains a literal resistor in
+  addition to the SLIDE cell model's Thevenin resistance. This is not a
+  behavioural-parity claim.
+- V/I magnitudes, original resistor descriptors, and external node labels are
+  not retained in `CompiledPackTopology`, so only electrical equivalence—not a
+  lossless source round trip—is currently representable.
+- The fixed 4 MiB/100,000-row trust budget intentionally excludes ordinary
+  exports of the largest 100,000-cell packs. A future validated limits policy
+  is required before claiming that import scale.
 
 ## Validation protocol
 

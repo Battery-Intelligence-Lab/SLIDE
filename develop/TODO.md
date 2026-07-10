@@ -9,6 +9,7 @@
 > Phase 9B systematic adversarial bug-hunt is active; its Experiment transaction/parser,
 > BPX parser/allocation, recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
+> The bounded liionpack CSV importer is implemented; P9-G2 still requires committed corpora, three sanitizer-instrumented fuzz drivers, and CI campaigns before the parser gate is complete.
 
 ---
 

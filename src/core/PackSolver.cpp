@@ -4,6 +4,7 @@
  */
 
 #include "PackSolver.hpp"
+#include "PackTopologyInternal.hpp"
 
 #include <Eigen/SparseCore>
 #include <Eigen/SparseLU>
@@ -12,7 +13,6 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
-#include <queue>
 
 namespace slide::core {
 namespace {
@@ -79,133 +79,6 @@ namespace {
     const auto finite = [](const real_t &value) { return is_finite(value); };
     return std::all_of(current.begin(), current.end(), finite)
            && std::all_of(node_voltage.begin(), node_voltage.end(), finite);
-  }
-
-  slide::Status validateElectricalNetlist(const CompiledElectricalNetlist &netlist,
-                                          std::size_t cell_count)
-  {
-    if (!netlist.connected || netlist.node_count < 2 || cell_count == 0
-        || netlist.node_count
-             > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
-        || static_cast<std::size_t>(netlist.node_count - 1)
-             > netlist.branches.size()
-        || cell_count > std::numeric_limits<std::uint32_t>::max()
-        || netlist.terminal_positive >= netlist.node_count
-        || netlist.terminal_negative >= netlist.node_count
-        || netlist.terminal_positive == netlist.terminal_negative
-        || netlist.branches.empty())
-      return slide::Status::Invalid_parameters;
-
-    const auto unused_node = std::numeric_limits<std::uint32_t>::max();
-    std::vector<std::pair<std::uint32_t, std::uint32_t>> cell_endpoints(
-      cell_count, { unused_node, unused_node });
-    std::vector<unsigned char> seen_cell(cell_count);
-    std::vector<std::vector<std::uint32_t>> adjacency(netlist.node_count);
-    std::vector<std::pair<std::uint32_t, std::uint32_t>> expected_sparsity;
-    if (netlist.branches.size()
-        > std::numeric_limits<std::size_t>::max() / 3)
-      return slide::Status::Invalid_parameters;
-    expected_sparsity.reserve(netlist.branches.size() * 3);
-    std::size_t cell_branches{};
-    for (const auto &branch : netlist.branches) {
-      if (branch.node_positive >= netlist.node_count
-          || branch.node_negative >= netlist.node_count
-          || branch.node_positive == branch.node_negative)
-        return slide::Status::Invalid_parameters;
-      switch (branch.kind) {
-      case ElectricalBranchKind::cell:
-        if (branch.cell >= cell_count || seen_cell[branch.cell] != 0)
-          return slide::Status::Invalid_parameters;
-        seen_cell[branch.cell] = 1;
-        cell_endpoints[branch.cell] = { branch.node_positive,
-                                        branch.node_negative };
-        ++cell_branches;
-        break;
-      case ElectricalBranchKind::resistor:
-        if (!(is_finite(branch.resistance) && branch.resistance > 0.0))
-          return slide::Status::Invalid_parameters;
-        break;
-      default:
-        return slide::Status::Invalid_parameters;
-      }
-      adjacency[branch.node_positive].push_back(branch.node_negative);
-      adjacency[branch.node_negative].push_back(branch.node_positive);
-      expected_sparsity.emplace_back(branch.node_positive, branch.node_positive);
-      expected_sparsity.emplace_back(branch.node_negative, branch.node_negative);
-      expected_sparsity.emplace_back(std::min(branch.node_positive,
-                                              branch.node_negative),
-                                     std::max(branch.node_positive,
-                                              branch.node_negative));
-    }
-    if (cell_branches != cell_count
-        || std::any_of(seen_cell.begin(), seen_cell.end(), [](unsigned char seen) {
-             return seen == 0;
-           }))
-      return slide::Status::Invalid_parameters;
-
-    std::sort(expected_sparsity.begin(), expected_sparsity.end());
-    expected_sparsity.erase(
-      std::unique(expected_sparsity.begin(), expected_sparsity.end()),
-      expected_sparsity.end());
-    if (netlist.nodal_sparsity != expected_sparsity)
-      return slide::Status::Invalid_parameters;
-
-    std::vector<unsigned char> visited(netlist.node_count);
-    std::queue<std::uint32_t> pending;
-    pending.push(netlist.terminal_positive);
-    visited[netlist.terminal_positive] = 1;
-    while (!pending.empty()) {
-      const auto node = pending.front();
-      pending.pop();
-      for (const auto next : adjacency[node])
-        if (visited[next] == 0) {
-          visited[next] = 1;
-          pending.push(next);
-        }
-    }
-    if (std::any_of(visited.begin(), visited.end(), [](unsigned char seen) {
-          return seen == 0;
-        }))
-      return slide::Status::Invalid_parameters;
-
-    if (!netlist.series_parallel_ladder)
-      return slide::Status::Success;
-    if (netlist.ladder_offsets.size() < 2
-        || netlist.ladder_nodes.size() != netlist.ladder_offsets.size()
-        || netlist.ladder_nodes.size() != netlist.node_count
-        || netlist.ladder_cells.size() != cell_count
-        || netlist.branches.size() != cell_count
-        || netlist.ladder_offsets.front() != 0
-        || netlist.ladder_offsets.back() != netlist.ladder_cells.size()
-        || netlist.ladder_nodes.front() != netlist.terminal_positive
-        || netlist.ladder_nodes.back() != netlist.terminal_negative)
-      return slide::Status::Invalid_parameters;
-
-    std::vector<unsigned char> seen_ladder_cell(cell_count);
-    std::vector<unsigned char> seen_ladder_node(netlist.node_count);
-    for (const auto node : netlist.ladder_nodes) {
-      if (node >= netlist.node_count || seen_ladder_node[node] != 0)
-        return slide::Status::Invalid_parameters;
-      seen_ladder_node[node] = 1;
-    }
-    for (std::size_t layer = 0; layer + 1 < netlist.ladder_offsets.size(); ++layer) {
-      const auto begin = netlist.ladder_offsets[layer];
-      const auto end = netlist.ladder_offsets[layer + 1];
-      if (begin >= end || end > netlist.ladder_cells.size())
-        return slide::Status::Invalid_parameters;
-      for (std::uint32_t i = begin; i < end; ++i) {
-        const auto cell = netlist.ladder_cells[i];
-        if (cell >= cell_count || seen_ladder_cell[cell] != 0
-            || cell_endpoints[cell]
-                 != std::pair{ netlist.ladder_nodes[layer],
-                               netlist.ladder_nodes[layer + 1] })
-          return slide::Status::Invalid_parameters;
-        seen_ladder_cell[cell] = 1;
-      }
-    }
-    if (std::any_of(seen_ladder_cell.begin(), seen_ladder_cell.end(), [](unsigned char seen) { return seen == 0; }))
-      return slide::Status::Invalid_parameters;
-    return slide::Status::Success;
   }
 
 } // namespace
@@ -325,7 +198,7 @@ SolverWorkspace &SolverWorkspace::operator=(SolverWorkspace &&) noexcept = defau
 slide::Status SolverWorkspace::configure(const CompiledElectricalNetlist &netlist,
                                          std::size_t cell_count)
 {
-  const auto validation = validateElectricalNetlist(netlist, cell_count);
+  const auto validation = detail::validateElectricalNetlist(netlist, cell_count);
   if (validation != slide::Status::Success)
     return validation;
   auto candidate = std::make_unique<Impl>();

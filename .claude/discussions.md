@@ -261,6 +261,14 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Validation:** Debug and fast-math Release each pass Experiment 199, ParameterSet 1,495, parser-allocation 906, ThermalLumped 25, CompiledCurve 163, PackSolver 667, and PackStepper 172 assertions. No long trajectory was run; Experiment simulations are bounded unit scenarios.
 - **Next:** implement and fuzz the missing liionpack-compatible netlist CSV parser, then complete the Experiment/BPX/netlist P9-G2 corpus and CI driver.
 
+## 2026-07-10 — Phase 9B liionpack CSV importer
+
+- **Schema decision:** follow upstream's `desc,node1,node2,value` DataFrame CSV and accept extra generated coordinate columns. `V*` is a cell from node1 (+) to node2 (−); positive `R*` remains a resistor; zero `R*` contracts endpoints; one excluded `I*` row defines the positive/negative terminals.
+- **Architecture:** arbitrary graphs compile directly into a local `CompiledPackTopology`; a shared internal finalizer now owns metadata plus the exact validator used by `SolverWorkspace`. Sparse uint32 labels are sorted and densely remapped only after deterministic union-find contraction.
+- **Evidence:** the initial stub made 3 valid/file assertions red. Final Debug and fast-math Release each pass 728 importer assertions, PackTopology 66, PackSolver 667, and the expanded persistent parser-allocation gate 913. The pure-cell 2s2p CSV receives the same ladder offsets/cell order as the combinator fast path.
+- **Claim limits:** literal `Ri*` can add resistance beyond the model-owned cell resistance; V/I magnitudes are ignored after validation; descriptors/node labels are not retained for lossless export; and the 4 MiB budget does not admit ordinary 100,000-cell tables. This is graph-schema compatibility, not liionpack waveform parity.
+- **Next:** add three libFuzzer drivers, committed corpora/dictionaries, and a bounded Clang ASan+UBSan campaign; P9-G2 remains open until that evidence is green.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

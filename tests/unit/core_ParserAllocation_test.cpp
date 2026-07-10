@@ -4,6 +4,7 @@
  */
 
 #include "../../src/core/Experiment.hpp"
+#include "../../src/core/NetlistCsv.hpp"
 #include "../../src/core/ParameterSet.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -340,4 +341,31 @@ TEST_CASE("BPX parser propagates every ParameterSet node allocation failure atom
     REQUIRE(value != nullptr);
     CHECK(*value == 7.0);
   }
+}
+
+TEST_CASE("netlist CSV maps a late cell-vector allocation failure atomically",
+          "[core][pack][netlist][parser][allocation][P9]")
+{
+  std::string csv{ "desc,node1,node2,value\n" };
+  for (std::size_t cell = 0; cell < 37; ++cell)
+    csv += "V" + std::to_string(cell) + ",1,0,4.2\n";
+  csv += "I0,1,0,5\n";
+
+  core::CompiledPackTopology sentinel;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::cell({ .archetype = "sentinel" }) }, sentinel)
+          == Status::Success);
+  core::CompiledPackTopology output = sentinel;
+  core::NetlistCsvDiagnostic diagnostic;
+  Status status{};
+  {
+    FailAllocationOfSize failure{ 37U * sizeof(core::CompiledCell), 0, true };
+    status = core::parseLiionpackNetlistCsv(csv, output, diagnostic);
+  }
+  REQUIRE(allocation_failure_triggered);
+  CHECK(status == Status::Numerical_failure);
+  REQUIRE(output.cells.size() == 1);
+  CHECK(output.cells[0].path == "c00");
+  CHECK(output.cells[0].archetype == "sentinel");
+  CHECK(output.electrical.branches.size() == 1);
 }

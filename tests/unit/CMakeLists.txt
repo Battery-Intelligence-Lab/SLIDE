@@ -102,6 +102,9 @@ target_link_libraries(unit_test_core_P1G4_restart PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_PackTopology core_PackTopology_test.cpp)
 target_link_libraries(unit_test_core_PackTopology PRIVATE slide_core)
 
+add_executable_with_coverage_and_test(unit_test_core_NetlistCsv core_NetlistCsv_test.cpp)
+target_link_libraries(unit_test_core_NetlistCsv PRIVATE slide_core)
+
 # Phase 2: batch Thevenin boundary, persistent sparse workspace, and ladder Mode B
 add_executable_with_coverage_and_test(unit_test_core_PackSolver core_PackSolver_test.cpp)
 target_link_libraries(unit_test_core_PackSolver PRIVATE slide_core)
