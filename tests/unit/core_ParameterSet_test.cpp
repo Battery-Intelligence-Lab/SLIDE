@@ -35,6 +35,15 @@ double interpolate(const core::OCVCurve &curve, double x)
   return curve.value[i] + fraction * (curve.value[i + 1] - curve.value[i]);
 }
 
+void replaceRequired(std::string &text,
+                     std::string_view needle,
+                     std::string_view replacement)
+{
+  const auto position = text.find(needle);
+  REQUIRE(position != std::string::npos);
+  text.replace(position, needle.size(), replacement);
+}
+
 constexpr std::string_view bpx_fixture = R"json({
   "Header": {"BPX": "1.0.0", "Title": "LGM50 \u03bc fixture", "Model": "SPM"},
   "Parameterisation": {
@@ -164,4 +173,76 @@ TEST_CASE("P7-G3 BPX 1.x tables absorb exactly and malformed input is atomic",
   CHECK(core::ParameterSet::fromBpxJson(old_version, parameters, diagnostic)
         == Status::Invalid_parameters);
   CHECK(parameters.size() == previous_size);
+}
+
+TEST_CASE("BPX 1.x semantic functions and legacy headers are absorbed safely",
+          "[core][parameters][BPX][functions]")
+{
+  std::string functional{ bpx_fixture };
+  replaceRequired(functional, "\"BPX\": \"1.0.0\"", "\"BPX\": 1.0");
+  replaceRequired(functional, "\"Model\": \"SPM\"", "\"Model\": \"DFN\"");
+  replaceRequired(functional,
+                  "\"Diffusivity [m2.s-1]\": 3.3e-14",
+                  "\"Diffusivity [m2.s-1]\": \"3.3e-14\",\n"
+                  "      \"Diffusivity activation energy [J.mol-1]\": 30000.0,\n"
+                  "      \"Porosity\": 0.25398416831491194");
+  replaceRequired(
+    functional,
+    "\"OCP [V]\": {\"x\": [0.0, 0.5, 1.0], \"y\": [1.9793, 0.25, 0.1]}",
+    "\"OCP [V]\": \"0.1 + 0.2*x + exp(-2*x) + 0.01*cosh(x) - "
+    "0.02*tanh(3*(x-0.5)) + 0.001*x**2\"");
+  replaceRequired(
+    functional,
+    "\"OCP [V]\": {\"x\": [0.0, 0.5, 1.0], \"y\": [4.5, 3.8, 3.0]}",
+    "\"OCP [V]\": \"4.5 - 1.5*x\"");
+
+  core::ParameterSet parameters;
+  std::string diagnostic;
+  INFO(diagnostic);
+  REQUIRE(core::ParameterSet::fromBpxJson(functional, parameters, diagnostic)
+          == Status::Success);
+  CHECK(diagnostic.empty());
+  CHECK(*parameters.findScalar("Negative electrode porosity")
+        == 0.25398416831491194);
+  CHECK(*parameters.findScalar(
+          "Negative particle diffusivity activation energy [J.mol-1]")
+        == 30000.0);
+  const auto *curve = parameters.findCurve("Negative electrode OCP [V]");
+  REQUIRE(curve != nullptr);
+  const double x = 0.37;
+  const double expected = 0.1 + 0.2 * x + std::exp(-2.0 * x)
+                          + 0.01 * std::cosh(x)
+                          - 0.02 * std::tanh(3.0 * (x - 0.5))
+                          + 0.001 * x * x;
+  CHECK(std::abs(interpolate(*curve, x) - expected) <= 1e-6);
+
+  core::SpmFactoryInput input;
+  REQUIRE(parameters.toSpmInput(input) == Status::Success);
+  CHECK(input.design.electrode[core::domain_index(core::Domain::neg)]
+          .active_material.D_s.activation_energy
+        == 30000.0);
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, batch) == Status::Success);
+
+  const auto original_size = parameters.size();
+  std::string malicious{ functional };
+  replaceRequired(malicious,
+                  "\"OCP [V]\": \"4.5 - 1.5*x\"",
+                  "\"OCP [V]\": \"__import__(x)\"");
+  CHECK(core::ParameterSet::fromBpxJson(malicious, parameters, diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(parameters.size() == original_size);
+  CHECK(diagnostic.find("BPX expression") != std::string::npos);
+
+  std::string variable_diffusivity{ functional };
+  replaceRequired(variable_diffusivity,
+                  "\"Diffusivity [m2.s-1]\": \"3.3e-14\"",
+                  "\"Diffusivity [m2.s-1]\": \"3.3e-14*(1+x)\"");
+  CHECK(core::ParameterSet::fromBpxJson(variable_diffusivity,
+                                        parameters,
+                                        diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(diagnostic.find("state-dependent BPX diffusivity")
+        != std::string::npos);
+  CHECK(parameters.size() == original_size);
 }

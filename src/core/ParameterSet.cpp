@@ -325,7 +325,11 @@ slide::Status ParameterSet::toSpmInput(SpmFactoryInput &output) const
                                       ? *findScalar("Total heat transfer coefficient [W.m-2.K-1]")
                                       : 0.0;
   candidate.design.thermal.density = 1626.0;
+  if (const auto *density = findScalar("Cell density [kg.m-3]"))
+    candidate.design.thermal.density = *density;
   candidate.design.thermal.heat_capacity = 750.0;
+  if (const auto *heat_capacity = findScalar("Cell specific heat capacity [J.kg-1.K-1]"))
+    candidate.design.thermal.heat_capacity = *heat_capacity;
   candidate.initial_temperature = *findScalar("Initial temperature [K]");
   candidate.initial_sei_thickness = *findScalar("Initial SEI thickness [m]");
   candidate.sei_resistivity_area = findScalar("SEI resistivity [Ohm.m]") != nullptr
@@ -360,6 +364,8 @@ slide::Status ParameterSet::toSpmInput(SpmFactoryInput &output) const
     const auto *radius = scalar(" particle radius [m]");
     const auto *cs_max = findScalar(names.concentration);
     const auto *diffusivity = findScalar(names.diffusivity);
+    const auto *diffusivity_activation = scalar(
+      " particle diffusivity activation energy [J.mol-1]");
     const auto *minimum = scalar(" electrode minimum stoichiometry");
     const auto *maximum = scalar(" electrode maximum stoichiometry");
     const auto *reaction = scalar(" electrode reaction rate constant [mol.m-2.s-1]");
@@ -376,7 +382,9 @@ slide::Status ParameterSet::toSpmInput(SpmFactoryInput &output) const
     electrode.active_material.x_0 = names.domain == Domain::neg ? *minimum : *maximum;
     electrode.active_material.x_100 = names.domain == Domain::neg ? *maximum : *minimum;
     electrode.active_material.D_s = { .reference_value = *diffusivity,
-                                      .activation_energy = 0.0,
+                                      .activation_energy = diffusivity_activation == nullptr
+                                                             ? 0.0
+                                                             : *diffusivity_activation,
                                       .reference_temperature = candidate.design.thermal.reference_temperature };
     electrode.active_material.k_ct = { .reference_value = *reaction,
                                        .activation_energy = reaction_activation == nullptr ? 0.0 : *reaction_activation,
@@ -420,6 +428,302 @@ namespace {
     std::string string{};
     std::vector<JsonValue> array{};
     std::map<std::string, JsonValue, std::less<>> object{};
+  };
+
+  /** Strict evaluator for BPX's documented one-variable expression language. */
+  class BpxExpression
+  {
+  public:
+    bool compile(std::string_view source, std::string &diagnostic)
+    {
+      source_ = source;
+      cursor_ = 0;
+      nodes_.clear();
+      diagnostic.clear();
+      if (source.empty() || source.size() > 65'536)
+        return fail(diagnostic, "BPX expression is empty or too long");
+      root_ = parseExpression(diagnostic, 0);
+      skipSpace();
+      if (root_ < 0 || cursor_ != source_.size()) {
+        if (diagnostic.empty())
+          fail(diagnostic, "unexpected BPX expression token");
+        return false;
+      }
+      return true;
+    }
+
+    bool evaluate(real_t x, real_t &output) const
+    {
+      return root_ >= 0 && evaluateNode(root_, x, output, 0)
+             && is_finite(output);
+    }
+
+  private:
+    enum class Kind : unsigned char {
+      literal,
+      variable,
+      add,
+      subtract,
+      multiply,
+      divide,
+      power,
+      negate,
+      exponential,
+      hyperbolic_tangent,
+      hyperbolic_cosine
+    };
+
+    struct Node
+    {
+      Kind kind{ Kind::literal };
+      real_t value{};
+      int left{ -1 };
+      int right{ -1 };
+    };
+
+    int append(Node node, std::string &diagnostic)
+    {
+      if (nodes_.size() >= 1024) {
+        fail(diagnostic, "BPX expression exceeds 1024 operations");
+        return -1;
+      }
+      nodes_.push_back(node);
+      return static_cast<int>(nodes_.size() - 1);
+    }
+
+    int parseExpression(std::string &diagnostic, int depth)
+    {
+      if (depth > 128) {
+        fail(diagnostic, "BPX expression nesting exceeds 128 levels");
+        return -1;
+      }
+      int left = parseTerm(diagnostic, depth + 1);
+      while (left >= 0) {
+        skipSpace();
+        Kind kind;
+        if (take('+'))
+          kind = Kind::add;
+        else if (take('-'))
+          kind = Kind::subtract;
+        else
+          break;
+        const int right = parseTerm(diagnostic, depth + 1);
+        if (right < 0)
+          return -1;
+        left = append({ .kind = kind, .left = left, .right = right }, diagnostic);
+      }
+      return left;
+    }
+
+    int parseTerm(std::string &diagnostic, int depth)
+    {
+      int left = parseUnary(diagnostic, depth + 1);
+      while (left >= 0) {
+        skipSpace();
+        Kind kind;
+        if (source_.substr(cursor_).starts_with("**"))
+          break;
+        if (take('*'))
+          kind = Kind::multiply;
+        else if (take('/'))
+          kind = Kind::divide;
+        else
+          break;
+        const int right = parseUnary(diagnostic, depth + 1);
+        if (right < 0)
+          return -1;
+        left = append({ .kind = kind, .left = left, .right = right }, diagnostic);
+      }
+      return left;
+    }
+
+    int parseUnary(std::string &diagnostic, int depth)
+    {
+      if (depth > 128) {
+        fail(diagnostic, "BPX expression nesting exceeds 128 levels");
+        return -1;
+      }
+      skipSpace();
+      if (take('+'))
+        return parseUnary(diagnostic, depth + 1);
+      if (take('-')) {
+        const int child = parseUnary(diagnostic, depth + 1);
+        return child < 0 ? -1
+                         : append({ .kind = Kind::negate, .left = child }, diagnostic);
+      }
+      return parsePower(diagnostic, depth + 1);
+    }
+
+    int parsePower(std::string &diagnostic, int depth)
+    {
+      int left = parsePrimary(diagnostic, depth + 1);
+      skipSpace();
+      if (left >= 0 && consume("**")) {
+        const int right = parseUnary(diagnostic, depth + 1);
+        if (right < 0)
+          return -1;
+        left = append({ .kind = Kind::power, .left = left, .right = right }, diagnostic);
+      }
+      return left;
+    }
+
+    int parsePrimary(std::string &diagnostic, int depth)
+    {
+      if (depth > 128) {
+        fail(diagnostic, "BPX expression nesting exceeds 128 levels");
+        return -1;
+      }
+      skipSpace();
+      if (take('(')) {
+        const int result = parseExpression(diagnostic, depth + 1);
+        skipSpace();
+        if (result < 0 || !take(')')) {
+          fail(diagnostic, "expected ')' in BPX expression");
+          return -1;
+        }
+        return result;
+      }
+      if (cursor_ < source_.size()
+          && (std::isdigit(static_cast<unsigned char>(source_[cursor_]))
+              || source_[cursor_] == '.')) {
+        const char *first = source_.data() + cursor_;
+        const char *last = source_.data() + source_.size();
+        real_t value{};
+        const auto parsed = std::from_chars(first, last, value, std::chars_format::general);
+        if (parsed.ec != std::errc{} || parsed.ptr == first || !is_finite(value)) {
+          fail(diagnostic, "invalid number in BPX expression");
+          return -1;
+        }
+        cursor_ = static_cast<std::size_t>(parsed.ptr - source_.data());
+        return append({ .kind = Kind::literal, .value = value }, diagnostic);
+      }
+      if (cursor_ < source_.size()
+          && std::isalpha(static_cast<unsigned char>(source_[cursor_]))) {
+        const std::size_t begin = cursor_++;
+        while (cursor_ < source_.size()
+               && std::isalnum(static_cast<unsigned char>(source_[cursor_])))
+          ++cursor_;
+        const auto identifier = source_.substr(begin, cursor_ - begin);
+        if (identifier == "x")
+          return append({ .kind = Kind::variable }, diagnostic);
+        Kind kind;
+        if (identifier == "exp")
+          kind = Kind::exponential;
+        else if (identifier == "tanh")
+          kind = Kind::hyperbolic_tangent;
+        else if (identifier == "cosh")
+          kind = Kind::hyperbolic_cosine;
+        else {
+          fail(diagnostic, "unsupported BPX expression identifier");
+          return -1;
+        }
+        skipSpace();
+        if (!take('(')) {
+          fail(diagnostic, "expected '(' after BPX function");
+          return -1;
+        }
+        const int child = parseExpression(diagnostic, depth + 1);
+        skipSpace();
+        if (child < 0 || !take(')')) {
+          fail(diagnostic, "expected ')' after BPX function argument");
+          return -1;
+        }
+        return append({ .kind = kind, .left = child }, diagnostic);
+      }
+      fail(diagnostic, "expected value in BPX expression");
+      return -1;
+    }
+
+    bool evaluateNode(int index, real_t x, real_t &output, int depth) const
+    {
+      if (depth > 128 || index < 0
+          || static_cast<std::size_t>(index) >= nodes_.size())
+        return false;
+      const auto &node = nodes_[static_cast<std::size_t>(index)];
+      if (node.kind == Kind::literal) {
+        output = node.value;
+        return true;
+      }
+      if (node.kind == Kind::variable) {
+        output = x;
+        return is_finite(output);
+      }
+      real_t left{};
+      if (!evaluateNode(node.left, x, left, depth + 1))
+        return false;
+      if (node.kind == Kind::negate)
+        output = -left;
+      else if (node.kind == Kind::exponential)
+        output = std::exp(left);
+      else if (node.kind == Kind::hyperbolic_tangent)
+        output = std::tanh(left);
+      else if (node.kind == Kind::hyperbolic_cosine)
+        output = std::cosh(left);
+      else {
+        real_t right{};
+        if (!evaluateNode(node.right, x, right, depth + 1))
+          return false;
+        switch (node.kind) {
+        case Kind::add:
+          output = left + right;
+          break;
+        case Kind::subtract:
+          output = left - right;
+          break;
+        case Kind::multiply:
+          output = left * right;
+          break;
+        case Kind::divide:
+          if (right == 0.0)
+            return false;
+          output = left / right;
+          break;
+        case Kind::power:
+          output = std::pow(left, right);
+          break;
+        default:
+          return false;
+        }
+      }
+      return is_finite(output);
+    }
+
+    void skipSpace()
+    {
+      while (cursor_ < source_.size()
+             && std::isspace(static_cast<unsigned char>(source_[cursor_])))
+        ++cursor_;
+    }
+
+    bool take(char token)
+    {
+      if (cursor_ < source_.size() && source_[cursor_] == token) {
+        ++cursor_;
+        return true;
+      }
+      return false;
+    }
+
+    bool consume(std::string_view token)
+    {
+      if (!source_.substr(cursor_).starts_with(token))
+        return false;
+      cursor_ += token.size();
+      return true;
+    }
+
+    bool fail(std::string &diagnostic, std::string_view message)
+    {
+      if (diagnostic.empty())
+        diagnostic = std::string{ message } + " at expression byte "
+                     + std::to_string(cursor_);
+      return false;
+    }
+
+    std::string_view source_{};
+    std::size_t cursor_{};
+    std::vector<Node> nodes_{};
+    int root_{ -1 };
   };
 
   class JsonParser
@@ -697,10 +1001,55 @@ namespace {
     return current;
   }
 
-  std::optional<OCVCurve> jsonCurve(const JsonValue &value)
+  std::optional<real_t> jsonConstant(const JsonValue &value,
+                                     std::string &diagnostic)
+  {
+    if (value.kind == JsonValue::Kind::number)
+      return value.number;
+    if (value.kind != JsonValue::Kind::string)
+      return std::nullopt;
+    BpxExpression expression;
+    if (!expression.compile(value.string, diagnostic))
+      return std::nullopt;
+    std::array<real_t, 3> samples{};
+    if (!expression.evaluate(0.0, samples[0])
+        || !expression.evaluate(0.5, samples[1])
+        || !expression.evaluate(1.0, samples[2])) {
+      diagnostic = "BPX scalar expression is non-finite";
+      return std::nullopt;
+    }
+    const real_t tolerance = 64.0 * std::numeric_limits<real_t>::epsilon()
+                             * std::max(std::numeric_limits<real_t>::min(),
+                                        std::abs(samples[0]));
+    if (std::abs(samples[1] - samples[0]) > tolerance
+        || std::abs(samples[2] - samples[0]) > tolerance) {
+      diagnostic = "state-dependent BPX diffusivity is not supported by the constant-D SPM composition";
+      return std::nullopt;
+    }
+    return samples[0];
+  }
+
+  std::optional<OCVCurve> jsonCurve(const JsonValue &value,
+                                    std::string &diagnostic)
   {
     if (value.kind == JsonValue::Kind::number)
       return OCVCurve{ { 0.0, 1.0 }, { value.number, value.number } };
+    if (value.kind == JsonValue::Kind::string) {
+      BpxExpression expression;
+      if (!expression.compile(value.string, diagnostic))
+        return std::nullopt;
+      const auto curve = sampleCurve([&expression](real_t x) {
+        real_t value_at_x{};
+        return expression.evaluate(x, value_at_x)
+                 ? value_at_x
+                 : std::numeric_limits<real_t>::quiet_NaN();
+      });
+      if (!validCurve(curve)) {
+        diagnostic = "BPX function is non-finite on stoichiometry [0,1]";
+        return std::nullopt;
+      }
+      return curve;
+    }
     if (value.kind != JsonValue::Kind::object)
       return std::nullopt;
     const auto x = value.object.find("x");
@@ -736,11 +1085,18 @@ slide::Status ParameterSet::fromBpxJson(std::string_view json,
   }
   const auto *version = jsonPath(root, { "Header", "BPX" });
   const auto *model = jsonPath(root, { "Header", "Model" });
-  if (version == nullptr || version->kind != JsonValue::Kind::string
-      || !version->string.starts_with("1.") || model == nullptr
+  std::string version_text;
+  if (version != nullptr && version->kind == JsonValue::Kind::string
+      && version->string.starts_with("1."))
+    version_text = version->string;
+  else if (version != nullptr && version->kind == JsonValue::Kind::number
+           && version->number >= 1.0 && version->number < 2.0)
+    version_text = "1.0 (legacy numeric header)";
+  if (version_text.empty() || model == nullptr
       || model->kind != JsonValue::Kind::string
-      || (model->string != "SPM" && model->string != "Partial")) {
-    diagnostic = "expected BPX 1.x Header with Model SPM or Partial";
+      || (model->string != "SPM" && model->string != "SPMe"
+          && model->string != "DFN" && model->string != "Partial")) {
+    diagnostic = "expected BPX 1.x Header with Model SPM, SPMe, DFN, or Partial";
     return slide::Status::Invalid_parameters;
   }
   ParameterSet candidate;
@@ -751,7 +1107,7 @@ slide::Status ParameterSet::fromBpxJson(std::string_view json,
     if (value == nullptr)
       return !required;
     return value->kind == JsonValue::Kind::number
-           && candidate.set(std::string{ name }, value->number, "BPX " + version->string)
+           && candidate.set(std::string{ name }, value->number, "BPX " + version_text)
                 == slide::Status::Success;
   };
   const auto requireCellScalar = [&](std::string_view bpx_name,
@@ -801,7 +1157,16 @@ slide::Status ParameterSet::fromBpxJson(std::string_view json,
     auto requireNumber = [&](std::string_view field, std::string name) {
       const auto *value = path(field);
       return value != nullptr && value->kind == JsonValue::Kind::number
-             && candidate.set(std::move(name), value->number, "BPX " + version->string)
+             && candidate.set(std::move(name), value->number, "BPX " + version_text)
+                  == slide::Status::Success;
+    };
+    auto requireConstant = [&](std::string_view field, std::string name) {
+      const auto *value = path(field);
+      if (value == nullptr)
+        return false;
+      auto constant = jsonConstant(*value, diagnostic);
+      return constant.has_value()
+             && candidate.set(std::move(name), *constant, "BPX " + version_text)
                   == slide::Status::Success;
     };
     if (!requireNumber("Thickness [m]", prefix + " electrode thickness [m]")
@@ -809,10 +1174,11 @@ slide::Status ParameterSet::fromBpxJson(std::string_view json,
         || !requireNumber("Maximum stoichiometry", prefix + " electrode maximum stoichiometry")
         || !requireNumber("Maximum concentration [mol.m-3]", std::string{ electrode.concentration_name })
         || !requireNumber("Particle radius [m]", prefix + " particle radius [m]")
-        || !requireNumber("Diffusivity [m2.s-1]", std::string{ electrode.diffusivity_name })
+        || !requireConstant("Diffusivity [m2.s-1]", std::string{ electrode.diffusivity_name })
         || !requireNumber("Reaction rate constant [mol.m-2.s-1]",
                           prefix + " electrode reaction rate constant [mol.m-2.s-1]")) {
-      diagnostic = "missing or unsupported BPX electrode scalar (function-valued D/k requires a table canonicalisation pass)";
+      if (diagnostic.empty())
+        diagnostic = "missing or unsupported BPX electrode scalar";
       return slide::Status::Invalid_parameters;
     }
     const auto *area = path("Surface area per unit volume [m-1]");
@@ -824,26 +1190,47 @@ slide::Status ParameterSet::fromBpxJson(std::string_view json,
       return slide::Status::Invalid_parameters;
     }
     const real_t fraction = area->number * radius->number / 3.0;
+    const auto *porosity = path("Porosity");
+    const real_t porosity_value = porosity != nullptr
+                                      && porosity->kind == JsonValue::Kind::number
+                                    ? porosity->number
+                                    : 1.0 - fraction;
+    const std::string porosity_provenance = porosity != nullptr
+                                                && porosity->kind == JsonValue::Kind::number
+                                              ? "BPX " + version_text
+                                              : "SPM complement of BPX a*R/3";
     if (candidate.set(prefix + " electrode active material volume fraction", fraction, "derived exactly from BPX a*R/3") != slide::Status::Success
-        || candidate.set(prefix + " electrode porosity", 1.0 - fraction, "SPM complement of BPX a*R/3") != slide::Status::Success) {
+        || candidate.set(prefix + " electrode porosity", porosity_value, porosity_provenance) != slide::Status::Success) {
       diagnostic = "invalid BPX derived active fraction";
       return slide::Status::Invalid_parameters;
     }
     const auto *ocp = path("OCP [V]");
-    const auto curve = ocp == nullptr ? std::nullopt : jsonCurve(*ocp);
+    const auto curve = ocp == nullptr ? std::nullopt : jsonCurve(*ocp, diagnostic);
     if (!curve.has_value()
-        || candidate.set(std::string{ electrode.ocp_name }, *curve, "BPX " + version->string + " exact table")
+        || candidate.set(std::string{ electrode.ocp_name }, *curve, "BPX " + version_text + " canonical curve")
              != slide::Status::Success) {
-      diagnostic = "BPX OCP must be a numeric constant or exact {x,y} table";
+      if (diagnostic.empty())
+        diagnostic = "BPX OCP must be a numeric constant, function, or exact {x,y} table";
       return slide::Status::Invalid_parameters;
     }
     const auto *activation = path("Reaction rate constant activation energy [J.mol-1]");
-    if (activation != nullptr && activation->kind == JsonValue::Kind::number
-        && candidate.set(prefix + " electrode reaction rate activation energy [J.mol-1]",
-                         activation->number,
-                         "BPX " + version->string)
-             != slide::Status::Success) {
+    if (activation != nullptr
+        && (activation->kind != JsonValue::Kind::number
+            || candidate.set(prefix + " electrode reaction rate activation energy [J.mol-1]",
+                             activation->number,
+                             "BPX " + version_text)
+                 != slide::Status::Success)) {
       diagnostic = "invalid BPX reaction-rate activation energy";
+      return slide::Status::Invalid_parameters;
+    }
+    const auto *diffusion_activation = path("Diffusivity activation energy [J.mol-1]");
+    if (diffusion_activation != nullptr
+        && (diffusion_activation->kind != JsonValue::Kind::number
+            || candidate.set(prefix + " particle diffusivity activation energy [J.mol-1]",
+                             diffusion_activation->number,
+                             "BPX " + version_text)
+                 != slide::Status::Success)) {
+      diagnostic = "invalid BPX diffusivity activation energy";
       return slide::Status::Invalid_parameters;
     }
   }
