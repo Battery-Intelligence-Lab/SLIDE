@@ -67,7 +67,8 @@ private:
 };
 
 enum class PackSolveMode : unsigned char { sparse_newton,
-                                           ladder };
+                                           ladder,
+                                           relaxation };
 
 struct PackSolveDiagnostics
 {
@@ -77,6 +78,9 @@ struct PackSolveDiagnostics
   int jacobian_refreshes{};
   int source_steps{};
   real_t residual_norm{};
+  real_t constraint_drift{};
+  real_t constraint_bound{};
+  real_t relaxation_gain{};
 };
 
 struct PackSolution
@@ -125,6 +129,7 @@ public:
                                     PackSolveMode mode = PackSolveMode::sparse_newton,
                                     real_t current_tolerance = 1e-10,
                                     int max_iterations = 8);
+  [[nodiscard]] slide::Status setRelaxationGain(real_t alpha);
   void invalidate()
   {
     workspace_.invalidate();
@@ -147,6 +152,8 @@ private:
                                           int iteration,
                                           int consecutive_divergence);
   [[nodiscard]] slide::Status solveLadder(real_t applied_current);
+  [[nodiscard]] slide::Status solveRelaxation(real_t applied_current,
+                                              int iteration);
 
   CompiledPackTopology topology_{};
   PackTheveninSystem thevenin_{};
@@ -161,8 +168,13 @@ private:
   std::vector<real_t> layer_voltage_{};
   std::vector<real_t> rollback_cell_current_{};
   std::vector<real_t> rollback_node_voltage_{};
+  std::vector<real_t> relaxation_diagonal_{};
+  std::vector<real_t> relaxation_rhs_{};
+  std::vector<real_t> relaxation_target_{};
   real_t candidate_terminal_voltage_{};
   real_t residual_norm_{};
+  real_t relaxation_alpha_{ 2.0 / 3.0 };
+  real_t initial_constraint_drift_{};
   bool configured_{};
   bool has_solution_{};
 };

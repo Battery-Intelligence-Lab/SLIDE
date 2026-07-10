@@ -961,6 +961,11 @@ Deliver: WR+Baumgarte advance, gain selection rule, index-1 topology check, Mode
 **Gates:** P4-G1 steady-state branch currents within 0.1% of Mode A on 16p heterogeneous pack. P4-G2 constraint drift
 bounded per theory (registered α-dependent band). P4-G3 10⁵-cell pack advances (structural check: memory < 1 GB,
 zero per-step allocations; no timing claim).
+**COMPLETE 2026-07-10:** Mode C is a preallocated weighted-Jacobi waveform update over the compiled grounded nodal
+system with explicit Baumgarte gain and `(1−α)^k` terminal-KCL bound diagnostics; non-index-1 metadata refuses it.
+P4-G1 matches Mode A within 0.1% on heterogeneous 16p; P4-G2's measured drift stays below its registered bound.
+P4-G3/PAY-3 performs two accepted 100,000-cell SPM pack advances, uses a 24 MB arena state (<1 GB), allocates
+exactly zero times on the measured step, and performs zero numeric factorizations.
 
 ### Phase 5 — Experiment & Cycler v2
 Deliver: C++ PyBaMM-grammar parser, Experiment→segment compiler, CC/CV/CCCV/power/rest + drive cycles on the new core,
@@ -1074,4 +1079,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | P2-G5 Mode-B admission | PASSED — linear 16p with 1% R spread meets the 1e-8 A band; SPM with 2% active-content and 5% resistance spread over a 1C-to-taper trajectory has max relative branch-current error 8.49e-14 at 16p and 3.10e-13 at 256p vs Mode A, far below 1e-3. Mode B remains compile-detected ladder-only. |
 | 2026-07-10 | PAY-2 Phase-2 payoff | PASSED ABORT GATE / TARGET FALSIFIED — reproducible heterogeneous 16s4p × 1,800-step harness, three alternating Release repetitions. Compiled median 0.003089 s vs legacy 0.015049 s = 4.87×; conservative speedup 4.83×. The 10× hypothesis is falsified, but the required ≥3× continue threshold clears. Initial 0.69× drove analytic tangents and compile-validated period-4 brick specialization. Final errors: state 2.72e-8, current 2.70e-6 A, voltage 2.92e-8 V. |
 | 2026-07-10 | Phase-3 exponential/modal integration | COMPLETE — exact φ₁-safe modal propagation, symmetric second-order slow-physics splitting, adaptive step doubling/rollback, event alignment, and pack transaction entry point implemented. P3-G1 nch={5,8,12} closed-form error ≤2e-12; P3-G2 modal-inventory cycle balance <1e-9 Ah; P3-G3 nch12 remains finite at dt=1000 s where Euler fails or amplifies >10⁶×. |
-| — | Phases 1–8 | **Phases 1–3 COMPLETE. Phase 4 NEXT:** **NEXT: Mode-C WR+Baumgarte scale path.** Phases 4–8 not started. |
+| 2026-07-10 | Phase-4 Mode C + PAY-3 | COMPLETE — index-1-gated weighted-Jacobi waveform relaxation with explicit Baumgarte gain and contraction diagnostics. P4-G1 ≤0.1% vs Mode A; P4-G2 drift ≤(1−α)^k bound; P4-G3/PAY-3 accepts a real 100,000-cell SPM pack step with 24 MB arena state, zero measured-step allocations, and zero factorizations. |
+| — | Phases 1–8 | **Phases 1–4 COMPLETE. Phase 5 NEXT:** **NEXT: Experiment grammar and Cycler v2.** Phases 5–8 not started. |

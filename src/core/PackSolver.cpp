@@ -166,11 +166,15 @@ slide::Status PackSolver::configure(const CompiledPackTopology &topology,
   candidate_node_voltage_.assign(nodes, 0.0);
   rollback_cell_current_.assign(cells, 0.0);
   rollback_node_voltage_.assign(nodes, 0.0);
+  relaxation_diagonal_.assign(nodes, 0.0);
+  relaxation_rhs_.assign(nodes, 0.0);
+  relaxation_target_.assign(nodes, 0.0);
   layer_voltage_.assign(topology.electrical.ladder_offsets.empty()
                           ? 0
                           : topology.electrical.ladder_offsets.size() - 1,
                         0.0);
   configured_ = true;
+  relaxation_alpha_ = topology.electrical.series_parallel_ladder ? 1.0 : 2.0 / 3.0;
   has_solution_ = false;
   diagnostics_ = {};
   return slide::Status::Success;
@@ -182,6 +186,14 @@ slide::Status PackSolver::solve(real_t applied_current, PackSolveMode mode,
   return solveImpl(applied_current, mode, current_tolerance, max_iterations, true);
 }
 
+slide::Status PackSolver::setRelaxationGain(real_t alpha)
+{
+  if (!configured_ || !is_finite(alpha) || !(alpha > 0.0 && alpha <= 1.0))
+    return slide::Status::Invalid_parameters;
+  relaxation_alpha_ = alpha;
+  return slide::Status::Success;
+}
+
 slide::Status PackSolver::solveImpl(real_t applied_current, PackSolveMode mode,
                                     real_t current_tolerance, int max_iterations,
                                     bool allow_source_stepping)
@@ -190,6 +202,8 @@ slide::Status PackSolver::solveImpl(real_t applied_current, PackSolveMode mode,
       || !is_finite(current_tolerance) || max_iterations <= 0)
     return slide::Status::Invalid_parameters;
   if (mode == PackSolveMode::ladder && !topology_.electrical.series_parallel_ladder)
+    return slide::Status::Invalid_parameters;
+  if (mode == PackSolveMode::relaxation && !topology_.electrical.index1_candidate)
     return slide::Status::Invalid_parameters;
   if (has_solution_)
     std::copy(solution_.cell_current.begin(), solution_.cell_current.end(), current_guess_.begin());
@@ -203,6 +217,12 @@ slide::Status PackSolver::solveImpl(real_t applied_current, PackSolveMode mode,
   diagnostics_.iterations = 0;
   diagnostics_.jacobian_refreshes = 0;
   diagnostics_.source_steps = 0;
+  diagnostics_.constraint_drift = 0.0;
+  diagnostics_.constraint_bound = 0.0;
+  diagnostics_.relaxation_gain = mode == PackSolveMode::relaxation
+                                   ? relaxation_alpha_
+                                   : 0.0;
+  initial_constraint_drift_ = 0.0;
   real_t previous_residual = std::numeric_limits<real_t>::max();
   int consecutive_divergence{};
   const int factorization_at_entry = workspace_.numericFactorizations();
@@ -210,11 +230,11 @@ slide::Status PackSolver::solveImpl(real_t applied_current, PackSolveMode mode,
     auto status = thevenin_.linearize(current_guess_, ocv_, resistance_);
     if (status != slide::Status::Success)
       return status;
-    status = mode == PackSolveMode::sparse_newton ? solveSparse(applied_current,
-                                                                previous_residual,
-                                                                iteration,
-                                                                consecutive_divergence)
-                                                  : solveLadder(applied_current);
+    status = mode == PackSolveMode::sparse_newton
+               ? solveSparse(applied_current, previous_residual, iteration, consecutive_divergence)
+             : mode == PackSolveMode::ladder
+               ? solveLadder(applied_current)
+               : solveRelaxation(applied_current, iteration);
     if (status != slide::Status::Success)
       return status;
     ++diagnostics_.iterations;
@@ -426,6 +446,85 @@ slide::Status PackSolver::solveLadder(real_t applied_current)
     candidate_node_voltage_[netlist.ladder_nodes[reverse - 1]] = voltage;
   }
   candidate_terminal_voltage_ = voltage;
+  return slide::Status::Success;
+}
+
+slide::Status PackSolver::solveRelaxation(real_t applied_current,
+                                          int iteration)
+{
+  const auto &netlist = topology_.electrical;
+  std::fill(relaxation_diagonal_.begin(), relaxation_diagonal_.end(), 0.0);
+  std::fill(relaxation_rhs_.begin(), relaxation_rhs_.end(), 0.0);
+  auto stamp = [&](const CompiledElectricalBranch &branch, real_t resistance, real_t source) {
+    const real_t conductance = 1.0 / resistance;
+    const auto p = branch.node_positive;
+    const auto n = branch.node_negative;
+    relaxation_diagonal_[p] += conductance;
+    relaxation_diagonal_[n] += conductance;
+    relaxation_rhs_[p] += conductance * (candidate_node_voltage_[n] + source);
+    relaxation_rhs_[n] += conductance * (candidate_node_voltage_[p] - source);
+  };
+  for (const auto &branch : netlist.branches) {
+    const bool cell = branch.kind == ElectricalBranchKind::cell;
+    const real_t resistance = cell ? resistance_[branch.cell] : branch.resistance;
+    if (!(is_finite(resistance) && resistance > 0.0))
+      return slide::Status::Invalid_states;
+    stamp(branch, resistance, cell ? ocv_[branch.cell] : 0.0);
+  }
+  relaxation_rhs_[netlist.terminal_positive] -= applied_current;
+  relaxation_rhs_[netlist.terminal_negative] += applied_current;
+
+  for (std::uint32_t node = 0; node < netlist.node_count; ++node) {
+    if (node == netlist.terminal_negative) {
+      relaxation_target_[node] = 0.0;
+      continue;
+    }
+    if (!(is_finite(relaxation_diagonal_[node])
+          && relaxation_diagonal_[node] > 0.0))
+      return slide::Status::Numerical_failure;
+    relaxation_target_[node] = relaxation_rhs_[node]
+                               / relaxation_diagonal_[node];
+  }
+  auto terminal_kcl = [&] {
+    real_t kcl{};
+    for (const auto &branch : netlist.branches) {
+      const real_t voltage = candidate_node_voltage_[branch.node_positive]
+                             - candidate_node_voltage_[branch.node_negative];
+      const real_t branch_current = branch.kind == ElectricalBranchKind::cell
+                                      ? (voltage - ocv_[branch.cell])
+                                          / resistance_[branch.cell]
+                                      : voltage / branch.resistance;
+      if (branch.node_positive == netlist.terminal_positive)
+        kcl += branch_current;
+      if (branch.node_negative == netlist.terminal_positive)
+        kcl -= branch_current;
+    }
+    return std::abs(kcl + applied_current);
+  };
+  if (iteration == 0)
+    initial_constraint_drift_ = terminal_kcl();
+  for (std::uint32_t node = 0; node < netlist.node_count; ++node)
+    if (node != netlist.terminal_negative)
+      candidate_node_voltage_[node] += relaxation_alpha_
+                                       * (relaxation_target_[node]
+                                          - candidate_node_voltage_[node]);
+
+  for (const auto &branch : netlist.branches)
+    if (branch.kind == ElectricalBranchKind::cell) {
+      const real_t voltage = candidate_node_voltage_[branch.node_positive]
+                             - candidate_node_voltage_[branch.node_negative];
+      candidate_current_[branch.cell] = (ocv_[branch.cell] - voltage)
+                                        / resistance_[branch.cell];
+    }
+  candidate_terminal_voltage_ = candidate_node_voltage_[netlist.terminal_positive]
+                                - candidate_node_voltage_[netlist.terminal_negative];
+
+  const real_t drift = terminal_kcl();
+  diagnostics_.constraint_drift = drift;
+  diagnostics_.constraint_bound = initial_constraint_drift_
+                                    * std::pow(1.0 - relaxation_alpha_,
+                                               static_cast<real_t>(iteration + 1))
+                                  + 32.0 * std::numeric_limits<real_t>::epsilon();
   return slide::Status::Success;
 }
 
