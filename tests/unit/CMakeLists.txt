@@ -126,6 +126,10 @@ target_link_libraries(unit_test_core_ExponentialModal PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_ModeC core_ModeC_test.cpp)
 target_link_libraries(unit_test_core_ModeC PRIVATE slide_core)
 
+# Phase 5: PyBaMM-style grammar, controls, exact events, and legacy Cycler parity
+add_executable_with_coverage_and_test(unit_test_core_Experiment core_Experiment_test.cpp)
+target_link_libraries(unit_test_core_Experiment PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

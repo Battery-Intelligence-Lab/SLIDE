@@ -974,6 +974,13 @@ termination conditions.
 diagnostics); CCCV parity vs legacy Cycler. Terminations located by event root-finding (g(y)=0, §3.12 item 5), not
 post-step threshold checks; `Solution` carries a machine-readable termination REASON (event/limit/error/final-time —
 PyBaMM `solution.termination` equivalent, required for Phase-7 compat anyway).
+**COMPLETE 2026-07-10:** `Experiment::parse` compiles charge/discharge/hold/rest/drive-cycle strings with A/mA/C/W/V,
+long and abbreviated duration units, joined time/event conditions, repetition, atomic output, and indexed diagnostics.
+`CyclerV2` runs CC/CV/power/rest/registered drive profiles through Euler-parity or exponential integration; CV/power
+use the analytical tangent. Arena-checkpointed bisection lands voltage/current events within the registered `2e-12 V`
+band and handles initially-satisfied events. `ExperimentSolution` carries the required termination enum. The
+time-aligned CC/CV gate against legacy `Cycler` meets `0.2 µV`, `20 µA`, and `0.2 µAh` bands. Debug and Release are
+41/41 green; Release caught and removed a fast-math-invalid infinity sentinel.
 
 ### Phase 6 — Recording & I/O
 Deliver: Recorder (snapshot cadence + lazy derived), CSV sink, mmap binary sink (header-CRC idiom), optional Parquet.
@@ -1080,4 +1087,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | PAY-2 Phase-2 payoff | PASSED ABORT GATE / TARGET FALSIFIED — reproducible heterogeneous 16s4p × 1,800-step harness, three alternating Release repetitions. Compiled median 0.003089 s vs legacy 0.015049 s = 4.87×; conservative speedup 4.83×. The 10× hypothesis is falsified, but the required ≥3× continue threshold clears. Initial 0.69× drove analytic tangents and compile-validated period-4 brick specialization. Final errors: state 2.72e-8, current 2.70e-6 A, voltage 2.92e-8 V. |
 | 2026-07-10 | Phase-3 exponential/modal integration | COMPLETE — exact φ₁-safe modal propagation, symmetric second-order slow-physics splitting, adaptive step doubling/rollback, event alignment, and pack transaction entry point implemented. P3-G1 nch={5,8,12} closed-form error ≤2e-12; P3-G2 modal-inventory cycle balance <1e-9 Ah; P3-G3 nch12 remains finite at dt=1000 s where Euler fails or amplifies >10⁶×. |
 | 2026-07-10 | Phase-4 Mode C + PAY-3 | COMPLETE — index-1-gated weighted-Jacobi waveform relaxation with explicit Baumgarte gain and contraction diagnostics. P4-G1 ≤0.1% vs Mode A; P4-G2 drift ≤(1−α)^k bound; P4-G3/PAY-3 accepts a real 100,000-cell SPM pack step with 24 MB arena state, zero measured-step allocations, and zero factorizations. |
-| — | Phases 1–8 | **Phases 1–4 COMPLETE. Phase 5 NEXT:** **NEXT: Experiment grammar and Cycler v2.** Phases 5–8 not started. |
+| 2026-07-10 | Phase-5 Experiment grammar + Cycler v2 | COMPLETE — shared C++ grammar with atomic diagnostics and repetition; CC/CV/power/rest/drive-cycle execution; exact bisection events and machine-readable reasons; time-aligned legacy Cycler parity. Full Debug/Release 41/41. |
+| — | Phases 1–8 | **Phases 1–5 COMPLETE. Phase 6 NEXT:** **NEXT: Recorder, CSV, and hardened mmap sink.** Phases 6–8 not started. |
