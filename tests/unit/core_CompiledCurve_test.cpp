@@ -53,6 +53,16 @@ TEST_CASE("UniformLut validates a smooth injected curve to the registered tolera
   }
 }
 
+TEST_CASE("Indexed curves admit BPX adaptive endpoint resolution",
+          "[core][parameters][BPX]")
+{
+  const std::array x{ 0.0, 1.0 / 65'536.0, 0.5, 1.0 };
+  const std::array y{ 1.0, 1.1, 2.0, 3.0 };
+  core::IndexedPiecewiseLinear curve;
+  REQUIRE(curve.build(x, y) == Status::Success);
+  CHECK(curve.eval(x[1]) == y[1]);
+}
+
 TEST_CASE("Compiled curves reject malformed input without becoming valid", "[core][parameters]")
 {
   const std::array valid_x{ 0.0, 0.5, 1.0 };

@@ -49,7 +49,10 @@ public:
 
     const real_t range = x.back() - x.front();
     const auto required_bins = static_cast<std::size_t>(std::ceil(range / min_spacing)) + 1;
-    constexpr std::size_t max_bins = 65'536;
+    // Adaptive BPX functions can legitimately contain a 1/65536-wide segment,
+    // which needs 65537 endpoint-covering bins. Keep a bounded 512 KiB index
+    // budget while admitting that canonical 4096-knot refinement result.
+    constexpr std::size_t max_bins = 131'072;
     if (required_bins > max_bins)
       return slide::Status::Invalid_parameters;
 
