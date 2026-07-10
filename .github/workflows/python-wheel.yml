@@ -1,0 +1,79 @@
+name: Python wheels
+
+on:
+  push:
+    branches: [master, develop]
+    paths:
+      - "src/core/**"
+      - "python/**"
+      - "pyproject.toml"
+      - "CMakeLists.txt"
+      - ".github/workflows/python-wheel.yml"
+  pull_request:
+    branches: ["**"]
+    paths:
+      - "src/core/**"
+      - "python/**"
+      - "pyproject.toml"
+      - "CMakeLists.txt"
+      - ".github/workflows/python-wheel.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-test-wheel:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install build and test dependencies
+        run: >-
+          python -m pip install --upgrade pip build pytest numpy
+          pybamm==26.6.2.0
+      - name: Install PyBOP on its supported Python range
+        if: matrix.python == '3.10'
+        run: python -m pip install pybop==25.11
+      - name: Build wheel
+        run: python -m build --wheel
+      - name: Install only the built wheel
+        shell: python
+        run: |
+          import glob
+          import subprocess
+          import sys
+          wheels = glob.glob("dist/*.whl")
+          if len(wheels) != 1:
+              raise SystemExit(f"expected one wheel, found {wheels}")
+          subprocess.check_call(
+              [sys.executable, "-m", "pip", "install", "--no-deps", wheels[0]]
+          )
+      - name: Test installed wheel
+        run: python -m pytest -q python/tests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slide-wheel-${{ matrix.os }}-py${{ matrix.python }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  pybamm-fixture-drift:
+    name: Pinned PyBaMM fixture drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install numpy pybamm==26.6.2.0
+      - run: python scripts/generate_pybamm_references.py --output generated-reference
+      - run: python scripts/check_pybamm_fixture_drift.py generated-reference
