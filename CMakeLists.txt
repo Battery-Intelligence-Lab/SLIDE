@@ -8,6 +8,7 @@ project(SLIDE VERSION "3.0.0"
 
 option(SLIDE_CORE_ONLY "Configure only the dependency-light v4 core" OFF)
 option(SLIDE_WITH_CUDA "Enable the optional CUDA SPM batch backend" OFF)
+option(SLIDE_WITH_MATLAB "Build the optional MATLAB MEX and +slide package" OFF)
 if(SLIDE_WITH_CUDA)
   include(CheckLanguage)
   check_language(CUDA)
@@ -39,6 +40,11 @@ endif()
 option(SLIDE_BUILD_PYTHON "Build the nanobind Python extension" OFF)
 if(SLIDE_BUILD_PYTHON)
   add_subdirectory(python)
+endif()
+
+if(SLIDE_WITH_MATLAB)
+  find_package(Matlab REQUIRED COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER)
+  add_subdirectory(matlab)
 endif()
 
 if(NOT SLIDE_CORE_ONLY)
