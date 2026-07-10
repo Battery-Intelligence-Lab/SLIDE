@@ -362,6 +362,100 @@ slide::Status CyclerV2::currentForPower(real_t target_power,
   return slide::Status::Numerical_failure;
 }
 
+slide::Status CyclerV2::evaluateFunction(const ExperimentFunction &function,
+                                         real_t time,
+                                         real_t local_time,
+                                         real_t voltage,
+                                         real_t current,
+                                         real_t &value) const
+{
+  if (!function)
+    return slide::Status::Invalid_parameters;
+  try {
+    value = function({ .time = time,
+                       .local_time = local_time,
+                       .voltage = voltage,
+                       .current = current,
+                       .power = voltage * current });
+  } catch (...) {
+    return slide::Status::Invalid_parameters;
+  }
+  return is_finite(value) ? slide::Status::Success
+                          : slide::Status::Invalid_states;
+}
+
+slide::Status CyclerV2::currentForCustom(const ExperimentSegment &segment,
+                                         real_t time,
+                                         real_t local_time,
+                                         real_t &current)
+{
+  if (!segment.custom_control)
+    return slide::Status::Invalid_parameters;
+  const real_t maximum_current = 100.0 * batch_->capacity_Ah();
+  current = std::clamp(current, -maximum_current, maximum_current);
+  for (int iteration = 0; iteration < 24; ++iteration) {
+    real_t voltage{};
+    auto status = voltageAt(current, voltage);
+    if (status != slide::Status::Success)
+      return status;
+    real_t residual{};
+    status = evaluateFunction(segment.custom_control,
+                              time,
+                              local_time,
+                              voltage,
+                              current,
+                              residual);
+    if (status != slide::Status::Success)
+      return status;
+    if (std::abs(residual) <= 1e-10)
+      return slide::Status::Success;
+
+    const real_t h = std::sqrt(std::numeric_limits<real_t>::epsilon())
+                     * std::max(real_t{ 1.0 }, std::abs(current));
+    const real_t plus_current = std::min(maximum_current, current + h);
+    const real_t minus_current = std::max(-maximum_current, current - h);
+    if (!(plus_current > minus_current))
+      return slide::Status::Numerical_failure;
+    real_t plus_voltage{}, minus_voltage{};
+    status = voltageAt(plus_current, plus_voltage);
+    if (status != slide::Status::Success)
+      return status;
+    status = voltageAt(minus_current, minus_voltage);
+    if (status != slide::Status::Success)
+      return status;
+    real_t plus_residual{}, minus_residual{};
+    status = evaluateFunction(segment.custom_control,
+                              time,
+                              local_time,
+                              plus_voltage,
+                              plus_current,
+                              plus_residual);
+    if (status != slide::Status::Success)
+      return status;
+    status = evaluateFunction(segment.custom_control,
+                              time,
+                              local_time,
+                              minus_voltage,
+                              minus_current,
+                              minus_residual);
+    if (status != slide::Status::Success)
+      return status;
+    const real_t derivative = (plus_residual - minus_residual)
+                              / (plus_current - minus_current);
+    if (!(is_finite(derivative) && std::abs(derivative) > 1e-14))
+      return slide::Status::Numerical_failure;
+    const real_t next = std::clamp(current - residual / derivative,
+                                   -maximum_current,
+                                   maximum_current);
+    if (std::abs(next - current) <= 1e-10) {
+      current = next;
+      return slide::Status::Success;
+    }
+    current = next;
+  }
+  return slide::Status::Numerical_failure;
+}
+
 slide::Status CyclerV2::advance(real_t current, real_t time, real_t dt)
 {
   density_[0] = current / batch_->electrode_area();
@@ -396,8 +490,35 @@ slide::Status CyclerV2::run(const Experiment &experiment,
   if (batch_ == nullptr || experiment.segments.empty()
       || !is_finite(sample_step) || !(sample_step > 0.0))
     return slide::Status::Invalid_parameters;
+  const bool has_schedule = std::any_of(
+    experiment.segments.begin(), experiment.segments.end(), [](const auto &segment) {
+      return is_finite(segment.scheduled_start) && segment.scheduled_start >= 0.0;
+    });
+  if (has_schedule
+      && (!(is_finite(experiment.segments.front().scheduled_start)
+            && experiment.segments.front().scheduled_start >= 0.0)
+          || experiment.segments.front().scheduled_start != 0.0))
+    return slide::Status::Invalid_parameters;
+  real_t previous_scheduled_start{};
+  for (const auto &segment : experiment.segments) {
+    if (is_finite(segment.scheduled_start) && segment.scheduled_start >= 0.0) {
+      if (segment.scheduled_start < previous_scheduled_start)
+        return slide::Status::Invalid_parameters;
+      previous_scheduled_start = segment.scheduled_start;
+    }
+    const bool custom_mode = segment.mode == ControlMode::custom_explicit
+                             || segment.mode == ControlMode::custom_implicit
+                             || segment.mode == ControlMode::custom_differential;
+    if (custom_mode != static_cast<bool>(segment.custom_control))
+      return slide::Status::Invalid_parameters;
+    for (const auto &termination : segment.custom_terminations)
+      if (termination.name.empty() || !termination.indicator)
+        return slide::Status::Invalid_parameters;
+  }
+
   ExperimentSolution solution;
   real_t time = batch_->state().at(batch_->layout().elapsed_time, 0, 0);
+  const real_t schedule_origin = time;
   real_t current{};
   real_t voltage{};
   auto status = voltageAt(0.0, voltage);
@@ -408,10 +529,44 @@ slide::Status CyclerV2::run(const Experiment &experiment,
   solution.current.push_back(0.0);
   solution.sample_segment.push_back(0);
 
+  auto appendRestUntil = [&](real_t target, std::size_t segment_index) {
+    while (time < target) {
+      const real_t dt = std::min(sample_step, target - time);
+      const auto rest_status = advance(0.0, time, dt);
+      if (rest_status != slide::Status::Success)
+        return rest_status;
+      time += dt;
+      real_t rest_voltage{};
+      const auto voltage_status = voltageAt(0.0, rest_voltage);
+      if (voltage_status != slide::Status::Success)
+        return voltage_status;
+      solution.time.push_back(time);
+      solution.voltage.push_back(rest_voltage);
+      solution.current.push_back(0.0);
+      solution.sample_segment.push_back(segment_index);
+    }
+    current = 0.0;
+    return slide::Status::Success;
+  };
+
   for (std::size_t segment_index = 0;
        segment_index < experiment.segments.size();
        ++segment_index) {
     const auto &segment = experiment.segments[segment_index];
+    const real_t segment_step = is_finite(segment.sample_period)
+                                    && segment.sample_period > 0.0
+                                  ? segment.sample_period
+                                  : sample_step;
+    if (!(segment_step > 0.0)) {
+      status = slide::Status::Invalid_parameters;
+      break;
+    }
+    if (is_finite(segment.scheduled_start) && segment.scheduled_start >= 0.0) {
+      status = appendRestUntil(schedule_origin + segment.scheduled_start,
+                               segment_index);
+      if (status != slide::Status::Success)
+        break;
+    }
     const auto *cycle = segment.mode == ControlMode::drive_cycle
                           ? findDriveCycle(segment.drive_cycle)
                           : nullptr;
@@ -420,11 +575,27 @@ slide::Status CyclerV2::run(const Experiment &experiment,
     const real_t duration = segment.mode == ControlMode::drive_cycle
                               ? cycle->time.back()
                               : segment.duration;
-    const real_t horizon = duration > 0.0 ? duration : 7.0 * 24.0 * 3600.0;
+    real_t horizon = duration > 0.0 ? duration : 7.0 * 24.0 * 3600.0;
+    bool cut_by_schedule{};
+    for (std::size_t next = segment_index + 1;
+         next < experiment.segments.size();
+         ++next) {
+      const real_t next_start = experiment.segments[next].scheduled_start;
+      if (!(is_finite(next_start) && next_start >= 0.0))
+        continue;
+      const real_t until_next = std::max(real_t{},
+                                         schedule_origin + next_start - time);
+      if (until_next < horizon) {
+        horizon = until_next;
+        cut_by_schedule = true;
+      }
+      break;
+    }
     real_t local_time{};
     bool event_reached{};
+    std::string event_name;
     while (local_time < horizon) {
-      const real_t dt = std::min(sample_step, horizon - local_time);
+      const real_t dt = std::min(segment_step, horizon - local_time);
       if (segment.mode == ControlMode::current) {
         const real_t magnitude = segment.value_is_c_rate
                                    ? segment.value * batch_->capacity_Ah()
@@ -436,8 +607,34 @@ slide::Status CyclerV2::run(const Experiment &experiment,
         status = currentForPower(segment.value, segment.direction, current);
       } else if (segment.mode == ControlMode::rest) {
         current = 0.0;
-      } else {
+      } else if (segment.mode == ControlMode::drive_cycle) {
         current = driveCurrent(*cycle, local_time);
+      } else if (segment.mode == ControlMode::custom_explicit) {
+        status = voltageAt(current, voltage);
+        if (status == slide::Status::Success)
+          status = evaluateFunction(segment.custom_control,
+                                    time,
+                                    local_time,
+                                    voltage,
+                                    current,
+                                    current);
+      } else if (segment.mode == ControlMode::custom_implicit) {
+        status = currentForCustom(segment, time, local_time, current);
+      } else {
+        status = voltageAt(current, voltage);
+        real_t derivative{};
+        if (status == slide::Status::Success)
+          status = evaluateFunction(segment.custom_control,
+                                    time,
+                                    local_time,
+                                    voltage,
+                                    current,
+                                    derivative);
+        if (status == slide::Status::Success) {
+          current += derivative * dt;
+          if (!is_finite(current))
+            status = slide::Status::Invalid_states;
+        }
       }
       if (status != slide::Status::Success)
         break;
@@ -451,24 +648,61 @@ slide::Status CyclerV2::run(const Experiment &experiment,
         solution.voltage.front() = voltage;
         solution.current.front() = current;
       }
-      auto indicator = [&](real_t event_voltage, real_t event_current) {
-        if (segment.voltage_limit > 0.0)
-          return segment.direction == Direction::charge
-                   ? segment.voltage_limit - event_voltage
-                   : event_voltage - segment.voltage_limit;
+      auto indicator = [&](real_t event_time,
+                           real_t event_local_time,
+                           real_t event_voltage,
+                           real_t event_current,
+                           real_t &value,
+                           std::string &name) {
+        value = std::numeric_limits<real_t>::max();
+        if (segment.voltage_limit > 0.0) {
+          if (segment.direction == Direction::none)
+            return slide::Status::Invalid_parameters;
+          value = segment.direction == Direction::charge
+                    ? segment.voltage_limit - event_voltage
+                    : event_voltage - segment.voltage_limit;
+          name = "voltage cut-off";
+        }
         if (segment.current_cutoff > 0.0) {
           const real_t cutoff = segment.cutoff_is_c_rate
                                   ? segment.current_cutoff * batch_->capacity_Ah()
                                   : segment.current_cutoff;
-          return std::abs(event_current) - cutoff;
+          const real_t current_value = std::abs(event_current) - cutoff;
+          if (current_value < value) {
+            value = current_value;
+            name = "current cut-off";
+          }
         }
-        // Keep the no-event sentinel finite: Release uses -Ofast, under which
-        // infinities are explicitly outside the compiler's floating-point model.
-        return std::numeric_limits<real_t>::max();
+        for (const auto &termination : segment.custom_terminations) {
+          real_t custom_value{};
+          const auto custom_status = evaluateFunction(termination.indicator,
+                                                      event_time,
+                                                      event_local_time,
+                                                      event_voltage,
+                                                      event_current,
+                                                      custom_value);
+          if (custom_status != slide::Status::Success)
+            return custom_status;
+          if (custom_value < value) {
+            value = custom_value;
+            name = termination.name;
+          }
+        }
+        return slide::Status::Success;
       };
-      const real_t before_indicator = indicator(voltage, current);
+      real_t before_indicator{};
+      std::string before_event_name;
+      status = indicator(time,
+                         local_time,
+                         voltage,
+                         current,
+                         before_indicator,
+                         before_event_name);
+      if (status != slide::Status::Success)
+        break;
       if (before_indicator <= 0.0) {
         event_reached = true;
+        event_name = std::move(before_event_name);
         solution.voltage.back() = voltage;
         solution.current.back() = current;
         solution.segment = segment_index;
@@ -486,11 +720,34 @@ slide::Status CyclerV2::run(const Experiment &experiment,
       else if (status == slide::Status::Success
                && segment.mode == ControlMode::power)
         status = currentForPower(segment.value, segment.direction, after_current);
+      else if (status == slide::Status::Success
+               && segment.mode == ControlMode::custom_explicit)
+        status = evaluateFunction(segment.custom_control,
+                                  time + dt,
+                                  local_time + dt,
+                                  after_voltage,
+                                  after_current,
+                                  after_current);
+      else if (status == slide::Status::Success
+               && segment.mode == ControlMode::custom_implicit)
+        status = currentForCustom(segment,
+                                  time + dt,
+                                  local_time + dt,
+                                  after_current);
       if (status == slide::Status::Success && after_current != current)
         status = voltageAt(after_current, after_voltage);
       if (status != slide::Status::Success)
         break;
-      const real_t after_indicator = indicator(after_voltage, after_current);
+      real_t after_indicator{};
+      std::string after_event_name;
+      status = indicator(time + dt,
+                         local_time + dt,
+                         after_voltage,
+                         after_current,
+                         after_indicator,
+                         after_event_name);
+      if (status != slide::Status::Success)
+        break;
       real_t accepted_dt = dt;
       if (before_indicator > 0.0 && after_indicator <= 0.0) {
         real_t low{}, high = dt;
@@ -509,11 +766,35 @@ slide::Status CyclerV2::run(const Experiment &experiment,
           else if (status == slide::Status::Success
                    && segment.mode == ControlMode::power)
             status = currentForPower(segment.value, segment.direction, middle_current);
+          else if (status == slide::Status::Success
+                   && segment.mode == ControlMode::custom_explicit)
+            status = evaluateFunction(segment.custom_control,
+                                      time + middle,
+                                      local_time + middle,
+                                      middle_voltage,
+                                      middle_current,
+                                      middle_current);
+          else if (status == slide::Status::Success
+                   && segment.mode == ControlMode::custom_implicit)
+            status = currentForCustom(segment,
+                                      time + middle,
+                                      local_time + middle,
+                                      middle_current);
           if (status == slide::Status::Success && middle_current != current)
             status = voltageAt(middle_current, middle_voltage);
           if (status != slide::Status::Success)
             break;
-          if (indicator(middle_voltage, middle_current) > 0.0)
+          real_t middle_indicator{};
+          std::string middle_event_name;
+          status = indicator(time + middle,
+                             local_time + middle,
+                             middle_voltage,
+                             middle_current,
+                             middle_indicator,
+                             middle_event_name);
+          if (status != slide::Status::Success)
+            break;
+          if (middle_indicator > 0.0)
             low = middle;
           else
             high = middle;
@@ -530,8 +811,29 @@ slide::Status CyclerV2::run(const Experiment &experiment,
           status = currentForVoltage(segment.value, after_current);
         else if (segment.mode == ControlMode::power)
           status = currentForPower(segment.value, segment.direction, after_current);
+        else if (segment.mode == ControlMode::custom_explicit)
+          status = evaluateFunction(segment.custom_control,
+                                    time + high,
+                                    local_time + high,
+                                    after_voltage,
+                                    after_current,
+                                    after_current);
+        else if (segment.mode == ControlMode::custom_implicit)
+          status = currentForCustom(segment,
+                                    time + high,
+                                    local_time + high,
+                                    after_current);
         if (status == slide::Status::Success && after_current != current)
           status = voltageAt(after_current, after_voltage);
+        if (status == slide::Status::Success) {
+          real_t final_indicator{};
+          status = indicator(time + high,
+                             local_time + high,
+                             after_voltage,
+                             after_current,
+                             final_indicator,
+                             event_name);
+        }
         event_reached = status == slide::Status::Success;
       }
       if (status != slide::Status::Success)
@@ -552,15 +854,26 @@ slide::Status CyclerV2::run(const Experiment &experiment,
       output = std::move(solution);
       return status;
     }
-    if (event_reached)
+    if (event_reached) {
       solution.reason = TerminationReason::event;
-    else if (duration <= 0.0) {
+      solution.termination_name = std::move(event_name);
+    } else if (duration <= 0.0 && !cut_by_schedule) {
       solution.reason = TerminationReason::limit;
       solution.status = slide::Status::Numerical_failure;
+      solution.termination_name = "maximum step duration";
       output = std::move(solution);
       return slide::Status::Numerical_failure;
-    } else
+    } else {
       solution.reason = TerminationReason::final_time;
+      solution.termination_name = cut_by_schedule ? "next scheduled start"
+                                                  : "final time";
+    }
+  }
+  if (status != slide::Status::Success) {
+    solution.reason = TerminationReason::error;
+    solution.status = status;
+    output = std::move(solution);
+    return status;
   }
   solution.status = slide::Status::Success;
   output = std::move(solution);

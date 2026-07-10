@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, MutableMapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Callable
 import csv
 import re
 
@@ -25,6 +26,7 @@ __all__ = [
     "lithium_ion",
     "plot",
     "sensitivity_parameters",
+    "step",
     "varied",
 ]
 __version__ = "4.0.0.dev0"
@@ -171,30 +173,317 @@ class ParameterValues(MutableMapping[str, Any]):
         }
 
 
+@dataclass(frozen=True)
+class CustomTermination:
+    """Observable event: the callback is positive before, and zero at, termination."""
+
+    name: str
+    event_function: Callable[[MutableMapping[str, float]], float]
+
+    def __post_init__(self) -> None:
+        if not self.name or not callable(self.event_function):
+            raise ValueError("a custom termination needs a name and callable")
+
+
+def _direction(value: str | None) -> int:
+    if value is None:
+        return 0
+    normal = str(value).strip().lower()
+    if normal == "charge":
+        return -1
+    if normal == "discharge":
+        return 1
+    raise ValueError("direction must be 'charge', 'discharge', or None")
+
+
+def _duration(value: float | str | None, has_termination: bool) -> float:
+    if value is None:
+        return 0.0 if has_termination else 24.0 * 3600.0
+    return _seconds(value)
+
+
+def _termination_descriptor(
+    termination: str | CustomTermination | Sequence[str | CustomTermination] | None,
+) -> dict[str, Any]:
+    values: Sequence[str | CustomTermination]
+    if termination is None:
+        values = ()
+    elif isinstance(termination, (str, CustomTermination)):
+        values = (termination,)
+    else:
+        values = termination
+    result: dict[str, Any] = {
+        "voltage_limit": 0.0,
+        "current_cutoff": 0.0,
+        "cutoff_is_c_rate": False,
+        "custom_terminations": [],
+    }
+    for value in values:
+        if isinstance(value, CustomTermination):
+            result["custom_terminations"].append(
+                {"name": value.name, "function": value.event_function}
+            )
+            continue
+        text = str(value).strip()
+        voltage = re.fullmatch(r"([+]?(?:\d+(?:\.\d*)?|\.\d+))\s*V", text, re.I)
+        current = re.fullmatch(r"([+]?(?:\d+(?:\.\d*)?|\.\d+))\s*A", text, re.I)
+        c_rate = re.fullmatch(r"C\s*/\s*([+]?(?:\d+(?:\.\d*)?|\.\d+))", text, re.I)
+        if voltage:
+            result["voltage_limit"] = float(voltage.group(1))
+        elif current:
+            result["current_cutoff"] = float(current.group(1))
+        elif c_rate and float(c_rate.group(1)) > 0:
+            result["current_cutoff"] = 1.0 / float(c_rate.group(1))
+            result["cutoff_is_c_rate"] = True
+        else:
+            raise ValueError(f"unsupported step termination: {value!r}")
+    return result
+
+
+class _Step:
+    def __init__(
+        self,
+        descriptor: MutableMapping[str, Any],
+        *,
+        start_time: datetime | None = None,
+        period: float | str | None = None,
+    ) -> None:
+        if start_time is not None and not isinstance(start_time, datetime):
+            raise TypeError("start_time must be a datetime.datetime")
+        self.descriptor = dict(descriptor)
+        self.start_time = start_time
+        self.descriptor["period"] = None if period is None else _seconds(period)
+
+
+class StringStep(_Step):
+    def __init__(
+        self,
+        instruction: str,
+        *,
+        start_time: datetime | None = None,
+        period: float | str | None = None,
+        termination: str | CustomTermination | Sequence[str | CustomTermination] | None = None,
+        temperature: Any = None,
+        tags: Any = None,
+        description: str | None = None,
+        direction: str | None = None,
+        skip_ok: bool = True,
+    ) -> None:
+        del temperature, tags, description, direction, skip_ok
+        if not isinstance(instruction, str) or not instruction.strip():
+            raise ValueError("a string step needs a non-empty instruction")
+        self.instruction = instruction
+        event = _termination_descriptor(termination)
+        super().__init__(
+            {"kind": "parsed", "instruction": instruction, **event},
+            start_time=start_time,
+            period=period,
+        )
+
+
+class CustomStepExplicit(_Step):
+    def __init__(
+        self,
+        current_function: Callable[[MutableMapping[str, float]], float],
+        duration: float | str | None = None,
+        termination: str | CustomTermination | Sequence[str | CustomTermination] | None = None,
+        *,
+        period: float | str | None = None,
+        temperature: Any = None,
+        tags: Any = None,
+        start_time: datetime | None = None,
+        description: str | None = None,
+        direction: str | None = None,
+        skip_ok: bool = True,
+    ) -> None:
+        del temperature, tags, description, skip_ok
+        if not callable(current_function):
+            raise TypeError("current_function must be callable")
+        event = _termination_descriptor(termination)
+        super().__init__(
+            {
+                "kind": "custom",
+                "control": "explicit",
+                "function": current_function,
+                "direction": _direction(direction),
+                "duration": _duration(duration, termination is not None),
+                **event,
+            },
+            start_time=start_time,
+            period=period,
+        )
+
+
+class CustomStepImplicit(_Step):
+    def __init__(
+        self,
+        control_function: Callable[[MutableMapping[str, float]], float],
+        duration: float | str | None = None,
+        termination: str | CustomTermination | Sequence[str | CustomTermination] | None = None,
+        *,
+        period: float | str | None = None,
+        temperature: Any = None,
+        tags: Any = None,
+        start_time: datetime | None = None,
+        description: str | None = None,
+        direction: str | None = None,
+        skip_ok: bool = True,
+        control: str = "algebraic",
+    ) -> None:
+        del temperature, tags, description, skip_ok
+        if not callable(control_function):
+            raise TypeError("control_function must be callable")
+        normal_control = str(control).lower()
+        if normal_control not in ("algebraic", "differential"):
+            raise ValueError("control must be 'algebraic' or 'differential'")
+        event = _termination_descriptor(termination)
+        super().__init__(
+            {
+                "kind": "custom",
+                "control": normal_control,
+                "function": control_function,
+                "direction": _direction(direction),
+                "duration": _duration(duration, termination is not None),
+                **event,
+            },
+            start_time=start_time,
+            period=period,
+        )
+
+
+def _standard_step(
+    mode: str,
+    value: float,
+    *,
+    value_is_c_rate: bool = False,
+    duration: float | str | None = None,
+    termination: str | CustomTermination | Sequence[str | CustomTermination] | None = None,
+    direction: str | None = None,
+    period: float | str | None = None,
+    start_time: datetime | None = None,
+    temperature: Any = None,
+    tags: Any = None,
+    description: str | None = None,
+    skip_ok: bool = True,
+) -> _Step:
+    del temperature, tags, description, skip_ok
+    event = _termination_descriptor(termination)
+    return _Step(
+        {
+            "kind": "standard",
+            "mode": mode,
+            "value": abs(float(value)),
+            "value_is_c_rate": value_is_c_rate,
+            "direction": _direction(direction),
+            "duration": _duration(duration, termination is not None),
+            **event,
+        },
+        start_time=start_time,
+        period=period,
+    )
+
+
+def _current_step(value: float, **kwargs: Any) -> _Step:
+    number = float(value)
+    requested_direction = kwargs.pop("direction", None)
+    return _standard_step(
+        "current",
+        number,
+        direction=requested_direction or ("discharge" if number >= 0 else "charge"),
+        **kwargs,
+    )
+
+
+def _c_rate_step(value: float, **kwargs: Any) -> _Step:
+    number = float(value)
+    requested_direction = kwargs.pop("direction", None)
+    return _standard_step(
+        "current",
+        number,
+        value_is_c_rate=True,
+        direction=requested_direction or ("discharge" if number >= 0 else "charge"),
+        **kwargs,
+    )
+
+
+def _power_step(value: float, **kwargs: Any) -> _Step:
+    number = float(value)
+    requested_direction = kwargs.pop("direction", None)
+    return _standard_step(
+        "power",
+        number,
+        direction=requested_direction or ("discharge" if number >= 0 else "charge"),
+        **kwargs,
+    )
+
+
+def _voltage_step(value: float, **kwargs: Any) -> _Step:
+    return _standard_step("voltage", float(value), **kwargs)
+
+
+def _rest_step(duration: float | str | None = None, **kwargs: Any) -> _Step:
+    return _standard_step("rest", 0.0, duration=duration, **kwargs)
+
+
+step = SimpleNamespace(
+    CustomStepExplicit=CustomStepExplicit,
+    CustomStepImplicit=CustomStepImplicit,
+    CustomTermination=CustomTermination,
+    current=_current_step,
+    c_rate=_c_rate_step,
+    power=_power_step,
+    voltage=_voltage_step,
+    rest=_rest_step,
+    string=StringStep,
+)
+
+
 class Experiment:
     """A sequence of PyBaMM experiment instruction strings."""
 
     def __init__(
         self,
-        operating_conditions: str | Sequence[str | Sequence[str]],
+        operating_conditions: str | _Step | Sequence[str | _Step | Sequence[str | _Step]],
         period: float | str = "1 minute",
         *,
         temperature: float | str | None = None,
         termination: str | Sequence[str] | None = None,
     ) -> None:
-        del temperature, termination  # accepted for source compatibility; model options own them
-        if isinstance(operating_conditions, str):
+        del temperature, termination  # experiment-level termination is cycle-level in PyBaMM
+        if isinstance(operating_conditions, (str, _Step)):
             operating_conditions = [operating_conditions]
-        self.steps = self._flatten(operating_conditions)
-        if not self.steps:
+        conditions = self._flatten(operating_conditions)
+        if not conditions:
             raise ValueError("an experiment needs at least one operating condition")
         self.period = _seconds(period)
+        scheduled = [value.start_time for value in conditions if isinstance(value, _Step) and value.start_time is not None]
+        if scheduled and not (isinstance(conditions[0], _Step) and conditions[0].start_time is not None):
+            raise ValueError("the first experiment step needs start_time when any step is scheduled")
+        origin = scheduled[0] if scheduled else None
+        self.descriptors: list[dict[str, Any]] = []
+        self.steps: list[str] = []
+        for value in conditions:
+            if isinstance(value, str):
+                self.steps.append(value)
+                self.descriptors.append({"kind": "parsed", "instruction": value, "period": None})
+                continue
+            descriptor = value.descriptor.copy()
+            if value.start_time is not None:
+                try:
+                    descriptor["scheduled_start"] = (value.start_time - origin).total_seconds()
+                except TypeError as error:
+                    raise ValueError("all start_time values must use compatible timezones") from error
+            else:
+                descriptor["scheduled_start"] = None
+            self.descriptors.append(descriptor)
+            self.steps.append(getattr(value, "instruction", "<structured step>"))
+        self.requires_advanced = any(isinstance(value, _Step) for value in conditions)
 
     @classmethod
-    def _flatten(cls, values: Sequence[str | Sequence[str]]) -> list[str]:
-        result: list[str] = []
+    def _flatten(cls, values: Sequence[Any]) -> list[str | _Step]:
+        result: list[str | _Step] = []
         for value in values:
-            if isinstance(value, str):
+            if isinstance(value, (str, _Step)):
                 result.append(value)
             else:
                 result.extend(cls._flatten(value))
@@ -323,6 +612,7 @@ class Solution:
     def __init__(self, data: MutableMapping[str, Any]):
         self.t = np.asarray(data["time"], dtype=float)
         self.termination = str(data["termination"])
+        self.termination_detail = str(data.get("termination_detail", self.termination))
         self.segment = int(data["segment"])
         self.sample_segment = np.asarray(
             data.get("sample_segment", np.zeros_like(self.t, dtype=int)), dtype=int
@@ -456,6 +746,10 @@ class Simulation:
                 raise ValueError("t_eval must be strictly increasing")
             sample_step = float(np.min(differences))
         if parameters.varied_overrides():
+            if experiment.requires_advanced:
+                raise NotImplementedError(
+                    "structured/custom experiment steps cannot be combined with varied() lanes"
+                )
             native = _slide_core.solve_ensemble(
                 parameters.source,
                 parameters.scalar_overrides(),
@@ -467,6 +761,14 @@ class Simulation:
             lanes = int(native["n_lanes"])
             native["voltage"] = np.asarray(native["voltage"], dtype=float).reshape(-1, lanes)
             native["current"] = np.asarray(native["current"], dtype=float).reshape(-1, lanes)
+        elif experiment.requires_advanced:
+            native = _slide_core.solve_advanced_experiment(
+                parameters.source,
+                parameters.scalar_overrides(),
+                _compile_options(self.model.options),
+                experiment.descriptors,
+                sample_step,
+            )
         else:
             native = _slide_core.solve_experiment(
                 parameters.source,
@@ -489,6 +791,10 @@ class Simulation:
 
         if self.experiment is None:
             raise ValueError("simulateS1 requires a fixed-duration CC Experiment")
+        if self.experiment.requires_advanced:
+            raise NotImplementedError(
+                "simulateS1 currently requires a string fixed-duration CC step"
+            )
         parameters = self.parameter_values.copy()
         if initial_soc is not None:
             parameters["Initial state-of-charge"] = initial_soc

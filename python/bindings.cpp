@@ -135,6 +135,171 @@ nb::dict solveExperiment(
     reasons[static_cast<unsigned>(solution.reason)];
   result["segment"] = solution.segment;
   result["status"] = static_cast<int>(solution.status);
+  result["termination_detail"] = solution.termination_name;
+  return result;
+}
+
+slide::core::ExperimentFunction pythonExperimentFunction(nb::object function)
+{
+  return [function = std::move(function)](
+           const slide::core::ExperimentVariables &variables) {
+    nb::dict values;
+    values["Time [s]"] = variables.time;
+    values["Local time [s]"] = variables.local_time;
+    values["Voltage [V]"] = variables.voltage;
+    values["Terminal voltage [V]"] = variables.voltage;
+    values["Current [A]"] = variables.current;
+    values["Power [W]"] = variables.power;
+    return nb::cast<double>(function(std::move(values)));
+  };
+}
+
+void addAdvancedTerminations(const nb::dict &descriptor,
+                             slide::core::ExperimentSegment &segment)
+{
+  if (!descriptor.contains("custom_terminations"))
+    return;
+  for (const nb::handle item : nb::cast<nb::list>(
+         descriptor["custom_terminations"])) {
+    const auto termination = nb::cast<nb::dict>(item);
+    segment.custom_terminations.push_back(
+      { .name = nb::cast<std::string>(termination["name"]),
+        .indicator = pythonExperimentFunction(
+          nb::borrow<nb::object>(termination["function"])) });
+  }
+}
+
+void applyAdvancedMetadata(const nb::dict &descriptor,
+                           slide::core::ExperimentSegment &segment)
+{
+  if (descriptor.contains("scheduled_start")
+      && !descriptor["scheduled_start"].is_none())
+    segment.scheduled_start = nb::cast<double>(descriptor["scheduled_start"]);
+  if (descriptor.contains("period") && !descriptor["period"].is_none())
+    segment.sample_period = nb::cast<double>(descriptor["period"]);
+  if (descriptor.contains("voltage_limit")) {
+    const double voltage_limit = nb::cast<double>(descriptor["voltage_limit"]);
+    if (voltage_limit > 0.0)
+      segment.voltage_limit = voltage_limit;
+  }
+  if (descriptor.contains("current_cutoff")) {
+    const double current_cutoff = nb::cast<double>(descriptor["current_cutoff"]);
+    if (current_cutoff > 0.0) {
+      segment.current_cutoff = current_cutoff;
+      segment.cutoff_is_c_rate = descriptor.contains("cutoff_is_c_rate")
+                                 && nb::cast<bool>(descriptor["cutoff_is_c_rate"]);
+    }
+  }
+  addAdvancedTerminations(descriptor, segment);
+}
+
+slide::core::Experiment decodeAdvancedExperiment(const nb::list &descriptors)
+{
+  slide::core::Experiment experiment;
+  for (const nb::handle item : descriptors) {
+    const auto descriptor = nb::cast<nb::dict>(item);
+    const auto kind = nb::cast<std::string>(descriptor["kind"]);
+    if (kind == "parsed") {
+      const std::vector<std::string> source{
+        nb::cast<std::string>(descriptor["instruction"])
+      };
+      slide::core::Experiment parsed;
+      slide::core::ParseDiagnostic diagnostic;
+      if (slide::core::Experiment::parse(source, parsed, diagnostic)
+          != slide::Status::Success)
+        fail("experiment step at byte " + std::to_string(diagnostic.offset)
+             + ": " + diagnostic.message);
+      for (std::size_t index = 0; index < parsed.segments.size(); ++index) {
+        applyAdvancedMetadata(descriptor, parsed.segments[index]);
+        if (index > 0)
+          parsed.segments[index].scheduled_start = -1.0;
+        experiment.segments.push_back(std::move(parsed.segments[index]));
+      }
+      continue;
+    }
+
+    slide::core::ExperimentSegment segment;
+    segment.direction = static_cast<slide::core::Direction>(
+      nb::cast<int>(descriptor["direction"]));
+    segment.duration = nb::cast<double>(descriptor["duration"]);
+    if (kind == "standard") {
+      const auto mode = nb::cast<std::string>(descriptor["mode"]);
+      if (mode == "current")
+        segment.mode = slide::core::ControlMode::current;
+      else if (mode == "voltage")
+        segment.mode = slide::core::ControlMode::voltage;
+      else if (mode == "power")
+        segment.mode = slide::core::ControlMode::power;
+      else if (mode == "rest")
+        segment.mode = slide::core::ControlMode::rest;
+      else
+        fail("unsupported structured experiment mode: " + mode);
+      segment.value = nb::cast<double>(descriptor["value"]);
+      segment.value_is_c_rate = nb::cast<bool>(descriptor["value_is_c_rate"]);
+    } else if (kind == "custom") {
+      const auto control = nb::cast<std::string>(descriptor["control"]);
+      if (control == "explicit")
+        segment.mode = slide::core::ControlMode::custom_explicit;
+      else if (control == "algebraic")
+        segment.mode = slide::core::ControlMode::custom_implicit;
+      else if (control == "differential")
+        segment.mode = slide::core::ControlMode::custom_differential;
+      else
+        fail("custom control must be explicit, algebraic, or differential");
+      segment.custom_control = pythonExperimentFunction(
+        nb::borrow<nb::object>(descriptor["function"]));
+    } else {
+      fail("unsupported advanced experiment descriptor: " + kind);
+    }
+    applyAdvancedMetadata(descriptor, segment);
+    experiment.segments.push_back(std::move(segment));
+  }
+  if (experiment.segments.empty())
+    fail("an experiment needs at least one step");
+  return experiment;
+}
+
+nb::dict solveAdvancedExperiment(
+  const std::string &source,
+  const std::map<std::string, double> &overrides,
+  const std::map<std::string, int> &option_values,
+  const nb::list &descriptors,
+  double sample_step)
+{
+  auto parameters = loadParameters(source);
+  for (const auto &[name, value] : overrides)
+    if (parameters.set(name, value, "Python override")
+        != slide::Status::Success)
+      fail("invalid parameter override: " + name);
+  slide::core::SpmFactoryInput input;
+  if (parameters.toSpmInput(input) != slide::Status::Success)
+    fail("the parameter set is incomplete for the SPM registry");
+  slide::core::SpmBatch batch;
+  if (slide::core::buildSpmBatch(input, modelOptions(option_values), 1, batch)
+      != slide::Status::Success)
+    fail("the selected parameters/options could not build an SPM batch");
+
+  auto experiment = decodeAdvancedExperiment(descriptors);
+  slide::core::CyclerV2 cycler;
+  if (cycler.configure(batch, slide::core::CyclerIntegrator::exponential)
+      != slide::Status::Success)
+    fail("failed to configure the SPM experiment runner");
+  slide::core::ExperimentSolution solution;
+  const auto status = cycler.run(experiment, sample_step, solution);
+  if (status != slide::Status::Success)
+    fail("advanced experiment failed with status "
+         + std::to_string(static_cast<int>(status)));
+
+  static constexpr const char *reasons[]{ "event", "limit", "error", "final time" };
+  nb::dict result;
+  result["time"] = nb::cast(std::move(solution.time));
+  result["voltage"] = nb::cast(std::move(solution.voltage));
+  result["current"] = nb::cast(std::move(solution.current));
+  result["sample_segment"] = nb::cast(std::move(solution.sample_segment));
+  result["termination"] = reasons[static_cast<unsigned>(solution.reason)];
+  result["termination_detail"] = solution.termination_name;
+  result["segment"] = solution.segment;
+  result["status"] = static_cast<int>(solution.status);
   return result;
 }
 
@@ -462,6 +627,7 @@ NB_MODULE(_slide_core, module)
   module.doc() = "Compiled SLIDE v4 SPM boundary";
   module.def("parameter_values", &describeParameters, "source"_a = "Chen2020");
   module.def("solve_experiment", &solveExperiment, "source"_a, "overrides"_a, "options"_a, "steps"_a, "sample_step"_a);
+  module.def("solve_advanced_experiment", &solveAdvancedExperiment, "source"_a, "overrides"_a, "options"_a, "descriptors"_a, "sample_step"_a);
   module.def("solve_ensemble", &solveEnsemble, "source"_a, "overrides"_a, "variations"_a, "options"_a, "steps"_a, "sample_step"_a);
   module.def("sensitivity_parameters", &sensitivityParameterNames);
   module.def("solve_sensitivities", &solveSensitivities, "source"_a, "overrides"_a, "options"_a, "steps"_a, "sample_step"_a, "parameter_names"_a);

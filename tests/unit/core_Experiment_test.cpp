@@ -65,6 +65,8 @@ TEST_CASE("P5-G1 documented experiment strings compile atomically",
   CHECK(cc.value == 1.0);
   CHECK(cc.duration == 3600.0);
   CHECK(cc.voltage_limit == 2.7);
+  CHECK(cc.scheduled_start == -1.0);
+  CHECK(cc.sample_period == -1.0);
 
   const auto &charge = experiment.segments[1];
   CHECK(charge.mode == core::ControlMode::current);
@@ -251,4 +253,121 @@ TEST_CASE("P5-G1 Euler CC-CV sequence remains in the legacy Cycler parity band",
   CHECK(charge_error <= 2e-7);
   CHECK(batch.state().at(batch.layout().elapsed_time, 0, 0)
         == Catch::Approx(legacy.getStateObj().time()).margin(1e-12));
+}
+
+TEST_CASE("custom explicit implicit differential controls and terminations execute",
+          "[core][experiment][custom]")
+{
+  auto explicit_batch = makeBatch();
+  core::CyclerV2 explicit_cycler;
+  REQUIRE(explicit_cycler.configure(explicit_batch) == Status::Success);
+  core::Experiment custom;
+  custom.segments.push_back(
+    { .mode = core::ControlMode::custom_explicit,
+      .direction = core::Direction::discharge,
+      .duration = 20.0,
+      .custom_control = [](const core::ExperimentVariables &) { return 2.5; } });
+  core::ExperimentSolution custom_solution;
+  REQUIRE(explicit_cycler.run(custom, 10.0, custom_solution)
+          == Status::Success);
+
+  auto standard_batch = makeBatch();
+  core::CyclerV2 standard_cycler;
+  REQUIRE(standard_cycler.configure(standard_batch) == Status::Success);
+  core::Experiment standard;
+  standard.segments.push_back({ .mode = core::ControlMode::current,
+                                .direction = core::Direction::discharge,
+                                .value = 2.5,
+                                .duration = 20.0 });
+  core::ExperimentSolution standard_solution;
+  REQUIRE(standard_cycler.run(standard, 10.0, standard_solution)
+          == Status::Success);
+  CHECK(custom_solution.time == standard_solution.time);
+  CHECK(custom_solution.current == standard_solution.current);
+  CHECK(custom_solution.voltage == standard_solution.voltage);
+
+  auto implicit_batch = makeBatch();
+  core::CyclerV2 implicit_cycler;
+  REQUIRE(implicit_cycler.configure(implicit_batch) == Status::Success);
+  core::Experiment implicit;
+  implicit.segments.push_back(
+    { .mode = core::ControlMode::custom_implicit,
+      .direction = core::Direction::charge,
+      .duration = 1.0,
+      .custom_control = [](const core::ExperimentVariables &variables) {
+        return variables.voltage - 3.8;
+      } });
+  core::ExperimentSolution implicit_solution;
+  REQUIRE(implicit_cycler.run(implicit, 1.0, implicit_solution)
+          == Status::Success);
+  CHECK(implicit_solution.voltage.front()
+        == Catch::Approx(3.8).margin(2e-10));
+  CHECK(implicit_solution.current.front() < 0.0);
+
+  auto differential_batch = makeBatch();
+  core::CyclerV2 differential_cycler;
+  REQUIRE(differential_cycler.configure(differential_batch) == Status::Success);
+  core::Experiment differential;
+  differential.segments.push_back(
+    { .mode = core::ControlMode::custom_differential,
+      .direction = core::Direction::discharge,
+      .duration = 2.0,
+      .custom_control = [](const core::ExperimentVariables &) { return 1.0; } });
+  core::ExperimentSolution differential_solution;
+  REQUIRE(differential_cycler.run(differential, 1.0, differential_solution)
+          == Status::Success);
+  REQUIRE(differential_solution.current.size() == 3);
+  CHECK(differential_solution.current.front() == 1.0);
+  CHECK(differential_solution.current.back() == 2.0);
+
+  auto event_batch = makeBatch();
+  core::CyclerV2 event_cycler;
+  REQUIRE(event_cycler.configure(event_batch) == Status::Success);
+  core::Experiment event;
+  event.segments.push_back(
+    { .mode = core::ControlMode::custom_explicit,
+      .direction = core::Direction::discharge,
+      .duration = 20.0,
+      .custom_control = [](const core::ExperimentVariables &) { return 1.0; },
+      .custom_terminations = { { .name = "five-second event",
+                                 .indicator = [](const core::ExperimentVariables &variables) {
+                                   return 5.0 - variables.local_time;
+                                 } } } });
+  core::ExperimentSolution event_solution;
+  REQUIRE(event_cycler.run(event, 10.0, event_solution) == Status::Success);
+  CHECK(event_solution.reason == core::TerminationReason::event);
+  CHECK(event_solution.termination_name == "five-second event");
+  CHECK(event_solution.time.back() == Catch::Approx(5.0).margin(1e-11));
+}
+
+TEST_CASE("scheduled starts cut steps and insert exact rest gaps",
+          "[core][experiment][start-time]")
+{
+  auto batch = makeBatch();
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  core::Experiment experiment;
+  experiment.segments = {
+    { .mode = core::ControlMode::rest,
+      .duration = 3600.0,
+      .scheduled_start = 0.0 },
+    { .mode = core::ControlMode::rest,
+      .duration = 600.0,
+      .scheduled_start = 1800.0 },
+    { .mode = core::ControlMode::rest,
+      .duration = 1800.0,
+      .scheduled_start = 3600.0 },
+    { .mode = core::ControlMode::rest, .duration = 3600.0 },
+  };
+  core::ExperimentSolution solution;
+  REQUIRE(cycler.run(experiment, 600.0, solution) == Status::Success);
+  CHECK(solution.time.back() == 9000.0);
+  CHECK(std::ranges::find(solution.time, 3000.0) != solution.time.end());
+  CHECK(std::ranges::find(solution.time, 3600.0) != solution.time.end());
+  CHECK(std::ranges::all_of(solution.current,
+                            [](double current) { return current == 0.0; }));
+
+  experiment.segments.front().scheduled_start = -1.0;
+  core::ExperimentSolution invalid;
+  CHECK(cycler.run(experiment, 600.0, invalid) == Status::Invalid_parameters);
 }

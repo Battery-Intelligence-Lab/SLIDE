@@ -8,6 +8,8 @@
 #include "EulerLegacy.hpp"
 #include "ExponentialModal.hpp"
 
+#include <functional>
+#include <limits>
 #include <span>
 #include <string>
 #include <vector>
@@ -18,10 +20,31 @@ enum class ControlMode : unsigned char { current,
                                          voltage,
                                          power,
                                          rest,
-                                         drive_cycle };
+                                         drive_cycle,
+                                         custom_explicit,
+                                         custom_implicit,
+                                         custom_differential };
 enum class Direction : signed char { charge = -1,
                                      none = 0,
                                      discharge = 1 };
+
+/** Observable subset available to dependency-free custom controls/events. */
+struct ExperimentVariables
+{
+  real_t time{};
+  real_t local_time{};
+  real_t voltage{};
+  real_t current{};
+  real_t power{};
+};
+
+using ExperimentFunction = std::function<real_t(const ExperimentVariables &)>;
+
+struct CustomTermination
+{
+  std::string name{};
+  ExperimentFunction indicator{}; //!< positive before event, zero/negative at event
+};
 
 struct ExperimentSegment
 {
@@ -34,6 +57,12 @@ struct ExperimentSegment
   real_t current_cutoff{}; //!< A or C-rate magnitude; zero means absent
   bool cutoff_is_c_rate{};
   std::string drive_cycle{};
+  ExperimentFunction custom_control{};
+  std::vector<CustomTermination> custom_terminations{};
+  /** Seconds from the first scheduled step; a negative value means start immediately. */
+  real_t scheduled_start{ -1.0 };
+  /** Per-step recording/control period; a negative value selects run's default. */
+  real_t sample_period{ -1.0 };
   std::string source{};
 };
 
@@ -68,6 +97,7 @@ struct ExperimentSolution
   TerminationReason reason{ TerminationReason::final_time };
   slide::Status status{ slide::Status::Success };
   std::size_t segment{};
+  std::string termination_name{};
 };
 
 struct DriveCycle
@@ -96,6 +126,18 @@ private:
   [[nodiscard]] slide::Status currentForPower(real_t target_power,
                                               Direction direction,
                                               real_t &current);
+  [[nodiscard]] slide::Status currentForCustom(
+    const ExperimentSegment &segment,
+    real_t time,
+    real_t local_time,
+    real_t &current);
+  [[nodiscard]] slide::Status evaluateFunction(
+    const ExperimentFunction &function,
+    real_t time,
+    real_t local_time,
+    real_t voltage,
+    real_t current,
+    real_t &value) const;
   [[nodiscard]] slide::Status advance(real_t current, real_t time, real_t dt);
   [[nodiscard]] slide::Status voltageAt(real_t current, real_t &voltage);
   const DriveCycle *findDriveCycle(const std::string &name) const;

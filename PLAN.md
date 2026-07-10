@@ -587,8 +587,9 @@ violations surface as `Status` from `step()`, and the Cycler restores the arena 
   (v25.6.0, PR #3624); `"Exchange-current density for lithium plating"`→`"…for lithium metal electrode"` (v25.4.0);
   `"1 + dlnf/dlnc"`→`"Thermodynamic factor"` (v23.3). Behavioural notes: `update()` is now update-insert
   (`check_already_exists` deprecated v25.12.0); default constants no longer auto-added on construction (v25.12.0).
-  Experiment grammar additions to cover: custom steps (v25.4.0), custom terminations (v25.10.0), `start_time`
-  (v23.9). Solution additions: `.yp`, `.observe()` (v25.12.0) — out of scope v4.0, document as such.
+  Experiment additions **implemented 2026-07-10**: custom explicit/algebraic/differential steps (v25.4.0), named
+  custom terminations (v25.10.0), and datetime-normalised `start_time` cut/rest scheduling (v23.9), all through
+  the shared C++ runner. Solution additions: `.yp`, `.observe()` (v25.12.0) — out of scope v4.0, document as such.
   **Same-parameters ⇒ same-results contract (Volkan 2026-07-09) — two unit-test layers, gate P7-G3:**
   (1) *absorption round-trip*: every absorbed key (Chen2020 table, BPX file) goes PyBaMM-named value → internal
   packs → `describe()` and must return the IDENTICAL SI value — exact equality, no simulation, runs in plain C++
@@ -602,8 +603,8 @@ violations surface as `Status` from `step()`, and the Cycler restores the arena 
 - **Python:** nanobind + scikit-build-core wheels. `slide.Experiment`, `slide.ParameterValues("Chen2020")`,
   `slide.Simulation(...).solve()`, dict-like `Solution["Terminal voltage [V]"]` (+ `.entries`, call-interpolation,
   `.plot()`, `save_data(..., to_format="csv"|"matlab")`). Options dict (`{"SEI": "solvent-diffusion limited", ...}`)
-  maps onto the composition registry (§3.2). Out of scope, documented as such: symbolic expression trees, arbitrary
-  `spatial_methods`/`var_pts`, symbolic events.
+  maps onto the composition registry (§3.2). Out of scope, documented as such: arbitrary model expression trees,
+  `spatial_methods`/`var_pts`, and callbacks requiring model variables beyond the exposed time/V/I/power subset.
 - **MATLAB:** MEX + `+slide` package mirroring the Python surface (Phase 8).
 - **Sensitivities / gradients — PyBOP entry (Volkan directive 2026-07-09: "we need to enter the PyBOP ecosystem").**
   Deliverable: forward sensitivities `∂(V, observables)/∂θ` for a registered fitting-parameter set (Q10), surfaced
@@ -1130,4 +1131,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | P7-G2 forward sensitivities + PyBOP | PASSED — dependency-free dual propagation for the resolved ten-parameter set; primal is bit-identical to production and worst normalized difference across FD `h/2,h,2h` is 53 nV. PyBOP 25.11 BaseSimulator/Problem/SSE/SciPyMinimize L-BFGS-B uses `simulateS1` gradients and recovers D/R to ~2.1e-9/~9.4e-10 relative in 16 iterations/21 evaluations, far inside 2%/0.5%. Q10 resolved; thermal h_conv sensitivity is correctly deferred from the isothermal surface. |
 | 2026-07-10 | PAY-4 cross-tool positioning | TARGETS MET (qualified development-machine run) — reproducible JSON harness separates setup and solve. Single SPM discharge+CCCV: 18.13× warm solve and 71.4× cold vs PyBaMM 26.6.2.0 IDAKLU. Pack CC: conservative 1,165× at 16s4p and 1,111× at 1s100p vs liionpack 0.3.12/CasadiManager. Parameters/protocols/tolerances/versions, output-overhead asymmetry, connector approximation, and ~0.90 mV/cell final voltage difference are recorded in `benchmark/PAY4.md`. |
 | 2026-07-10 | BPX 1.x compatibility hardening | COMPLETE — safe bounded expression AST/canonical curves for standard OCP formulas; semantic and legacy numeric 1.x headers; SPM-subset absorption from SPM/SPMe/DFN/Partial; explicit porosity/thermal fields and diffusivity activation energy. Arbitrary identifiers and non-finite formulas fail atomically. State-dependent D is diagnosed rather than silently approximated by the constant-D exact modal composition. Debug/Release 213 assertions green. |
+| 2026-07-10 | PyBaMM custom Experiment/start-time additions | COMPLETE — shared C++ callbacks cover explicit, algebraic-implicit, and differential controls plus named custom event indicators with checkpointed root landing. Scheduled starts cut active steps or insert exact rest; per-step periods are supported. `slide.step` mirrors PyBaMM constructors and normalizes datetime schedules. Constant custom CC is bit-identical to parsed CC; Debug/Release 46/46 and rebuilt-wheel Python 10/10 green. |
 | — | Phases 1–8 | **Phases 1–6 COMPLETE. Phase 7 NEXT:** **NEXT: Python/PyBaMM compatibility, parameter absorption, BPX, and sensitivities.** Phases 7–8 not started. |
