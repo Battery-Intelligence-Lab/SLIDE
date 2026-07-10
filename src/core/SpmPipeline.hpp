@@ -137,6 +137,11 @@ public:
       transport_cache_{ n_lanes },
       single_observables_{ 1 }, single_transport_cache_{ 1 },
       thevenin_current_density_(static_cast<std::size_t>(n_lanes)),
+      slow_rate_scratch_(needs_full_rhs_observables
+                           ? static_cast<std::size_t>(layout.elapsed_time.row_begin
+                                                      + layout.elapsed_time.rows + 2)
+                               * static_cast<std::size_t>(((n_lanes + 7) / 8) * 8)
+                           : 0),
       plating_current_(WithLithiumPlating ? static_cast<std::size_t>(n_lanes) : 0)
   {
     assert(n_lanes > 0);
@@ -374,6 +379,114 @@ public:
     return status;
   }
 
+  /** Exact diagonal modal diffusion wrapped in a symmetric slow/fast/slow split. */
+  [[nodiscard]] slide::Status advanceExponential(
+    BatchView state,
+    BatchView derivative,
+    const StepCtx &ctx,
+    real_t dt,
+    std::span<real_t> terminal_voltage)
+  {
+    if (state.n_lanes() != n_lanes_ || derivative.n_lanes() != n_lanes_
+        || state.n_rows() != derivative.n_rows()
+        || static_cast<int>(terminal_voltage.size()) != n_lanes_)
+      return slide::Status::Invalid_parameters;
+
+    auto evaluate_slow = [&](BatchView output) -> slide::Status {
+      RhsViews views{ state.shape() };
+      views.rebind(state.raw(), output.raw());
+      const auto status = evaluate(views, ctx);
+      if (status != slide::Status::Success)
+        return status;
+      const auto observable = observables_.view();
+      for (int row = 0; row < output.n_rows(); ++row) {
+        auto rates = output.row(row);
+        for (int lane = 0; lane < n_lanes_; ++lane) {
+          for (const Domain domain : domains) {
+            const auto d = domain_index(domain);
+            const int mode = row - layout_.spm.z[d].row_begin;
+            if (mode >= 0 && mode < NCH) {
+              const auto i = static_cast<std::size_t>(lane);
+              rates[i] -= observable.effective_diffusivity[d][i]
+                            * params_.diffusion.A[d][static_cast<std::size_t>(mode)]
+                            * state.row(row)[i]
+                          + params_.diffusion.B[d][static_cast<std::size_t>(mode)]
+                              * observable.molar_flux[d][i];
+            }
+          }
+        }
+      }
+      return slide::Status::Success;
+    };
+
+    auto apply_slow = [&](real_t h) -> slide::Status {
+      if constexpr (!needs_full_rhs_observables) {
+        (void)h;
+        return slide::Status::Success;
+      } else {
+        BatchView first_rate{ state.shape(), slow_rate_scratch_ };
+        auto status = evaluate_slow(first_rate);
+        if (status != slide::Status::Success)
+          return status;
+        for (int row = 0; row < state.n_rows(); ++row) {
+          auto values = state.row(row);
+          const auto first = first_rate.row(row);
+          for (int lane = 0; lane < n_lanes_; ++lane)
+            values[static_cast<std::size_t>(lane)] += h * first[static_cast<std::size_t>(lane)];
+        }
+        status = evaluate_slow(derivative);
+        if (status != slide::Status::Success)
+          return status;
+        for (int row = 0; row < state.n_rows(); ++row) {
+          auto values = state.row(row);
+          const auto first = first_rate.row(row);
+          const auto second = derivative.row(row);
+          for (int lane = 0; lane < n_lanes_; ++lane) {
+            const auto i = static_cast<std::size_t>(lane);
+            values[i] += 0.5 * h * (second[i] - first[i]);
+          }
+        }
+        return slide::Status::Success;
+      }
+    };
+
+    auto status = apply_slow(0.5 * dt);
+    if (status != slide::Status::Success)
+      return status;
+
+    const ConstBatchView midpoint{ state.shape(),
+                                   std::span<const real_t>{ state.raw() } };
+    auto observable = observables_.view();
+    computeSpmTransport(params_.electrical.concentration, midpoint, layout_.spm, ctx, observable.effective_diffusivity, observable.molar_flux, &transport_cache_);
+    for (const Domain domain : domains) {
+      const auto d = domain_index(domain);
+      for (int mode = 0; mode < NCH; ++mode) {
+        const real_t eigenvalue = params_.diffusion.A[d][static_cast<std::size_t>(mode)];
+        const real_t input = params_.diffusion.B[d][static_cast<std::size_t>(mode)];
+        auto values = state.row(layout_.spm.z[d].row_begin + mode);
+        for (int lane = 0; lane < n_lanes_; ++lane) {
+          const auto i = static_cast<std::size_t>(lane);
+          const real_t x = observable.effective_diffusivity[d][i] * eigenvalue * dt;
+          const real_t phi1 = std::abs(x) < 1e-7
+                                ? 1.0 + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))
+                                : std::expm1(x) / x;
+          values[i] = std::exp(x) * values[i]
+                      + dt * phi1 * input * observable.molar_flux[d][i];
+        }
+      }
+    }
+
+    status = apply_slow(0.5 * dt);
+    if (status != slide::Status::Success)
+      return status;
+    const ConstBatchView accepted{ state.shape(),
+                                   std::span<const real_t>{ state.raw() } };
+    const StepCtx accepted_ctx{ .time = ctx.time + dt,
+                                .dt = 0.0,
+                                .i_app = ctx.i_app };
+    return observeTerminalVoltage(accepted, accepted_ctx, terminal_voltage);
+  }
+
   [[nodiscard]] slide::Status observeTerminalVoltage(
     const ConstBatchView &state,
     const StepCtx &ctx,
@@ -601,6 +714,7 @@ private:
   SpmObservableScratch<NCH> single_observables_;
   SpmTransportCache single_transport_cache_;
   std::vector<real_t> thevenin_current_density_{};
+  std::vector<real_t> slow_rate_scratch_{};
   std::vector<real_t> plating_current_{};
 };
 

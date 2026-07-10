@@ -117,4 +117,6 @@ TEST_CASE("compiled repeated ladder bricks preserve their trusted lane period",
     REQUIRE(values[1] == values[3]);
     REQUIRE(values[1] == values[5]);
   }
+  REQUIRE(stepper.stepExponential(32.0, 10.0, 25.0, {}, core::PackSolveMode::ladder)
+          == Status::Success);
 }

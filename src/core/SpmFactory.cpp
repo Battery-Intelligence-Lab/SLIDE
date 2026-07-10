@@ -23,6 +23,7 @@ SpmBatch::SpmBatch(void *implementation,
                    GetLanePeriodFn get_lane_period,
                    StoreStressFn store_stress,
                    FusedEulerFn fused_euler,
+                   ExponentialFn exponential,
                    DestroyFn destroy,
                    int nch,
                    real_t capacity_Ah,
@@ -38,7 +39,8 @@ SpmBatch::SpmBatch(void *implementation,
     linearize_thevenin_{ linearize_thevenin },
     set_lane_period_{ set_lane_period },
     get_lane_period_{ get_lane_period },
-    store_stress_{ store_stress }, fused_euler_{ fused_euler }, destroy_{ destroy }, nch_{ nch },
+    store_stress_{ store_stress }, fused_euler_{ fused_euler },
+    exponential_{ exponential }, destroy_{ destroy }, nch_{ nch },
     capacity_Ah_{ capacity_Ah }, electrode_area_{ electrode_area },
     composition_{ composition }, layout_{ layout }, state_{ std::move(state) },
     derivative_{ std::move(derivative) }, roles_{ std::move(roles) }
@@ -58,6 +60,7 @@ SpmBatch::SpmBatch(SpmBatch &&other) noexcept
     get_lane_period_{ std::exchange(other.get_lane_period_, nullptr) },
     store_stress_{ std::exchange(other.store_stress_, nullptr) },
     fused_euler_{ std::exchange(other.fused_euler_, nullptr) },
+    exponential_{ std::exchange(other.exponential_, nullptr) },
     destroy_{ std::exchange(other.destroy_, nullptr) },
     nch_{ std::exchange(other.nch_, 0) },
     capacity_Ah_{ std::exchange(other.capacity_Ah_, 0.0) },
@@ -79,6 +82,7 @@ SpmBatch &SpmBatch::operator=(SpmBatch &&other) noexcept
     get_lane_period_ = std::exchange(other.get_lane_period_, nullptr);
     store_stress_ = std::exchange(other.store_stress_, nullptr);
     fused_euler_ = std::exchange(other.fused_euler_, nullptr);
+    exponential_ = std::exchange(other.exponential_, nullptr);
     destroy_ = std::exchange(other.destroy_, nullptr);
     nch_ = std::exchange(other.nch_, 0);
     capacity_Ah_ = std::exchange(other.capacity_Ah_, 0.0);
@@ -104,6 +108,7 @@ void SpmBatch::reset() noexcept
   get_lane_period_ = nullptr;
   store_stress_ = nullptr;
   fused_euler_ = nullptr;
+  exponential_ = nullptr;
   destroy_ = nullptr;
   nch_ = 0;
   capacity_Ah_ = 0.0;
@@ -142,6 +147,20 @@ slide::Status SpmBatch::fusedEuler(const StepCtx &ctx, real_t dt,
     return slide::Status::Invalid_parameters;
   BatchView state_view{ BatchShape::from(state_), state_.raw() };
   return fused_euler_(implementation_, state_view, ctx, dt, terminal_voltage);
+}
+
+slide::Status SpmBatch::exponentialStep(const StepCtx &ctx, real_t dt,
+                                        std::span<real_t> terminal_voltage)
+{
+  if (!valid() || exponential_ == nullptr
+      || static_cast<int>(ctx.i_app.size()) != n_lanes()
+      || static_cast<int>(terminal_voltage.size()) != n_lanes()
+      || !is_finite(ctx.time) || !is_finite(ctx.dt)
+      || !is_finite(dt) || !(dt > 0.0))
+    return slide::Status::Invalid_parameters;
+  BatchView state_view{ BatchShape::from(state_), state_.raw() };
+  BatchView derivative_view{ BatchShape::from(derivative_), derivative_.raw() };
+  return exponential_(implementation_, state_view, derivative_view, ctx, dt, terminal_voltage);
 }
 
 slide::Status SpmBatch::terminalVoltage(const StepCtx &ctx,
@@ -245,6 +264,10 @@ struct SpmBatchFactoryAccess
                static_cast<Concrete *>(object)->storeStressHistory(state_view, interval);
              },
              fused_euler,
+             [](void *object, BatchView state_view, BatchView derivative_view, const StepCtx &ctx, real_t dt, std::span<real_t> terminal_voltage) {
+               return static_cast<Concrete *>(object)->advanceExponential(
+                 state_view, derivative_view, ctx, dt, terminal_voltage);
+             },
              [](void *object) { delete static_cast<Concrete *>(object); },
              nch,
              capacity_Ah,

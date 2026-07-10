@@ -1,0 +1,231 @@
+/**
+ * @file core_ExponentialModal_test.cpp
+ * @brief Phase-3 exact modal, conservation, and stability gates.
+ */
+
+#include "../../src/core/ExponentialModal.hpp"
+#include "../../src/core/EulerLegacy.hpp"
+#include "../../src/core/SpectralModel.hpp"
+#include "../support/KokamSpmFixture.hpp"
+
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <vector>
+
+using namespace slide;
+
+namespace {
+
+template <int NCH>
+void exactModalGate()
+{
+  constexpr double dt = 25.0;
+  constexpr double current = 2.0;
+  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, { .nch = NCH }, 1, batch) == Status::Success);
+
+  core::PerDomain<double> radius{};
+  for (const auto domain : core::domains)
+    radius[core::domain_index(domain)] = input.design.electrode[core::domain_index(domain)].particle_radius;
+  core::CompiledSpectralModel<NCH> model;
+  REQUIRE(core::compileSpectralModel<NCH>(radius, model) == Status::Success);
+
+  core::PerDomain<std::array<double, NCH>> initial{};
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    for (int mode = 0; mode < NCH; ++mode) {
+      auto &value = batch.state().at(batch.layout().spm.z[d], mode, 0);
+      value += 0.01 * (mode + 1);
+      initial[d][static_cast<std::size_t>(mode)] = value;
+    }
+  }
+
+  const std::array density{ current / batch.electrode_area() };
+  core::ExponentialModal stepper{ batch };
+  REQUIRE(stepper.step(batch, density, 0.0, dt) == Status::Success);
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    const auto &electrode = input.design.electrode[d];
+    const double area = 3.0 * electrode.active_fraction / electrode.particle_radius;
+    const double flux = static_cast<double>(core::molar_flux_sign(domain)) * density[0]
+                        / (area * 96487.0 * electrode.thickness);
+    const double diffusivity = electrode.active_material.D_s.reference_value;
+    for (int mode = 0; mode < NCH; ++mode) {
+      const double x = diffusivity * model.A[d][static_cast<std::size_t>(mode)] * dt;
+      const double phi1 = std::abs(x) < 1e-7
+                            ? 1.0 + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))
+                            : std::expm1(x) / x;
+      const double expected = std::exp(x) * initial[d][static_cast<std::size_t>(mode)]
+                              + dt * phi1 * model.B[d][static_cast<std::size_t>(mode)] * flux;
+      const double actual = batch.state().at(batch.layout().spm.z[d], mode, 0);
+      CAPTURE(NCH, d, mode, x, expected, actual);
+      REQUIRE(std::abs(actual - expected)
+              <= 2e-12 * std::max(1.0, std::abs(expected)));
+    }
+  }
+}
+
+core::SpmFactoryInput thermalInput()
+{
+  auto input = test_support::make_legacy_kokam_input(0.55, 310.0, 298.0);
+  input.design.thermal = { .density = 1000.0,
+                           .heat_capacity = 1000.0,
+                           .volume = 1e-3,
+                           .surface_area = 1.0,
+                           .h_conv = 10.0,
+                           .reference_temperature = 298.0,
+                           .environment_temperature = 300.0 };
+  return input;
+}
+
+} // namespace
+
+TEST_CASE("P3-G1 exponential modal update matches its independent closed form",
+          "[core][integrator][exponential][P3-G1]")
+{
+  exactModalGate<5>();
+  exactModalGate<8>();
+  exactModalGate<12>();
+}
+
+TEST_CASE("P3-G2 a full signed-current cycle conserves the modal inventory",
+          "[core][integrator][conservation][P3-G2]")
+{
+  constexpr int nch = 8;
+  constexpr double current = 1.0;
+  constexpr double dt = 10.0;
+  constexpr int half_steps = 360;
+  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, { .nch = nch }, 1, batch) == Status::Success);
+  core::PerDomain<double> radius{};
+  for (const auto domain : core::domains)
+    radius[core::domain_index(domain)] = input.design.electrode[core::domain_index(domain)].particle_radius;
+  core::CompiledSpectralModel<nch> model;
+  REQUIRE(core::compileSpectralModel<nch>(radius, model) == Status::Success);
+  core::PerDomain<double> initial_mass_mode{};
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    initial_mass_mode[d] = batch.state().at(batch.layout().spm.z[d], model.zero_mode[d], 0);
+  }
+
+  core::ExponentialModal stepper{ batch };
+  for (int step = 0; step < 2 * half_steps; ++step) {
+    const double signed_current = step < half_steps ? current : -current;
+    const std::array density{ signed_current / batch.electrode_area() };
+    REQUIRE(stepper.step(batch, density, step * dt, dt) == Status::Success);
+  }
+  const double charge_in = current * half_steps * dt / 3600.0;
+  const double charge_out = current * half_steps * dt / 3600.0;
+  const auto neg = core::domain_index(core::Domain::neg);
+  const auto &negative = input.design.electrode[neg];
+  const double specific_area = 3.0 * negative.active_fraction
+                               / negative.particle_radius;
+  const double final_negative_mode = batch.state().at(
+    batch.layout().spm.z[neg], model.zero_mode[neg], 0);
+  const double stored_charge = (final_negative_mode - initial_mass_mode[neg])
+                               * input.design.electrode_area * specific_area
+                               * 96487.0 * negative.thickness
+                               / (3600.0 * model.B[neg][static_cast<std::size_t>(model.zero_mode[neg])]
+                                  * static_cast<double>(core::molar_flux_sign(
+                                    core::Domain::neg)));
+  REQUIRE(std::abs(charge_in - charge_out - stored_charge) < 1e-9);
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    const double final_mode = batch.state().at(batch.layout().spm.z[d], model.zero_mode[d], 0);
+    REQUIRE(std::abs(final_mode - initial_mass_mode[d]) <= 1e-9);
+  }
+}
+
+TEST_CASE("P3-G3 nch12 exponential stepping survives an Euler-unstable step",
+          "[core][integrator][stability][P3-G3]")
+{
+  constexpr int nch = 12;
+  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  core::SpmBatch exponential_batch, euler_batch;
+  REQUIRE(core::buildSpmBatch(input, { .nch = nch }, 1, exponential_batch)
+          == Status::Success);
+  REQUIRE(core::buildSpmBatch(input, { .nch = nch }, 1, euler_batch)
+          == Status::Success);
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    exponential_batch.state().at(exponential_batch.layout().spm.z[d], nch - 1, 0) += 1.0;
+    euler_batch.state().at(euler_batch.layout().spm.z[d], nch - 1, 0) += 1.0;
+  }
+  const std::array density{ 0.0 };
+  core::ExponentialModal exponential{ exponential_batch };
+  core::EulerLegacy euler{ euler_batch };
+  constexpr double unstable_dt = 1000.0;
+  REQUIRE(exponential.step(exponential_batch, density, 0.0, unstable_dt)
+          == Status::Success);
+  const auto euler_status = euler.step(euler_batch, density, 0.0, unstable_dt);
+  double exponential_norm{};
+  double euler_norm{};
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    exponential_norm = std::max(exponential_norm,
+                                std::abs(exponential_batch.state().at(
+                                  exponential_batch.layout().spm.z[d], nch - 1, 0)));
+    euler_norm = std::max(euler_norm,
+                          std::abs(euler_batch.state().at(
+                            euler_batch.layout().spm.z[d], nch - 1, 0)));
+  }
+  CAPTURE(euler_status, exponential_norm, euler_norm);
+  REQUIRE(std::isfinite(exponential_norm));
+  REQUIRE((euler_status != Status::Success || euler_norm > 1e6 * exponential_norm));
+}
+
+TEST_CASE("Strang slow split is second order and adaptive steps align to events",
+          "[core][integrator][strang][adaptive][event]")
+{
+  const auto input = thermalInput();
+  const core::SpmModelOptions options{ .nch = 5, .thermal = true };
+  core::SpmBatch coarse, fine, adaptive;
+  REQUIRE(core::buildSpmBatch(input, options, 1, coarse) == Status::Success);
+  REQUIRE(core::buildSpmBatch(input, options, 1, fine) == Status::Success);
+  REQUIRE(core::buildSpmBatch(input, options, 1, adaptive) == Status::Success);
+  const std::array density{ 0.0 };
+  core::ExponentialModal coarse_stepper{ coarse };
+  core::ExponentialModal fine_stepper{ fine };
+  constexpr double duration = 10.0;
+  REQUIRE(coarse_stepper.step(coarse, density, 0.0, duration) == Status::Success);
+  REQUIRE(fine_stepper.step(fine, density, 0.0, 0.5 * duration) == Status::Success);
+  REQUIRE(fine_stepper.step(fine, density, 0.5 * duration, 0.5 * duration)
+          == Status::Success);
+  const double rate = input.design.thermal.h_conv * input.design.thermal.surface_area
+                      / (input.design.thermal.density
+                         * input.design.thermal.heat_capacity
+                         * input.design.thermal.volume);
+  const double exact = input.design.thermal.environment_temperature
+                       + (input.initial_temperature
+                          - input.design.thermal.environment_temperature)
+                           * std::exp(-rate * duration);
+  const double coarse_error = std::abs(
+    coarse.state().at(coarse.layout().spm.temperature, 0, 0) - exact);
+  const double fine_error = std::abs(
+    fine.state().at(fine.layout().spm.temperature, 0, 0) - exact);
+  CAPTURE(coarse_error, fine_error);
+  REQUIRE(fine_error < 0.35 * coarse_error);
+
+  core::ExponentialModal adaptive_stepper{ adaptive };
+  double accepted{}, next{};
+  REQUIRE(adaptive_stepper.stepAdaptive(adaptive, density, 0.0, 100.0, 1e-10, 1e-8, accepted, next)
+          == Status::Success);
+  REQUIRE(accepted > 0.0);
+  REQUIRE(accepted <= 100.0);
+  REQUIRE(next > 0.0);
+  const double adaptive_exact = input.design.thermal.environment_temperature
+                                + (input.initial_temperature
+                                   - input.design.thermal.environment_temperature)
+                                    * std::exp(-rate * accepted);
+  REQUIRE(std::abs(adaptive.state().at(adaptive.layout().spm.temperature, 0, 0)
+                   - adaptive_exact)
+          <= 1e-6);
+  REQUIRE(core::ExponentialModal::alignToEvent(3.0, 5.0, 4.25) == 1.25);
+  REQUIRE(core::ExponentialModal::alignToEvent(3.0, 0.5, 4.25) == 0.5);
+}

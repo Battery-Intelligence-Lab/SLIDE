@@ -950,6 +950,11 @@ Deliver: exponential modal propagator, Strang multirate, event-aligned segmentat
 variable outer step with error controller.
 **Gates:** P3-G1 expm vs converged reference band (§5.3). P3-G2 energy/charge conservation: |ΔAh_in − ΔAh_out −
 ΔAh_stored| < 1e-9 Ah on a full cycle. P3-G3 nch=12 runs stable where legacy Euler diverges (registered demonstration).
+**COMPLETE 2026-07-10:** exact diagonal `exp`/`expm1`/φ₁ propagation is exposed through single-batch and transactional
+pack steppers. Thermal/ageing use symmetric Heun-slow/exact-diffusion/Heun-slow splitting; allocation-free step
+doubling controls the outer step and restores rejected trials; known breakpoints clamp the step before evaluation.
+P3-G1 matches an independent closed form for nch={5,8,12} within 2e-12, P3-G2 closes the modal-inventory charge
+balance below 1e-9 Ah, and P3-G3's nch=12, dt=1000 s case remains finite while Euler fails or amplifies >10⁶×.
 
 ### Phase 4 — Mode C relaxation solver (scale path)
 Deliver: WR+Baumgarte advance, gain selection rule, index-1 topology check, Mode A as arbiter.
@@ -1068,4 +1073,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | P2-G1 coupled pack transaction + parity | PASSED — `PackStepper` owns whole-pack checkpoint/rollback, electrical solve, canonical thermal gather/scatter, and batch advance; restore drops both factorization and warm solution and repeats accepted arena bytes exactly. Accepted coupled steps allocate zero. The 300-step Kokam 3s2p trajectory vs legacy `Module_s/Module_p` has max ΔV=5.33e-15 V, ΔI=2.95e-13 A, and worst mapped state=0.013× its band. |
 | 2026-07-10 | P2-G5 Mode-B admission | PASSED — linear 16p with 1% R spread meets the 1e-8 A band; SPM with 2% active-content and 5% resistance spread over a 1C-to-taper trajectory has max relative branch-current error 8.49e-14 at 16p and 3.10e-13 at 256p vs Mode A, far below 1e-3. Mode B remains compile-detected ladder-only. |
 | 2026-07-10 | PAY-2 Phase-2 payoff | PASSED ABORT GATE / TARGET FALSIFIED — reproducible heterogeneous 16s4p × 1,800-step harness, three alternating Release repetitions. Compiled median 0.003089 s vs legacy 0.015049 s = 4.87×; conservative speedup 4.83×. The 10× hypothesis is falsified, but the required ≥3× continue threshold clears. Initial 0.69× drove analytic tangents and compile-validated period-4 brick specialization. Final errors: state 2.72e-8, current 2.70e-6 A, voltage 2.92e-8 V. |
-| — | Phases 1–8 | **Phases 1–2 COMPLETE. Phase 3 NEXT:** all pack compile/solver/thermal/transaction gates P2-G1–G5 and PAY-2 are closed. **NEXT: exponential modal integration + multirate/events.** Phases 3–8 not started. |
+| 2026-07-10 | Phase-3 exponential/modal integration | COMPLETE — exact φ₁-safe modal propagation, symmetric second-order slow-physics splitting, adaptive step doubling/rollback, event alignment, and pack transaction entry point implemented. P3-G1 nch={5,8,12} closed-form error ≤2e-12; P3-G2 modal-inventory cycle balance <1e-9 Ah; P3-G3 nch12 remains finite at dt=1000 s where Euler fails or amplifies >10⁶×. |
+| — | Phases 1–8 | **Phases 1–3 COMPLETE. Phase 4 NEXT:** **NEXT: Mode-C WR+Baumgarte scale path.** Phases 4–8 not started. |

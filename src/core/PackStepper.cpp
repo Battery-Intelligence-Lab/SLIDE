@@ -50,10 +50,12 @@ slide::Status PackStepper::configure(
 
   std::vector<TheveninBatchView> views;
   std::vector<EulerLegacy> steppers;
+  std::vector<ExponentialModal> exponential_steppers;
   std::vector<std::vector<real_t>> current_density;
   std::vector<std::size_t> checkpoint_offsets(batches.size() + 1);
   views.reserve(batches.size());
   steppers.reserve(batches.size());
+  exponential_steppers.reserve(batches.size());
   current_density.reserve(batches.size());
   for (std::size_t batch = 0; batch < batches.size(); ++batch) {
     const auto *ptr = batches[batch];
@@ -65,6 +67,7 @@ slide::Status PackStepper::configure(
       return slide::Status::Invalid_parameters;
     views.push_back(TheveninBatchView::bind(*batches[batch], required_lanes[batch]));
     steppers.emplace_back(*batches[batch]);
+    exponential_steppers.emplace_back(*batches[batch]);
     current_density.emplace_back(static_cast<std::size_t>(required_lanes[batch]));
     checkpoint_offsets[batch + 1] = checkpoint_offsets[batch] + ptr->state().size();
   }
@@ -77,6 +80,7 @@ slide::Status PackStepper::configure(
   topology_ = topology;
   batches_.assign(batches.begin(), batches.end());
   steppers_ = std::move(steppers);
+  exponential_steppers_ = std::move(exponential_steppers);
   solver_ = std::move(solver);
   current_density_ = std::move(current_density);
   checkpoint_offsets_ = std::move(checkpoint_offsets);
@@ -138,6 +142,32 @@ slide::Status PackStepper::step(
   real_t current_tolerance,
   int substeps)
 {
+  return stepImpl(applied_current, time, dt, boundary_temperature, mode, current_tolerance, substeps, false);
+}
+
+slide::Status PackStepper::stepExponential(
+  real_t applied_current,
+  real_t time,
+  real_t dt,
+  std::span<const real_t>
+    boundary_temperature,
+  PackSolveMode mode,
+  real_t current_tolerance)
+{
+  return stepImpl(applied_current, time, dt, boundary_temperature, mode, current_tolerance, 1, true);
+}
+
+slide::Status PackStepper::stepImpl(
+  real_t applied_current,
+  real_t time,
+  real_t dt,
+  std::span<const real_t>
+    boundary_temperature,
+  PackSolveMode mode,
+  real_t current_tolerance,
+  int substeps,
+  bool exponential)
+{
   if (!configured_ || !is_finite(applied_current) || !is_finite(time)
       || !is_finite(dt) || !(dt > 0.0) || substeps <= 0
       || boundary_temperature.size() != topology_.thermal.boundary_count)
@@ -178,7 +208,11 @@ slide::Status PackStepper::step(
 
   for (int substep = 0; substep < substeps; ++substep)
     for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
-      status = steppers_[batch].step(*batches_[batch], current_density_[batch], time + static_cast<real_t>(substep) * dt, dt);
+      status = exponential
+                 ? exponential_steppers_[batch].step(
+                     *batches_[batch], current_density_[batch], time + static_cast<real_t>(substep) * dt, dt)
+                 : steppers_[batch].step(
+                     *batches_[batch], current_density_[batch], time + static_cast<real_t>(substep) * dt, dt);
       if (status != slide::Status::Success)
         return fail(status);
     }

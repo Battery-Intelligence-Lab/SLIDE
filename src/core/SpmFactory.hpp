@@ -101,6 +101,8 @@ public:
   bool hasFusedEuler() const { return fused_euler_ != nullptr; }
   [[nodiscard]] slide::Status fusedEuler(const StepCtx &ctx, real_t dt,
                                          std::span<real_t> terminal_voltage);
+  [[nodiscard]] slide::Status exponentialStep(const StepCtx &ctx, real_t dt,
+                                              std::span<real_t> terminal_voltage);
   [[nodiscard]] slide::Status terminalVoltage(const StepCtx &ctx,
                                               std::span<real_t> output);
   [[nodiscard]] slide::Status linearizeThevenin(
@@ -125,6 +127,9 @@ private:
   using StoreStressFn = void (*)(void *, BatchView, real_t);
   using FusedEulerFn = slide::Status (*)(void *, BatchView, const StepCtx &, real_t,
                                          std::span<real_t>);
+  using ExponentialFn = slide::Status (*)(void *, BatchView, BatchView,
+                                          const StepCtx &, real_t,
+                                          std::span<real_t>);
   using DestroyFn = void (*)(void *);
 
   SpmBatch(void *implementation,
@@ -135,6 +140,7 @@ private:
            GetLanePeriodFn get_lane_period,
            StoreStressFn store_stress,
            FusedEulerFn fused_euler,
+           ExponentialFn exponential,
            DestroyFn destroy,
            int nch,
            real_t capacity_Ah,
@@ -155,6 +161,7 @@ private:
   GetLanePeriodFn get_lane_period_{};
   StoreStressFn store_stress_{};
   FusedEulerFn fused_euler_{};
+  ExponentialFn exponential_{};
   DestroyFn destroy_{};
   int nch_{};
   real_t capacity_Ah_{};
