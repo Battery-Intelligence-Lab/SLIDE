@@ -5,6 +5,7 @@
 
 #include "core/Experiment.hpp"
 #include "core/ExponentialModal.hpp"
+#include "core/ForwardSensitivity.hpp"
 #include "core/ParameterSet.hpp"
 
 #include <nanobind/nanobind.h>
@@ -370,6 +371,90 @@ nb::dict solveEnsemble(
   return result;
 }
 
+std::vector<std::string> sensitivityParameterNames()
+{
+  std::vector<std::string> names;
+  names.reserve(slide::core::supported_sensitivity_parameters.size());
+  for (const auto parameter : slide::core::supported_sensitivity_parameters)
+    names.emplace_back(slide::core::sensitivityParameterName(parameter));
+  return names;
+}
+
+nb::dict solveSensitivities(
+  const std::string &source,
+  const std::map<std::string, double> &overrides,
+  const std::map<std::string, int> &option_values,
+  const std::vector<std::string> &steps,
+  double sample_step,
+  const std::vector<std::string> &parameter_names)
+{
+  const auto options = modelOptions(option_values);
+  if (options.thermal || options.has_ageing())
+    fail("the v4.0 forward-sensitivity composition is isothermal and non-ageing");
+  auto parameters = loadParameters(source);
+  for (const auto &[name, value] : overrides)
+    if (parameters.set(name, value, "Python sensitivity override")
+        != slide::Status::Success)
+      fail("invalid parameter override: " + name);
+  slide::core::SpmFactoryInput input;
+  if (parameters.toSpmInput(input) != slide::Status::Success)
+    fail("the parameter set is incomplete for forward sensitivities");
+
+  slide::core::Experiment experiment;
+  slide::core::ParseDiagnostic diagnostic;
+  if (slide::core::Experiment::parse(steps, experiment, diagnostic)
+        != slide::Status::Success
+      || experiment.segments.size() != 1)
+    fail("simulateS1 requires exactly one valid experiment segment");
+  const auto &segment = experiment.segments.front();
+  if (segment.mode != slide::core::ControlMode::current
+      || !(segment.duration >= 0.0) || segment.voltage_limit != 0.0
+      || segment.current_cutoff != 0.0)
+    fail("simulateS1 requires a fixed-duration CC segment without an event");
+
+  std::vector<slide::core::SensitivityParameter> requested;
+  requested.reserve(parameter_names.size());
+  for (const auto &name : parameter_names) {
+    slide::core::SensitivityParameter parameter;
+    if (slide::core::parseSensitivityParameter(name, parameter)
+        != slide::Status::Success)
+      fail("unsupported sensitivity parameter: " + name);
+    requested.push_back(parameter);
+  }
+  slide::core::ForwardSensitivitySolution solution;
+  if (slide::core::solveCcForwardSensitivities(
+        input, options.nch, segment.value, segment.value_is_c_rate, segment.direction, segment.duration, sample_step, requested, solution)
+      != slide::Status::Success)
+    fail("dual-number sensitivity propagation failed");
+
+  const double magnitude = segment.value_is_c_rate
+                             ? segment.value * input.design.capacity_Ah
+                             : segment.value;
+  const double current = static_cast<int>(segment.direction) * magnitude;
+  std::vector<double> currents(solution.time.size(), current);
+  nb::dict sensitivities;
+  for (std::size_t p = 0; p < requested.size(); ++p) {
+    std::vector<double> values(solution.time.size());
+    for (std::size_t sample = 0; sample < solution.time.size(); ++sample)
+      values[sample] = solution.derivativeAt(sample)[p];
+    sensitivities[nb::str(
+      std::string{ slide::core::sensitivityParameterName(requested[p]) }.c_str())] = nb::cast(std::move(values));
+  }
+
+  const std::size_t sample_count = solution.time.size();
+  nb::dict result;
+  result["time"] = nb::cast(std::move(solution.time));
+  result["voltage"] = nb::cast(std::move(solution.terminal_voltage));
+  result["current"] = nb::cast(std::move(currents));
+  result["sensitivities"] = std::move(sensitivities);
+  result["sample_segment"] =
+    nb::cast(std::vector<std::size_t>(sample_count));
+  result["termination"] = "final time";
+  result["segment"] = 0;
+  result["status"] = 0;
+  return result;
+}
+
 } // namespace
 
 NB_MODULE(_slide_core, module)
@@ -378,4 +463,6 @@ NB_MODULE(_slide_core, module)
   module.def("parameter_values", &describeParameters, "source"_a = "Chen2020");
   module.def("solve_experiment", &solveExperiment, "source"_a, "overrides"_a, "options"_a, "steps"_a, "sample_step"_a);
   module.def("solve_ensemble", &solveEnsemble, "source"_a, "overrides"_a, "variations"_a, "options"_a, "steps"_a, "sample_step"_a);
+  module.def("sensitivity_parameters", &sensitivityParameterNames);
+  module.def("solve_sensitivities", &solveSensitivities, "source"_a, "overrides"_a, "options"_a, "steps"_a, "sample_step"_a, "parameter_names"_a);
 }

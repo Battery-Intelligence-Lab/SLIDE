@@ -116,3 +116,20 @@ def test_varied_lanes_are_one_ensemble_batch():
     assert voltage.shape == (7, 3)
     assert np.all(np.diff(voltage[0]) > 0)
     assert np.all(voltage[-1] < voltage[0])
+
+
+def test_simulate_s1_exposes_true_forward_sensitivities():
+    names = slide.sensitivity_parameters()
+    assert len(names) == 10
+    selected = ["Negative particle diffusivity [m2.s-1]", "Contact resistance [Ohm]"]
+    simulation = slide.Simulation(
+        slide.SPM({"nch": 12}),
+        experiment=slide.Experiment("Discharge at 1 C for 60 seconds", period="10 seconds"),
+    )
+    solution = simulation.simulateS1(selected, initial_soc=0.8)
+    assert set(solution.sensitivities) == set(selected)
+    assert all(values.shape == solution.t.shape for values in solution.sensitivities.values())
+    np.testing.assert_allclose(
+        solution.sensitivities["Contact resistance [Ohm]"], -5.0, rtol=0, atol=1e-14
+    )
+    assert solution["Voltage [V]"].sensitivities.keys() == solution.sensitivities.keys()

@@ -14,7 +14,7 @@ license = { file = "LICENSE" }
 [project.optional-dependencies]
 plot = ["matplotlib>=3.7"]
 matlab = ["scipy>=1.10"]
-test = ["pytest>=8", "pybamm==26.6.2.0"]
+test = ["pytest>=8", "pybamm==26.6.2.0", "pybop==25.11"]
 
 [tool.scikit-build]
 cmake.args = ["-DSLIDE_CORE_ONLY=ON", "-DSLIDE_BUILD_PYTHON=ON"]

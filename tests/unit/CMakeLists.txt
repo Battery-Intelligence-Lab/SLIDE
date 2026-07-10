@@ -146,6 +146,10 @@ add_executable_with_coverage_and_test(unit_test_core_P7G3_PyBaMM core_P7G3_PyBaM
 target_link_libraries(unit_test_core_P7G3_PyBaMM PRIVATE slide_core)
 target_compile_definitions(unit_test_core_P7G3_PyBaMM PRIVATE SLIDE_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
+# Phase 7 P7-G2: true forward sensitivities against centered finite differences
+add_executable_with_coverage_and_test(unit_test_core_ForwardSensitivity core_ForwardSensitivity_test.cpp)
+target_link_libraries(unit_test_core_ForwardSensitivity PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

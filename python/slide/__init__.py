@@ -24,6 +24,7 @@ __all__ = [
     "available_devices",
     "lithium_ion",
     "plot",
+    "sensitivity_parameters",
     "varied",
 ]
 __version__ = "4.0.0.dev0"
@@ -286,11 +287,18 @@ def available_devices() -> tuple[str, ...]:
 class ProcessedVariable:
     """A sampled solution field with PyBaMM-style entries and interpolation."""
 
-    def __init__(self, name: str, time: np.ndarray, entries: np.ndarray):
+    def __init__(
+        self,
+        name: str,
+        time: np.ndarray,
+        entries: np.ndarray,
+        sensitivities: MutableMapping[str, np.ndarray] | None = None,
+    ):
         self.name = name
         self.t = np.asarray(time, dtype=float)
         self.entries = np.asarray(entries, dtype=float)
         self.data = self.entries
+        self.sensitivities = dict(sensitivities or {})
 
     def __call__(self, t: float | Sequence[float], **_: Any) -> np.ndarray | float:
         query = np.asarray(t, dtype=float)
@@ -326,13 +334,21 @@ class Solution:
             "Current [A]": np.asarray(data["current"], dtype=float),
         }
         self.all_models: list[Any] = []
-        self.sensitivities: dict[str, np.ndarray] = {}
+        self.sensitivities = {
+            name: np.asarray(values, dtype=float)
+            for name, values in dict(data.get("sensitivities", {})).items()
+        }
         self.cycles = [self]
 
     def __getitem__(self, name: str) -> ProcessedVariable:
         if name not in self._fields:
             raise KeyError(f"SLIDE did not record {name!r}; available: {sorted(self._fields)}")
-        return ProcessedVariable(name, self.t, self._fields[name])
+        sensitivities = (
+            self.sensitivities
+            if name in ("Terminal voltage [V]", "Voltage [V]")
+            else {}
+        )
+        return ProcessedVariable(name, self.t, self._fields[name], sensitivities)
 
     def plot(self, output_variables: str | Sequence[str] = "Terminal voltage [V]", **kwargs: Any) -> Any:
         names = [output_variables] if isinstance(output_variables, str) else list(output_variables)
@@ -409,8 +425,16 @@ class Simulation:
         *,
         initial_soc: float | None = None,
         inputs: MutableMapping[str, float] | None = None,
+        calculate_sensitivities: bool = False,
+        sensitivity_parameters: Sequence[str] | None = None,
         **_: Any,
     ) -> Solution:
+        if calculate_sensitivities:
+            return self.simulateS1(
+                sensitivity_parameters or globals()["sensitivity_parameters"](),
+                inputs=inputs,
+                initial_soc=initial_soc,
+            )
         parameters = self.parameter_values.copy()
         if initial_soc is not None:
             parameters["Initial state-of-charge"] = initial_soc
@@ -454,6 +478,37 @@ class Simulation:
         self.solution = Solution(native)
         return self.solution
 
+    def simulateS1(
+        self,
+        parameter_names: Sequence[str],
+        *,
+        inputs: MutableMapping[str, float] | None = None,
+        initial_soc: float | None = None,
+    ) -> Solution:
+        """Return voltage plus exact forward sensitivities for a fixed CC segment."""
+
+        if self.experiment is None:
+            raise ValueError("simulateS1 requires a fixed-duration CC Experiment")
+        parameters = self.parameter_values.copy()
+        if initial_soc is not None:
+            parameters["Initial state-of-charge"] = initial_soc
+        if inputs:
+            parameters.update(inputs)
+        if parameters.varied_overrides():
+            raise NotImplementedError(
+                "simulateS1 does not combine parameter sweeps and derivatives"
+            )
+        native = _slide_core.solve_sensitivities(
+            parameters.source,
+            parameters.scalar_overrides(),
+            _compile_options(self.model.options),
+            self.experiment.steps,
+            self.experiment.period,
+            list(parameter_names),
+        )
+        self.solution = Solution(native)
+        return self.solution
+
     def plot(self, output_variables: str | Sequence[str] = "Terminal voltage [V]", **kwargs: Any) -> Any:
         if self.solution is None:
             raise RuntimeError("call solve() before plot()")
@@ -462,3 +517,9 @@ class Simulation:
 
 def plot(solution: Solution, output_variables: str | Sequence[str] = "Terminal voltage [V]", **kwargs: Any) -> Any:
     return solution.plot(output_variables, **kwargs)
+
+
+def sensitivity_parameters() -> tuple[str, ...]:
+    """Return the ten first-class v4.0 forward-sensitivity parameter names."""
+
+    return tuple(_slide_core.sensitivity_parameters())
