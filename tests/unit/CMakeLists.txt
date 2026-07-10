@@ -106,6 +106,18 @@ target_link_libraries(unit_test_core_PackTopology PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_PackSolver core_PackSolver_test.cpp)
 target_link_libraries(unit_test_core_PackSolver PRIVATE slide_core)
 
+# Phase 2: transactional electrical/thermal pack stepping and restore invalidation
+add_executable_with_coverage_and_test(unit_test_core_PackStepper core_PackStepper_test.cpp)
+target_link_libraries(unit_test_core_PackStepper PRIVATE slide_core)
+
+# Phase 2 P2-G5: Mode-B admission against Mode A at 16p/256p
+add_executable_with_coverage_and_test(unit_test_core_P2G5_ModeB core_P2G5_ModeB_test.cpp)
+target_link_libraries(unit_test_core_P2G5_ModeB PRIVATE slide_core)
+
+# Phase 2 D-21/P2-G1: allocation counter over one accepted coupled pack step
+add_executable_with_coverage_and_test(unit_test_core_P2G1_allocation core_P2G1_allocation_test.cpp)
+target_link_libraries(unit_test_core_P2G1_allocation PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

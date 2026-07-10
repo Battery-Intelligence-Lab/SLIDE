@@ -125,7 +125,11 @@ public:
                                     PackSolveMode mode = PackSolveMode::sparse_newton,
                                     real_t current_tolerance = 1e-10,
                                     int max_iterations = 8);
-  void invalidate() { workspace_.invalidate(); }
+  void invalidate()
+  {
+    workspace_.invalidate();
+    has_solution_ = false;
+  }
 
   const PackSolution &solution() const { return solution_; }
   const PackSolveDiagnostics &diagnostics() const { return diagnostics_; }

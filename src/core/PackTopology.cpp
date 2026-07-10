@@ -141,12 +141,17 @@ namespace {
     }
   };
 
-  void assignBatchLocations(CompiledPackTopology &pack)
+  bool assignBatchLocations(CompiledPackTopology &pack)
   {
     std::map<std::string, std::uint32_t> batches;
+    std::map<std::string, bool> thermal;
     std::map<std::string, std::uint32_t> next_lane;
-    for (const auto &cell : pack.cells)
+    for (const auto &cell : pack.cells) {
       batches.emplace(cell.archetype, 0);
+      const auto [it, inserted] = thermal.emplace(cell.archetype, cell.thermal);
+      if (!inserted && it->second != cell.thermal)
+        return false;
+    }
     std::uint32_t batch{};
     for (auto &[name, index] : batches) {
       index = batch++;
@@ -155,6 +160,7 @@ namespace {
     for (auto &cell : pack.cells)
       cell.location = { .batch = batches.at(cell.archetype),
                         .lane = next_lane[cell.archetype]++ };
+    return true;
   }
 
   void compileElectricalMetadata(CompiledPackTopology &pack, std::uint32_t node_count)
@@ -370,7 +376,8 @@ slide::Status compilePackDescription(const PackDescription &description,
   context.compile(description.root, 0, 1, {});
   if (!context.valid || context.result.cells.empty())
     return slide::Status::Invalid_parameters;
-  assignBatchLocations(context.result);
+  if (!assignBatchLocations(context.result))
+    return slide::Status::Invalid_parameters;
   compileElectricalMetadata(context.result, context.next_node);
   if (!context.result.electrical.connected)
     return slide::Status::Invalid_parameters;
