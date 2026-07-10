@@ -22,6 +22,7 @@
 #include <new>
 #include <span>
 #include <string_view>
+#include <utility>
 
 namespace slide::core {
 
@@ -45,12 +46,23 @@ enum class Unit : int {
   mol_m3 //!< mol/m^3 (concentrations)
 };
 
+//!< Integration role for a state row (PLAN.md §3.12, D-23). The role is cold-path
+//!< layout metadata used by steppers to keep algebraic, cumulative and externally
+//!< supplied rows out of generic ODE integrators.
+enum class StateRole : unsigned char {
+  ode,
+  algebraic,
+  cumulative,
+  input
+};
+
 //!< A model component's declaration of one state variable (PLAN.md §3.1).
 //!< `name` must outlive the builder that receives it — use string literals.
 struct StateSpec {
   std::string_view name{};  //!< unique within a batch, e.g. "zp", "T", "delta"
   int rows{ 1 };            //!< e.g. "zn" has nch rows
   Unit unit{ Unit::none };
+  StateRole role{ StateRole::ode };
 };
 
 //!< Integer handle a model component holds after layout (PLAN.md §3.1).
@@ -72,6 +84,27 @@ public:
 
   StateArena() = default;
 
+  StateArena(const StateArena &) = delete;
+  StateArena &operator=(const StateArena &) = delete;
+
+  StateArena(StateArena &&other) noexcept
+    : n_rows_{ std::exchange(other.n_rows_, 0) },
+      n_lanes_{ std::exchange(other.n_lanes_, 0) },
+      stride_{ std::exchange(other.stride_, 0) },
+      data_{ std::move(other.data_) }
+  {}
+
+  StateArena &operator=(StateArena &&other) noexcept
+  {
+    if (this != &other) {
+      n_rows_ = std::exchange(other.n_rows_, 0);
+      n_lanes_ = std::exchange(other.n_lanes_, 0);
+      stride_ = std::exchange(other.stride_, 0);
+      data_ = std::move(other.data_);
+    }
+    return *this;
+  }
+
   StateArena(int n_rows, int n_lanes)
     : n_rows_{ n_rows }, n_lanes_{ n_lanes },
       stride_{ pad_lanes(n_lanes) },
@@ -84,12 +117,12 @@ public:
   //!< One variable across all lanes. Excludes the alignment padding.
   std::span<real_t> row(int r)
   {
-    assert(0 <= r && r < n_rows_);
+    assert(data_ && 0 <= r && r < n_rows_);
     return { data_.get() + static_cast<std::size_t>(r) * stride_, static_cast<std::size_t>(n_lanes_) };
   }
   std::span<const real_t> row(int r) const
   {
-    assert(0 <= r && r < n_rows_);
+    assert(data_ && 0 <= r && r < n_rows_);
     return { data_.get() + static_cast<std::size_t>(r) * stride_, static_cast<std::size_t>(n_lanes_) };
   }
 
@@ -97,23 +130,21 @@ public:
   //!< that prefer whole vectors — kernels must not depend on padding values.
   std::span<real_t> row_padded(int r)
   {
-    assert(0 <= r && r < n_rows_);
+    assert(data_ && 0 <= r && r < n_rows_);
     return { data_.get() + static_cast<std::size_t>(r) * stride_, static_cast<std::size_t>(stride_) };
   }
 
   //!< Element access for cold paths and tests: row `r` (relative to the slice) of lane `c`.
-  // REVIEW-MARK(2026-07-09, Fable): assert checks r vs s.rows but never `s.row_begin + r < n_rows_`
-  // — a stale/foreign StateSlice reads OOB silently even in Debug. Add the arena-bounds assert
-  // (both overloads). Also: moved-from StateArena keeps n_rows_/n_lanes_ nonzero with null data_,
-  // so row()/at() pass asserts then deref nullptr — zero the dims in a move ctor/assign.
   real_t &at(StateSlice s, int r, int c)
   {
-    assert(0 <= r && r < s.rows && 0 <= c && c < n_lanes_);
+    assert(data_ && 0 <= s.row_begin && 0 <= r && r < s.rows
+           && s.row_begin + r < n_rows_ && 0 <= c && c < n_lanes_);
     return data_[static_cast<std::size_t>(s.row_begin + r) * stride_ + static_cast<std::size_t>(c)];
   }
   const real_t &at(StateSlice s, int r, int c) const
   {
-    assert(0 <= r && r < s.rows && 0 <= c && c < n_lanes_);
+    assert(data_ && 0 <= s.row_begin && 0 <= r && r < s.rows
+           && s.row_begin + r < n_rows_ && 0 <= c && c < n_lanes_);
     return data_[static_cast<std::size_t>(s.row_begin + r) * stride_ + static_cast<std::size_t>(c)];
   }
 

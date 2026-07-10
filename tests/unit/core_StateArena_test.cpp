@@ -14,6 +14,7 @@
  */
 
 #include "../../src/core/BatchBuilder.hpp"
+#include "../../src/core/BatchView.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -21,6 +22,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <new>
+#include <utility>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -226,4 +228,56 @@ TEST_CASE("Builder may build several arenas of one archetype (layout shared)", "
   REQUIRE(a2.stride() == 4096);   // already a multiple of 8
   REQUIRE(a1.n_lanes() == 4);
   REQUIRE(a2.n_lanes() == 4096);
+}
+
+TEST_CASE("BatchView rebinds to integrator trial vectors without copying", "[core][P1][rhs]")
+{
+  Layout L;
+  auto arena = L.b.build(7);
+  const auto shape = BatchShape::from(arena);
+  std::vector<real_t> trial_a(shape.storage_size(), 1.0);
+  std::vector<real_t> trial_b(shape.storage_size(), 2.0);
+  std::vector<real_t> derivative(shape.storage_size(), 9.0);
+
+  RhsViews views{ shape };
+  views.rebind(trial_a, derivative);
+  REQUIRE(views.y.at(L.T, 0, 3) == 1.0);
+
+  views.rebind(trial_b, derivative);
+  REQUIRE(views.y.at(L.T, 0, 3) == 2.0);
+
+  views.zero_derivative();
+  for (const auto value : derivative)
+    REQUIRE(value == 0.0);
+}
+
+TEST_CASE("BatchBuilder records ODE-row roles for generic integrators", "[core][P1][rhs]")
+{
+  BatchBuilder builder;
+  const auto z = builder.declare({ "z", 3, Unit::none, StateRole::ode });
+  const auto current = builder.declare({ "I", 1, Unit::A, StateRole::algebraic });
+  const auto throughput = builder.declare({ "Ah", 1, Unit::Ah, StateRole::cumulative });
+  const auto q_ext = builder.reserve_thermal_flux();
+
+  REQUIRE(z.row_begin == 0);
+  for (int row = 0; row < z.rows; ++row)
+    REQUIRE(builder.is_ode_row(z.row_begin + row));
+  REQUIRE_FALSE(builder.is_ode_row(current.row_begin));
+  REQUIRE_FALSE(builder.is_ode_row(throughput.row_begin));
+  REQUIRE_FALSE(builder.is_ode_row(q_ext.row_begin));
+  REQUIRE(builder.roles().size() == 6);
+}
+
+TEST_CASE("Moving StateArena leaves a safe empty source", "[core][P1]")
+{
+  Layout L;
+  auto source = L.b.build(4);
+  source.at(L.T, 0, 1) = 301.0;
+
+  StateArena destination{ std::move(source) };
+  REQUIRE(destination.at(L.T, 0, 1) == 301.0);
+  REQUIRE(source.n_rows() == 0);
+  REQUIRE(source.n_lanes() == 0);
+  REQUIRE(source.stride() == 0);
+  REQUIRE(source.raw().empty());
 }

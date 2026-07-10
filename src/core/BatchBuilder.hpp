@@ -34,6 +34,7 @@ public:
     const StateSlice s{ next_row_, spec.rows };
     specs_.push_back(spec);
     slices_.push_back(s);
+    roles_.insert(roles_.end(), static_cast<std::size_t>(spec.rows), spec.role);
     next_row_ += spec.rows;
     return s;
   }
@@ -50,7 +51,7 @@ public:
   StateSlice reserve_thermal_flux()
   {
     if (!q_ext_.has_value())
-      q_ext_ = declare({ "q_ext", 1, Unit::W });
+      q_ext_ = declare({ "q_ext", 1, Unit::W, StateRole::input });
     return *q_ext_;
   }
 
@@ -68,6 +69,15 @@ public:
 
   std::span<const StateSpec> specs() const { return specs_; }
 
+  //!< One entry per arena row. Generic steppers advance only StateRole::ode rows.
+  std::span<const StateRole> roles() const { return roles_; }
+
+  bool is_ode_row(int row) const
+  {
+    assert(0 <= row && row < next_row_);
+    return roles_[static_cast<std::size_t>(row)] == StateRole::ode;
+  }
+
   /**
    * Freeze the layout and allocate the arena — the ONLY allocation of state memory
    * (PC-1). May be called more than once (same archetype layout, different lane counts:
@@ -83,6 +93,7 @@ public:
 private:
   std::vector<StateSpec> specs_{};
   std::vector<StateSlice> slices_{};
+  std::vector<StateRole> roles_{};
   std::optional<StateSlice> q_ext_{};
   int next_row_{ 0 };
   bool frozen_{ false };
