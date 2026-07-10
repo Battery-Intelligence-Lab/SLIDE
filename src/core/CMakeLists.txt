@@ -1,6 +1,6 @@
 # v4 core (slide::core) — grows alongside legacy src/ (strangler pattern, PLAN.md §5).
 # The registry is compiled once so downstream callers do not instantiate every common composition.
-add_library(slide_core STATIC Experiment.cpp ForwardSensitivity.cpp PackSolver.cpp PackStepper.cpp PackTopology.cpp ParameterSet.cpp Recorder.cpp SpmFactory.cpp Simulation.cpp)
+add_library(slide_core STATIC Experiment.cpp ForwardSensitivity.cpp PackSolver.cpp PackStepper.cpp PackTopology.cpp ParameterSet.cpp Recorder.cpp SpmFactory.cpp Simulation.cpp ThreadPool.cpp)
 set_target_properties(slide_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(slide_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_compile_features(slide_core PUBLIC cxx_std_20)

@@ -150,6 +150,10 @@ target_compile_definitions(unit_test_core_P7G3_PyBaMM PRIVATE SLIDE_SOURCE_DIR="
 add_executable_with_coverage_and_test(unit_test_core_ForwardSensitivity core_ForwardSensitivity_test.cpp)
 target_link_libraries(unit_test_core_ForwardSensitivity PRIVATE slide_core)
 
+# Phase 8 P8-G4: persistent dependency-free pool and measured diagnostic
+add_executable_with_coverage_and_test(unit_test_core_ThreadPool core_ThreadPool_test.cpp)
+target_link_libraries(unit_test_core_ThreadPool PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)
