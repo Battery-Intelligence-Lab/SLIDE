@@ -380,6 +380,12 @@ try {
       diagnostic.message = "drive-cycle name exceeds 1024 bytes";
       return slide::Status::Invalid_parameters;
     }
+    if (!validSegment(segment)) {
+      diagnostic.step = index;
+      diagnostic.offset = 0;
+      diagnostic.message = "semantically invalid experiment step: " + steps[index];
+      return slide::Status::Invalid_parameters;
+    }
     if (repetitions > max_expanded_segments - parsed.size()) {
       diagnostic.step = index;
       diagnostic.message = "experiment expanded segment limit (10000) exceeded";

@@ -9,7 +9,7 @@
 > Phase 9B systematic adversarial bug-hunt is active; its Experiment transaction/parser,
 > BPX parser/allocation, recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
-> The bounded liionpack CSV importer is implemented; P9-G2 still requires committed corpora, three sanitizer-instrumented fuzz drivers, and CI campaigns before the parser gate is complete.
+> The bounded liionpack CSV importer and P9-G2 parser gate are complete: three isolated ASan+UBSan fuzz targets, poisoned/independent oracles, corpora/dictionaries, Debug+Release limit replays, mutation checks, and exact 60-second Linux campaigns are green. The matching hosted workflow is committed but awaits its first pushed run. P9-G1 (full sanitizer/TSan lanes), P9-G3 (measured Status-branch coverage), and P9-G4 (remaining subsystem ledger) are next.
 
 ---
 

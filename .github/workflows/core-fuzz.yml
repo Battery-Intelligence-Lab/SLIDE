@@ -1,0 +1,102 @@
+name: Core parser fuzz
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, develop]
+    paths:
+      - '.github/workflows/core-fuzz.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'src/core/**'
+      - 'src/types/**'
+      - 'tests/fuzz/**'
+  pull_request:
+    branches: ['**']
+    paths:
+      - '.github/workflows/core-fuzz.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'src/core/**'
+      - 'src/types/**'
+      - 'tests/fuzz/**'
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Clang ${{ matrix.build_type }} ASan+UBSan parser fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+    env:
+      CC: clang
+      CXX: clang++
+      ASAN_OPTIONS: detect_leaks=1:abort_on_error=1:strict_string_checks=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure core-only fuzz targets
+        run: >-
+          cmake -S . -B build-fuzz -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DENABLE_IPO=OFF
+          -DSLIDE_CORE_ONLY=ON
+          -DSLIDE_BUILD_FUZZERS=ON
+
+      - name: Build fuzz targets
+        run: >-
+          cmake --build build-fuzz --parallel 2 --target
+          fuzz_experiment fuzz_bpx fuzz_netlist_csv
+
+      - name: Prepare writable corpora
+        run: |
+          cp -R tests/fuzz/corpus build-fuzz/corpus
+          mkdir -p build-fuzz/artifacts
+
+      - name: Replay parser size boundaries
+        run: |
+          mkdir -p build-fuzz/limits/experiment build-fuzz/limits/bpx build-fuzz/limits/netlist
+          head -c 65537 /dev/zero > build-fuzz/limits/experiment/oversize-step
+          head -c 4194305 /dev/zero > build-fuzz/limits/bpx/oversize-document
+          head -c 4194305 /dev/zero > build-fuzz/limits/netlist/oversize-document
+          ./build-fuzz/fuzz/fuzz_experiment build-fuzz/limits/experiment -runs=0 -max_len=65537
+          ./build-fuzz/fuzz/fuzz_bpx build-fuzz/limits/bpx -runs=0 -max_len=4194305
+          ./build-fuzz/fuzz/fuzz_netlist_csv build-fuzz/limits/netlist -runs=0 -max_len=4194305
+
+      - name: Fuzz Experiment grammar
+        run: >-
+          ./build-fuzz/fuzz/fuzz_experiment build-fuzz/corpus/experiment
+          -dict=tests/fuzz/dictionaries/experiment.dict
+          -max_total_time=60 -timeout=5 -rss_limit_mb=2048
+          -max_len=65536 -seed=90210
+          -artifact_prefix=build-fuzz/artifacts/experiment-
+
+      - name: Fuzz BPX JSON
+        run: >-
+          ./build-fuzz/fuzz/fuzz_bpx build-fuzz/corpus/bpx
+          -dict=tests/fuzz/dictionaries/bpx.dict
+          -max_total_time=60 -timeout=5 -rss_limit_mb=2048
+          -max_len=65536 -seed=90211
+          -artifact_prefix=build-fuzz/artifacts/bpx-
+
+      - name: Fuzz netlist CSV
+        run: >-
+          ./build-fuzz/fuzz/fuzz_netlist_csv build-fuzz/corpus/netlist
+          -dict=tests/fuzz/dictionaries/netlist.dict
+          -max_total_time=60 -timeout=5 -rss_limit_mb=2048
+          -max_len=65536 -seed=90212
+          -artifact_prefix=build-fuzz/artifacts/netlist-
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parser-fuzz-artifacts-${{ matrix.build_type }}
+          path: build-fuzz/artifacts
+          if-no-files-found: ignore

@@ -269,6 +269,18 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Claim limits:** literal `Ri*` can add resistance beyond the model-owned cell resistance; V/I magnitudes are ignored after validation; descriptors/node labels are not retained for lossless export; and the 4 MiB budget does not admit ordinary 100,000-cell tables. This is graph-schema compatibility, not liionpack waveform parity.
 - **Next:** add three libFuzzer drivers, committed corpora/dictionaries, and a bounded Clang ASan+UBSan campaign; P9-G2 remains open until that evidence is green.
 
+## 2026-07-10 — Phase 9B P9-G2 parser fuzz gate
+
+- **Architecture correction:** independent review rejected the draft's mutation of the shared `slide_core` target because private sanitizer/static-CRT flags still change object ABI. `cmake/SlideCoreTarget.cmake` now owns the one source list, while fuzzing compiles a distinct instrumented `slide_core_fuzz`; a combined ordinary-smoke/fuzzer build proves isolation.
+- **Oracle correction:** default sentinels and the production netlist validator admitted correlated blind spots. Fully populated poison outputs now prove rejection identity and successful replacement. The netlist harness independently derives connectivity, cell bijection, sparsity, ladder classification, and thermal metadata.
+- **Fast-math oracle correction:** a second review rejected `std::isfinite` inside the Release harness and bool-only callback comparison. Finiteness now uses an opaque reference/volatile IEEE exponent load, callback poison has named types plus exact markers, and a bit-constructed quiet-NaN publication makes the Release target exit 77 before the clean replay passes.
+- **Mutation evidence:** Experiment append, BPX merge, and netlist thermal-scratch publication each exit 77 on the first valid seed. The audit also found that a trailing newline made the Experiment seed reject; the raw-byte adapter now omits only the synthetic final empty line.
+- **Portability:** Windows Clang 21 builds Debug/Release ASan+UBSan targets and passes seed/limit/campaign checks, with only incompatible MSVC STL container annotations disabled. WSL Ubuntu Clang 18 required fuzz-target module scanning to be disabled because the no-module build should not depend on `clang-scan-deps`.
+- **Semantic seed:** `Hold at 4.2 V until 3.8 V` made the harness exit 77: the parser published a segment that the runner's own validator rejects. The ordinary test was registered red (7 failures), then parsing was aligned with `validSegment`; full Debug/Release Experiment now passes 203 assertions.
+- **Gate evidence:** exact post-fix Linux ASan+UBSan+LSan 60-second campaigns pass Debug at 149,399 / 73,981 / 94,933 and fast-math Release at 291,223 / 546,881 / 556,946 executions for Experiment/BPX/netlist. Both builds replay 65,537-byte Experiment and 4,194,305-byte BPX/netlist inputs. The two-job workflow is committed but its hosted result awaits a push.
+- **Decision:** D-29 records isolated instrumentation, poisoned/independent oracles, both build types, and separate boundary replays. P9-G2 is PASSED; P9-G1/G3/G4 remain active.
+- **Next:** audit/fix ThreadPool integration and determinism, then complete TSan/full sanitizer lanes and measured Status-branch coverage.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

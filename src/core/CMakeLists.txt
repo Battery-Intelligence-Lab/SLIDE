@@ -1,10 +1,7 @@
 # v4 core (slide::core) — grows alongside legacy src/ (strangler pattern, PLAN.md §5).
 # The registry is compiled once so downstream callers do not instantiate every common composition.
-add_library(slide_core STATIC AsyncRecorder.cpp CudaSpmBatch.cpp Experiment.cpp ForwardSensitivity.cpp NetlistCsv.cpp PackSolver.cpp PackStepper.cpp PackTopology.cpp ParameterSet.cpp Recorder.cpp SpmFactory.cpp Simulation.cpp ThreadPool.cpp)
-set_target_properties(slide_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(slide_core PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
-target_compile_features(slide_core PUBLIC cxx_std_20)
-target_link_libraries(slide_core PUBLIC Eigen3::Eigen)
+include(${PROJECT_SOURCE_DIR}/cmake/SlideCoreTarget.cmake)
+slide_add_core_library(slide_core)
 
 if(SLIDE_WITH_CUDA)
   # Keep CUDA language metadata and device-runtime linkage inside one private

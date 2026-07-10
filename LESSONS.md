@@ -68,3 +68,15 @@ This file records reusable findings from the v4 implementation and validation wo
 - Under fast-math, keep finite classifiers behind a reference boundary as well as an integer bit barrier. Individually finite parsed operands can still overflow in derived arithmetic and must be revalidated before storage.
 - External graph node labels are identifiers, not allocation sizes. Sort unique labels, contract ideal wires with union-find, then map representatives densely before building adjacency or solver workspaces.
 - Compatibility claims need a semantic boundary. Literal liionpack `Ri*` rows coexist with the SLIDE cell's own Thevenin resistance, while V/I magnitudes are runtime-owned; importing the graph schema does not establish waveform parity or lossless round-trip fidelity.
+
+## Fuzz gates need independent publication oracles
+
+- Instrument a separate library target. Adding sanitizer and Windows runtime/iterator flags privately to a shared static library still changes its object ABI and can break every non-fuzzer consumer in the same build graph.
+- A deterministic double parse is not an atomicity proof. Seed the output with validly copyable poison across every public field, require byte/value identity on failure, and require every poison marker to disappear on success; otherwise append or merge publication can pass both parses.
+- Do not call the production validator as the only success oracle. Independently recompute graph connectivity, cell bijection, sparsity, ladder classification, and cold thermal metadata so a correlated validator defect cannot bless its own output.
+- Mutation-test the oracle, not only production guards. Deliberate Experiment append, BPX merge, and netlist scratch publication must crash on the first valid seed; a green mutation means the fuzzer is observing too little.
+- A committed corpus must actually enter success paths. The Experiment byte adapter originally turned a normal final newline into an extra empty step, so its documented seed only exercised rejection until the adapter was corrected.
+- Parser success must imply runner admissibility. A one-line voltage-control/voltage-event seed exposed syntax that parsed successfully but was rejected by `CyclerV2`; reuse the semantic descriptor validator before parser publication.
+- Small mutation campaigns and resource boundaries are different tests. Keep fast 65,536-byte campaigns, then replay generated 65,537-byte and 4 MiB-plus inputs so documented limits are reached without committing multi-megabyte blobs.
+- Disable C++ module dependency scanning on targets that contain no modules. CMake 3.31 otherwise requires `clang-scan-deps`, which is not part of Ubuntu's base Clang package and adds a needless CI dependency.
+- Scope platform caveats exactly. Windows LLVM required disabling incompatible MSVC STL container annotations, while full ASan+UBSan+LSan ran on Linux; cross-platform evidence should state that difference rather than blending the lanes.

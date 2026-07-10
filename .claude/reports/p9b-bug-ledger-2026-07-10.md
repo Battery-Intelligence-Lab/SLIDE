@@ -37,6 +37,7 @@ remain recorded so a later pass does not revive them without new evidence.
 | P9-B26 | High | Experiment parser resource amplification | Two individually legal `* 6000` steps committed 12,000 segments, while a padded 500-byte step repeated 10,000 times retained about 5 MB of duplicated source text; the pre-fix resource suite failed 6 assertions and preserved neither documented bound. | Cap expanded segments at 10,000, each step at 65,536 bytes, aggregate retained text at 4 MiB, and drive-cycle names at 1,024 bytes using overflow-safe pre-allocation arithmetic. Replace allocation-heavy regexes with the same explicit grammar and reject the empty `Run (A)` overlap before subtraction. | Debug/Release grammar 72/72 and full Experiment 199/199. Removing the minimum-name guard makes 3 registered assertions fail; late expansion allocation failure returns `Numerical_failure` without publication under persistent OOM. | FIXED |
 | P9-B27 | High | BPX JSON/file parser trust | Leading-zero numbers, invalid raw UTF-8, vertical-tab/form-feed whitespace, a 4 MiB-plus source, and an ignored 65,537-value array were accepted or allowed unbounded tree/file construction; present-but-invalid optional fields were silently omitted. The registered pre-fix slices produced 11 failures. | Enforce RFC JSON number/whitespace/UTF-8 grammar, a 4 MiB wire cap, a 65,536-value tree cap, bounded exact file reads with EOF verification, and exact `Status` propagation for required, optional, derived, curve, activation, state, and default insertions. | Debug/Release ParameterSet 1,495/1,495, including valid raw UTF-8, finite-input derived overflow, sparse oversized file rejection, and unchanged output on every hostile input. | FIXED |
 | P9-B28 | High | parser allocation/status atomicity | Optional BPX storage failures were collapsed to success; `ParameterSet::set()` allocated during canonicalisation outside its catch; parser catch diagnostics could allocate again during OOM; and BPX stream construction/open sat outside the file catch boundary. | Make `set()` and the complete file reader exception-translating transactions, use allocation-safe best-effort diagnostics, and target repeatable parser-owned allocations rather than arbitrary CRT/library ordinals. | Debug/Release allocation binary 906/906. Persistent failure covers a late Experiment reserve, direct map-node and canonical-name allocation, and all 176 BPX map-node-size occurrences. Restoring the old optional-status swallow fails at occurrence 149 with published partial output. | FIXED |
+| P9-B29 | Medium | Experiment parser/runner semantic mismatch | The committed `Hold at 4.2 V until 3.8 V` fuzz seed exited 77 because parsing returned `Success`, while `CyclerV2::run()` rejects a voltage-controlled segment terminated by a voltage event. The ordinary pre-fix grammar test failed 7 assertions as the invalid success also replaced the prior output. | Run the shared internal `validSegment` semantic gate after syntactic parsing and before expansion reserve/publication, returning a step-local diagnostic on mismatch. | Full Debug and fast-math Release Experiment binaries pass 203/203. The new seed passes both optimized and unoptimized fuzz replays; post-fix Linux Experiment campaigns complete 149,399 Debug and 291,223 Release executions in 60 seconds with no sanitizer finding. | FIXED |
 
 ## Refuted candidates
 
@@ -63,11 +64,60 @@ remain recorded so a later pass does not revive them without new evidence.
   exports of the largest 100,000-cell packs. A future validated limits policy
   is required before claiming that import scale.
 
+## P9-G2 fuzz-gate evidence
+
+- Three raw-byte libFuzzer drivers cover Experiment, BPX, and NetlistCsv. Each
+  parses twice for deterministic status/diagnostics/output, starts from a
+  fully populated poison value, requires exact poison preservation on every
+  rejection, and requires poison removal plus structural validity on success.
+- Netlist success is not delegated to the production validator. The harness
+  independently recomputes endpoint ranges, cell-ID bijection, path/location
+  uniqueness, resistor finiteness, BFS connectivity, exact sorted sparsity,
+  ladder classification/orientation, and the empty imported thermal graph.
+- Oracle mutation checks are red on the first valid seed: append instead of
+  replace in Experiment exits 77; merging BPX into the old output exits 77;
+  publishing stray netlist thermal scratch exits 77. All mutations were
+  reverted and the clean targets rebuilt. A second independent review found
+  that `std::isfinite` could be folded away by Release fast-math and that
+  callback poison identity was under-specified. The oracle now classifies IEEE
+  exponent bits through an opaque reference/volatile load and uses named
+  callback targets with exact markers. Publishing a bit-constructed quiet NaN
+  makes the final Release target exit 77; the reverted clean seed replay passes.
+  Review also found and fixed the
+  Experiment byte adapter treating a normal trailing newline as an empty step.
+  The added voltage-control/voltage-event seed then exposed P9-B29 before gate
+  closure; all Experiment campaign counts in this report are post-fix.
+- The instrumented core is a distinct `slide_core_fuzz` target. A combined
+  Windows configuration built both the ordinary Debug core smoke and the
+  ASan+UBSan fuzzer, proving sanitizer/static-CRT settings do not cross the ABI
+  boundary. Ordinary full-tree Debug and Release `slide_core` builds and the
+  core-only 1/1 smokes remain green.
+- Linux/Clang 18 ASan+UBSan+LSan, exact 60-second campaigns with committed
+  dictionaries and 65,536-byte mutation bounds:
+
+  | Build | Experiment | BPX | NetlistCsv | Slowest input | Peak RSS |
+  |-------|-----------:|----:|-----------:|--------------:|---------:|
+  | Debug | 149,399 | 73,981 | 94,933 | 0 s | 526 MiB max |
+  | fast-math Release | 291,223 | 546,881 | 556,946 | 0 s | 576 MiB max |
+
+- Separate Linux Debug/Release seed replays cover generated 65,537-byte
+  Experiment steps and 4,194,305-byte BPX/netlist documents. Windows Clang 21
+  Debug/Release ASan+UBSan campaigns and the same size replays also pass; only
+  Windows disables `detect_container_overflow` because the prebuilt libFuzzer
+  runtime and MSVC STL container annotations use incompatible ABIs. Heap
+  redzones, UBSan, and strict string checks remain enabled there.
+- `.github/workflows/core-fuzz.yml` reproduces the Linux Debug/Release matrix,
+  full Linux annotations/leak detection, limit replays, three 60-second
+  campaigns, fixed seeds, writable corpus copies, and failure artifacts. It
+  is committed and syntax-checked, but the hosted jobs cannot run before a
+  push; no hosted-green claim is made.
+
 ## Validation protocol
 
 - All scenarios are parser-only or at most one accepted model step; no long
   trajectory was used.
 - Debug and Release are separate binaries. Release uses the repository's
   fast-math flags, and NaN/Inf tests construct IEEE bit patterns directly.
-- Full sanitizer, fuzz, branch-coverage, and subsystem-suite evidence will be
-  appended before P9-G1 through P9-G4 can close.
+- P9-G2 is closed by the evidence above. Full-suite sanitizer/TSan evidence,
+  measured Status-branch coverage, and remaining subsystem audits are still
+  required before P9-G1, P9-G3, and P9-G4 can close.
