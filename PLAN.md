@@ -1,13 +1,19 @@
 # SLIDE v4 — Architecture Refactor Plan (living document)
 
-> **Status:** ACTIVE. Last updated 2026-07-10. Implementation in progress.
-> **How to use this document:** This is the single source of truth for the v4 refactor. Any session (Fable, Opus, human)
-> continuing this work must (1) read this file first, (2) execute the next unblocked item in §6, (3) update §8 status
-> ledger and this header. Requirements originate in `.claude/FABLE.md`. Do not re-litigate decisions in §4 without new
-> evidence that overturns the cited rationale.
-> **Operating rules:** ≤2 parallel agents (Volkan, 2026-07-07 — quota tightening; was ≤3); small reviewable commits on branch `Claude`; every user-visible change updates
-> `CHANGELOG.md` (Unreleased); wall-clock benchmarks on this machine are UNRELIABLE (user runs parallel jobs) — judge
-> performance by structural arguments (allocation counts, complexity, vectorizability), not timings.
+> **Status:** ACTIVE. Last updated 2026-07-10 (post-implementation audit + plan compression). Phases 0–7 COMPLETE,
+> Phase 8 gates G1–G4 complete; remaining work: P8-G0/G5, then NEW Phases 9 (bug-hunt + simplification),
+> 10 (PyBOP integration tests), 11 (v4.0.0 release).
+> **How to use this document:** single source of truth for the v4 refactor. Any session (Fable, Codex, Opus, human)
+> continuing this work must (1) read this file first, (2) execute the next unblocked item in §6, (3) update §8 and
+> this header. Requirements originate in `.claude/FABLE.md`. Do not re-litigate decisions in §4 without new evidence.
+> Full pre-compression history (original §2 evidence base, verbose phase text, 60-row ledger) is archived VERBATIM at
+> `.claude/summaries/plan-archive-2026-07-10-phases0-8.md` and in git (`PLAN.md` @ `1f18d8e`).
+> **Operating rules:** ≤2 parallel agents (Volkan, 2026-07-07); small reviewable commits on branch `Claude`; every
+> user-visible change updates `CHANGELOG.md` (Unreleased); wall-clock benchmarks on this machine are UNRELIABLE (user
+> runs parallel jobs) — judge performance by structural arguments (allocation counts, complexity, vectorizability).
+> **NEW (Volkan, 2026-07-10): simulations cost time — keep every test/gate simulation SHORT** (≤ a few hundred steps,
+> seconds of wall-clock, small lane counts unless the gate is specifically about scale). Prefer analytic oracles,
+> derivations, and structural counters over long trajectories. Unlimited thinking, rationed simulating.
 
 ---
 
@@ -49,120 +55,63 @@ Structurally verifiable invariants (no wall-clock needed):
 
 Any proposed change that violates a PC-invariant needs a PLAN.md §4 decision-log entry overturning it first.
 
-## 2. Evidence base — what the audit found (2026-07-07, three scout reports)
+## 2. Evidence base — audits (compressed 2026-07-10; full detail in the archive file)
 
-All claims below are **[confirmed]** by code inspection with the cited locations, on branch `Claude` at commit `9dcf1ad`.
+> NOTE: citations of the form "§2.1/§2.2/§2.4 A5/§2.5" inside §3–§5 refer to the ORIGINAL evidence-base
+> numbering, preserved verbatim in the archive file — not to the subsections below.
 
-### 2.1 Current architecture (why it cannot reach the goals)
+### 2.1 Legacy audit (2026-07-07) — DISCHARGED
 
-- Heap tree of `Deep_ptr<StorageUnit>` nodes; `StorageUnit` has ~40 pure virtuals (`src/StorageUnit.hpp:36`). No
-  contiguous cell storage. `sizeof(Cell_SPM)` ≈ 1.2–1.5 KB [inferred], including TWO full `State_SPM` copies
-  (`st` + rarely-used `s_ini`, `src/cells/Cell_SPM/Cell_SPM.hpp:38`).
-- `State_SPM = State<19+2*nch>` → 29 model states + time/Ah/Wh, 256 B (`src/cells/Cell_SPM/State_SPM.hpp:25-50`);
-  `nch` is a compile-time global (`src/settings/settings.hpp:41`); one `static Model_SPM<>` shared by ALL cells
-  (`src/cells/Cell_SPM/Model_SPM.hpp:203-206`) — blocks heterogeneous geometry.
-- Hot path: `Cycler::CC` calls `su->setCurrent` every loop iteration → `Module_p::setCurrent_previous_impl`
-  (`src/modules/Module_p_impl.cpp:454`): damped **chord** iteration (quasi-Newton with a Jacobian factorised ONCE into
-  function-`static` Eigen objects and never refactorised, `:480,524-548`) → linear convergence, ≤50-iter cap,
-  historical 2500+ iteration blowups (`.claude/discussions.md:58`). ~150 virtual calls per cell per CC step.
-- **`static` solver state is shared across all `Module_p` instances and threads** (`Module_p_impl.cpp:480,524-548`;
-  `Module_p.cpp:127,156`; `:297-335` analytical path) — wrong currents / OOB for heterogeneous or multiple modules;
-  data race under the `std::thread` fan-out in `src/utility/parallelisation.hpp:19`. Fatal for pack scale.
-- Nested `Module_p` multiplies iteration counts per level: cost ≈ O(∏ per-level iters × cells) voltage evaluations.
-- Time integration: fixed-step forward Euler; diffusion every substep, thermal+degradation once per `dt·nstep` window
-  (`src/cells/Cell_SPM/Cell_SPM_dstate.cpp:229-334`). **No stability check**: modal eigenvalues grow ~O(nch⁴), so
-  raising nch with fixed dt silently destabilises Euler.
-- Recording: `Cell::storeData/writeData` are empty no-ops for SPM (`src/cells/Cell.hpp:109-110`); only ECM records.
-  Only `time/Ah/Wh` are path-dependent — V, OCV, SOC, T, R are all recomputable from the 29 states.
-  **CORRECTED 2026-07-09 [confirmed]:** the ageing/thermal port falsifies "only time/Ah/Wh" — legacy hides
-  path-dependent state OUTSIDE `State_SPM`: Dai-stress previous-step memory `sparam.s_dai_p_prev`
-  (`Cell_SPM_dstate.cpp:244`, CONSUMED by LAM via `|s_dai_p − s_dai_p_prev|/s_dt`, `Cell_SPM_degradation.cpp:377`)
-  and the `Therm_Qgen`/`Therm_time` accumulators (`Cell_SPM.hpp:62-64`, `Cell_SPM_dstate.cpp:290-291`). v4 RULE:
-  anything a later step reads MUST be an arena row (else D-10 lazy-derivation and checkpoint-restart break
-  silently). Gate P1-G4 (bitwise restart) exists to catch exactly this class.
-- Two error channels coexist: `Status` enum and `throw int` (codes 10,11,14,98,99,101,104,106,108).
+The three-scout audit (architecture limits, bug tables A1–A7/B1–B5 + P0-C1..C6, Chebyshev nch≠5 root cause,
+assets to harvest) drove Phases 0–1 and is fully discharged; complete text in the archive. Standing corrections
+that must NOT be re-litigated (killed ideas stay killed):
 
-### 2.2 Chebyshev "only works for nch=5" — root cause (SOLVED, verify remains)
+- **A6 REFUTED — not a bug.** `Module_p::V()` consistency was derived and proved by test.
+- **"Only time/Ah/Wh are path-dependent" FALSIFIED:** legacy hides `s_dai_p_prev` and `Therm_Qgen`/`Therm_time`
+  outside `State_SPM`. v4 RULE: anything a later step reads MUST be an arena row. Enforced by P1-G4 (bitwise restart).
+- **Chebyshev "only nch=5 works":** two defects (centre-node sign `-0.5·(-1)^N`, Eigen in-place `.inverse()`
+  aliasing), both fixed; the operator is now validated by the analytic tan μ = μ eigenvalue oracle and the
+  Carslaw–Jaeger constant-flux transient (P1-G3). At nch=5 the fundamental eigenvalue is only ~2e-5 accurate
+  [confirmed] — sub-mV on voltage, but quantified.
+- Legacy solver statics were intentional quasi-Newton memory (Volkan) — kept properly as `SolverWorkspace` (D-18).
 
-Two independent defects, both already fixed on branch `Claude`:
-(a) hardcoded centre-node coefficient `-0.5`, correct value `-0.5·(-1)^N` with `N=nch+1` — accidentally right only at
-nch=5 (even N); wrong SIGN for even nch (fixed at `Model_SPM.hpp:199`, consumed `Cell_SPM.cpp:195`);
-(b) Eigen fixed-size `.inverse()` in-place aliasing corrupts `V` for nch≤4 (fixed with `.eval()`, `Model_SPM.hpp:176-177`).
-Among {3,4,5,6,10}, nch=5 was the only survivor — fully explains the observation.
-**Remaining gap:** `tests/unit/Chebyshev_test.cpp` is self-consistency only (round-trips, null-space, one linear
-profile); NO external oracle. A shared-convention error would pass silently. → Phase 1 gate adds an analytic
-transient-diffusion oracle (see §6, P1-G3). Release builds also silently skip the `assert(zero_pos==zero_neg)` guard
-(`Model_SPM.hpp:195`).
+### 2.2 Implementation audit — the 67 Codex commits (2026-07-10, Fable + review agent, artifact-checked)
 
-### 2.3 Existing assets to harvest
+**Verdict: plan followed; no fabrication or gate-rigging found.** Sampled gate tests exist and enforce the
+registered numeric bands verbatim (P1-G1/G2, P2-G5, P3-G1..G3, P4-G1/G3, P7-G1/G3, P8-G1/G2 checked against
+test source, file:line evidence in the audit report). Falsified hypotheses are recorded prominently, not buried
+(PAY-2 10×, Chebyshev 1e-10 band, Q8 bit-identity, PAY-1's initial 0.43× and PAY-2's initial 0.69× failures).
+Register-before-run held in 4/4 commit-order spot-checks (with one exception below). Non-negotiables hold:
+optional deps default OFF, CHANGELOG discipline kept, no committed binaries, no repo-relative runtime paths in
+core, no reverts/fixups. **Full ctest re-run this session: Debug 49/49, Release 49/49 [confirmed].**
 
-- `setCurrent_analytical_impl` (`Module_p_impl.cpp:288-452`, Nilsu Atlan 2024): direct Thomas-style elimination for
-  parallel branch currents — currently `Cell_ECM<1>`-only (hard `dynamic_cast`), disabled. Generalises to ANY cell via
-  the Thevenin linearization interface (§3.4).
-- Cached analytical inverse of the current-distribution matrix + pack DAE assembly (`Module_p_impl.cpp:44-146`),
-  validated against `A22.inverse()`.
-- `setVoltage` (`Module_p.cpp:115-206`): perturbation Jacobian refactorised per call — the correct Newton template.
-- PI-control redistribution (Jorn) was REMOVED from the code (`Module_p.cpp:108`, `COMPLETED.md:31`). Its proper
-  literature form is §3.4 mode C.
-- pouch-cell-spectral project (user's, 2026): exponential-propagator integrator gave 26–52× over stiff BDF at sub-mV
-  error; two logged "reference-convergence traps" (the oracle was wrong, not the model) — adopt both (§3.5, §5).
-- dtw-cpp (user's): mmap store with header-CRC + offset-table validation (llfio); Arrow/Parquet optional-dep CMake
-  wiring (note: its Arrow CPM build FAILS on Windows+Clang); working PyTorch-style `device=cpu/gpu/hpc` Python
-  dispatch template with lazy data handles and preflight diagnostics.
+Deviations found — each is a Phase-9A work item:
 
-### 2.4 Confirmed bug list (Phase 0 targets)
+| # | Finding | Severity |
+|---|---------|----------|
+| AUD-1 | `tests/parity/P2G1_pack_test.cpp:163-164` codes voltage/current REQUIREs at 1e-10 vs the registered 1e-12 band (measured 5.33e-15 V passes both) — unexplained 100× slack; would not catch a 50× parity regression | moderate |
+| AUD-2 | Phase-5 numeric bands (0.2 µV / 20 µA / 0.2 µAh, 2e-12 V events) first appear in the SAME commit (`09e8ec5`) as implementation + test — post-hoc registration risk, unflagged in the ledger | moderate |
+| AUD-3 | PAY-1/2/4 timings self-run on the busy dev machine; the §5.7 quiet-machine/Volkan protocol was not literally honoured and no waiver is recorded (disclosed as "qualified" in the ledger, so honest but non-compliant) | moderate |
+| AUD-4 | The §5.3/§3.12 CVODE converged-reference arbiter was never built; P3-G1 closed against an independent closed-form oracle instead (mathematically stronger, but the registered arbiter is absent and unwaived) | minor |
+| AUD-5 | `docs/` is still v3-era; P8-G5 unstarted | minor |
 
-| # | Bug | Location | Failure |
-|---|-----|----------|---------|
-| A1 | Rollback restores wrong SU: loop uses `SUs[i]` not `SUs[j]`, offset never advances | `src/modules/Module.cpp:233-234` | silent state corruption on any failed `setStates` |
-| A2 | Function-`static` solver matrices shared across instances/threads | `Module_p_impl.cpp:480,524-548`; `Module_p.cpp:127,156`; `:297-335` | wrong currents, OOB, data race |
-| A3 | Jacobian LU never refactorised though `r_est` updates each iteration | `Module_p_impl.cpp:548,577` | chord/linear convergence → iteration blowups |
-| A4 | `Qcontact` inner current accumulator never reset across `i` | `Module_p.cpp:274-279` | contact heat grows quadratically, wrong thermal load |
-| A5 | `dynamic_cast<Cell_ECM<1>*>` unchecked | `Module_p_impl.cpp:325,350,428` | nullptr deref for non-ECM children |
-| A6 | `Module_p::V()` uses only `Rcontact[0]` vs solver's cumulative drops | `src/modules/Module_p.hpp:45` vs `Module_p.cpp:60-95` | terminal V disagrees with equalisation model |
-| A7 | Residual accumulation `error += max(|b(i)|, error)` (sum of maxes) | `Module_p_impl.cpp:500` | malformed convergence test (early-exit path) |
-| B1 | `data.assign(data.end(), {...})` — overwrites instead of appends; ill-formed form | `src/recording/CellDataStorage.hpp:112` | time-series storage loses history / won't compile if instantiated |
-| B2 | `Histogram` default ctor leaves `bins` empty; `add()` clamps then writes `bins[0]` | `src/types/Histogram.hpp:38-56,93` | heap corruption on default-constructed histogram |
-| B3 | Wh throughput uses end-of-step voltage, self-flagged should be trapezoid | `src/procedures/Cycler.cpp:249` | systematic energy bias, worse at high C-rate |
-| B4 | SEI model ids: default-case doc says 0–3 but cases 0–4 exist; DEG_ID docs swap SEI 1/2 | `Cell_SPM_degradation.cpp:101-103`, `DEG_ID.hpp:47-62` | users select wrong physics |
-| B5 | Degradation Euler integrates ALL 32 indices incl. I and V slots (works only because those d_st are 0) | `Cell_SPM_dstate.cpp:331` | fragile; any model writing them corrupts I/V |
+### 2.3 Architecture quality assessment (2026-07-10, Fable, [confirmed] by direct inspection)
 
-Deferred (design changes, handled by v4 core, not Phase 0): missing current-limit check (`Cell.hpp:72-78`), dead
-adaptive `nOnce` stepping (`Cycler.cpp:219-224`), global shared `Model_SPM`/limits, `throw int` channel, dead SPM
-recording, Euler stability guard.
+**Not bloated, not spaghetti.** The entire v4 core is **13,151 lines across 48 files** for all of Phases 1–8.
+Hot-path discipline holds structurally: zero `throw` in `src/core`, zero TODO/FIXME/HACK markers, legacy coupling
+is a single `Status.hpp` include, and the only three `std::function` uses are cold-path (Experiment custom-step
+callbacks, recorder drain hook). 704 REQUIRE assertions across the core unit tests.
 
-### 2.5 Phase-0 outcomes & newly discovered defects (2026-07-07, Agent A report)
+Named debt (the Phase-9C target list — evidence, not vibes):
 
-- **A6 REFUTED — not a bug.** `Module_p::V() = SUs[0]->V() − I()·Rcontact[0]` is exactly `getVall()[0]`:
-  `I()` (sum of branch currents) IS the cumulative current through `Rcontact[0]`. Derived + proved by test
-  (`phase0_A6_V_consistent_with_getVall` passes pre- and post-fix; existing `test_contactR` already asserted it).
-  Documenting comment added; no behavior change. Audit table above stands corrected.
-- **A3 nuance:** for linear cells (ECM/Bucket) `getRtot()` equals the exact incremental resistance, so the old
-  chord converged fine; the stale-Jacobian defect only hurt NONLINEAR (SPM) cells. The A3 test is a registered
-  correctness gate (exact conductance split to 1e-6 A, ≤5 iters), not a pre-fix failure.
-- **NEW P0-C1 (build blocker):** `fmt` 11.0.2 consteval format checking rejected by clang 21.1.8 — the tree did
-  not compile at all pre-Phase-0. Local build-dir patch only; REQUIRED: bump fmt ≥11.1 (or force
-  `FMT_USE_CONSTEVAL 0`) in `cmake/Dependencies.cmake`.
-- **NEW P0-C2 (major, pre-existing):** default `ocv_coefs` polynomial in `src/cells/Cell_ECM/Cell_ECM.hpp:48`
-  yields OCV ≈ −55 782 V at every SOC → `Cell_Bucket`/`Cell_ECM`/`Module_p` test binaries fail at baseline, and
-  legacy `Module_p` solving cannot converge on default ECM cells (inner `setCurrent` hardcodes `checkV=true`).
-- **NEW P0-C3:** `Cell_SPM` test expects `thickp()==70e-6` but code gives 8.687e-5 — param/expected mismatch,
-  needs root-cause (test wrong vs param regression).
-- **NEW P0-C4 (minor):** same static-sizing hazard in the disabled Boost-integrator path
-  (`Module_p_impl.cpp:213,230,256` free functions `parallel_model*`); leave for v4 (path is dead code).
-
-Agent B outcomes (all five B-fixes landed; two audit corrections):
-
-- **B3 was WORSE than audited:** `vi` was never assigned by `Cycler::setCurrent` (dead out-param), so CC
-  energy throughput was always **0 Wh**, not merely end-of-step-biased. Registered prediction (trapezoid on a
-  linear 4.0→3.0 V ramp = 3.5 Wh ± 1e-6) hit exactly post-fix.
-- **B4 direction corrected:** `DEG_ID.hpp` had the physics-CORRECT SEI 1/2 pairing; it was the `.cpp` inline
-  comments that were swapped (and `DEG_ID` was missing id 4). Docs aligned to formulas; no behaviour change.
-- **B1 uncovered a latent header bug:** `#include "CellDataWriter.hpp"` sat inside `namespace slide`,
-  corrupting standard headers and nesting `slide::slide::` — the recording header never compiled when included.
-- **NEW P0-C5:** `Cycler::setCurrent`'s `v_now` out-param is dead (never assigned) — remove or fix.
-- **NEW P0-C6 (minor):** `Cycler::CV`/CCCV energy still end-of-step-voltage biased (there `vi` IS assigned);
-  make trapezoid for consistency.
+- **Physics triplicated:** the exact modal update (`exp(x)·z + dt·φ₁(x)·B·j`, `expm1(x)/x` with Taylor branch)
+  exists independently at `SpmPipeline.hpp:472` (CPU), `CudaSpmRuntime.cu:91-92` (GPU), and through `Dual.hpp`
+  (sensitivities). One scalar-generic source must feed all three.
+- `ParameterSet.cpp` (1,293 lines) mixes PyBaMM absorption table + BPX JSON reader + expression AST — split.
+- `Experiment.cpp` (883) mixes parser and runner; `SpmPipeline.hpp` (721) and `SpmFactory.cpp` (714) are at the
+  review-size threshold.
+- SEI/CS/LAM/plating kernels (`Sei.hpp` 277, `SurfaceCrack.hpp` 253, `Lam.hpp` 233, `LithiumPlating.hpp` 126)
+  repeat the same mask/scratch/lane-sweep scaffolding — one idiom, four physics bodies.
 
 ---
 
@@ -840,361 +789,185 @@ hand-off stays rejected (D-06). Multirate (D-08) composes: outer and inner split
 
 ## 6. Phased roadmap
 
-Effort tags are relative. Every phase ends: tests green, CHANGELOG updated, §8 ledger updated, small commits pushed.
+Every phase ends: tests green (Debug AND Release), CHANGELOG updated, §8 updated, small commits pushed.
+Gate simulations obey the header rule: SHORT registered scenarios; think first, simulate last.
 
-### Phase 0 — Stabilise legacy (DONE 2026-07-07, incl. follow-ups P0-C1..C6 — §8)
-Fix §2.4 bugs. Agent A (solver/state): A1–A7 in `src/modules/*` + regression tests + CHANGELOG. Agent B (data/misc):
-B1–B5 in `src/recording/`, `src/types/Histogram.hpp`, `src/procedures/Cycler.cpp`, degradation docs + tests;
-CHANGELOG lines to `.claude/changelog-phase0b.md` (avoid merge conflict; architect merges).
-**Gate P0-G1:** full ctest delta vs recorded baseline shows only intended changes; each fix has a test that failed
-before the fix.
+### Phases 0–7 — COMPLETE (2026-07-07 → 2026-07-10; verbose gate text in the archive, outcomes in §8)
 
-### Phase 1 — Core data model + SPM kernels (the keystone)
-Deliver: `StateArena`/`StateSpec`/`StateSlice`/`BatchBuilder`, `Domain`/`ElectrodeParams`, `SpectralDiffusion<NCH>`,
-`ThermalLumped`, ageing kernels (SEI/LAM/CS/plating ported mechanism-by-mechanism), composition registry + factory,
-legacy-Euler stepping mode. Single-cell `Simulation` façade. Arena scalar behind `using real_t = double;` (Q1);
-`BatchBuilder` reserves the cross-batch thermal-flux seam — declaration only, D-21 designs it before Phase 2 (Q9).
+- **Phase 0** legacy stabilisation: A1–A7/B1–B5 + P0-C1..C6 fixed with regression tests; full ctest 10/10.
+- **Phase 1** core data model + SPM kernels: P1-G0..G4 passed (trajectory parity 8.88e-16 V, zero per-step
+  allocations at 10⁴ lanes, 240 B/cell, bitwise checkpoint-restart); **PAY-1 6.97× median (target ≥5×)**.
+- **Phase 2** pack layer (compile/netlist/D-21 thermal graph, Modes A/B, `SolverWorkspace`): P2-G1..G5 passed
+  (3s2p parity 5.33e-15 V; Mode B vs A ≤3.1e-13 at 256p); **PAY-2 4.87× — 10× hypothesis FALSIFIED, ≥3× abort
+  gate cleared** after periodic-brick + analytic-tangent redesign.
+- **Phase 3** exponential/modal integration + multirate + step control: P3-G1 ≤2e-12 vs closed form, P3-G2
+  ≤1e-9 Ah cycle balance, P3-G3 stable at nch=12/dt=1000 s where Euler diverges.
+- **Phase 4** Mode C waveform relaxation: P4-G1 ≤0.1% vs Mode A, P4-G2 drift within registered bound,
+  **P4-G3/PAY-3 10⁵-cell pack in 24 MB, zero measured-step allocations/factorisations**.
+- **Phase 5** Experiment grammar + Cycler v2 + event root-finding: P5-G1 passed (band provenance flagged — AUD-2).
+- **Phase 6** Recorder + hardened I/O (CSV, CRC mmap, optional Parquet): P6-G1 passed, derived==live exactly.
+- **Phase 7** Python wheel + PyBaMM compat + sensitivities + PyBOP entry: P7-G1 0.778/0.221 mV (band 15/8);
+  P7-G2 dual-vs-FD worst 53 nV, PyBOP L-BFGS-B recovery ~1e-9 relative; P7-G3 C/50 0.134/0.034 mV, 1C
+  11.577/2.028 mV; **PAY-4 18.13×/71.4× vs PyBaMM IDAKLU, ~1,165×/1,111× conservative vs liionpack (qualified,
+  dev machine)**; installed-wheel CI (3 OS × Python 3.10/3.13) + pinned-fixture drift job.
 
-**Progress + critical path (2026-07-09 review, [confirmed] by code inspection of `src/core/` + `tests/unit/core_*`):**
-DONE: `StateArena`/`BatchBuilder` (+`q_ext` seam, tests), `SpectralDiffusionLegacy` parity kernel (P1-G0 both configs,
-Q8 closed), production `SpectralDiffusion<NCH>` (heterogeneous 8-lane oracle test), rebindable `BatchView`/`StepCtx`
-and ODE-row roles (§3.12/D-23), the shared full particle-concentration observable (surface/interior/centre: Debug
-legacy parity exact, Release 2.665e-15, and 9.027e-15 analytic round-trip), all of P1-G3, and the §3.3
-`Domain`/physical-description/`ElectrodeParams` layer, and the shared kinetics/OCV/resistance/voltage/heat
-observable stage, `ThermalLumped` with arena-owned heat/time accumulators, SEI ageing mechanisms 1–4, surface-crack
-mechanisms 1–5, LAM mechanisms 1–4, porosity/diffusivity coupling, and shared Dai/Laresgoiti stress observables with explicit
-previous-step arena state, plus the compile-time fixed composed SPM RHS pipeline (mandatory zeroing, shared
-observable/stress stages, rebind-safe trial-vector evaluation), and the D-02 explicit composition registry + cold factory
-(12 entries: nch={5,8,12} × isothermal/thermal × base/ageing-capable), `EulerLegacy`, the single-batch
-constant-current `Simulation` façade, P1-G1/G2/G4, and PAY-1. **PHASE 1 COMPLETE 2026-07-10.**
-**DEPENDENCY (surfaced 2026-07-08 handoff): the observable-reconstruction layer.** Thermal and ageing kernels are not
-self-contained state→state maps: they need `c_surf = C·z + D·flux` (+ centre node, the §2.2 output path), Butler-
-Volmer overpotentials, OCV/entropic-coefficient interp, Rdc — i.e. the derived-observables layer (D-10, §3.7) plus
-the `BatchView`/`StepCtx` kernel interface (§3.11) that `SpectralDiffusion` deferred (plain spans as stopgap).
-**Ordering:** (1) observable layer + `BatchView`/`StepCtx` — **DONE 2026-07-10: rebindable views, row roles,
-full concentration, kinetics, OCV, resistance, voltage, and heat** → (2) P1-G3 Chebyshev
-oracle FIRST (it validates exactly the C/D surface-concentration path the new layer exposes) → (3) `ThermalLumped`
-(as `addRhs`, §3.12) — **DONE 2026-07-10** → (4) ageing kernels + fixed composed pipeline (same form; promote legacy `_prev`/accumulator members to arena rows —
-§2.1 correction) — **DONE 2026-07-10** → (5) registry/factory + façade + `EulerLegacy` stepper — **DONE 2026-07-10** → P1-G1/G2/G4 — **ALL DONE 2026-07-10** → PAY-1 — **PASSED 2026-07-10**. The three
-2026-07-09 core review marks and Model_SPM build audit C1–C3 were resolved on 2026-07-10 (see §8 rows).
-**Gates:** P1-G0 parity-drift pilot (Q8): 1-cell legacy-Euler 1C CC, measure |ΔV|/|Δstate| drift legacy vs v4 kernel;
-outcome closes Q8 (keep 1e-12 band, or pin op-order/`-ffp-contract=off`, or loosen with ulp argument) BEFORE P1-G1
-runs. **P1-G1 IMPLEMENTED 2026-07-10:** `tests/parity/P1G1_spm_test.cpp` runs the production factory, composed
-pipeline, and `EulerLegacy` in lockstep with legacy `Cell_SPM` for a 1200 s mid-SOC 1C discharge and a 300 s
-low-SOC steep-OCV-tail discharge. The adapter preserves legacy Kokam's actual 298.0 K reference temperature instead
-of silently substituting 298.15 K. Maximum |ΔV| is 4.44e-16 V Debug / 8.88e-16 V Release; all mapped physical and
-cumulative states satisfy `|Δ| ≤ 1e-15 + 1e-12·max(|core|,|legacy|)`. **P1-G2 IMPLEMENTED 2026-07-10:** one
-batch of 10⁴ identical cells steps with exactly ZERO per-step heap allocations (all global new forms counted after
-warm-up, Debug/Release); arena state is 240 B/cell ≤300 B. P1-G3 Chebyshev external oracle:
-transient sphere diffusion with constant-flux BC vs the analytic series solution (Carslaw & Jaeger form), registered
-band rel. err < 1e-6 at nch=5,8,12; plus cross-check vs Howey Spectral_li-ion_SPM conventions. **Extended
-2026-07-09 (math audit `.claude/reports/chebyshev-math-audit-2026-07-09.md`):** (a) analytic EIGENVALUE oracle —
-the folded operator's nonzero eigenvalues are known in closed form: λ_k·R² = −μ_k² with μ_k the roots of
-tan μ = μ (μ₁ ≈ 4.4934, μ₂ ≈ 7.7253; μ₀ = 0 is the mass mode, which is WHY forcing one zero eigenvalue is
-correct). Registered: rel err < 1e-10 for k ≤ nch/2 at nch = 5, 8, 12; all eigenvalues real (ratio < 1e-12) and
-negative. Validates the operator independent of ANY trajectory — different mathematics from both parity and the
-C&J series (which shares the same μ_k but tests A,B,C,D jointly).
-**IMPLEMENTED + band FALSIFIED/corrected 2026-07-09 (Opus)** — `tests/unit/core_ChebyshevEigenvalues_test.cpp`,
-14th test, green. The operator IS exactly the tan μ = μ spectrum (μ₁ matches to 3.6e-14 at nch=12), R1/R2/R3
-confirmed. But the ASSUMED "1e-10 @ k ≤ ⌈nch/2⌉" is **FALSIFIED** — accuracy is the honest Chebyshev
-spectral-convergence curve, not a flat floor. MEASURED (registered pre-run, recorded per CLAUDE.md §3): fundamental
-μ₁ rel err 1.98e-5 (nch=5) → 2.25e-10 (nch=8) → 3.63e-14 (nch=12), ~1.5 digits/node; modes resolved to rel < 1e-3
-= 1 / 3 / 6 (≈ ⌈nch/2⌉ — Fable's mode COUNT was right, the TOLERANCE should have been ~1e-3, not 1e-10). Notable
-[confirmed]: at the production default **nch=5 even the fundamental diffusion eigenvalue is accurate to only ~2e-5**
-(sub-mV on voltage, fine, but now quantified — a possible reason nch=5 was the historical "known-good" value).
-Re-registered bands (test-enforced, ~3× margin): fundamental < {5e-5, 1e-9, 1e-12}; resolved-to-1e-3 count ≥
-{1,3,6}; μ₁ rel err strictly monotone-decreasing in nch (spectral-convergence signature). **P1-G3(b) IMPLEMENTED
-2026-07-10:** `tests/unit/core_ChebyshevTransient_test.cpp` checks the Carslaw–Jaeger/Crank constant-flux transient
-at every surface/interior/centre node for both electrodes and nch={5,8,12}. The registered rel≤1e-6 band holds;
-worst at τ=0.2 is {8.254e-7, 2.356e-11, 3.949e-12}; τ=1.0 all ≤4.661e-13. This validates A/B/C/D jointly and
-closes centre-path audit C4. It also records the SLIDE convention D∂c/∂r=-j (positive j depletes). **P1-G3 COMPLETE.** (c) v4
-`build()` **IMPLEMENTED 2026-07-10** in `src/core/SpectralModel.hpp`: adopts (a) as a Status-failing gate, replacing
-the Release-silent assert + unchecked `EigenSolver` in the v4 path (audit C1–C3 closed). The remaining extension is an MMS check on the
-composed RHS (§5.4). **P1-G4 IMPLEMENTED 2026-07-10 (bitwise restart):**
-`core_P1G4_restart_test` runs a coupled thermal + SEI + stress-crack + stress-LAM + plating batch continuously and
-compares it with 0→T + padded-arena snapshot + destruction/cold rebuild of all pipeline scratch + arena-only restore +
-T→2T. Final arena and terminal-voltage bytes are identical in Debug and Release, catching hidden non-arena state
-(the §2.1-correction class: `s_dai_p_prev`, `Therm_Qgen`/`Therm_time`) and workspace-invalidation bugs while enforcing
-HPC checkpoint-restart discipline.
+### Phase 8 — MATLAB, CUDA, recording, runtime (G1–G4 DONE; G0/G5 remain; G6 moved to Phase 11)
 
-### Phase 2 — Pack layer
-Deliver: netlist combinators + `Pack::compile()` (flatten, sparsity, ladder detection, index-1 check), Mode A sparse
-Newton (Eigen SparseLU; KLU optional), Mode B Thomas ladder, Thevenin batch interface, `SolverWorkspace` (§3.4.1)
-with warm start, chord refresh policy, and invalidation contract.
-**Progress 2026-07-10:** foundation DONE — `PackTopology` value combinators flatten arbitrary nested series/parallel
-descriptions into one immutable cell/resistor netlist; compile assigns stable paths and archetype batch/lane locations,
-canonical nodal sparsity, connectivity/index-1 metadata, and ladder eligibility. D-21's independent canonical
-cell/boundary pair list + CSR incident gather is implemented with fixed-order allocation-free assembly and atomic
-cold validation. Nested p-in-p-in-s, explicit link resistors, canonical reorder, analytic energy conservation, and
-failure atomicity pass Debug/Release.
-**Solver foundation DONE 2026-07-10:** `PackSolver` gathers/scatters through one Thevenin callback per compiled
-archetype batch. Mode A uses the global flat netlist, Eigen SparseLU symbolic analysis once, persistent numeric
-factorization/warm-current memory, counters, and explicit invalidation. Compile detects a positive→negative path of
-parallel cell layers; Mode B solves those layers analytically without factorization or hot allocation. Affine gates:
-Mode A/B currents agree ≤1e-12 A; nested p-in-p-in-s solves in one global loop (≤2 iterations); invalidation
-digit-matches the prior/cold solve; 100 repeated heterogeneous solves keep one numeric factorization.
-**Nonlinear solver DONE 2026-07-10:** concrete SPM batches expose allocation-free frozen-state tangents; Mode A uses
-cached-Jacobian residual corrections with contraction-triggered refresh, trial limiting, and source-stepping rescue.
-The evolving-state Kokam 4p gate meets P2-G3/G4.
-**Coupled step + gates DONE 2026-07-10:** `PackStepper` implements the checkpoint→electrical solve→thermal gather→
-batch advance→commit transaction with full rollback/invalidation and no accepted-step allocation. P2-G1's 300-step
-Kokam 3s2p trajectory meets the registered voltage/current/state bands; P2-G5 Mode B meets its linear, 16p SPM, and
-256p SPM admission bands. PAY-2 clears its 3× abort threshold at 4.83× conservative speedup after the first run
-forced periodic-brick and tangent redesign; the 10× hypothesis is explicitly falsified. **PHASE 2 COMPLETE.**
-**Gates:** P2-G1 parity vs legacy `Module_s`/`Module_p` on 3s2p (band §5.2) + rollback-invalidation test (solve after
-restore digit-matches cold solve). P2-G2 Mode B ≡ Mode A on ladders to
-1e-10 A. P2-G3 nested-constructed pack (p-in-p-in-s) compiles flat and solves in ONE Newton loop (no nested
-iteration), Newton iterations ≤ 8 on the 4p heterogeneous-resistance case that historically blew up. P2-G4 workspace
-efficacy: on a 100-step 4p CC segment, count of numeric factorisations ≤ 10 (vs 1 per iteration today) at identical
-converged currents (1e-10 A) — an iteration/factorisation COUNT, not a timing (§5.6). P2-G5 Mode B-ODE (D-20)
-admission — registered BEFORE implementation: branch currents vs Mode A arbiter on (a) linear ECM 16p, R spread 1%:
-max |ΔI| ≤ 1e-8 A (paper's home regime — must be exact); (b) SPM 16p, `varied()` 2% capacity + 5% resistance
-spread, 1C CCCV cycle: max |ΔI|/I_branch ≤ 1e-3 over trajectory; (c) same at 256p. Failure of (b) or (c) does NOT
-kill the fast path — it CONFINES it: compile() regime check then restricts Mode B-ODE to the measured-valid
-envelope and logs why; falsification is a deliverable, record the numbers either way.
+DONE 2026-07-10: **P8-G1** MATLAB `+slide` over one stateless MEX (Tutorial-5 0.778/0.221 mV; 1.15e-14 V vs the
+Python wheel; stable `slide:*` errors; 50 lifecycle repetitions). **P8-G2** CUDA fused SPM backend (10,003-lane
+heterogeneous gate; byte-exact device rollback; PAY-5 23.85× vs CPU exact batch on RTX 4000 Ada) + truthful
+device dispatch through Python. **P8-G3** async compressed recording, CPU ring + pinned CUDA side-stream, explicit
+block/thin backpressure, bitwise round-trips. **P8-G4** persistent thread pool, fixed-order reductions
+bit-repeatable across worker counts.
 
-### Phase 3 — Integration upgrade
-Deliver: exponential modal propagator, Strang multirate, event-aligned segmentation, arena checkpoints/rollback,
-variable outer step with error controller.
-**Gates:** P3-G1 expm vs converged reference band (§5.3). P3-G2 energy/charge conservation: |ΔAh_in − ΔAh_out −
-ΔAh_stored| < 1e-9 Ah on a full cycle. P3-G3 nch=12 runs stable where legacy Euler diverges (registered demonstration).
-**COMPLETE 2026-07-10:** exact diagonal `exp`/`expm1`/φ₁ propagation is exposed through single-batch and transactional
-pack steppers. Thermal/ageing use symmetric Heun-slow/exact-diffusion/Heun-slow splitting; allocation-free step
-doubling controls the outer step and restores rejected trials; known breakpoints clamp the step before evaluation.
-P3-G1 matches an independent closed form for nch={5,8,12} within 2e-12, P3-G2 closes the modal-inventory charge
-balance below 1e-9 Ah, and P3-G3's nch=12, dt=1000 s case remains finite while Euler fails or amplifies >10⁶×.
+REMAINING (registered text unchanged — archive):
+- **P8-G0 optionality/portability:** dependency-free config and `SLIDE_CORE_ONLY` build+pass with MATLAB/CUDA/zstd
+  disabled; optional toolchains absent ⇒ explicit disabled capability, never a broken configure; Linux/macOS/
+  Windows installed-wheel CI green; no CUDA/MATLAB leak into public CPU headers. (Verification sweep, no design.)
+- **P8-G5 docs:** the v3-era `docs/` tree gains v4 installation, C++/Python/MATLAB quickstarts, and the two
+  extension guides ("add a cell model", "add an ageing mechanism") incl. optional-dep matrix and declared PyBaMM
+  gaps; every quickstart extracted and compiled/run in its available toolchain; Doxygen/Jekyll build passes.
 
-### Phase 4 — Mode C relaxation solver (scale path)
-Deliver: WR+Baumgarte advance, gain selection rule, index-1 topology check, Mode A as arbiter.
-**Gates:** P4-G1 steady-state branch currents within 0.1% of Mode A on 16p heterogeneous pack. P4-G2 constraint drift
-bounded per theory (registered α-dependent band). P4-G3 10⁵-cell pack advances (structural check: memory < 1 GB,
-zero per-step allocations; no timing claim).
-**COMPLETE 2026-07-10:** Mode C is a preallocated weighted-Jacobi waveform update over the compiled grounded nodal
-system with explicit Baumgarte gain and `(1−α)^k` terminal-KCL bound diagnostics; non-index-1 metadata refuses it.
-P4-G1 matches Mode A within 0.1% on heterogeneous 16p; P4-G2's measured drift stays below its registered bound.
-P4-G3/PAY-3 performs two accepted 100,000-cell SPM pack advances, uses a 24 MB arena state (<1 GB), allocates
-exactly zero times on the measured step, and performs zero numeric factorizations.
+### Phase 9 — Adversarial bug-hunt + code-quality hardening (NEW 2026-07-10 — release gate-keeper)
 
-### Phase 5 — Experiment & Cycler v2
-Deliver: C++ PyBaMM-grammar parser, Experiment→segment compiler, CC/CV/CCCV/power/rest + drive cycles on the new core,
-termination conditions.
-**Gate P5-G1:** grammar round-trip test suite (every documented string form parses; malformed strings produce
-diagnostics); CCCV parity vs legacy Cycler. Terminations located by event root-finding (g(y)=0, §3.12 item 5), not
-post-step threshold checks; `Solution` carries a machine-readable termination REASON (event/limit/error/final-time —
-PyBaMM `solution.termination` equivalent, required for Phase-7 compat anyway).
-**COMPLETE 2026-07-10:** `Experiment::parse` compiles charge/discharge/hold/rest/drive-cycle strings with A/mA/C/W/V,
-long and abbreviated duration units, joined time/event conditions, repetition, atomic output, and indexed diagnostics.
-`CyclerV2` runs CC/CV/power/rest/registered drive profiles through Euler-parity or exponential integration; CV/power
-use the analytical tangent. Arena-checkpointed bisection lands voltage/current events within the registered `2e-12 V`
-band and handles initially-satisfied events. `ExperimentSolution` carries the required termination enum. The
-time-aligned CC/CV gate against legacy `Cycler` meets `0.2 µV`, `20 µA`, and `0.2 µAh` bands. Debug and Release are
-41/41 green; Release caught and removed a fast-math-invalid infinity sentinel.
+Rationale: 13k lines written in 3 days pass every registered gate, but gates only test what was anticipated.
+This phase hunts what was NOT anticipated, then simplifies without behaviour change. Unlimited thinking,
+rationed simulating: every new test is a SHORT scenario (≤ a few hundred steps) or no simulation at all.
 
-### Phase 6 — Recording & I/O
-Deliver: Recorder (snapshot cadence + lazy derived), CSV sink, mmap binary sink (header-CRC idiom), optional Parquet.
-**Gate P6-G1:** derived-vs-stored equivalence test (V recomputed from snapshot == V recorded live to 1e-12);
-mmap file survives the hardened-open validation tests (truncated/corrupt-header cases).
-**COMPLETE 2026-07-10:** the fixed-capacity recorder preallocates full padded arena/current snapshots, applies cadence
-without per-record allocation or I/O, and exposes explicit stop-or-counted-thinning backpressure. Lazy terminal voltage
-uses the production observable kernel and equals the original live value exactly after the batch is mutated. CSV and
-native Windows/POSIX mmap sinks are implemented. The 64-byte binary header carries magic/version/endian/shape/CRC32;
-open validates file size and every monotone fixed-record offset atomically, rejecting truncation plus header/offset
-corruption. `SLIDE_WITH_ARROW` is a find-package-first optional Parquet path and never pulls Arrow through CPM. The
-zero-allocation recorder gate and full Debug/Release suites are green (43/43). The dedicated compressed async drain
-and GPU side-stream portion of §3.7 remains coupled to the Phase-8 device implementation.
+**9A — audit debt (from §2.2; do first, it is small):**
+1. AUD-1: tighten `P2G1_pack_test.cpp` voltage/current REQUIREs to the registered 1e-12 — or add a §4 decision
+   entry justifying 1e-10. One or the other; no silent slack.
+2. AUD-2: derive (on paper) the expected scale of the legacy-vs-v4 time-aligned CC/CV difference; record in §8
+   whether 0.2 µV/20 µA was principled or accidental; flag the post-hoc registration.
+3. AUD-4: decide the CVODE arbiter — EITHER build the optional `SLIDE_WITH_SUNDIALS` small-N arbiter test (short
+   segment only) OR write the §4 decision waiving it in favour of the closed-form oracle (which is independent
+   mathematics and tighter). Leaning: waive-with-decision; the oracle already arbitrates integrator error.
+4. AUD-3 is Q11 (Volkan), not code.
 
-### Phase 7 — Python bindings + PyBaMM compat (COMPLETE 2026-07-10)
-Deliver: nanobind module, wheels (scikit-build-core), `Experiment/ParameterValues/Simulation/Solution`, Chen2020
-absorption table, options→registry map, `device=` dispatch (dtw-cpp template), pytest in CI. **BPX JSON reader**
-(Faraday Institution standard) as a second parameter-absorption source next to the PyBaMM-name table — the
-ecosystem-neutral interop PyBaMM and BattMo already speak; one cold-path parser. Also surface the §3.1 ensemble
-framing in the Python API: `varied()` lanes ARE a UQ/parameter-sweep engine (10⁵ independent single-cell variants =
-one batch — DifferentialEquations.jl `EnsembleProblem` shape), not only manufacturing spread in packs.
-**Gate P7-G1:** the PyBaMM getting-started Tutorial-5 experiment script runs with `import slide as pybamm`-style swap
-and produces a voltage curve within a registered band of PyBaMM's own SPM (band set after a converged-reference run,
-expected ~10 mV model-difference scale — document, don't hide, the modelling differences).
-**Bands registered 2026-07-10, before fixture generation/comparison:** Chen2020, `nch=12`, Tutorial-5 string sequence
-through its first C/10 discharge/rest/charge/hold/rest cycle, common-time linear interpolation: maximum |ΔV| ≤15 mV
-and RMS |ΔV| ≤8 mV. The PyBaMM reference uses stable 26.6.2.0's SPM and its converged default IDAKLU solution;
-SLIDE samples at 60 s and lands events with its arena-checkpointed bisection. Event times are reported separately and
-are not hidden by truncating either trace.
-**Gate P7-G2 (PyBOP, added 2026-07-09):** (a) forward sensitivities vs central-finite-difference arbiter on the same
-trajectory — registered band set per parameter BEFORE the run (FD step chosen by the standard √ε·scale rule, checked
-for FD-noise floor); (b) one end-to-end PyBOP fitting example (e.g. GITT-style D_s + R identification on synthetic
-SLIDE data with known truth) recovers the truth within a registered tolerance using a GRADIENT-based optimiser — this
-is the "entered the ecosystem" proof, not an API checkbox.
-**P7-G2 bands registered 2026-07-10, before implementation/decisive runs:** the first-class set is the ten practical
-SPM fit parameters `{D_s,n, D_s,p, k_ct,n, k_ct,p, R_contact, Q, x_n,0, x_n,100, x_p,0, x_p,100}`; `h_conv` is
-deferred from this isothermal first surface until the thermal sensitivity composition is enabled. At SOC 0.8, 1C,
-600 s, `dt=10 s`, and `R_contact=1 mΩ`, compare normalized sensitivities `θ·∂V/∂θ` from dual propagation against
-centered FD with `h=√ε·max(|θ|, characteristic_scale)`, and repeat at `h/2` and `2h` to expose the noise floor.
-Per sample/parameter gate: `|S_dual−S_FD| ≤ 2 µV + 2e-4·|S_FD|`; the dual trajectory primal must match the production
-exponential trajectory within 2e-12 V. Fit gate: noiseless 1C/1,800 s synthetic data with truth
-`D_s,n=4.0e-14 m²/s`, `R_contact=1.5 mΩ`, initial guess `2.5e-14/2.5 mΩ`, bounded log/scaled parameters, and an
-L-BFGS-B gradient supplied only by `simulateS1` must recover D within 2% and R within 0.5%. The example must run
-through PyBOP 25.11's `BaseSimulator → Problem → SumSquaredError → SciPyMinimize` surface, not merely SciPy directly.
-**Gate P7-G3 (parameter fidelity, added 2026-07-09):** the §3.9 same-parameters⇒same-results contract — absorption
-round-trip EXACT on every Chen2020/BPX key; fixture parity on the registered scenarios (bands per §3.9).
-**Fixture bands registered 2026-07-10, before generation/comparison:** Chen2020 SPM, isothermal 298.15 K, initial
-SOC=1, `nch=12`; (a) C/50 fixed 36,000 s discharge sampled every 60 s: max |ΔV| ≤2 mV, RMS ≤1 mV; (b) 1C fixed
-3,000 s discharge sampled every 10 s: max |ΔV| ≤15 mV, RMS ≤8 mV. Fixtures are committed CSV generated by a script
-that asserts PyBaMM `26.6.2.0`; CI comparisons are Python-independent and use the fixture time grid. If either band
-fails, investigate parameter/equation/discretisation fidelity; do not widen it from the same decisive run.
+**9B — systematic bug-hunt.** Per-subsystem adversarial passes; every confirmed bug gets a registered SHORT
+failing test BEFORE its fix; every refuted candidate is recorded refuted (killed ideas stay killed). Keep a bug
+ledger in §8. Subsystems: StateArena/BatchView/row-roles; PackTopology+compile; PackSolver A/B/C + workspace
+invalidation; steppers (EulerLegacy, ExponentialModal, step-doubling rollback); PackStepper transaction;
+Experiment parser + CyclerV2 events; Recorder/AsyncRecorder/mmap reader; ParameterSet/BPX/expression AST;
+ForwardSensitivity/Dual; CUDA mirror; Python/MATLAB boundaries.
 
-**COMPLETE 2026-07-10:** the nanobind/scikit-build wheel, PyBaMM-shaped API, compiled option/device preflight,
-state-backed `varied()` ensemble lanes, Chen2020 and hardened BPX absorption, custom/scheduled Experiment surface,
-pinned fixture CI, exact forward sensitivities, and PyBOP adapter are implemented. P7-G1 passes at 0.778/0.221 mV
-Tutorial-5 max/RMS; P7-G2's worst dual/FD difference is 53 nV with truth recovery far inside 2%/0.5%; P7-G3 passes
-C/50 at 0.134/0.034 mV and 1C at 11.577/2.028 mV. PAY-4 clears 10×/1000× positioning targets. A rebuilt wheel
-installs into a clean environment, an official BPX 1.0/DFN file builds and solves, Debug/Release are 46/46, and
-installed-wheel pytest is 10/10 (one external PyBOP/SciPy deprecation warning).
+Hunt checklist (mechanised, not vibes):
+- lane/row indexing at degenerate counts {1, 2, 3, non-SIMD-multiple, coalescing-boundary};
+- rollback completeness: every arena row + workspace + warm state restored on EVERY failure path (inject failures
+  mid-transaction);
+- ignored `[[nodiscard]]` Status returns (grep + compiler flag);
+- fast-math folding hazards: audit every finite/NaN check against the `-Ofast` build (one instance already bitten
+  and fixed — `std::isfinite` folded away; the IEEE exponent-bit idiom must be used everywhere);
+- uninitialised scratch on first use after cold build and after restore;
+- accumulator double-counting across substeps/rejected trials;
+- event bisection corners: event true at segment start, two events in one step, event exactly at a breakpoint;
+- degenerate packs: 1s1p, single lane, zero-R link, single-cell "pack";
+- compiled-curve domain edges: query at/beyond first/last knot, one-bin tables (the BPX 1/65,536 class);
+- snapshot cadence boundaries (first/last step, cadence > run length);
+- CUDA tail lanes (non-multiple of block), device/host divergence under rejected steps.
 
-### Phase 8 — MATLAB MEX, GPU, docs, release
-MEX `+slide` package symmetric with Python; CUDA one-cell-per-thread batch stepping (host-side coupling); docs site
-update (installation, quickstarts ×3 languages, "add a cell model", "add an ageing mechanism"); v4.0.0 SemVer release,
-CHANGELOG consolidation. Gates below were defined at phase opening.
+Tooling (CI lanes; core itself stays dependency-free):
+- ASan+UBSan lane on the full Debug suite; TSan lane on ThreadPool/AsyncRecorder/PackStepper tests;
+- bounded fuzz drivers for the three parsers (Experiment grammar, BPX JSON, netlist CSV): malformed input must
+  Status-fail atomically — never crash, never UB, never partial state; minutes of fuzzing per CI run, with a
+  committed regression corpus;
+- allocation-counter coverage extended to the PackStepper thermal path and recorder enqueue;
+- error-branch coverage measured (llvm-cov) — every `return Status::…` failure branch in `src/core` exercised
+  by at least one test.
 
-**Phase-8 gates registered 2026-07-10 BEFORE implementation/decisive runs. Available closure hardware is MATLAB
-R2025b plus CUDA 13.0 on an RTX 4000 Ada 20 GB; absence paths remain mandatory because both are optional:**
+**Gates:** **P9-G1** ASan/UBSan/TSan lanes green. **P9-G2** parser fuzz: bounded campaign, zero crash/UB/leak,
+every rejection atomic; corpus committed. **P9-G3** error-branch coverage 100% on `src/core` Status-failure
+branches (measured, exceptions listed and justified). **P9-G4** bug ledger complete in §8: each bug has
+{failing test first, fix, ledger row}; refutations recorded.
 
-- **P8-G0 — optionality/portability:** the unchanged dependency-free configuration and `SLIDE_CORE_ONLY` build
-  with MATLAB/CUDA/zstd disabled and pass the full CPU suite. `SLIDE_WITH_MATLAB`, `SLIDE_WITH_CUDA`, and compressed
-  recording are opt-in, find-package-first seams; an unavailable optional toolchain produces an explicit disabled
-  capability (or an error only when the user explicitly requires it), never a broken default configure. Linux,
-  macOS, and Windows installed-wheel CI remains green; no CUDA/Matlab header leaks into public CPU headers.
-- **P8-G1 — MATLAB symmetry:** `+slide` exposes `Experiment`, `ParameterValues` (Chen2020/BPX/update), `SPM`,
-  `Simulation`, `Solution`, processed-variable access/interpolation/plot/save, `varied`, and device preflight over one
-  MEX dispatcher; parsing/physics stay in C++. In MATLAB batch mode, the P7 Tutorial-5 script with language-only
-  syntax changes clears the already-registered 15/8 mV PyBaMM band, and a 1C/600 s `nch=12` trace matches the Python
-  wheel sample-for-sample within `2e-12 V` with identical time/current arrays. Invalid options/BPX/steps fail with a
-  stable `slide:*` identifier and do not poison the next solve; 50 construct/solve/destroy repetitions complete.
-- **P8-G2 — CUDA correctness/device dispatch:** a fused base-isothermal SPM kernel maps one lane to one CUDA thread
-  over the SoA arena, with one device arena allocation at build and zero allocations/synchronisations in an accepted
-  device step; electrical pack coupling remains the tested host `PackSolver` seam. For 10,003 heterogeneous lanes
-  (non-block-multiple; SOC 0.2–0.9, ±5% D, varied contact R), 600 s at 1C and `dt=10 s`, GPU vs CPU final arena rows
-  satisfy `|Δy| ≤ 1e-12 + 2e-10·max(|y_cpu|,|y_gpu|)` and terminal voltage `≤2 µV`; inventory drift remains
-  `≤1e-9 Ah`. A 16s4p/60-step host-coupled case stays within `2 µV` pack voltage and `2 µA` branch current and a
-  rejected step restores host/device checkpoint bytes exactly. Python `device="cuda"` selects this implementation;
-  `available_devices()` is truthful. A CPU-only build still rejects CUDA at preflight without delayed failure.
-  **GPU PAY target (positioning, not a physics gate):** Release, 100,000 heterogeneous cells, 360 × 10 s 1C steps,
-  warmed steady-state kernel vs the CPU exponential batch on a quiet machine, setup/H2D/solve/D2H separate: ≥5×
-  solve speedup (≥2× minimum useful threshold). Failure triggers profile + recorded bottleneck and optimisation before
-  sign-off, not band widening; consumer-Ada f64 throughput and launch cost are explicit qualifications.
-- **P8-G3 — asynchronous compressed recording:** a preallocated ≥3-slot ring supports explicit `block` (lossless)
-  and `thin` (never silent; exact count) backpressure. Byte-shuffle + zstd round-trips every f64 snapshot bitwise;
-  block headers retain magic/version/endian/CRC and corrupted/truncated blocks fail atomically. After configuration,
-  enqueue/worker drain performs zero heap allocations in the simulation thread. With a deliberately slow sink,
-  `thin` completes without producer-side I/O and reports thinning, while `block` emits every frame in order. CUDA
-  recording uses pinned host slots plus a non-default stream/event; a gate verifies no device-wide sync is issued and
-  decoded GPU snapshots equal the accepted device arena. CPU-only compressed recording remains fully functional.
-- **P8-G4 — owned parallel runtime:** one persistent `std::thread` pool (no TBB, no per-call fan-out) executes batch
-  tasks exactly once, propagates failure, shuts down cleanly, and fixed-order reductions are bit-repeatable across
-  worker counts. `slide::test::parallelisation()` reports logical cores, selected backend/workers, serial/parallel
-  timings, and measured speedup; timing is diagnostic rather than a flaky pass/fail threshold.
-- **P8-G5 — docs:** the docs site contains tested installation instructions, C++/Python/MATLAB quickstarts, and the
-  two extension guides ("add a cell model", "add an ageing mechanism"), including optional-dependency and declared
-  PyBaMM gaps (`.yp`, `.observe()`, arbitrary model expression trees). Every quickstart is extracted/compiled or run
-  in its available toolchain; internal links and Doxygen/Jekyll build pass.
-- **P8-G6 — v4.0.0 release:** CMake/package/MATLAB versions agree exactly on `4.0.0` with no `.dev`; CHANGELOG has a
-  consolidated `SLIDE v4.0.0` section and migration/known-limit notes; dependency licenses and release artifacts
-  (CPU wheel, CUDA-capable wheel/build instructions, MEX package) are reproducible. Final Debug/Release CPU,
-  installed-wheel Python, MATLAB batch, CUDA correctness/rollback, async-recording corruption, and release-consistency
-  checks are green before the annotated `v4.0.0` tag is created. Legacy v3 façades remain compiled/runnable per Q3.
+**9C — advanced simplification (the Linus test: good taste removes special cases; guards are a smell).**
+Rule for EVERY change: no-op verified — digit-identical outputs on recorded cases (user CLAUDE.md §4: no-op
+claims need digit-identical outputs, not code inspection), full Debug+Release suites green, PC-1..8 preserved,
+no new required deps. Targets (from §2.3):
+1. **One physics source:** extract the modal update + shared observable scalar kernels into a single
+   scalar-generic header consumed by `SpmPipeline` (CPU), `CudaSpmRuntime.cu` (`__host__ __device__`), and the
+   `Dual` instantiation. Gate: all three paths digit-identical to their pre-refactor outputs on a recorded case.
+2. **One ageing-kernel idiom:** unify the SEI/CS/LAM/plating mask/scratch/lane-sweep scaffolding; four physics
+   bodies remain, one pattern.
+3. **Split oversized cold files:** `ParameterSet.cpp` → absorption / BPX reader / expression AST TUs;
+   `Experiment.cpp` → parser vs runner.
+4. **Shared test harness:** factor the repeated build-batch/run/compare scaffolding in `tests/unit/core_*` into
+   one helper; suite counts must not drop.
+5. **Public-surface audit:** classify each `src/core` header API vs implementation detail; move detail out of
+   public reach; naming-consistency pass (one verb per concept across files).
+6. **Dead-code sweep** (`SpectralDiffusionLegacy` is deliberate — §5.2 parity kernel, KEEP).
+**Gate P9-G5:** every simplification lands digit-identical; core line count recorded before/after in §8 (expect
+net reduction; growth requires written justification).
+
+### Phase 10 — PyBOP integration test suite (NEW; Volkan 2026-07-10)
+
+All fits use SHORT synthetic data (≤600 s simulated, dt ≥ 10 s, ≤4 lanes; reuse P7-G2 problem shapes). Derive
+before running: identifiability and noise floors are computed analytically first, and bands registered from the
+derivation, not from a trial fit.
+
+- **10A** gradient regression (exists — P7-G2 L-BFGS-B via `simulateS1`): keep as the pinned smoke test.
+- **10B** gradient-FREE optimiser through PyBOP (CMA-ES or XNES): same 2-parameter synthetic recovery with a
+  registered looser band — proves the surface works without sensitivities.
+- **10C** multi-parameter GITT-style fit: ≥4 parameters {D_s,n, D_s,p, R_contact, Q} on a synthetic pulse train
+  (~10 pulses × 60 s); recovery bands registered from a pre-run identifiability analysis (normalised-sensitivity
+  Gram matrix rank + conditioning — pure derivation, no simulation).
+- **10D** noise robustness: registered Gaussian noise (e.g. σ = 1 mV) on the synthetic trace; recovery bands
+  derived from the CRLB estimate BEFORE the one decisive run.
+- **10E** version drift: pinned PyBOP 25.11 job blocking; a latest-PyBOP job non-blocking that flags API/numeric
+  drift (mirror of the PyBaMM fixture-drift pattern).
+- **10F** sensitivity CI regression: `simulateS1` vs central-FD arbiter (short horizon, 3 parameters) as an
+  installed-wheel pytest — catches silent dual-path regressions.
+
+**Gates:** **P10-G1** 10B/10C/10D recover truth within pre-registered bands in the installed-wheel CI matrix.
+**P10-G2** the identifiability + CRLB derivations are committed docs (the trail another scientist can trust).
+
+### Phase 11 — v4.0.0 release (was P8-G6; runs AFTER Phases 9–10)
+
+Registered gate text unchanged (archive): CMake/package/MATLAB versions agree on `4.0.0`; consolidated CHANGELOG
+section with migration/known-limit notes; dependency licenses; reproducible artifacts (CPU wheel, CUDA wheel or
+build instructions, MEX package); final Debug/Release CPU, installed-wheel Python, MATLAB batch, CUDA, async
+recording, and release-consistency checks green before the annotated `v4.0.0` tag. Legacy v3 façades stay
+compiled/runnable (Q3). ADDITION: release notes state Phase-9 outcomes (bugs found/fixed/refuted counts) and the
+qualified-timing caveats (AUD-3/Q11).
 
 ### Beyond v4.0 (recorded so design choices don't foreclose them)
 
-- **WASM GUI (Volkan, 2026-07-07):** Emscripten build of the dependency-free core + a browser front-end. Costless to
-  keep open: core already must build with zero deps (non-negotiable #4), no threads assumed outside the pool (§3.8),
-  no filesystem dependence in the hot path. Only rule it adds NOW: no platform API in core without a portable seam.
-- Thermal 1D/2D per-cell models; blended electrodes (`vector<ActiveMaterial>`); SYCL/HIP (Q5); f32 storage (Q1).
-- **FMU export (FMI Model-Exchange):** §3.12's {rhs, observables, event indicators} is already the FMI ME shape —
-  export is a thin wrapper later; only rule NOW: keep the contract FMI-congruent (costs nothing).
-- ~~Forward sensitivities / dual-number AD~~ **PROMOTED into v4 scope 2026-07-09** (Volkan: PyBOP entry required) —
-  now §3.9 sensitivities + D-24 + P7-G2 + Q10. Only the ADJOINT (many-parameter gradients) stays beyond v4.0.
+- WASM GUI (Emscripten build of the dep-free core); thermal 1D/2D per-cell; blended electrodes
+  (`vector<ActiveMaterial>`); SYCL/HIP (Q5); f32 storage instantiation (Q1); FMU export (keep the §3.12 triple
+  FMI-congruent); ADJOINT sensitivities (many-parameter fits).
+- NEW candidates (2026-07-10): structural-counter regression CI (allocations/factorisations/iterations asserted
+  per commit — no timing); MSVC CI lane (portability goal 7; known ~3× slower codegen is a measurement, not a
+  blocker); clang-tidy + include-what-you-use profile; SPMe/DFN discretisation slots (§3.2 menu);
+  liionpack-netlist CSV import round-trip example in docs.
 
 ## 7. Open questions for Volkan (OPEN/ASSUMED ledger)
 
-| ID | Question | Current assumption |
-|----|----------|-------------------|
-| Q1 | float32 state option for GPU/memory? | **DECIDED 2026-07-07 (Volkan)**: f64 everywhere in v4.0 — forced by the §5.2 parity band (≤1e-12 rel is unreachable in f32, ~1e-7 ulp); memory fine (10⁵ × ~300 B ≈ 30 MB ≪ PAY-3's 1 GB). Insurance: arena scalar behind a single `using real_t = double;` alias; mmap header type field width-aware — f32-storage/f64-accumulate later is a new arena instantiation, not a rewrite |
-| Q2 | Keep `Cell_ECM<N_RC>` template generality in v4 core? | **DECIDED 2026-07-07 (Volkan)**: yes — entailed by registered gates (P2-G5a linear-ECM arbiter, §5.2 3s2p ECM parity case, §3.4.1 Tier-0 constant-Jacobian shortcut). Cost = one registry entry (D-02) |
-| Q3 | Legacy API: keep as façade over core after parity, or hard-break at v4.0? | **DECIDED 2026-07-07 (Volkan)**: façade through v4.x, delete in v5 — the parity harness is every phase gate's arbiter (D-14, §5.2) and needs legacy compiled+runnable through Phase 8 |
-| Q4 | KLU/SuiteSparse as optional dep acceptable? | **DECIDED 2026-07-07 (Volkan)**: yes (optional, Eigen SparseLU default) — matches non-negotiable #4. Condition: Phase-2 CMake detection degrades silently to Eigen (no configure failure) on all 3 platforms (§1 goal 7) |
-| Q5 | GPU: CUDA-only first? | **DECIDED 2026-07-07 (Volkan)**: yes; SYCL/HIP revisit after CUDA lands. Only present-cost rule: no platform API in core without a portable seam (already required for WASM, §6 Beyond-v4) |
-| Q6 | Ross's analytical parallel solution — is `setCurrent_analytical_impl` (Nilsu 2024) the code you meant, or is there a separate derivation to recover? | **RESOLVED 2026-07-07 [confirmed]**: arXiv:2508.14454 (Lone, Atlan, Fasolato, Raimondo, Drummond 2025) — Nilsu co-authored it; her code implements it. Adopted as Mode-B upgrade (D-20) |
-| Q7 | PyBaMM version to target for the parameter absorption table? | **DECIDED 2026-07-07 (Volkan)**: latest stable at Phase 7 start; key-rename check mandatory. PyBaMM is CalVer — pinning today buys nothing; absorption table already keyed to verified 26.6.2.0 names + deprecation aliases (§3.9) |
-| Q8 | Parity band (§5.2, ≤1e-12 rel) vs SoA kernel floating-point reassociation: different summation order + FMA contraction give O(1 ulp)/step, amplified over 10³–10⁴ Euler steps; 1e-12 rel ≈ 4 ulps. Pin legacy op-order + `-ffp-contract=off` in parity mode, or loosen the band? | **RESOLVED 2026-07-07 [confirmed] — band KEPT at 1e-12; parity mode uses an op-order-pinned kernel.** P1-G0 pilot ran (`tests/unit/core_P1G0_pilot_test.cpp`, kernel `src/core/SpectralDiffusionLegacy.hpp`): 1200×1 s lockstep 1C steps, legacy `Cell_SPM` Euler vs op-order-replica core kernel → **max_abs = 0, max_rel = 0, bit-identical** (H0 confirmed, registered pre-run; ctest 12/12). Why cheap: the modal update `dz_k = D·A_k·z_k + B_k·j` is diagonal — NO dot products, so op-order pinning costs nothing. Standing conditions: (1) §5.2 parity runs use the legacy-shaped kernel (production vectorised kernels are validated via §5.3 converged-reference bands, NOT the 1e-12 digit-diff); (2) ~~pilot ran in Debug/-O0 — re-confirm drift==0 in the Release config before P1-G1 sign-off~~ **DISCHARGED 2026-07-08 [confirmed]**: Release/-O3 (`build-release`, clang-21) re-run gives **max_abs = 2.26e-17, max_rel = 5.63e-15** → decisive 1e-12 gate HOLDS (~3 orders margin); H0 (exact bit-identity) FALSIFIED under -O3 cross-TU FMA contraction (legacy update lives in the prebuilt `src` lib, kernel is header-only in the test TU; `-Ofast`/`-ffast-math` contracts them differently). `-ffp-contract=off` NOT applied: on the test target alone it cannot reach 0 (legacy `src` side stays contracted), and forcing it globally would recompile legacy — PLAN §5.1 forbids that. Drift is bounded (modal Euler map non-expansive for stable modes; mean-mode accumulation ~1e-15 over a 10-cycle run, ≥3 orders below the gate). Pilot's `max_abs==0` CHECK scoped to Debug (where it holds); decisive `rel≤1e-12` REQUIRE is the CI gate in both configs. P1-G1 UNBLOCKED — register its scenarios mid-SOC or check the steep-OCV tail (dV/dcs amplification watch-point) |
-| Q10 | Which parameters get first-class forward sensitivities in v4 (P7-G2)? Cost is per-parameter (dual-number sweep ≈ +1× per θ), so the set should be the fitting-relevant one, not everything | **RESOLVED 2026-07-10 at Phase-7 implementation:** `{D_s,n, D_s,p, k_ct,n, k_ct,p, R_contact, Q, x_n,0, x_n,100, x_p,0, x_p,100}`. `h_conv` moves to the thermal sensitivity composition because an isothermal voltage trajectory has identically zero information about it. The public name list and parser are tested. |
-| Q9 | Pack-level thermal coupling has no compiled representation (`Pack::compile()` emits an electrical netlist only), but legacy modules exchange heat between children + `CoolSystem`, and T-states sit inside P2-G1's parity band | **RESOLVED 2026-07-10:** D-21 is written in §3.4 and logged in §4 before Phase 2: independent canonical thermal pair list, fixed incident-order gather, arena `q_ext` overwrite per stage, boundary endpoints, no atomics, explicit stage/rollback contract, and five mandatory thermal gates. Phase 1's reserved seam is the exact hot interface. |
+Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the archive and §4.
 
-## 8. Status ledger
+| ID | Question | Outcome |
+|----|----------|---------|
+| Q1 | f32 state? | f64 everywhere in v4.0; `real_t` alias keeps f32 open (2026-07-07) |
+| Q2 | Keep `Cell_ECM<N_RC>`? | Yes — entailed by P2-G5a/parity/Tier-0 gates (2026-07-07) |
+| Q3 | Legacy API fate? | Façade through v4.x, delete in v5 (2026-07-07) |
+| Q4 | KLU optional dep? | Yes, optional; Eigen SparseLU default, silent degrade (2026-07-07) |
+| Q5 | CUDA-only first? | Yes; SYCL/HIP later; no platform API without a portable seam (2026-07-07) |
+| Q6 | "Ross's analytical solution"? | arXiv:2508.14454; adopted as Mode-B upgrade D-20 (2026-07-07) |
+| Q7 | PyBaMM target version? | Latest stable at Phase-7 start = 26.6.2.0, keyed + aliased (2026-07-07) |
+| Q8 | Parity band vs FP reassociation? | Band kept 1e-12; op-order-pinned parity kernel; Release drift 5.63e-15 (2026-07-08) |
+| Q9 | Pack thermal coupling? | D-21 compiled thermal graph, designed before Phase 2, implemented (2026-07-10) |
+| Q10 | First-class sensitivity parameters? | Ten-parameter fitting set; `h_conv` deferred to thermal composition (2026-07-10) |
+| **Q11** | **AUD-3: PAY-1/2/4 quiet-machine confirmation runs — rerun on a quiet machine, or waive the §5.7 protocol retroactively?** | **OPEN (Volkan).** Targets were met on the busy machine (conservative calculations); a quiet machine should only improve them. Until answered, all PAY numbers stay labelled "qualified" |
+| **Q12** | **Release ordering: v4.0.0 after Phase 9 only, or after 9 AND 10?** | **ASSUMED after both** (Phase-11 ordering) — PyBOP integration is cheap relative to a post-release API fix; overturn by one word if speed matters more |
+
+## 8. Status ledger (compact; the 60-row per-gate history is archived verbatim)
 
 | Date | Item | State |
 |------|------|-------|
-| 2026-07-07 | 3-scout audit (architecture/bugs, numerics, external) | DONE — findings in §2, full reports in session transcripts |
-| 2026-07-07 | Chebyshev nch≠5 root cause | SOLVED pre-session on branch `Claude` (§2.2); oracle test still MISSING (P1-G3) |
-| 2026-07-07 | PLAN.md v1 written | DONE (this file) |
-| 2026-07-07 | Phase 0 (A1–A7, B1–B5) | DONE — 11 commits on `Claude` (7529039…91faaf9); A6 refuted (non-bug, documented); regression tests added (Module_p_phase0, CellDataStorage, Histogram, Cycler_energy); CHANGELOG consolidated. Baseline had 4/6 test binaries failing PRE-EXISTING (§2.5 P0-C2/C3); agents' tests all pass; no new failures introduced |
-| 2026-07-07 | Phase 0 follow-up (P0-C1 fmt/clang21, P0-C2 ocv_coefs, P0-C3 thickp, P0-C5/C6 Cycler) | DONE — full ctest 10/10 GREEN (baseline this session: 4/10 failing {Cell_Bucket, Cell_ECM, Cell_SPM, Module_p}, prediction hit exactly). P0-C1: fmt 11.2.0, full 1144-target clang-21 build green. P0-C2: default `ocv_coefs` was a truncated 3-term fit (author's own 8-term fit found in b0a1c82's integration test; even that spans only 2.53–3.46 V, cannot span the 2.7–4.2 V window) → default now empty ⇒ `getOCV()` falls back to OCV-table interp; poly stays opt-in via `set_ocv_coefs`; test expectations 3.15→3.45 V (3.15 dated from the DELETED standalone Cell_Bucket with 2.0–4.3 V ramp). P0-C3: thickp/thickn recalibrated intentionally in 147ee4c ⇒ TEST was stale, updated (incl. CS and CSurf values derived from x_init·Cmax: 35562.14/14694.92, closed-form matched actuals to all printed digits). P0-C5: dead `v_now` removed (Cycler::setCurrent is private; single internal caller). P0-C6: CV energy now trapezoid + `th.time()` accumulated in CV (was never incremented ⇒ CV/CCCV time throughput 0 s); registered test failed pre-fix exactly as predicted (time 0, end-of-step Riemann 3.49986 vs 3.5±1e-6 band). Also fixed en route: Module_p test SPM-SOC tolerance 1e-15→5e-5 (SPM SOC is Li-fraction-estimated, not coulomb counting — intentional since v3) |
-| 2026-07-07 | Solver-memory design (§3.4.1, D-18, P2-G4) | DONE — Volkan clarified the legacy statics were intentional quasi-Newton Jacobian memory; design keeps the memory, adds invalidation + thread safety. Agent cap now ≤2 (header) |
-| 2026-07-07 | Pack description layer (§3.4.2, D-19) | DONE — combinator tree + Netlist escape hatch; compile() erases authoring shape. Per Volkan: agents = Opus HIGH (not xhigh), no "ultrathink" in agent prompts |
-| 2026-07-07 | SOTA verification (report: `.claude/reports/sota-verification-2026-07-07.md`) | DONE — C1/C3/C5/C6 CONFIRMED, C2/C4 NUANCED (liionpack maintenance-mode; WR+Baumgarte combo unpublished = our synthesis), C7 PyBaMM 26.6.2.0 keys verified. Q6 RESOLVED, D-20 added (arXiv:2508.14454 Mode-B upgrade). Description-layer zero-cost pattern confirmed (CasADi/Eigen/Halide precedent) provided erasure is total |
-| 2026-07-07 | §3/§4/§7 review + Q1–Q7 sign-off | DONE — Fable architecture review (agent acc785905bea7cbdf): all six ASSUMED defaults survive adversarial reading (Q1/Q2/Q3 entailed by registered gates); Volkan accepted all six. Two gaps found OUTSIDE the Q-ledger, logged as Q8 (parity band vs FP reassociation — OPEN, pilot-first rule, gates P1-G1) and Q9 (pack thermal coupling missing from compile() — seam reserved Phase 1, D-21 due before Phase 2). R3 (archetype fragmentation) closed with stated assumption + compile() diagnostic in §3.1. Phase 1 UNGATED |
-| 2026-07-07 | P1-G0 parity-drift pilot (Q8) | **PASSED — drift exactly 0 (bit-identical)** over 1200×1 s 1C lockstep steps, legacy `Cell_SPM` Euler vs `SpectralDiffusionLegacyKernel` on `StateArena`. H0 (==0) registered pre-run and CONFIRMED; Q8 closed, §5.2 band stays 1e-12. ctest 12/12 (baseline 11/11 + pilot). Residual: re-confirm in Release config before P1-G1 sign-off |
-| 2026-07-08 | P1-G0 Release re-confirm (Q8 standing condition 2) | **DISCHARGED.** `build-release` (clang-21, -O3/-Ofast). Release: max_abs=2.26e-17, max_rel=**5.63e-15** → decisive rel≤1e-12 HOLDS (~3 orders margin). H0 exact bit-identity FALSIFIED under -O3 cross-TU FMA (registered falsification, numbers recorded); Debug/-O0 still max_abs=0. Legacy NOT recompiled (-ffp-contract=off would need global legacy change, §5.1 forbids; test-target-only can't reach 0). Pilot's `max_abs==0` CHECK scoped `#ifndef NDEBUG`; both configs green (Release 1/1, Debug 1/1). **Q8 FULLY CLOSED; P1-G1 UNBLOCKED.** Watch-point logged: register P1-G1 mid-SOC or check steep-OCV tail |
-| 2026-07-08 | Production `SpectralDiffusion<NCH>` kernel (§3.2/§3.5) | DONE — vectorised-across-lanes forward-Euler diffusion on SoA `StateArena` rows; `DiffusionParams<NCH>` (batch-shared A/B/D0/D_T/a/thick/sgn), per-lane T/i_app spans, once-allocated D_eff/flux scratch (PC-1). Validated vs legacy-shaped oracle on a heterogeneous 8-lane batch (600 steps): **Debug max_abs=0** (H_math arbiter — vectorised sweep == legacy math exactly), **Release max_rel=3.8e-15** (Q8 rel≤1e-12 HOLDS, ~3 orders margin; sub-ulp vectorisation reassoc, expected per Q8). ctest Debug 13/13 (+1, no regressions). DEFERRED (needs review): §3.11 BatchView/StepCtx bundling — T/i_app passed as spans for now |
-| 2026-07-09 | Progress review vs plan (Fable; advisor unavailable, no external review) | DONE — Phase-1 state written into §6 Phase 1 "Progress + critical path". Three defects were marked for follow-up: diffusion lane-count OOB, foreign-slice/moved-arena safety, and a stale Release result comment. **RESOLVED 2026-07-10** by the rebindable-view increment and regression tests. Remaining cold-path design notes: `BatchBuilder` invalid input becomes a Status failure when the factory lands; the factory also replaces tests' hand-copied `elec_surf` geometry literal. |
-| 2026-07-09 | Kernel/integrator contract designed (§3.12, D-22) | DONE — Volkan's requirements (flexible/expandable, no unnecessary abstraction, extreme speed, OFF-THE-SHELF integrators, sparse intuitive structure) resolved the Phase-1 observable-layer blocker: RHS-form kernels (`addRhs` into a once-allocated ydot arena) over `BatchView`/`StepCtx` structs-of-spans; observables = free functions shared by RHS + Recorder (one code path, D-10); steppers own time — EulerLegacy (parity) / ExponentialModal (Phase 3) / generic RHS adapter (`arena.raw()` zero-copy to CVODE `N_VMake_Serial`, Boost.odeint, or user callable; optional deps, core builds with none). CVODE at tight rtol doubles as the §5.3 converged-reference arbiter for expm validation. NOT reviewed externally (advisor down; Fable-only design) — Opus should read §3.12 critically before implementing |
-| 2026-07-09 | Orthogonal review of the plan (independent Fable critic agent a4c48623f018bf968 + cross-simulator harvest) | DONE — 13 defects, 3 critical, ALL in the fresh §3.12 (caught BEFORE implementation): D1 CVODE clones internal vectors → BatchView must REBIND per eval (the "zero-copy N_VMake_Serial" claim as first written was WRONG — recorded, corrected); D2 ydot zeroing contract was unstated (accumulate semantics + legacy shared-row adds `Cell_SPM_dstate.cpp:210` = guaranteed wrong answer); D3 [confirmed by grep] legacy hides path-dependent state outside `State_SPM` (`s_dai_p_prev` dstate:244 → LAM degradation:377; `Therm_Qgen`/`Therm_time` Cell_SPM.hpp:62-64) falsifying §2.1's "only time/Ah/Wh" — §2.1 corrected, v4 rule added (later-step reads ⇒ arena row). Fixes folded: §3.12 rewritten (D-23: rebindable view, eval pipeline, ODE-row mask, events-as-rootfinding, CVODE=arbiter-only, odeint REJECTED, scalar-generic kernels), §3.4 solver robustness (consistent init, SPICE-style trial limiting, source-stepping homotopy rescue, rollback atomicity, compiled-netlist detection), §3.4.1 divergence guard, §3.5 expm1/φ₁ cancellation note, §3.8 fixed-order reductions + GPU-fit analysis (2·10⁴ cells ≈ 6 MB state; occupancy/coupling/launch/f64 concerns recorded — answers Volkan's GPU question), §5.2 band abs floor (ASSUMED 1e-15), §5.4 MMS oracle for composed kernels, P1-G4 bitwise-restart gate, P5-G1 events + termination reason, Phase-7 BPX + ensemble API, §3.1 dual-use (packs AND UQ sweeps), Beyond-v4 FMI/AD notes |
-| 2026-07-09 | P1-G3 part (a) IMPLEMENTED (Opus) — Chebyshev eigenvalue oracle | DONE — `tests/unit/core_ChebyshevEigenvalues_test.cpp` (14th test, full suite 14/14 green, no regressions vs the 13/13 baseline). Independent-math oracle: `Model_SPM` A-eigenvalues vs analytic roots of tan μ = μ. Operator CONFIRMED (μ₁ to 3.6e-14 @ nch=12; one zero mass mode; rest real+negative). Fable's ASSUMED "1e-10 @ k ≤ ⌈nch/2⌉" band FALSIFIED with data (recorded, CLAUDE.md §3): true spectral convergence, fundamental 2.0e-5/2.3e-10/3.6e-14 @ nch 5/8/12, ~⌈nch/2⌉ modes to 1e-3. nch=5 fundamental only ~2e-5 accurate [confirmed]. Bands re-registered from the run. STILL OPEN: P1-G3 part (b) C&J transient series incl. centre node. Marks C1–C3 (Model_SPM build() hardening) still deferred to the v4 model build |
-| 2026-07-09 | Chebyshev math audit + speed targets + async recording + parameter fidelity (Volkan directives) | DONE — (1) **Chebyshev audit** `.claude/reports/chebyshev-math-audit-2026-07-09.md`: full derivation trail (u=rc → heat eq → odd folding → surface-node Schur condensation → nonsymmetric eigensolve → modal form) [confirmed vs Model_SPM.hpp]; KEY FIND: operator eigenvalues are analytic — λ_k·R² = −μ_k², tan μ_k = μ_k (mass mode = μ₀ = 0 explains the forced zero eigenvalue) → new P1-G3 eigenvalue oracle (rel 1e-10, k ≤ nch/2) + centre-node c(0,t) coverage (cc_coeff path had NO external oracle) + v4 build() Status-gate replacing Release-silent assert/unchecked EigenSolver (marks C1–C3 in Model_SPM.hpp, grep `REVIEW-MARK(2026-07-09`); discretisation menu added §3.2 (FVM/parabolic/Duhamel/Legendre). (2) **PAY-4** cross-tool targets (≥10³× liionpack, ≥10× per-solve vs PyBaMM IDAKLU single cell — hypotheses [inferred], positioning not abort gates). (3) **§3.7 async recording ring** (pinned buffers + side stream, Blosc-style shuffle+zstd, explicit backpressure, non-temporal snapshot copies) + §3.8(3b) GPU kernel fusion lever. (4) **§3.9 same-params⇒same-results contract** + P7-G3 (absorption round-trip exact; committed PyBaMM fixture parity; converged-model band honesty). Ageing-embedding question answered: declare()/StateSlice + addRhs IS the embedding design (§3.1+§3.12); ageing port itself still not started |
-| 2026-07-09 | PyBOP ecosystem entry (Volkan directive) + GPU speed/memory analysis | DONE — forward sensitivities promoted from beyond-v4 into v4 scope: §3.9 sensitivities surface (dual-number forward mode via §3.12 scalar-generic kernels; analytic modal sensitivities on the same exponential propagator where linear structure permits; central-FD arbiter), D-24 (adjoint deferred; FD-only and required-AD-dep rejected), P7-G2 gate (sensitivity band vs FD arbiter + end-to-end PyBOP gradient-fit recovering known truth on synthetic data), Q10 (fitting-parameter set, ASSUMED ~10 params, Volkan confirms at Phase 7). §3.8 GPU: cache-residency roofline recorded [inferred, no timing claim] — 20k-cell working set fits GPU L2; "very quick very long" = expm × multirate × GPU product, hypothesis registered for GPU-phase PAY banding |
-| 2026-07-10 | Phase-1 rebindable view + first observable | DONE — `BatchView`/`RhsViews` rebind arbitrary integrator trial vectors without copies; mandatory ydot-zero stage and ODE/algebraic/cumulative/input row roles implemented (D-23). Concentration reconstruction is one scalar-generic free function shared by future RHS/Recorder paths; hardened arena moves/slice bounds and diffusion lane bound. Initial full Debug suite 15/15 green. |
-| 2026-07-10 | P1-G3(b) analytic transient + centre observable | DONE — full surface/interior/centre concentration reconstruction matches legacy exactly in Debug and to 2.665e-15 in Release, with a 9.027e-15 all-node uniform round trip. Independent constant-flux spherical series validates A/B/C/D and `Cc/cc_coeff` jointly at nch={5,8,12}; registered rel≤1e-6 holds (worst 8.254e-7 at nch=5, τ=0.2; nch=8/12 ≤3.949e-12). P1-G3 is complete; full Debug suite 16/16 and affected Release tests 2/2 green. |
-| 2026-07-10 | Physical description hierarchy + canonical Domain | DONE — added value-semantic ActiveMaterial/Electrode/Separator/Electrolyte/Thermal/Cell designs and hot `ElectrodeParams`. Resolved a plan-vs-legacy ordering hazard: scoped v4 Domain is negative-first; legacy is positive-first; all bridges map explicitly and tests prevent silent electrode swaps. Full Debug suite 17/17 and affected Release tests 4/4 green. |
-| 2026-07-10 | Compiled parameter-curve forms (D-16) | DONE — exact nonuniform piecewise-linear tables now use an O(1) uniform segment-index accelerator and reproduce legacy Kokam OCV interpolation bit-for-bit; smooth injected curves compile to a validated ≤4096-point uniform LUT. Malformed/tolerance-failing builds return the common Status channel and invalidate prior data atomically. Also fixed missing self-contained includes in `FixedData.hpp`. Full Debug suite 18/18 and Release curve target green. |
-| 2026-07-10 | Shared SPM electrical observables | DONE — canonical negative-first arena layout now includes all evolving inputs needed by reconstruction (`D`, thickness, active area, SEI/electrode/current-collector resistance). One scalar-generic stage computes concentrations, stoichiometry, exchange current, overpotentials, electrode/cell OCV, resistance, terminal voltage, and heat without hot allocations. Legacy parity at zero/discharge/charge and two temperatures: OCV/R exact, max voltage error 4.441e-16 Debug and zero Release. Invalid concentrations return Status. Full Debug suite 19/19; affected Release 4/4. |
-| 2026-07-10 | `ThermalLumped` + fast-math-safe validation | DONE — scalar-generic additive RHS consumes shared internal heat plus `q_ext` and convection; rho*Cp*V and h*A are cold-compiled. Generated energy and thermal elapsed time replace hidden legacy members with snapshot-safe arena rows. Analytic heterogeneous-lane balance and invalid-input tests pass Debug/Release. Release testing exposed that `std::isfinite` is folded away by `-Ofast`; core now uses an IEEE exponent-bit check with an integer compiler barrier, also applied to compiled curves and covered by bit-injected NaN tests. Full Debug suite 20/20; affected Release 2/2. |
-| 2026-07-10 | SEI ageing mechanisms 1–4 | DONE — scalar-generic masked batch stage ports kinetics-limited, linear-diffusion-limited, Christensen–Newman, and fitted variants plus optional Ashwin porosity loss. Additive RHS updates negative z modes, SEI thickness, lost lithium, active fraction, and active area; lost-lithium/active-fraction values are canonical arena state. Direct legacy `Cell_SPM::SEI` parity holds at rel≤1e-13 for every mechanism in Debug/Release. Full Debug 21/21; affected Release 2/2. |
-| 2026-07-10 | Shared Dai/Laresgoiti stress stage | DONE — stress is reconstructed from the full concentration observable with no heap work; Dai maxima for both electrodes and the Laresgoiti negative stress match public legacy functions at rel≤1e-12 in Debug/Release. The previously hidden `s_dai_*_prev`, `s_lares_n_prev`, and interval are algebraic arena rows: checkpointed but excluded from ODE integration. Full Debug 22/22; affected Release green. |
-| 2026-07-10 | Surface-crack mechanisms 1–5 | DONE — masked scalar-generic stage ports Laresgoiti, Dai, Deshpande–Bernardi, Barai, and Ekstrom laws plus optional negative-diffusivity loss. Additive RHS covers crack surface, crack-driven extra SEI flux/lithium loss, and `Dn`; all mechanisms × both diffusion settings match direct `Cell_SPM::CS` at rel≤1e-12 in Debug/Release. Sensitivity type is preserved below the legacy diffusion-rate cap. Full Debug 23/23. |
-| 2026-07-10 | LAM mechanisms 1–4 | DONE — ports Dai stress thinning, Delacourt–Safari flux loss, Kindermann dissolution, and Narayanrao active-area loss. Additive RHS composes direct area and `3ε/R` contributions. All six raw geometry rates per mechanism match direct `Cell_SPM::LAM` at rel≤1e-12 in Debug/Release. Full Debug 24/24. |
-| 2026-07-10 | Yang lithium plating | DONE — scalar-generic side-current matches direct `Cell_SPM::LiPlating` at rel≤1e-13 for charge/discharge in Debug/Release; additive RHS updates negative z, LLI, and explicit plated-layer thickness. All individual legacy SPM ageing mechanisms now have v4 kernels. Full Debug 25/25. |
-| 2026-07-10 | Fixed composed SPM RHS pipeline | DONE — compile-time composition enforces zero-derivative → one shared observable pass → optional one shared stress pass → additive diffusion/thermal/SEI/crack/LAM/plating order. Diffusion consumes the observable stage's exact effective diffusivity and molar flux. Registered test proves mandatory whole-arena zeroing and trial-vector rebinding; all optional branches compile. Debug/Release pipeline gates green; full Debug 26/26. |
-| 2026-07-10 | Validated per-batch spectral compiler (audit C1–C3) | DONE — independent v4 cold build supports registered nch={5,8,12}, physical per-domain radii, and Status-fails invalid geometry, eigensolver failure, complex contamination, non-invertible transforms, non-finite output, or analytic-spectrum mismatch. Default A/B/C/D, transforms, centre map, and integration matrix are exactly legacy-identical in Debug/Release; custom scaling and atomic failure covered. Full Debug 27/27. |
-| 2026-07-10 | D-02 composition registry + SPM cold factory | DONE — `slide_core` explicitly compiles 12 archetypes (nch={5,8,12} × isothermal/thermal × base/ageing-capable); runtime selection occurs once and `SpmBatch::rhs` makes one indirect batch call into concrete lane kernels. Factory flattens CellDesign/curves/spectral/thermal/ageing data and initializes arena/roles/stress history. Invalid masks, modifier-only options, lane counts, geometry, curves, and parameters Status-fail without replacing prior output. Disabled mechanisms skip before lane loops. Full Debug/Release 28/28. |
-| 2026-07-10 | CMake object-library architecture | FIXED — implementation sources no longer propagate PUBLIC through every consumer; `src` archives each legacy object once and exposes include requirements explicitly. The nested Cell_SPM object target is linked directly. Clean Debug/Release full builds and 28/28 tests green. |
-| 2026-07-10 | `EulerLegacy` + Phase-1 Simulation façade | DONE — stepper advances only ODE rows, updates elapsed time/Ah/Wh outside RHS with accepted post-step voltage, preserves input/algebraic rows, rolls back post-step failures from once-allocated scratch, and stores pre-step stress history after acceptance. Simulation builds via D-02 and returns multi-lane CC voltage traces with partial-final-step and decimal-ratio handling. Full Debug 29/29; affected Release green. |
-| 2026-07-10 | P1-G2 zero-allocation 10⁴-lane gate | PASSED — all global scalar/array/aligned new forms counted; after cold build + warm-up, one accepted EulerLegacy step changes allocation count by exactly 0 in Debug and Release. Arena state is 240 B/cell ≤300 B. Full suites 30/30 both configurations. |
-| 2026-07-10 | P1-G4 bitwise arena restart gate | PASSED — coupled thermal + SEI + stress-crack + stress-LAM + plating run split by full padded-arena snapshot, destruction/cold rebuild, and arena-only restore is byte-identical to the continuous run, including final terminal voltages, in Debug and Release. Full suites 31/31 both configurations. |
-| 2026-07-10 | P1-G1 Kokam single-cell trajectory parity | PASSED — production factory + composed pipeline + EulerLegacy vs legacy Cell_SPM over mid-SOC 1200 s 1C and low-SOC steep-tail 300 s discharges. Max |ΔV| 4.44e-16 V Debug / 8.88e-16 V Release; every mapped physical/cumulative state meets the registered band. Parameter-fidelity check caught and removed an erroneous 298.15 K adapter assumption: legacy Kokam uses 298.0 K. Full suites 32/32 both configurations. |
-| 2026-07-10 | PAY-1 Phase-1 payoff | PASSED — reproducible 10⁴-lane × 3600-step Kokam 1C harness, three alternating Release repetitions. Core median 0.460 s vs legacy 3.209 s = 6.97×; conservative min(legacy)/max(core) = 6.16×, above the ≥5× target. Max state error 8.67e-19, max |ΔV| 8.88e-16 V. The initial 0.43× result triggered redesign: surface-only base observables, self-invalidating transport cache, precise row roles, compact rollback, fused Euler, and exact checked lane coalescing with heterogeneous fallback. Full suites 32/32 both configurations. |
-| 2026-07-10 | D-21 compiled pack thermal adjacency design (Q9) | DONE before Phase 2 — independent canonical cell/boundary thermal graph; sorted static pair list + CSR incident gather; one flux evaluation per edge; fixed-order `q_ext` accumulation without atomics; explicit stage, snapshot, rollback, and off-the-shelf-integrator split contracts; five registered Phase-2 thermal gates. Logged in §3.4 and §4. |
-| 2026-07-10 | Phase-2 pack compile + D-21 implementation foundation | DONE — value-semantic series/parallel combinators flatten to one explicit cell/resistor netlist; stable hierarchical paths and archetype batch/lane locations; canonical sparsity, connectivity/index-1 metadata, ladder eligibility; independent canonical thermal cell/boundary graph with fixed-order allocation-free assembly. Nested flattening, link resistors, byte-identical reorder, analytic energy conservation, and atomic validation green. Full suites 33/33 both configurations. |
-| 2026-07-10 | Phase-2 affine Thevenin + Mode A/B + workspace | DONE — one callback per archetype batch; global SparseLU Mode A with one symbolic analysis, persistent factorization/warm start/invalidation; compile-detected series-of-parallel analytical Mode B. Affine P2-G2 ≤1e-12 A; nested global solve ≤2 iterations; invalidation digit-identical; 100-step 4p/nested segments use one numeric factorization. Full suites 34/34 both configurations. |
-| 2026-07-10 | SPM Thevenin + contraction-monitored chord safeguards | DONE — the concrete SPM pipeline exposes an allocation-free frozen-state tangent including all direct current dependence. Sparse Mode A now solves cached-Jacobian residual corrections, refreshes on the registered contraction/iteration triggers, limits trial currents, and has atomic eight-stage source-stepping rescue. A heterogeneous Kokam 4p solve closes KCL/equal-voltage to 1e-10; a 100-step evolving-state CC segment uses ≤10 numeric factorizations. |
-| 2026-07-10 | P2-G1 coupled pack transaction + parity | PASSED — `PackStepper` owns whole-pack checkpoint/rollback, electrical solve, canonical thermal gather/scatter, and batch advance; restore drops both factorization and warm solution and repeats accepted arena bytes exactly. Accepted coupled steps allocate zero. The 300-step Kokam 3s2p trajectory vs legacy `Module_s/Module_p` has max ΔV=5.33e-15 V, ΔI=2.95e-13 A, and worst mapped state=0.013× its band. |
-| 2026-07-10 | P2-G5 Mode-B admission | PASSED — linear 16p with 1% R spread meets the 1e-8 A band; SPM with 2% active-content and 5% resistance spread over a 1C-to-taper trajectory has max relative branch-current error 8.49e-14 at 16p and 3.10e-13 at 256p vs Mode A, far below 1e-3. Mode B remains compile-detected ladder-only. |
-| 2026-07-10 | PAY-2 Phase-2 payoff | PASSED ABORT GATE / TARGET FALSIFIED — reproducible heterogeneous 16s4p × 1,800-step harness, three alternating Release repetitions. Compiled median 0.003089 s vs legacy 0.015049 s = 4.87×; conservative speedup 4.83×. The 10× hypothesis is falsified, but the required ≥3× continue threshold clears. Initial 0.69× drove analytic tangents and compile-validated period-4 brick specialization. Final errors: state 2.72e-8, current 2.70e-6 A, voltage 2.92e-8 V. |
-| 2026-07-10 | Phase-3 exponential/modal integration | COMPLETE — exact φ₁-safe modal propagation, symmetric second-order slow-physics splitting, adaptive step doubling/rollback, event alignment, and pack transaction entry point implemented. P3-G1 nch={5,8,12} closed-form error ≤2e-12; P3-G2 modal-inventory cycle balance <1e-9 Ah; P3-G3 nch12 remains finite at dt=1000 s where Euler fails or amplifies >10⁶×. |
-| 2026-07-10 | Phase-4 Mode C + PAY-3 | COMPLETE — index-1-gated weighted-Jacobi waveform relaxation with explicit Baumgarte gain and contraction diagnostics. P4-G1 ≤0.1% vs Mode A; P4-G2 drift ≤(1−α)^k bound; P4-G3/PAY-3 accepts a real 100,000-cell SPM pack step with 24 MB arena state, zero measured-step allocations, and zero factorizations. |
-| 2026-07-10 | Phase-5 Experiment grammar + Cycler v2 | COMPLETE — shared C++ grammar with atomic diagnostics and repetition; CC/CV/power/rest/drive-cycle execution; exact bisection events and machine-readable reasons; time-aligned legacy Cycler parity. Full Debug/Release 41/41. |
-| 2026-07-10 | Phase-6 Recorder + I/O | COMPLETE — preallocated cadence snapshots and explicit backpressure; production-kernel lazy observables; CSV; native mmap with CRC/version/endian/offset validation; optional find-package-first Parquet. Exact derived/live equality, corruption gates, and zero record allocations; full Debug/Release 43/43. Async compression/GPU drain remains bound to Phase 8. |
-| 2026-07-10 | Phase-7 PyBaMM parity bands | REGISTERED BEFORE RUN — P7-G1 Tutorial-5 SPM max/RMS 15/8 mV; P7-G3 C/50 max/RMS 2/1 mV and 1C max/RMS 15/8 mV. Pinned fixture generation and decisive comparisons are next. |
-| 2026-07-10 | P7-G1/P7-G3 PyBaMM behaviour parity | PASSED — pinned 26.6.2.0 Chen2020 fixtures generated after band registration. C/50 max/RMS 0.134/0.034 mV; 1C 11.577/2.028 mV; full Tutorial-5 sequence compared within continuous control segments 0.778/0.221 mV. Event-duration drift is explicit (worst 30.02 s in the CV hold), and no interpolation crosses duplicate-time control jumps. Initial decisive comparison caught/fixed SLIDE's synthetic open-circuit first sample. |
-| 2026-07-10 | P7-G2 sensitivity/fit bands | REGISTERED BEFORE RUN — ten-parameter dual/FD normalized sensitivity gate `2 µV + 2e-4 relative`, primal `2e-12 V`; PyBOP 25.11 L-BFGS-B synthetic D/R recovery 2%/0.5%. Implementation and decisive runs are next. |
-| 2026-07-10 | P7-G2 forward sensitivities + PyBOP | PASSED — dependency-free dual propagation for the resolved ten-parameter set; primal is bit-identical to production and worst normalized difference across FD `h/2,h,2h` is 53 nV. PyBOP 25.11 BaseSimulator/Problem/SSE/SciPyMinimize L-BFGS-B uses `simulateS1` gradients and recovers D/R to ~2.1e-9/~9.4e-10 relative in 16 iterations/21 evaluations, far inside 2%/0.5%. Q10 resolved; thermal h_conv sensitivity is correctly deferred from the isothermal surface. |
-| 2026-07-10 | PAY-4 cross-tool positioning | TARGETS MET (qualified development-machine run) — reproducible JSON harness separates setup and solve. Single SPM discharge+CCCV: 18.13× warm solve and 71.4× cold vs PyBaMM 26.6.2.0 IDAKLU. Pack CC: conservative 1,165× at 16s4p and 1,111× at 1s100p vs liionpack 0.3.12/CasadiManager. Parameters/protocols/tolerances/versions, output-overhead asymmetry, connector approximation, and ~0.90 mV/cell final voltage difference are recorded in `benchmark/PAY4.md`. |
-| 2026-07-10 | BPX 1.x compatibility hardening | COMPLETE — safe bounded expression AST/canonical curves for standard OCP formulas; semantic and legacy numeric 1.x headers; SPM-subset absorption from SPM/SPMe/DFN/Partial; explicit porosity/thermal fields and diffusivity activation energy. Arbitrary identifiers and non-finite formulas fail atomically. State-dependent D is diagnosed rather than silently approximated by the constant-D exact modal composition. Debug/Release 213 assertions green. |
-| 2026-07-10 | PyBaMM custom Experiment/start-time additions | COMPLETE — shared C++ callbacks cover explicit, algebraic-implicit, and differential controls plus named custom event indicators with checkpointed root landing. Scheduled starts cut active steps or insert exact rest; per-step periods are supported. `slide.step` mirrors PyBaMM constructors and normalizes datetime schedules. Constant custom CC is bit-identical to parsed CC; Debug/Release 46/46 and rebuilt-wheel Python 10/10 green. |
-| 2026-07-10 | Python installed-wheel CI | COMPLETE — Python 3.10/3.13 × Linux/macOS/Windows matrix builds a wheel, installs only that artifact, and runs pytest; PyBOP runs within its declared `<3.13` range. A pinned PyBaMM 26.6.2.0 job regenerates C/50, 1C, and Tutorial-5 fixtures and numerically flags upstream/platform drift. Local regenerated fixtures are exactly identical. |
-| 2026-07-10 | Real BPX closure smoke | PASSED — official PyBaMM NMC pouch BPX 1.0/DFN file exposed a one-bin D-16 boundary bug (1/65,536 knot spacing needs 65,537 bins). Bounded accelerator budget raised to 131,072 with regression; the real file now absorbs, builds at nch=12, and solves a finite 10 s discharge (4.2005→4.1583 V). Rebuilt wheel Python 10/10. |
-| 2026-07-10 | Phase-7 closure | COMPLETE — wheel/API/options/device/ensemble, Chen2020/BPX, custom/scheduled Experiment, P7-G1/G2/G3, PyBOP, PAY-4, and installed-wheel CI all discharged. Clean wheel and official BPX smoke pass; Debug/Release 46/46 and Python 10/10. |
-| 2026-07-10 | Phase-8 gates | REGISTERED BEFORE IMPLEMENTATION — P8-G0 optionality, G1 MATLAB symmetry, G2 CUDA correctness/host coupling/PAY, G3 async shuffle+zstd CPU/GPU recording, G4 thread pool/diagnostic, G5 tested docs, G6 release consistency/tag. Closure machine has MATLAB R2025b, CUDA 13.0, RTX 4000 Ada. |
-| 2026-07-10 | P8-G4 owned parallel runtime | PASSED — persistent dependency-free std::thread pool, exact-once indexed tasks, first-failure propagation after deterministic completion, clean reuse/shutdown, and fixed-order sums bit-repeatable at 1/2/7 workers. `slide::test::parallelisation()` returns validated core/backend/timing/speedup/checksum diagnostics; timing is informational. Debug/Release gate green. |
-| 2026-07-10 | P8-G3 CPU async compressed recording | PASSED (CPU HALF) — a preallocated ≥3-slot ring copies accepted snapshots without producer allocation or I/O; a persistent drain thread byte-shuffles and optionally zstd-compresses versioned/CRC-protected blocks. Explicit lossless `block` and counted `thin` semantics pass under a slow sink; raw/zstd decode is bitwise exact and atomically rejects corrupt/truncated input. Full Debug/Release suites are 49/49. Pinned CUDA slots/non-default stream/event remain coupled to P8-G2. |
-| 2026-07-10 | P8-G2 CUDA physics/host coupling/PAY | PASSED (CORE) — the opt-in one-lane-per-thread base-isothermal exact-modal kernel owns one device allocation, queues accepted work without allocation/synchronization, and retains host `PackSolver` coupling. The 10,003-lane SOC/D/R gate, inventory band, 16s4p/60-step voltage/current coupling, and byte-exact device rollback pass. PAY-5 on the RTX 4000 Ada is 23.85× (8.6021/0.36075 s) for 100,000 lanes × 360 steps, with max arena error 1.78e-14 and voltage error 2.66e-15 V; H2D/D2H are separated. Python dispatch and pinned recording remain before full G2/G3 closure. |
-| 2026-07-10 | P8-G2 CUDA device dispatch | COMPLETE — native/Python `available_devices()` is compiled-and-runtime truthful; supported fixed-duration CC single and `varied()` workloads with `device="cuda"` execute the fused backend. The packaged CUDA wheel installs its adjacent runtime DLL and passes 10 tests (one optional PyBOP skip); the CPU wheel reports only CPU and passes 9 with CUDA/PyBOP skipped. Unsupported CUDA experiment compositions fail explicitly at preflight. |
-| 2026-07-10 | P8-G3 GPU async recording | COMPLETE — a ≥3-slot `cudaHostAlloc` ring uses a non-default stream plus per-slot compute/copy events; the compute stream waits only on the corresponding side-copy event, never a device-wide sync. A drain thread feeds the existing shuffled raw/zstd writer with explicit block/thin semantics. Decoded current/state snapshots equal each accepted device arena bitwise and remain ordered; CPU compression/corruption/allocation gates stay green. |
-| 2026-07-10 | P8-G1 MATLAB symmetry | COMPLETE — one stateless MEX dispatcher keeps parsing/physics in C++ and backs `+slide` Experiment, ParameterValues (Chen2020/BPX/update), SPM, Simulation, Solution, processed variables/interpolation/plot/save, `varied`, and runtime-truthful device preflight. MATLAB R2025b batch tests reproduce Tutorial-5 at 0.778/0.221 mV max/RMS (15/8 mV gate), match the installed Python wheel with identical time/current and 1.15e-14 V max error over 1C/600 s (2e-12 V gate), recover after stable `slide:*` option/BPX/step failures, and complete 50 construct/solve/destroy repetitions. |
-| — | Phases 1–8 | **Phases 1–7 COMPLETE. Phase 8 ACTIVE:** G1 MATLAB, G2 CUDA, G3 async recording, and G4 runtime complete; next tested docs and the v4.0.0 release. |
+| 2026-07-07 | Phase 0 + legacy audit + plan v1 + SOTA verification + Q1–Q7 | DONE (archive) |
+| 2026-07-08 | P1-G0 Release re-confirm; production `SpectralDiffusion<NCH>` | DONE (archive) |
+| 2026-07-09 | §3.12/D-22/D-23 kernel contract; orthogonal review (13 defects pre-implementation); Chebyshev math audit; PyBOP promotion; async-recording design | DONE (archive) |
+| 2026-07-10 | Phases 1–7 all gates + PAY-1 (6.97×), PAY-2 (4.87×, 10× falsified), PAY-3 (10⁵ cells/24 MB), PAY-4 (18×/71× PyBaMM, ~1.1–1.2·10³× liionpack, qualified) | COMPLETE (archive rows 2026-07-10) |
+| 2026-07-10 | Phase 8 G1 MATLAB, G2 CUDA (+PAY-5 23.85×), G3 async recording, G4 thread pool | COMPLETE (archive) |
+| 2026-07-10 | Implementation audit of the 67 Codex commits (agent + Fable, artifact-checked); architecture quality assessment; full ctest Debug 49/49 + Release 49/49 | DONE — verdict §2.2/§2.3; AUD-1..5 opened as Phase-9A items |
+| 2026-07-10 | PLAN.md compressed + Phases 9/10/11 added (bug-hunt+simplification, PyBOP integration, release); short-simulation operating rule added; P8-G6 → Phase 11 | DONE (this revision; archive created) |
+| — | NEXT | P8-G0 verification sweep → P8-G5 docs → Phase 9 (9A audit debt → 9B hunt → 9C simplification) → Phase 10 → Phase 11 release |
