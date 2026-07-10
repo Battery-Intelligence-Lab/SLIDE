@@ -802,8 +802,8 @@ observable stage, `ThermalLumped` with arena-owned heat/time accumulators, SEI a
 mechanisms 1–5, LAM mechanisms 1–4, porosity/diffusivity coupling, and shared Dai/Laresgoiti stress observables with explicit
 previous-step arena state, plus the compile-time fixed composed SPM RHS pipeline (mandatory zeroing, shared
 observable/stress stages, rebind-safe trial-vector evaluation), and the D-02 explicit composition registry + cold factory
-(12 entries: nch={5,8,12} × isothermal/thermal × base/ageing-capable), `EulerLegacy`, and the single-batch
-constant-current `Simulation` façade. Remaining: gates P1-G1/G2/G4 and PAY-1.
+(12 entries: nch={5,8,12} × isothermal/thermal × base/ageing-capable), `EulerLegacy`, the single-batch
+constant-current `Simulation` façade, and P1-G2. Remaining: gates P1-G1/P1-G4 and PAY-1.
 **DEPENDENCY (surfaced 2026-07-08 handoff): the observable-reconstruction layer.** Thermal and ageing kernels are not
 self-contained state→state maps: they need `c_surf = C·z + D·flux` (+ centre node, the §2.2 output path), Butler-
 Volmer overpotentials, OCV/entropic-coefficient interp, Rdc — i.e. the derived-observables layer (D-10, §3.7) plus
@@ -816,8 +816,9 @@ oracle FIRST (it validates exactly the C/D surface-concentration path the new la
 2026-07-09 core review marks and Model_SPM build audit C1–C3 were resolved on 2026-07-10 (see §8 rows).
 **Gates:** P1-G0 parity-drift pilot (Q8): 1-cell legacy-Euler 1C CC, measure |ΔV|/|Δstate| drift legacy vs v4 kernel;
 outcome closes Q8 (keep 1e-12 band, or pin op-order/`-ffp-contract=off`, or loosen with ulp argument) BEFORE P1-G1
-runs. P1-G1 parity single-cell scenarios (§5.2 band as resolved by P1-G0). P1-G2 one batch of 10⁴ identical cells
-steps with ZERO per-step heap allocations (assert via allocation-counting new). P1-G3 Chebyshev external oracle:
+runs. P1-G1 parity single-cell scenarios (§5.2 band as resolved by P1-G0). **P1-G2 IMPLEMENTED 2026-07-10:** one
+batch of 10⁴ identical cells steps with exactly ZERO per-step heap allocations (all global new forms counted after
+warm-up, Debug/Release); arena state is 240 B/cell ≤300 B. P1-G3 Chebyshev external oracle:
 transient sphere diffusion with constant-flux BC vs the analytic series solution (Carslaw & Jaeger form), registered
 band rel. err < 1e-6 at nch=5,8,12; plus cross-check vs Howey Spectral_li-ion_SPM conventions. **Extended
 2026-07-09 (math audit `.claude/reports/chebyshev-math-audit-2026-07-09.md`):** (a) analytic EIGENVALUE oracle —
@@ -975,4 +976,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | D-02 composition registry + SPM cold factory | DONE — `slide_core` explicitly compiles 12 archetypes (nch={5,8,12} × isothermal/thermal × base/ageing-capable); runtime selection occurs once and `SpmBatch::rhs` makes one indirect batch call into concrete lane kernels. Factory flattens CellDesign/curves/spectral/thermal/ageing data and initializes arena/roles/stress history. Invalid masks, modifier-only options, lane counts, geometry, curves, and parameters Status-fail without replacing prior output. Disabled mechanisms skip before lane loops. Full Debug/Release 28/28. |
 | 2026-07-10 | CMake object-library architecture | FIXED — implementation sources no longer propagate PUBLIC through every consumer; `src` archives each legacy object once and exposes include requirements explicitly. The nested Cell_SPM object target is linked directly. Clean Debug/Release full builds and 28/28 tests green. |
 | 2026-07-10 | `EulerLegacy` + Phase-1 Simulation façade | DONE — stepper advances only ODE rows, updates elapsed time/Ah/Wh outside RHS with accepted post-step voltage, preserves input/algebraic rows, rolls back post-step failures from once-allocated scratch, and stores pre-step stress history after acceptance. Simulation builds via D-02 and returns multi-lane CC voltage traces with partial-final-step and decimal-ratio handling. Full Debug 29/29; affected Release green. |
-| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0, production `SpectralDiffusion<NCH>`, rebindable BatchView/StepCtx + row roles, physical description/Domain/ElectrodeParams, shared concentration/electrical/heat/stress observable stages, `ThermalLumped`, all SEI/crack/LAM/plating ageing mechanisms, fixed composed SPM pipeline, validated spectral build, D-02 registry/factory, `EulerLegacy`, single-batch Simulation façade, P1-G3. **NEXT: P1-G1/G2/G4** → PAY-1); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |
+| 2026-07-10 | P1-G2 zero-allocation 10⁴-lane gate | PASSED — all global scalar/array/aligned new forms counted; after cold build + warm-up, one accepted EulerLegacy step changes allocation count by exactly 0 in Debug and Release. Arena state is 240 B/cell ≤300 B. Full suites 30/30 both configurations. |
+| — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0/G2/G3, production `SpectralDiffusion<NCH>`, rebindable BatchView/StepCtx + row roles, physical description/Domain/ElectrodeParams, shared concentration/electrical/heat/stress observable stages, `ThermalLumped`, all SEI/crack/LAM/plating ageing mechanisms, fixed composed SPM pipeline, validated spectral build, D-02 registry/factory, `EulerLegacy`, single-batch Simulation façade. **NEXT: P1-G1/P1-G4** → PAY-1); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |
