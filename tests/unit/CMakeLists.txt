@@ -98,6 +98,10 @@ target_link_libraries(unit_test_core_P1G2_allocation PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_P1G4_restart core_P1G4_restart_test.cpp)
 target_link_libraries(unit_test_core_P1G4_restart PRIVATE slide_core)
 
+# Phase 2 foundation: value-semantic combinators, flat netlist, and D-21 thermal graph
+add_executable_with_coverage_and_test(unit_test_core_PackTopology core_PackTopology_test.cpp)
+target_link_libraries(unit_test_core_PackTopology PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

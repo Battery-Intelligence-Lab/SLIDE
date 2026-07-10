@@ -909,6 +909,12 @@ HPC checkpoint-restart discipline.
 Deliver: netlist combinators + `Pack::compile()` (flatten, sparsity, ladder detection, index-1 check), Mode A sparse
 Newton (Eigen SparseLU; KLU optional), Mode B Thomas ladder, Thevenin batch interface, `SolverWorkspace` (§3.4.1)
 with warm start, chord refresh policy, and invalidation contract.
+**Progress 2026-07-10:** foundation DONE — `PackTopology` value combinators flatten arbitrary nested series/parallel
+descriptions into one immutable cell/resistor netlist; compile assigns stable paths and archetype batch/lane locations,
+canonical nodal sparsity, connectivity/index-1 metadata, and ladder eligibility. D-21's independent canonical
+cell/boundary pair list + CSR incident gather is implemented with fixed-order allocation-free assembly and atomic
+cold validation. Nested p-in-p-in-s, explicit link resistors, canonical reorder, analytic energy conservation, and
+failure atomicity pass Debug/Release. **NEXT:** Thevenin batch surface + `SolverWorkspace`, then Mode A/B.
 **Gates:** P2-G1 parity vs legacy `Module_s`/`Module_p` on 3s2p (band §5.2) + rollback-invalidation test (solve after
 restore digit-matches cold solve). P2-G2 Mode B ≡ Mode A on ladders to
 1e-10 A. P2-G3 nested-constructed pack (p-in-p-in-s) compiles flat and solves in ONE Newton loop (no nested
@@ -1038,4 +1044,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | P1-G1 Kokam single-cell trajectory parity | PASSED — production factory + composed pipeline + EulerLegacy vs legacy Cell_SPM over mid-SOC 1200 s 1C and low-SOC steep-tail 300 s discharges. Max |ΔV| 4.44e-16 V Debug / 8.88e-16 V Release; every mapped physical/cumulative state meets the registered band. Parameter-fidelity check caught and removed an erroneous 298.15 K adapter assumption: legacy Kokam uses 298.0 K. Full suites 32/32 both configurations. |
 | 2026-07-10 | PAY-1 Phase-1 payoff | PASSED — reproducible 10⁴-lane × 3600-step Kokam 1C harness, three alternating Release repetitions. Core median 0.460 s vs legacy 3.209 s = 6.97×; conservative min(legacy)/max(core) = 6.16×, above the ≥5× target. Max state error 8.67e-19, max |ΔV| 8.88e-16 V. The initial 0.43× result triggered redesign: surface-only base observables, self-invalidating transport cache, precise row roles, compact rollback, fused Euler, and exact checked lane coalescing with heterogeneous fallback. Full suites 32/32 both configurations. |
 | 2026-07-10 | D-21 compiled pack thermal adjacency design (Q9) | DONE before Phase 2 — independent canonical cell/boundary thermal graph; sorted static pair list + CSR incident gather; one flux evaluation per edge; fixed-order `q_ext` accumulation without atomics; explicit stage, snapshot, rollback, and off-the-shelf-integrator split contracts; five registered Phase-2 thermal gates. Logged in §3.4 and §4. |
-| — | Phases 1–8 | **Phase 1 COMPLETE** (StateArena/BatchBuilder, P1-G0/G1/G2/G3/G4, production diffusion/observables/thermal/all legacy ageing, fixed pipeline, validated spectral build, registry/factory, EulerLegacy, Simulation façade, PAY-1). D-21/Q9 design gate DONE. **NEXT: Phase 2 implementation.** Phases 2–8 not started. |
+| 2026-07-10 | Phase-2 pack compile + D-21 implementation foundation | DONE — value-semantic series/parallel combinators flatten to one explicit cell/resistor netlist; stable hierarchical paths and archetype batch/lane locations; canonical sparsity, connectivity/index-1 metadata, ladder eligibility; independent canonical thermal cell/boundary graph with fixed-order allocation-free assembly. Nested flattening, link resistors, byte-identical reorder, analytic energy conservation, and atomic validation green. Full suites 33/33 both configurations. |
+| — | Phases 1–8 | **Phase 1 COMPLETE. Phase 2 IN PROGRESS:** pack compile + D-21 graph DONE; **NEXT: Thevenin batch interface + SolverWorkspace → Mode A/B.** Phases 3–8 not started. |
