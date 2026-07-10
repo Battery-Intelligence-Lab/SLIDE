@@ -12,21 +12,27 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <limits>
+#include <span>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 using namespace slide;
 
 namespace {
 
-core::SpmBatch makeBatch()
+core::SpmBatch makeBatch(double electrode_area = -1.0)
 {
   core::SpmBatch batch;
-  const auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  if (electrode_area > 0.0)
+    input.design.electrode_area = electrode_area;
   REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
   return batch;
 }
@@ -58,7 +64,163 @@ void flipByte(const std::filesystem::path &path, std::uint64_t offset)
   REQUIRE(stream.good());
 }
 
+std::uint32_t testCrc32(std::span<const std::byte> bytes)
+{
+  std::uint32_t crc = 0xffffffffU;
+  for (const auto byte : bytes) {
+    crc ^= std::to_integer<std::uint8_t>(byte);
+    for (int bit = 0; bit < 8; ++bit)
+      crc = (crc >> 1U) ^ (0xedb88320U & (0U - (crc & 1U)));
+  }
+  return ~crc;
+}
+
+template <class T>
+void writeScalar(std::span<std::byte> bytes, std::size_t offset, T value)
+{
+  static_assert(std::is_trivially_copyable_v<T>);
+  REQUIRE(offset <= bytes.size());
+  REQUIRE(sizeof(T) <= bytes.size() - offset);
+  std::memcpy(bytes.data() + offset, &value, sizeof(value));
+}
+
+void sealHeader(std::span<std::byte> bytes,
+                std::size_t offset,
+                std::size_t crc_offset)
+{
+  REQUIRE(offset <= bytes.size());
+  REQUIRE(64 <= bytes.size() - offset);
+  auto header = bytes.subspan(offset, 64);
+  writeScalar<std::uint32_t>(header, crc_offset, 0U);
+  writeScalar<std::uint32_t>(header, crc_offset, testCrc32(header));
+}
+
+void writeBytes(const std::filesystem::path &path,
+                std::span<const std::byte>
+                  bytes)
+{
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  REQUIRE(output.good());
+  output.write(reinterpret_cast<const char *>(bytes.data()),
+               static_cast<std::streamsize>(bytes.size()));
+  REQUIRE(output.good());
+}
+
+std::vector<std::byte> readBytes(const std::filesystem::path &path)
+{
+  std::ifstream input(path, std::ios::binary | std::ios::ate);
+  REQUIRE(input.good());
+  const auto length = input.tellg();
+  REQUIRE(length >= 0);
+  std::vector<std::byte> bytes(static_cast<std::size_t>(length));
+  input.seekg(0);
+  input.read(reinterpret_cast<char *>(bytes.data()),
+             static_cast<std::streamsize>(length));
+  REQUIRE(input.good());
+  return bytes;
+}
+
 } // namespace
+
+TEST_CASE("Async recorder rejects adversarial metadata without exceptions",
+          "[core][async-recorder][validation][P9]")
+{
+  std::error_code ignored;
+
+  SECTION("impossible snapshot count is rejected before allocation")
+  {
+    const auto path = temporary("p9_count.slcmp");
+    std::filesystem::remove(path, ignored);
+    std::array<std::byte, 64> header{};
+    constexpr std::array magic{ 'S', 'L', 'I', 'D', 'E', 'C', 'M', 'P' };
+    std::memcpy(header.data(), magic.data(), magic.size());
+    writeScalar<std::uint16_t>(header, 8, 1U);
+    writeScalar<std::uint16_t>(header, 10, 0U);
+    writeScalar<std::uint32_t>(header, 12, 0x01020304U);
+    writeScalar<std::uint32_t>(header, 16, 64U);
+    writeScalar<std::uint32_t>(header, 24, 1U);
+    writeScalar<std::uint32_t>(header, 28, 1U);
+    writeScalar<std::uint32_t>(header, 32, 1U);
+    writeScalar<std::uint32_t>(header, 36, 0U);
+    writeScalar<std::uint64_t>(
+      header, 40, std::numeric_limits<std::uint64_t>::max());
+    writeScalar<std::uint64_t>(header, 48, header.size());
+    sealHeader(header, 0, 20);
+    writeBytes(path, header);
+
+    core::CompressedRecording recording;
+    Status status = Status::Success;
+    CHECK_NOTHROW(status = recording.open(path));
+    CHECK(status == Status::Invalid_parameters);
+    CHECK_FALSE(recording.valid());
+    std::filesystem::remove(path, ignored);
+  }
+
+  SECTION("wide codec values cannot alias a supported byte-sized enum")
+  {
+    const auto path = temporary("p9_codec.slcmp");
+    std::filesystem::remove(path, ignored);
+    auto batch = makeBatch();
+    core::AsyncRecorder writer;
+    REQUIRE(writer.configure(
+              batch,
+              path,
+              { .ring_slots = 3,
+                .backpressure = core::AsyncBackpressurePolicy::block,
+                .codec = core::CompressionCodec::none })
+            == Status::Success);
+    const std::array current{ 1.0, -1.0 };
+    REQUIRE(writer.enqueue(0, current) == Status::Success);
+    REQUIRE(writer.finish() == Status::Success);
+    auto bytes = readBytes(path);
+    REQUIRE(bytes.size() >= 128);
+    writeScalar<std::uint32_t>(bytes, 36, 256U);
+    writeScalar<std::uint32_t>(bytes, 64 + 8, 256U);
+    sealHeader(bytes, 64, 56);
+    sealHeader(bytes, 0, 20);
+    writeBytes(path, bytes);
+
+    core::CompressedRecording recording;
+    CHECK(recording.open(path) == Status::Invalid_parameters);
+    CHECK_FALSE(recording.valid());
+    std::filesystem::remove(path, ignored);
+  }
+
+  SECTION("invalid policy and overflowing derived density are rejected")
+  {
+    const auto invalid_path = temporary("p9_policy.slcmp");
+    const auto density_path = temporary("p9_density.slcmp");
+    std::filesystem::remove(invalid_path, ignored);
+    std::filesystem::remove(density_path, ignored);
+
+    auto batch = makeBatch();
+    core::AsyncRecorder invalid;
+    CHECK(invalid.configure(
+            batch,
+            invalid_path,
+            { .ring_slots = 3,
+              .backpressure = static_cast<core::AsyncBackpressurePolicy>(255),
+              .codec = core::CompressionCodec::none })
+          == Status::Invalid_parameters);
+    CHECK_FALSE(invalid.configured());
+
+    auto tiny_area_batch = makeBatch(1e-300);
+    core::AsyncRecorder density;
+    REQUIRE(density.configure(
+              tiny_area_batch,
+              density_path,
+              { .ring_slots = 3,
+                .backpressure = core::AsyncBackpressurePolicy::block,
+                .codec = core::CompressionCodec::none })
+            == Status::Success);
+    const std::array current{ 1e300, -1e300 };
+    CHECK(density.enqueue(0, current) == Status::Invalid_parameters);
+    CHECK(density.finish() == Status::Success);
+    CHECK(density.snapshotsWritten() == 0);
+    std::filesystem::remove(invalid_path, ignored);
+    std::filesystem::remove(density_path, ignored);
+  }
+}
 
 TEST_CASE("P8-G3 byte shuffle is a bitwise involution",
           "[core][async-recorder][P8-G3]")

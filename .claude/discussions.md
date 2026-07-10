@@ -210,6 +210,14 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Fix:** mirror the async monotonic watermark, reset it on `clear()`, validate time and current-density quotients before advancing it or touching storage, and exhaustively validate the policy enum during atomic configuration.
 - **Evidence:** the initial registered P9 run failed 7 assertions; after those fixes, the added invalid-enum test failed 2 assertions while the earlier cases passed. Final focused Debug/Release gates pass 20/20, and sequential full Recorder binaries pass 98/98 in each build. Parallel full-binary execution was deliberately rejected as evidence because both configurations share fixed temporary filenames and collided at the filesystem layer.
 
+## 2026-07-10 — Phase 9B AsyncRecorder format/input pass
+
+- **Confirmed:** a valid-CRC 64-byte header with `snapshots=UINT64_MAX` reached `vector` construction and let `length_error` escape the `Status` API. A CRC-valid raw codec value `256` narrowed to byte-sized `none` and decoded successfully.
+- **Confirmed:** invalid async backpressure values configured a worker, and finite `1e300 A / 1e-300 m²` was published as infinite density and written as a snapshot.
+- **Fix:** prove the file can hold at least one 64-byte block header per claimed snapshot before allocation, catch `length_error`, reject raw codec values before narrowing, exhaustively validate the policy, and validate the density quotient before taking the ring lock/publishing a slot.
+- **Evidence:** the test-first Debug run failed 8 assertions, including the escaped exception. Focused Debug/Release passes 67/67; sequential full async binaries pass 233/233 each. The suite uses at most eight model steps and a bounded 50-enqueue pressure case.
+- **Deferred deliberately:** configuration path-copy fault atomicity and public shuffle preconditions remain open until their own red fault/UB tests are registered; this commit does not claim them.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

@@ -11,6 +11,7 @@
 #include <cstring>
 #include <limits>
 #include <new>
+#include <stdexcept>
 #include <system_error>
 
 #if defined(SLIDE_WITH_ZSTD)
@@ -158,6 +159,8 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
 {
   if (configured() || !batch.valid() || path.empty() || config.cadence == 0
       || config.ring_slots < 3 || config.ring_slots > 1024
+      || !(config.backpressure == AsyncBackpressurePolicy::block
+           || config.backpressure == AsyncBackpressurePolicy::thin)
       || !compressionCodecAvailable(config.codec)
       || config.compression_level < -20 || config.compression_level > 22)
     return slide::Status::Invalid_parameters;
@@ -233,6 +236,8 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
     }
   } catch (const std::bad_alloc &) {
     return slide::Status::Numerical_failure;
+  } catch (const std::length_error &) {
+    return slide::Status::Invalid_parameters;
   }
   return slide::Status::Success;
 }
@@ -254,8 +259,10 @@ slide::Status AsyncRecorder::enqueue(
 slide::Status AsyncRecorder::enqueueSnapshot(
   std::uint64_t accepted_step,
   real_t time,
-  std::span<const real_t> current_density,
-  std::span<const real_t> state)
+  std::span<const real_t>
+    current_density,
+  std::span<const real_t>
+    state)
 {
   return enqueueValues(accepted_step,
                        time,
@@ -267,8 +274,10 @@ slide::Status AsyncRecorder::enqueueSnapshot(
 slide::Status AsyncRecorder::enqueueValues(
   std::uint64_t accepted_step,
   real_t time,
-  std::span<const real_t> currents,
-  std::span<const real_t> state,
+  std::span<const real_t>
+    currents,
+  std::span<const real_t>
+    state,
   bool currents_are_density)
 {
   if (!configured() || finished_
@@ -278,7 +287,9 @@ slide::Status AsyncRecorder::enqueueValues(
   if (accepted_step % config_.cadence != 0)
     return slide::Status::Success;
   for (const real_t current : currents)
-    if (!is_finite(current))
+    if (!is_finite(current)
+        || (!currents_are_density
+            && !is_finite(current / batch_->electrode_area())))
       return slide::Status::Invalid_parameters;
 
   std::unique_lock lock{ mutex_ };
@@ -491,8 +502,16 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
       || header.rows > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
       || header.lanes > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
       || header.stride > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
+      || (header.codec != static_cast<std::uint32_t>(CompressionCodec::none)
+          && header.codec
+               != static_cast<std::uint32_t>(CompressionCodec::zstd))
       || !compressionCodecAvailable(
         static_cast<CompressionCodec>(header.codec)))
+    return slide::Status::Invalid_parameters;
+
+  if (header.snapshots
+      > (header.file_size - sizeof(CompressedFileHeader))
+          / sizeof(CompressedBlockHeader))
     return slide::Status::Invalid_parameters;
 
   std::size_t state_values{}, raw_values{}, raw_bytes{}, state_storage{}, current_storage{};
@@ -591,6 +610,8 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
     valid_ = true;
   } catch (const std::bad_alloc &) {
     return slide::Status::Numerical_failure;
+  } catch (const std::length_error &) {
+    return slide::Status::Invalid_parameters;
   }
   return slide::Status::Success;
 }
