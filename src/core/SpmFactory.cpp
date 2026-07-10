@@ -176,6 +176,22 @@ slide::Status SpmBatch::terminalVoltage(const StepCtx &ctx,
   return observe_voltage_(implementation_, state_view, ctx, output);
 }
 
+slide::Status SpmBatch::terminalVoltageAt(
+  std::span<const real_t> snapshot,
+  std::span<const real_t>
+    current_density,
+  std::span<real_t>
+    output)
+{
+  if (!valid() || observe_voltage_ == nullptr || snapshot.size() != state_.size()
+      || static_cast<int>(current_density.size()) != n_lanes()
+      || output.size() != current_density.size())
+    return slide::Status::Invalid_parameters;
+  const ConstBatchView state_view{ BatchShape::from(state_), snapshot };
+  const StepCtx ctx{ .time = 0.0, .dt = 0.0, .i_app = current_density };
+  return observe_voltage_(implementation_, state_view, ctx, output);
+}
+
 slide::Status SpmBatch::linearizeThevenin(
   std::span<const real_t> current,
   std::span<real_t>

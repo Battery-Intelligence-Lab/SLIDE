@@ -986,6 +986,14 @@ time-aligned CC/CV gate against legacy `Cycler` meets `0.2 µV`, `20 µA`, and `
 Deliver: Recorder (snapshot cadence + lazy derived), CSV sink, mmap binary sink (header-CRC idiom), optional Parquet.
 **Gate P6-G1:** derived-vs-stored equivalence test (V recomputed from snapshot == V recorded live to 1e-12);
 mmap file survives the hardened-open validation tests (truncated/corrupt-header cases).
+**COMPLETE 2026-07-10:** the fixed-capacity recorder preallocates full padded arena/current snapshots, applies cadence
+without per-record allocation or I/O, and exposes explicit stop-or-counted-thinning backpressure. Lazy terminal voltage
+uses the production observable kernel and equals the original live value exactly after the batch is mutated. CSV and
+native Windows/POSIX mmap sinks are implemented. The 64-byte binary header carries magic/version/endian/shape/CRC32;
+open validates file size and every monotone fixed-record offset atomically, rejecting truncation plus header/offset
+corruption. `SLIDE_WITH_ARROW` is a find-package-first optional Parquet path and never pulls Arrow through CPM. The
+zero-allocation recorder gate and full Debug/Release suites are green (43/43). The dedicated compressed async drain
+and GPU side-stream portion of §3.7 remains coupled to the Phase-8 device implementation.
 
 ### Phase 7 — Python bindings + PyBaMM compat
 Deliver: nanobind module, wheels (scikit-build-core), `Experiment/ParameterValues/Simulation/Solution`, Chen2020
@@ -1088,4 +1096,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | Phase-3 exponential/modal integration | COMPLETE — exact φ₁-safe modal propagation, symmetric second-order slow-physics splitting, adaptive step doubling/rollback, event alignment, and pack transaction entry point implemented. P3-G1 nch={5,8,12} closed-form error ≤2e-12; P3-G2 modal-inventory cycle balance <1e-9 Ah; P3-G3 nch12 remains finite at dt=1000 s where Euler fails or amplifies >10⁶×. |
 | 2026-07-10 | Phase-4 Mode C + PAY-3 | COMPLETE — index-1-gated weighted-Jacobi waveform relaxation with explicit Baumgarte gain and contraction diagnostics. P4-G1 ≤0.1% vs Mode A; P4-G2 drift ≤(1−α)^k bound; P4-G3/PAY-3 accepts a real 100,000-cell SPM pack step with 24 MB arena state, zero measured-step allocations, and zero factorizations. |
 | 2026-07-10 | Phase-5 Experiment grammar + Cycler v2 | COMPLETE — shared C++ grammar with atomic diagnostics and repetition; CC/CV/power/rest/drive-cycle execution; exact bisection events and machine-readable reasons; time-aligned legacy Cycler parity. Full Debug/Release 41/41. |
-| — | Phases 1–8 | **Phases 1–5 COMPLETE. Phase 6 NEXT:** **NEXT: Recorder, CSV, and hardened mmap sink.** Phases 6–8 not started. |
+| 2026-07-10 | Phase-6 Recorder + I/O | COMPLETE — preallocated cadence snapshots and explicit backpressure; production-kernel lazy observables; CSV; native mmap with CRC/version/endian/offset validation; optional find-package-first Parquet. Exact derived/live equality, corruption gates, and zero record allocations; full Debug/Release 43/43. Async compression/GPU drain remains bound to Phase 8. |
+| — | Phases 1–8 | **Phases 1–6 COMPLETE. Phase 7 NEXT:** **NEXT: Python/PyBaMM compatibility, parameter absorption, BPX, and sensitivities.** Phases 7–8 not started. |

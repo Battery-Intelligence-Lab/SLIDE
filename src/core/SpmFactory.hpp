@@ -105,6 +105,11 @@ public:
                                               std::span<real_t> terminal_voltage);
   [[nodiscard]] slide::Status terminalVoltage(const StepCtx &ctx,
                                               std::span<real_t> output);
+  /** Recompute voltage lazily from a full recorded arena snapshot. */
+  [[nodiscard]] slide::Status terminalVoltageAt(
+    std::span<const real_t> snapshot,
+    std::span<const real_t> current_density,
+    std::span<real_t> output);
   [[nodiscard]] slide::Status linearizeThevenin(
     std::span<const real_t> current,
     std::span<real_t> intercept_ocv,
