@@ -3,3 +3,4 @@
 add_library(slide_core INTERFACE)
 target_include_directories(slide_core INTERFACE ${CMAKE_SOURCE_DIR}/src)
 target_compile_features(slide_core INTERFACE cxx_std_20)
+target_link_libraries(slide_core INTERFACE Eigen3::Eigen)

@@ -813,7 +813,7 @@ full concentration, kinetics, OCV, resistance, voltage, and heat** → (2) P1-G3
 oracle FIRST (it validates exactly the C/D surface-concentration path the new layer exposes) → (3) `ThermalLumped`
 (as `addRhs`, §3.12) — **DONE 2026-07-10** → (4) ageing kernels + fixed composed pipeline (same form; promote legacy `_prev`/accumulator members to arena rows —
 §2.1 correction) — **DONE 2026-07-10** → (5) registry/factory + façade + `EulerLegacy` stepper → P1-G1/G2/G4 → PAY-1. The three
-2026-07-09 core review marks were resolved on 2026-07-10 (see §8 rows); Model_SPM build marks remain for the factory.
+2026-07-09 core review marks and Model_SPM build audit C1–C3 were resolved on 2026-07-10 (see §8 rows).
 **Gates:** P1-G0 parity-drift pilot (Q8): 1-cell legacy-Euler 1C CC, measure |ΔV|/|Δstate| drift legacy vs v4 kernel;
 outcome closes Q8 (keep 1e-12 band, or pin op-order/`-ffp-contract=off`, or loosen with ulp argument) BEFORE P1-G1
 runs. P1-G1 parity single-cell scenarios (§5.2 band as resolved by P1-G0). P1-G2 one batch of 10⁴ identical cells
@@ -840,8 +840,8 @@ Re-registered bands (test-enforced, ~3× margin): fundamental < {5e-5, 1e-9, 1e-
 at every surface/interior/centre node for both electrodes and nch={5,8,12}. The registered rel≤1e-6 band holds;
 worst at τ=0.2 is {8.254e-7, 2.356e-11, 3.949e-12}; τ=1.0 all ≤4.661e-13. This validates A/B/C/D jointly and
 closes centre-path audit C4. It also records the SLIDE convention D∂c/∂r=-j (positive j depletes). **P1-G3 COMPLETE.** (c) v4
-`build()` adopts (a) as a Status-failing gate, replacing the Release-silent assert + unchecked `EigenSolver`
-(audit C1–C3; marked in `Model_SPM.hpp`). Once thermal/ageing kernels land, extend with an MMS check on the
+`build()` **IMPLEMENTED 2026-07-10** in `src/core/SpectralModel.hpp`: adopts (a) as a Status-failing gate, replacing
+the Release-silent assert + unchecked `EigenSolver` in the v4 path (audit C1–C3 closed). The remaining extension is an MMS check on the
 composed RHS (§5.4). **P1-G4 (added 2026-07-09) bitwise restart:**
 run 0→2T equals run 0→T + arena snapshot/restore + T→2T DIGIT-FOR-DIGIT — the cheapest test that catches hidden
 non-arena state (the §2.1-correction class: `s_dai_p_prev`, `Therm_Qgen`/`Therm_time`) and workspace-invalidation
@@ -971,4 +971,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | LAM mechanisms 1–4 | DONE — ports Dai stress thinning, Delacourt–Safari flux loss, Kindermann dissolution, and Narayanrao active-area loss. Additive RHS composes direct area and `3ε/R` contributions. All six raw geometry rates per mechanism match direct `Cell_SPM::LAM` at rel≤1e-12 in Debug/Release. Full Debug 24/24. |
 | 2026-07-10 | Yang lithium plating | DONE — scalar-generic side-current matches direct `Cell_SPM::LiPlating` at rel≤1e-13 for charge/discharge in Debug/Release; additive RHS updates negative z, LLI, and explicit plated-layer thickness. All individual legacy SPM ageing mechanisms now have v4 kernels. Full Debug 25/25. |
 | 2026-07-10 | Fixed composed SPM RHS pipeline | DONE — compile-time composition enforces zero-derivative → one shared observable pass → optional one shared stress pass → additive diffusion/thermal/SEI/crack/LAM/plating order. Diffusion consumes the observable stage's exact effective diffusivity and molar flux. Registered test proves mandatory whole-arena zeroing and trial-vector rebinding; all optional branches compile. Debug/Release pipeline gates green; full Debug 26/26. |
+| 2026-07-10 | Validated per-batch spectral compiler (audit C1–C3) | DONE — independent v4 cold build supports registered nch={5,8,12}, physical per-domain radii, and Status-fails invalid geometry, eigensolver failure, complex contamination, non-invertible transforms, non-finite output, or analytic-spectrum mismatch. Default A/B/C/D, transforms, centre map, and integration matrix are exactly legacy-identical in Debug/Release; custom scaling and atomic failure covered. Full Debug 27/27. |
 | — | Phases 1–8 | Phase 1 IN PROGRESS (DONE: StateArena/BatchBuilder + tests, P1-G0, production `SpectralDiffusion<NCH>`, rebindable BatchView/StepCtx + row roles, physical description/Domain/ElectrodeParams, shared concentration/electrical/heat/stress observable stages, `ThermalLumped`, all SEI/crack/LAM/plating ageing mechanisms, fixed composed SPM pipeline, P1-G3. **NEXT: registry/factory** → façade + EulerLegacy stepper → P1-G1/G2/G4 → PAY-1); Phases 2–8 not started; D-21 (pack thermal — adopt LAMMPS-style static adjacency pair list with fixed-order accumulation, per §3.8 determinism rule) still due before Phase 2 |
