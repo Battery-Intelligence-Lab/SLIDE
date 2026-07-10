@@ -1,10 +1,28 @@
 # v4 core (slide::core) — grows alongside legacy src/ (strangler pattern, PLAN.md §5).
 # The registry is compiled once so downstream callers do not instantiate every common composition.
-add_library(slide_core STATIC AsyncRecorder.cpp Experiment.cpp ForwardSensitivity.cpp PackSolver.cpp PackStepper.cpp PackTopology.cpp ParameterSet.cpp Recorder.cpp SpmFactory.cpp Simulation.cpp ThreadPool.cpp)
+add_library(slide_core STATIC AsyncRecorder.cpp CudaSpmBatch.cpp Experiment.cpp ForwardSensitivity.cpp PackSolver.cpp PackStepper.cpp PackTopology.cpp ParameterSet.cpp Recorder.cpp SpmFactory.cpp Simulation.cpp ThreadPool.cpp)
 set_target_properties(slide_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(slide_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_compile_features(slide_core PUBLIC cxx_std_20)
 target_link_libraries(slide_core PUBLIC Eigen3::Eigen)
+
+if(SLIDE_WITH_CUDA)
+  # Keep CUDA language metadata and device-runtime linkage inside one private
+  # shared boundary. This prevents nvcc's Windows device libraries leaking as
+  # bare MSVC-style names into Clang-linked CPU consumers.
+  add_library(slide_cuda_runtime SHARED CudaSpmRuntime.cu)
+  target_include_directories(slide_cuda_runtime PRIVATE ${CMAKE_SOURCE_DIR}/src)
+  target_link_libraries(slide_cuda_runtime PRIVATE CUDA::cudart)
+  set_target_properties(slide_cuda_runtime PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+    CUDA_STANDARD 20
+    CUDA_STANDARD_REQUIRED ON
+    CUDA_EXTENSIONS OFF
+    CUDA_RUNTIME_LIBRARY Shared)
+  target_compile_definitions(slide_core PUBLIC SLIDE_WITH_CUDA=1)
+  target_link_libraries(slide_core PRIVATE slide_cuda_runtime)
+endif()
 
 option(SLIDE_WITH_ARROW "Enable the optional Arrow/Parquet recorder sink" OFF)
 if(SLIDE_WITH_ARROW)

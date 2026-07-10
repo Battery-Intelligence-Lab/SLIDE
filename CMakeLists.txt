@@ -7,6 +7,16 @@ project(SLIDE VERSION "3.0.0"
   LANGUAGES CXX)
 
 option(SLIDE_CORE_ONLY "Configure only the dependency-light v4 core" OFF)
+option(SLIDE_WITH_CUDA "Enable the optional CUDA SPM batch backend" OFF)
+if(SLIDE_WITH_CUDA)
+  include(CheckLanguage)
+  check_language(CUDA)
+  if(NOT CMAKE_CUDA_COMPILER)
+    message(FATAL_ERROR "SLIDE_WITH_CUDA=ON but no CUDA compiler is available")
+  endif()
+  enable_language(CUDA)
+  find_package(CUDAToolkit REQUIRED)
+endif()
 
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)

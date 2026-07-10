@@ -72,3 +72,13 @@ target_link_libraries(benchmark_PAY4_slide_single
   project_warnings
   project_options
 )
+
+if(SLIDE_WITH_CUDA)
+  add_executable(benchmark_PAY5_cuda benchmark_PAY5_cuda.cpp)
+  target_link_libraries(benchmark_PAY5_cuda
+    PRIVATE
+    slide_core
+    project_warnings
+    project_options
+  )
+endif()
