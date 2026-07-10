@@ -9,6 +9,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -245,4 +247,160 @@ TEST_CASE("BPX 1.x semantic functions and legacy headers are absorbed safely",
   CHECK(diagnostic.find("state-dependent BPX diffusivity")
         != std::string::npos);
   CHECK(parameters.size() == original_size);
+}
+
+TEST_CASE("BPX JSON rejects hostile grammar and resource amplification atomically",
+          "[core][parameters][BPX][parser][P9]")
+{
+  core::ParameterSet parameters;
+  std::string diagnostic;
+  REQUIRE(core::ParameterSet::fromBpxJson(bpx_fixture, parameters, diagnostic)
+          == Status::Success);
+  const auto original = parameters.describe();
+
+  auto require_atomic_rejection = [&](const std::string &source) {
+    core::ParameterSet target = parameters;
+    diagnostic.clear();
+    CHECK(core::ParameterSet::fromBpxJson(source, target, diagnostic)
+          == Status::Invalid_parameters);
+    CHECK_FALSE(diagnostic.empty());
+    const auto retained = target.describe();
+    CHECK(retained.size() == original.size());
+    const auto common = std::min(retained.size(), original.size());
+    for (std::size_t i = 0; i < common; ++i) {
+      CHECK(retained[i].name == original[i].name);
+      CHECK(retained[i].value == original[i].value);
+      CHECK(retained[i].provenance == original[i].provenance);
+    }
+  };
+
+  std::string leading_zero{ bpx_fixture };
+  replaceRequired(leading_zero,
+                  "\"Nominal cell capacity [A.h]\": 5.0",
+                  "\"Nominal cell capacity [A.h]\": 05.0");
+  require_atomic_rejection(leading_zero);
+
+  std::string invalid_utf8{ bpx_fixture };
+  replaceRequired(invalid_utf8,
+                  "LGM50 ",
+                  std::string{ "LGM50 \xC0\xAF", 8 });
+  require_atomic_rejection(invalid_utf8);
+
+  for (const char invalid_space : { '\v', '\f' }) {
+    std::string invalid_whitespace{ bpx_fixture };
+    const auto newline = invalid_whitespace.find('\n');
+    REQUIRE(newline != std::string::npos);
+    invalid_whitespace[newline] = invalid_space;
+    require_atomic_rejection(invalid_whitespace);
+  }
+
+  std::string invalid_optional{ bpx_fixture };
+  replaceRequired(invalid_optional,
+                  "\"Initial state-of-charge\": 0.75",
+                  "\"Initial state-of-charge\": \"unknown\"");
+  require_atomic_rejection(invalid_optional);
+
+  std::string invalid_optional_cell{ bpx_fixture };
+  replaceRequired(invalid_optional_cell,
+                  "\"External surface area [m2]\": 0.00531",
+                  "\"External surface area [m2]\": \"unknown\"");
+  require_atomic_rejection(invalid_optional_cell);
+
+  std::string invalid_optional_porosity{ bpx_fixture };
+  replaceRequired(
+    invalid_optional_porosity,
+    "\"Surface area per unit volume [m-1]\": 383959.0443686007,",
+    "\"Surface area per unit volume [m-1]\": 383959.0443686007,\n"
+    "      \"Porosity\": \"unknown\",");
+  require_atomic_rejection(invalid_optional_porosity);
+
+  // Bound the wire representation before constructing an amplified JSON tree.
+  std::string oversized{ bpx_fixture };
+  oversized.append(4U * 1024U * 1024U, ' ');
+  require_atomic_rejection(oversized);
+
+  // A compact ignored array must still consume the global parsed-value budget.
+  std::string amplified{ bpx_fixture };
+  const auto insertion = amplified.find("\"Parameterisation\"");
+  REQUIRE(insertion != std::string::npos);
+  std::string ignored{ "\"Ignored\":[null" };
+  for (std::size_t i = 1; i < 65'537; ++i)
+    ignored += ",null";
+  ignored += "],\n  ";
+  amplified.insert(insertion, ignored);
+  require_atomic_rejection(amplified);
+
+  std::string overflow{ bpx_fixture };
+  replaceRequired(overflow,
+                  "\"Nominal cell capacity [A.h]\": 5.0",
+                  "\"Nominal cell capacity [A.h]\": 1e309");
+  require_atomic_rejection(overflow);
+
+  // Each operand is finite JSON, but the derived a*R/3 active fraction is not.
+  std::string derived_overflow{ bpx_fixture };
+  replaceRequired(
+    derived_overflow,
+    "\"Surface area per unit volume [m-1]\": 383959.0443686007",
+    "\"Surface area per unit volume [m-1]\": 1e308");
+  replaceRequired(derived_overflow,
+                  "\"Particle radius [m]\": 5.86e-6",
+                  "\"Particle radius [m]\": 1e308");
+  require_atomic_rejection(derived_overflow);
+
+  std::string raw_utf8{ bpx_fixture };
+  replaceRequired(raw_utf8,
+                  "\\u03bc",
+                  std::string{ "\xCE\xBC", 2 });
+  core::ParameterSet raw_parameters;
+  diagnostic.clear();
+  REQUIRE(core::ParameterSet::fromBpxJson(
+            raw_utf8, raw_parameters, diagnostic)
+          == Status::Success);
+  CHECK(diagnostic.empty());
+  CHECK(raw_parameters.size() == parameters.size());
+}
+
+TEST_CASE("BPX file reads are bounded, complete, and atomic",
+          "[core][parameters][BPX][file][P9]")
+{
+  const auto path = std::filesystem::temp_directory_path()
+                    / ("slide_bpx_parser_"
+                       + std::filesystem::current_path().filename().string()
+                       + ".json");
+  std::error_code ignored;
+  std::filesystem::remove(path, ignored);
+
+  {
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    REQUIRE(output.good());
+    output.write(bpx_fixture.data(),
+                 static_cast<std::streamsize>(bpx_fixture.size()));
+    REQUIRE(output.good());
+  }
+  core::ParameterSet parameters;
+  std::string diagnostic;
+  REQUIRE(core::ParameterSet::fromBpxFile(path, parameters, diagnostic)
+          == Status::Success);
+  CHECK(diagnostic.empty());
+  const auto original = parameters.describe();
+
+  {
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    REQUIRE(output.good());
+    output.seekp(static_cast<std::streamoff>(4U * 1024U * 1024U));
+    output.put('x');
+    REQUIRE(output.good());
+  }
+  CHECK(core::ParameterSet::fromBpxFile(path, parameters, diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(diagnostic.find("4194304") != std::string::npos);
+  const auto retained = parameters.describe();
+  REQUIRE(retained.size() == original.size());
+  for (std::size_t i = 0; i < original.size(); ++i) {
+    CHECK(retained[i].name == original[i].name);
+    CHECK(retained[i].value == original[i].value);
+    CHECK(retained[i].provenance == original[i].provenance);
+  }
+
+  std::filesystem::remove(path, ignored);
 }

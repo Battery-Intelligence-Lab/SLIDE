@@ -58,3 +58,11 @@ This file records reusable findings from the v4 implementation and validation wo
 - Caller-owned optimization metadata belongs outside the fallible configure phase. Allocate and validate candidates first, apply the lane-period optimization last, and make the following member publication mechanically no-throw.
 - A graph's sizes and enum ranges do not prove its incidence semantics. Validate that each thermal edge appears exactly once at its low endpoint with `+1` and once at its high endpoint with `-1`; preallocated membership bits preserve the zero-allocation hot path.
 - Do not return a mutable subsolver from a composed transaction owner. Reconfiguration through that reference can invalidate topology and checkpoint invariants even if each class is locally valid.
+
+## Untrusted parsers need grammar, resource, and failure budgets
+
+- A per-token repetition limit is not an aggregate allocation bound. Prove expanded element count and retained byte count before `reserve()` or copying; include duplicated source and metadata, not only the semantic payload.
+- JSON library-like behaviour must still enforce the wire grammar: only four whitespace bytes are legal, numbers cannot have leading zeroes, and raw UTF-8 must reject overlong encodings, surrogates, invalid continuations, and code points beyond U+10FFFF.
+- Optional means absent is allowed, not present-but-invalid is ignored. Preserve `Invalid_parameters` versus `Numerical_failure` through every required, optional, derived, and default insertion.
+- Allocation-fault tests should target repeatable allocations owned by the transaction. Arbitrary global ordinals can enter CRT or standard-library internals and abort instead of testing the intended boundary. Persistent failure after the selected allocation also tests whether the error diagnostic itself can fail safely.
+- Under fast-math, keep finite classifiers behind a reference boundary as well as an integer bit barrier. Individually finite parsed operands can still overflow in derived arithmetic and must be revalidated before storage.

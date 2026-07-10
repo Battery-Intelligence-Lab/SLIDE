@@ -252,6 +252,15 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Fix:** checkpoint the full public publication surface in preallocated storage, restore it while invalidating only workspace cache validity, assemble heat into trial buffers with endpoint/incidence proof, and defer caller metadata until candidate construction is complete. `PackStepper::solver()` is const-only.
 - **Evidence:** Debug and fast-math Release each pass PackTopology 66/66, PackStepper 172/172, and the P2-G1 zero-allocation gate 6/6. The rejection test takes one attempted step in each integrator; no trajectory or performance simulation was run.
 
+## 2026-07-10 — Phase 9B Experiment/BPX parser hardening
+
+- **Confirmed red:** aggregate Experiment repetition committed 12,000 segments and padded repeats amplified retained source text; BPX accepted non-JSON number/whitespace/UTF-8 forms, unbounded ignored values, and invalid present optionals. Pre-fix focused slices produced 6 Experiment and 11 BPX failures.
+- **Architecture:** replace the two Experiment regex matches with explicit bounded grammar, cap semantic and retained expansion independently, and parse BPX behind both wire-byte and tree-value budgets. File absorption now proves exact bounded reads and EOF before parsing.
+- **Allocation contract:** `ParameterSet::set`, both parser transactions, and the complete BPX file-open/read path translate allocation and length failures without publication. Error diagnostics are best-effort and cannot throw a second allocation failure through the `Status` API.
+- **Adversarial evidence:** persistent size-targeted faults cover a late Experiment reserve, direct map-node and canonical-name allocation, and every BPX allocation matching the measured `ParameterSet` node size. Reintroducing the optional-status swallow fails at occurrence 149/176; removing the empty drive-name guard fails 3 assertions.
+- **Validation:** Debug and fast-math Release each pass Experiment 199, ParameterSet 1,495, parser-allocation 906, ThermalLumped 25, CompiledCurve 163, PackSolver 667, and PackStepper 172 assertions. No long trajectory was run; Experiment simulations are bounded unit scenarios.
+- **Next:** implement and fuzz the missing liionpack-compatible netlist CSV parser, then complete the Experiment/BPX/netlist P9-G2 corpus and CI driver.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook

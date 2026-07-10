@@ -23,13 +23,20 @@ constexpr real_t primal_value(const Real &value)
  * `std::isfinite` is not a validation primitive in those builds because the compiler is
  * permitted to assume NaN and infinity never occur and fold the check to true.
  */
-inline bool is_finite(real_t value) noexcept
+inline bool is_finite(const real_t &value) noexcept
 {
   constexpr std::uint64_t exponent_mask = UINT64_C(0x7ff0000000000000);
-  // The volatile integer barrier is intentional. Clang otherwise recognises even an integer
-  // bit_cast classification and folds it to true under -ffinite-math-only (part of -Ofast).
+  // Both the opaque reference boundary and volatile integer barrier are intentional. Clang
+  // can otherwise attach `nofpclass` to a by-value argument and fold even an integer bit-cast
+  // classification to true under -ffinite-math-only (part of -Ofast).
   volatile std::uint64_t bits = std::bit_cast<std::uint64_t>(value);
   return (bits & exponent_mask) != exponent_mask;
+}
+
+inline bool is_finite(const volatile real_t &value) noexcept
+{
+  const real_t copied = value;
+  return is_finite(copied);
 }
 
 template <class Real>

@@ -11,15 +11,29 @@
 #include <charconv>
 #include <cmath>
 #include <fstream>
-#include <iterator>
 #include <limits>
 #include <new>
 #include <optional>
 #include <queue>
+#include <stdexcept>
+#include <tuple>
 #include <utility>
 
 namespace slide::core {
 namespace {
+
+  constexpr std::size_t max_bpx_json_bytes = 4U * 1024U * 1024U;
+  constexpr std::size_t max_json_values = 65'536;
+
+  void assignDiagnosticNoThrow(std::string &target,
+                               std::string_view message) noexcept
+  {
+    try {
+      target.assign(message);
+    } catch (...) {
+      target.clear();
+    }
+  }
 
   bool validCurve(const OCVCurve &curve)
   {
@@ -141,7 +155,7 @@ std::string ParameterSet::canonicalName(std::string_view name)
 
 slide::Status ParameterSet::set(std::string name, ParameterValue value,
                                 std::string provenance)
-{
+try {
   name = canonicalName(name);
   if (name.empty() || provenance.empty())
     return slide::Status::Invalid_parameters;
@@ -151,13 +165,13 @@ slide::Status ParameterSet::set(std::string name, ParameterValue value,
   } else if (!validCurve(std::get<OCVCurve>(value))) {
     return slide::Status::Invalid_parameters;
   }
-  try {
-    values_.insert_or_assign(std::move(name),
-                             Entry{ std::move(value), std::move(provenance) });
-  } catch (const std::bad_alloc &) {
-    return slide::Status::Numerical_failure;
-  }
+  values_.insert_or_assign(std::move(name),
+                           Entry{ std::move(value), std::move(provenance) });
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  return slide::Status::Numerical_failure;
+} catch (const std::length_error &) {
+  return slide::Status::Numerical_failure;
 }
 
 slide::Status ParameterSet::update(
@@ -750,6 +764,9 @@ namespace {
     {
       if (depth > 64)
         return fail("JSON nesting exceeds 64 levels");
+      if (values_ >= max_json_values)
+        return fail("JSON value count exceeds 65536");
+      ++values_;
       skipSpace();
       if (cursor_ == source_.size())
         return fail("unexpected end of JSON");
@@ -836,7 +853,10 @@ namespace {
         if (c < 0x20)
           return fail("control byte in JSON string");
         if (c != '\\') {
-          output.push_back(static_cast<char>(c));
+          if (c < 0x80U)
+            output.push_back(static_cast<char>(c));
+          else if (!appendRawUtf8(output, c))
+            return false;
           continue;
         }
         if (cursor_ == source_.size())
@@ -898,15 +918,90 @@ namespace {
 
     bool parseNumber(JsonValue &output)
     {
-      const char *first = source_.data() + cursor_;
-      const char *last = source_.data() + source_.size();
+      const std::size_t begin = cursor_;
+      if (take('-') && cursor_ == source_.size())
+        return fail("invalid JSON number");
+      if (cursor_ == source_.size())
+        return fail("invalid JSON number");
+      if (source_[cursor_] == '0') {
+        ++cursor_;
+        if (cursor_ < source_.size() && source_[cursor_] >= '0'
+            && source_[cursor_] <= '9')
+          return fail("leading zero in JSON number");
+      } else if (source_[cursor_] >= '1' && source_[cursor_] <= '9') {
+        while (cursor_ < source_.size() && source_[cursor_] >= '0'
+               && source_[cursor_] <= '9')
+          ++cursor_;
+      } else {
+        return fail("invalid JSON number");
+      }
+      if (cursor_ < source_.size() && source_[cursor_] == '.') {
+        ++cursor_;
+        const std::size_t fraction = cursor_;
+        while (cursor_ < source_.size() && source_[cursor_] >= '0'
+               && source_[cursor_] <= '9')
+          ++cursor_;
+        if (cursor_ == fraction)
+          return fail("JSON fraction needs a digit");
+      }
+      if (cursor_ < source_.size()
+          && (source_[cursor_] == 'e' || source_[cursor_] == 'E')) {
+        ++cursor_;
+        if (cursor_ < source_.size()
+            && (source_[cursor_] == '+' || source_[cursor_] == '-'))
+          ++cursor_;
+        const std::size_t exponent = cursor_;
+        while (cursor_ < source_.size() && source_[cursor_] >= '0'
+               && source_[cursor_] <= '9')
+          ++cursor_;
+        if (cursor_ == exponent)
+          return fail("JSON exponent needs a digit");
+      }
+
+      const char *first = source_.data() + begin;
+      const char *last = source_.data() + cursor_;
       real_t value{};
       const auto parsed = std::from_chars(first, last, value, std::chars_format::general);
-      if (parsed.ec != std::errc{} || parsed.ptr == first || !is_finite(value))
+      if (parsed.ec != std::errc{} || parsed.ptr != last || !is_finite(value))
         return fail("invalid JSON number");
-      cursor_ = static_cast<std::size_t>(parsed.ptr - source_.data());
       output.kind = JsonValue::Kind::number;
       output.number = value;
+      return true;
+    }
+
+    bool appendRawUtf8(std::string &output, unsigned char lead)
+    {
+      const std::size_t begin = cursor_ - 1;
+      std::size_t continuations{};
+      std::uint32_t codepoint{};
+      std::uint32_t minimum{};
+      if (lead >= 0xc2U && lead <= 0xdfU) {
+        continuations = 1;
+        codepoint = lead & 0x1fU;
+        minimum = 0x80U;
+      } else if (lead >= 0xe0U && lead <= 0xefU) {
+        continuations = 2;
+        codepoint = lead & 0x0fU;
+        minimum = 0x800U;
+      } else if (lead >= 0xf0U && lead <= 0xf4U) {
+        continuations = 3;
+        codepoint = lead & 0x07U;
+        minimum = 0x10000U;
+      } else {
+        return fail("invalid UTF-8 lead byte in JSON string");
+      }
+      if (continuations > source_.size() - cursor_)
+        return fail("unfinished UTF-8 sequence in JSON string");
+      for (std::size_t i = 0; i < continuations; ++i) {
+        const auto continuation = static_cast<unsigned char>(source_[cursor_++]);
+        if ((continuation & 0xc0U) != 0x80U)
+          return fail("invalid UTF-8 continuation in JSON string");
+        codepoint = (codepoint << 6U) | (continuation & 0x3fU);
+      }
+      if (codepoint < minimum || codepoint > 0x10ffffU
+          || (codepoint >= 0xd800U && codepoint <= 0xdfffU))
+        return fail("invalid UTF-8 scalar in JSON string");
+      output.append(source_.substr(begin, continuations + 1));
       return true;
     }
 
@@ -953,7 +1048,8 @@ namespace {
     void skipSpace()
     {
       while (cursor_ < source_.size()
-             && std::isspace(static_cast<unsigned char>(source_[cursor_])))
+             && (source_[cursor_] == ' ' || source_[cursor_] == '\t'
+                 || source_[cursor_] == '\r' || source_[cursor_] == '\n'))
         ++cursor_;
     }
 
@@ -983,6 +1079,7 @@ namespace {
     std::string_view source_{};
     std::string &diagnostic_;
     std::size_t cursor_{};
+    std::size_t values_{};
   };
 
   const JsonValue *jsonPath(const JsonValue &root,
@@ -1076,7 +1173,11 @@ namespace {
 slide::Status ParameterSet::fromBpxJson(std::string_view json,
                                         ParameterSet &output,
                                         std::string &diagnostic)
-{
+try {
+  if (json.size() > max_bpx_json_bytes) {
+    diagnostic = "BPX JSON exceeds 4194304 bytes";
+    return slide::Status::Invalid_parameters;
+  }
   JsonValue root;
   JsonParser parser{ json, diagnostic };
   if (!parser.parse(root) || root.kind != JsonValue::Kind::object) {
@@ -1102,40 +1203,59 @@ slide::Status ParameterSet::fromBpxJson(std::string_view json,
   ParameterSet candidate;
   auto addScalar = [&](std::initializer_list<std::string_view> path,
                        std::string_view name,
-                       bool required = true) {
+                       bool required = true) -> slide::Status {
     const auto *value = jsonPath(root, path);
     if (value == nullptr)
-      return !required;
-    return value->kind == JsonValue::Kind::number
-           && candidate.set(std::string{ name }, value->number, "BPX " + version_text)
-                == slide::Status::Success;
+      return required ? slide::Status::Invalid_parameters
+                      : slide::Status::Success;
+    if (value->kind != JsonValue::Kind::number)
+      return slide::Status::Invalid_parameters;
+    return candidate.set(
+      std::string{ name }, value->number, "BPX " + version_text);
   };
   const auto requireCellScalar = [&](std::string_view bpx_name,
                                      std::string_view parameter_name) {
-    if (addScalar({ "Parameterisation", "Cell", bpx_name }, parameter_name))
-      return true;
-    diagnostic = "missing, non-numeric, or invalid BPX Cell parameter: "
-                 + std::string{ parameter_name };
-    return false;
+    const auto status = addScalar(
+      { "Parameterisation", "Cell", bpx_name }, parameter_name);
+    if (status != slide::Status::Success)
+      diagnostic = "missing, non-numeric, or invalid BPX Cell parameter: "
+                   + std::string{ parameter_name };
+    return status;
   };
-  if (!requireCellScalar("Electrode area [m2]", "Electrode area [m2]")
-      || !requireCellScalar("Nominal cell capacity [A.h]",
-                            "Nominal cell capacity [A.h]")
-      || !requireCellScalar("Reference temperature [K]",
-                            "Reference temperature [K]"))
-    return slide::Status::Invalid_parameters;
-  addScalar({ "Parameterisation", "Cell", "External surface area [m2]" },
-            "Cell cooling surface area [m2]",
-            false);
-  addScalar({ "Parameterisation", "Cell", "Volume [m3]" },
-            "Cell volume [m3]",
-            false);
-  addScalar({ "Parameterisation", "Cell", "Density [kg.m-3]" },
-            "Cell density [kg.m-3]",
-            false);
-  addScalar({ "Parameterisation", "Cell", "Specific heat capacity [J.K-1.kg-1]" },
-            "Cell specific heat capacity [J.kg-1.K-1]",
-            false);
+  for (const auto &[bpx_name, parameter_name] : {
+         std::pair{ std::string_view{ "Electrode area [m2]" },
+                    std::string_view{ "Electrode area [m2]" } },
+         std::pair{ std::string_view{ "Nominal cell capacity [A.h]" },
+                    std::string_view{ "Nominal cell capacity [A.h]" } },
+         std::pair{ std::string_view{ "Reference temperature [K]" },
+                    std::string_view{ "Reference temperature [K]" } },
+       }) {
+    const auto status = requireCellScalar(bpx_name, parameter_name);
+    if (status != slide::Status::Success)
+      return status;
+  }
+  const auto optionalScalar = [&](std::initializer_list<std::string_view> path,
+                                  std::string_view name) {
+    const auto status = addScalar(path, name, false);
+    if (status != slide::Status::Success)
+      diagnostic = "invalid optional BPX scalar: " + std::string{ name };
+    return status;
+  };
+  for (const auto &[bpx_name, parameter_name] : {
+         std::pair{ std::string_view{ "External surface area [m2]" },
+                    std::string_view{ "Cell cooling surface area [m2]" } },
+         std::pair{ std::string_view{ "Volume [m3]" },
+                    std::string_view{ "Cell volume [m3]" } },
+         std::pair{ std::string_view{ "Density [kg.m-3]" },
+                    std::string_view{ "Cell density [kg.m-3]" } },
+         std::pair{ std::string_view{ "Specific heat capacity [J.K-1.kg-1]" },
+                    std::string_view{ "Cell specific heat capacity [J.kg-1.K-1]" } },
+       }) {
+    const auto status = optionalScalar(
+      { "Parameterisation", "Cell", bpx_name }, parameter_name);
+    if (status != slide::Status::Success)
+      return status;
+  }
 
   struct BpxElectrode
   {
@@ -1156,31 +1276,56 @@ slide::Status ParameterSet::fromBpxJson(std::string_view json,
     };
     auto requireNumber = [&](std::string_view field, std::string name) {
       const auto *value = path(field);
-      return value != nullptr && value->kind == JsonValue::Kind::number
-             && candidate.set(std::move(name), value->number, "BPX " + version_text)
-                  == slide::Status::Success;
+      if (value == nullptr || value->kind != JsonValue::Kind::number)
+        return slide::Status::Invalid_parameters;
+      return candidate.set(
+        std::move(name), value->number, "BPX " + version_text);
     };
     auto requireConstant = [&](std::string_view field, std::string name) {
       const auto *value = path(field);
       if (value == nullptr)
-        return false;
+        return slide::Status::Invalid_parameters;
       auto constant = jsonConstant(*value, diagnostic);
-      return constant.has_value()
-             && candidate.set(std::move(name), *constant, "BPX " + version_text)
-                  == slide::Status::Success;
+      if (!constant.has_value())
+        return slide::Status::Invalid_parameters;
+      return candidate.set(
+        std::move(name), *constant, "BPX " + version_text);
     };
-    if (!requireNumber("Thickness [m]", prefix + " electrode thickness [m]")
-        || !requireNumber("Minimum stoichiometry", prefix + " electrode minimum stoichiometry")
-        || !requireNumber("Maximum stoichiometry", prefix + " electrode maximum stoichiometry")
-        || !requireNumber("Maximum concentration [mol.m-3]", std::string{ electrode.concentration_name })
-        || !requireNumber("Particle radius [m]", prefix + " particle radius [m]")
-        || !requireConstant("Diffusivity [m2.s-1]", std::string{ electrode.diffusivity_name })
-        || !requireNumber("Reaction rate constant [mol.m-2.s-1]",
-                          prefix + " electrode reaction rate constant [mol.m-2.s-1]")) {
-      if (diagnostic.empty())
+    const auto requireElectrode = [&](slide::Status status) {
+      if (status != slide::Status::Success && diagnostic.empty())
         diagnostic = "missing or unsupported BPX electrode scalar";
-      return slide::Status::Invalid_parameters;
-    }
+      return status;
+    };
+    auto status = requireElectrode(
+      requireNumber("Thickness [m]", prefix + " electrode thickness [m]"));
+    if (status != slide::Status::Success)
+      return status;
+    status = requireElectrode(requireNumber(
+      "Minimum stoichiometry", prefix + " electrode minimum stoichiometry"));
+    if (status != slide::Status::Success)
+      return status;
+    status = requireElectrode(requireNumber(
+      "Maximum stoichiometry", prefix + " electrode maximum stoichiometry"));
+    if (status != slide::Status::Success)
+      return status;
+    status = requireElectrode(requireNumber(
+      "Maximum concentration [mol.m-3]",
+      std::string{ electrode.concentration_name }));
+    if (status != slide::Status::Success)
+      return status;
+    status = requireElectrode(requireNumber(
+      "Particle radius [m]", prefix + " particle radius [m]"));
+    if (status != slide::Status::Success)
+      return status;
+    status = requireElectrode(requireConstant(
+      "Diffusivity [m2.s-1]", std::string{ electrode.diffusivity_name }));
+    if (status != slide::Status::Success)
+      return status;
+    status = requireElectrode(requireNumber(
+      "Reaction rate constant [mol.m-2.s-1]",
+      prefix + " electrode reaction rate constant [mol.m-2.s-1]"));
+    if (status != slide::Status::Success)
+      return status;
     const auto *area = path("Surface area per unit volume [m-1]");
     const auto *radius = path("Particle radius [m]");
     if (area == nullptr || radius == nullptr
@@ -1191,103 +1336,184 @@ slide::Status ParameterSet::fromBpxJson(std::string_view json,
     }
     const real_t fraction = area->number * radius->number / 3.0;
     const auto *porosity = path("Porosity");
+    if (porosity != nullptr && porosity->kind != JsonValue::Kind::number) {
+      diagnostic = "invalid optional BPX electrode porosity";
+      return slide::Status::Invalid_parameters;
+    }
     const real_t porosity_value = porosity != nullptr
-                                      && porosity->kind == JsonValue::Kind::number
                                     ? porosity->number
                                     : 1.0 - fraction;
     const std::string porosity_provenance = porosity != nullptr
-                                                && porosity->kind == JsonValue::Kind::number
                                               ? "BPX " + version_text
                                               : "SPM complement of BPX a*R/3";
-    if (candidate.set(prefix + " electrode active material volume fraction", fraction, "derived exactly from BPX a*R/3") != slide::Status::Success
-        || candidate.set(prefix + " electrode porosity", porosity_value, porosity_provenance) != slide::Status::Success) {
+    status = candidate.set(prefix + " electrode active material volume fraction",
+                           fraction,
+                           "derived exactly from BPX a*R/3");
+    if (status != slide::Status::Success) {
       diagnostic = "invalid BPX derived active fraction";
-      return slide::Status::Invalid_parameters;
+      return status;
+    }
+    status = candidate.set(
+      prefix + " electrode porosity", porosity_value, porosity_provenance);
+    if (status != slide::Status::Success) {
+      diagnostic = "invalid BPX electrode porosity";
+      return status;
     }
     const auto *ocp = path("OCP [V]");
     const auto curve = ocp == nullptr ? std::nullopt : jsonCurve(*ocp, diagnostic);
-    if (!curve.has_value()
-        || candidate.set(std::string{ electrode.ocp_name }, *curve, "BPX " + version_text + " canonical curve")
-             != slide::Status::Success) {
+    if (!curve.has_value()) {
       if (diagnostic.empty())
         diagnostic = "BPX OCP must be a numeric constant, function, or exact {x,y} table";
       return slide::Status::Invalid_parameters;
     }
+    status = candidate.set(std::string{ electrode.ocp_name },
+                           *curve,
+                           "BPX " + version_text + " canonical curve");
+    if (status != slide::Status::Success) {
+      diagnostic = "failed to store BPX OCP canonical curve";
+      return status;
+    }
     const auto *activation = path("Reaction rate constant activation energy [J.mol-1]");
-    if (activation != nullptr
-        && (activation->kind != JsonValue::Kind::number
-            || candidate.set(prefix + " electrode reaction rate activation energy [J.mol-1]",
-                             activation->number,
-                             "BPX " + version_text)
-                 != slide::Status::Success)) {
-      diagnostic = "invalid BPX reaction-rate activation energy";
-      return slide::Status::Invalid_parameters;
+    if (activation != nullptr) {
+      if (activation->kind != JsonValue::Kind::number) {
+        diagnostic = "invalid BPX reaction-rate activation energy";
+        return slide::Status::Invalid_parameters;
+      }
+      status = candidate.set(
+        prefix + " electrode reaction rate activation energy [J.mol-1]",
+        activation->number,
+        "BPX " + version_text);
+      if (status != slide::Status::Success) {
+        diagnostic = "failed to store BPX reaction-rate activation energy";
+        return status;
+      }
     }
     const auto *diffusion_activation = path("Diffusivity activation energy [J.mol-1]");
-    if (diffusion_activation != nullptr
-        && (diffusion_activation->kind != JsonValue::Kind::number
-            || candidate.set(prefix + " particle diffusivity activation energy [J.mol-1]",
-                             diffusion_activation->number,
-                             "BPX " + version_text)
-                 != slide::Status::Success)) {
-      diagnostic = "invalid BPX diffusivity activation energy";
-      return slide::Status::Invalid_parameters;
+    if (diffusion_activation != nullptr) {
+      if (diffusion_activation->kind != JsonValue::Kind::number) {
+        diagnostic = "invalid BPX diffusivity activation energy";
+        return slide::Status::Invalid_parameters;
+      }
+      status = candidate.set(
+        prefix + " particle diffusivity activation energy [J.mol-1]",
+        diffusion_activation->number,
+        "BPX " + version_text);
+      if (status != slide::Status::Success) {
+        diagnostic = "failed to store BPX diffusivity activation energy";
+        return status;
+      }
     }
   }
 
-  auto setDefault = [&](std::string name, real_t value) {
+  auto setDefault = [&](std::string name, real_t value) -> slide::Status {
     return candidate.contains(name)
-           || candidate.set(std::move(name), value, "BPX SPM default")
-                == slide::Status::Success;
+             ? slide::Status::Success
+             : candidate.set(std::move(name), value, "BPX SPM default");
   };
-  addScalar({ "State", "Initial conditions", "Initial state-of-charge" },
-            "Initial state-of-charge",
-            false);
-  addScalar({ "State", "Initial conditions", "Initial temperature [K]" },
-            "Initial temperature [K]",
-            false);
-  addScalar({ "State", "Initial conditions", "Initial electrolyte concentration [mol.m-3]" },
-            "Initial concentration in electrolyte [mol.m-3]",
-            false);
-  addScalar({ "State", "Thermal environment", "Ambient temperature [K]" },
-            "Ambient temperature [K]",
-            false);
-  addScalar({ "State", "Thermal environment", "Heat transfer coefficient [W.m-2.K-1]" },
-            "Total heat transfer coefficient [W.m-2.K-1]",
-            false);
-  if (!setDefault("Initial state-of-charge", 0.5)
-      || !setDefault("Initial temperature [K]",
-                     *candidate.findScalar("Reference temperature [K]"))
-      || !setDefault("Ambient temperature [K]",
-                     *candidate.findScalar("Reference temperature [K]"))
-      || !setDefault("Initial concentration in electrolyte [mol.m-3]", 1000.0)
-      || !setDefault("Initial SEI thickness [m]", 1e-9)
-      || !setDefault("Contact resistance [Ohm]", 0.0)) {
-    diagnostic = "failed to install BPX SPM defaults";
-    return slide::Status::Numerical_failure;
+  for (const auto &[section, bpx_name, parameter_name] : {
+         std::tuple{ std::string_view{ "Initial conditions" },
+                     std::string_view{ "Initial state-of-charge" },
+                     std::string_view{ "Initial state-of-charge" } },
+         std::tuple{ std::string_view{ "Initial conditions" },
+                     std::string_view{ "Initial temperature [K]" },
+                     std::string_view{ "Initial temperature [K]" } },
+         std::tuple{ std::string_view{ "Initial conditions" },
+                     std::string_view{ "Initial electrolyte concentration [mol.m-3]" },
+                     std::string_view{ "Initial concentration in electrolyte [mol.m-3]" } },
+         std::tuple{ std::string_view{ "Thermal environment" },
+                     std::string_view{ "Ambient temperature [K]" },
+                     std::string_view{ "Ambient temperature [K]" } },
+         std::tuple{ std::string_view{ "Thermal environment" },
+                     std::string_view{ "Heat transfer coefficient [W.m-2.K-1]" },
+                     std::string_view{ "Total heat transfer coefficient [W.m-2.K-1]" } },
+       }) {
+    const auto status = optionalScalar(
+      { "State", section, bpx_name }, parameter_name);
+    if (status != slide::Status::Success)
+      return status;
+  }
+  const real_t reference_temperature =
+    *candidate.findScalar("Reference temperature [K]");
+  for (const auto &[name, value] : {
+         std::pair{ std::string_view{ "Initial state-of-charge" }, 0.5 },
+         std::pair{ std::string_view{ "Initial temperature [K]" },
+                    reference_temperature },
+         std::pair{ std::string_view{ "Ambient temperature [K]" },
+                    reference_temperature },
+         std::pair{ std::string_view{ "Initial concentration in electrolyte [mol.m-3]" },
+                    1000.0 },
+         std::pair{ std::string_view{ "Initial SEI thickness [m]" }, 1e-9 },
+         std::pair{ std::string_view{ "Contact resistance [Ohm]" }, 0.0 },
+       }) {
+    const auto status = setDefault(std::string{ name }, value);
+    if (status != slide::Status::Success) {
+      diagnostic = "failed to install BPX SPM default: " + std::string{ name };
+      return status;
+    }
   }
   diagnostic.clear();
   output = std::move(candidate);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  assignDiagnosticNoThrow(diagnostic, "BPX JSON allocation failed");
+  return slide::Status::Numerical_failure;
+} catch (const std::length_error &) {
+  assignDiagnosticNoThrow(diagnostic, "BPX JSON size is not representable");
+  return slide::Status::Numerical_failure;
 }
 
 slide::Status ParameterSet::fromBpxFile(const std::filesystem::path &path,
                                         ParameterSet &output,
                                         std::string &diagnostic)
-{
+try {
   std::ifstream input(path, std::ios::binary);
   if (!input) {
     diagnostic = "could not open BPX file";
     return slide::Status::Invalid_parameters;
   }
-  try {
-    const std::string contents{ std::istreambuf_iterator<char>{ input },
-                                std::istreambuf_iterator<char>{} };
-    return fromBpxJson(contents, output, diagnostic);
-  } catch (const std::bad_alloc &) {
-    diagnostic = "BPX file is too large";
+  input.seekg(0, std::ios::end);
+  if (!input) {
+    diagnostic = "could not seek BPX file";
     return slide::Status::Numerical_failure;
   }
+  const auto end = input.tellg();
+  if (end < std::streampos{ 0 }) {
+    diagnostic = "could not determine BPX file size";
+    return slide::Status::Numerical_failure;
+  }
+  const auto size = static_cast<std::uintmax_t>(end);
+  if (size > max_bpx_json_bytes) {
+    diagnostic = "BPX JSON exceeds 4194304 bytes";
+    return slide::Status::Invalid_parameters;
+  }
+  input.seekg(0, std::ios::beg);
+  if (!input) {
+    diagnostic = "could not rewind BPX file";
+    return slide::Status::Numerical_failure;
+  }
+  std::string contents(static_cast<std::size_t>(size), '\0');
+  input.read(contents.data(), static_cast<std::streamsize>(contents.size()));
+  if (input.gcount() != static_cast<std::streamsize>(contents.size())) {
+    diagnostic = "could not read complete BPX file";
+    return slide::Status::Numerical_failure;
+  }
+  char trailing{};
+  input.read(&trailing, 1);
+  if (input.gcount() != 0) {
+    diagnostic = "BPX file changed size while reading";
+    return slide::Status::Invalid_parameters;
+  }
+  if (!input.eof()) {
+    diagnostic = "could not verify the end of the BPX file";
+    return slide::Status::Numerical_failure;
+  }
+  return fromBpxJson(contents, output, diagnostic);
+} catch (const std::bad_alloc &) {
+  assignDiagnosticNoThrow(diagnostic, "BPX file allocation failed");
+  return slide::Status::Numerical_failure;
+} catch (const std::length_error &) {
+  assignDiagnosticNoThrow(diagnostic, "BPX file size is not representable");
+  return slide::Status::Numerical_failure;
 }
 
 } // namespace slide::core

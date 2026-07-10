@@ -118,6 +118,61 @@ TEST_CASE("P5-G1 documented experiment strings compile atomically",
   CHECK_FALSE(overflow.message.empty());
   REQUIRE(unchanged.segments.size() == 1);
   CHECK(unchanged.segments[0].duration == 7.0);
+
+  // Each token is below the legacy one-million repetition ceiling, but the
+  // aggregate expansion is an untrusted allocation request. The parser's
+  // documented short-experiment surface is capped at 10,000 segments.
+  core::Experiment bounded;
+  bounded.segments.push_back({ .mode = core::ControlMode::rest, .duration = 9.0 });
+  core::ParseDiagnostic expansion;
+  const std::vector<std::string> expansion_bomb{
+    "Rest for 1 s * 6000",
+    "Rest for 1 s * 6000",
+  };
+  CHECK(core::Experiment::parse(expansion_bomb, bounded, expansion)
+        == Status::Invalid_parameters);
+  CHECK(expansion.message.find("expanded segment limit") != std::string::npos);
+  REQUIRE(bounded.segments.size() == 1);
+  CHECK(bounded.segments[0].duration == 9.0);
+
+  core::Experiment retained;
+  retained.segments.push_back({ .mode = core::ControlMode::rest, .duration = 11.0 });
+  core::ParseDiagnostic retained_diagnostic;
+  const std::string retained_bomb = "Rest for 1 s"
+                                    + std::string(500, ' ')
+                                    + "* 10000";
+  CHECK(core::Experiment::parse(
+          std::array{ retained_bomb }, retained, retained_diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(retained_diagnostic.message.find("expanded text limit")
+        != std::string::npos);
+  CHECK(retained.segments.size() == 1);
+  if (retained.segments.size() == 1)
+    CHECK(retained.segments[0].duration == 11.0);
+
+  core::Experiment named;
+  named.segments.push_back({ .mode = core::ControlMode::rest, .duration = 13.0 });
+  core::ParseDiagnostic name_diagnostic;
+  const std::string long_drive = "Run " + std::string(1025, 'x') + " (A)";
+  CHECK(core::Experiment::parse(
+          std::array{ long_drive }, named, name_diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(name_diagnostic.message.find("drive-cycle name") != std::string::npos);
+  CHECK(named.segments.size() == 1);
+  if (named.segments.size() == 1)
+    CHECK(named.segments[0].duration == 13.0);
+
+  core::Experiment missing_drive_name = named;
+  core::ParseDiagnostic missing_name_diagnostic;
+  CHECK(core::Experiment::parse(
+          std::array{ std::string{ "Run (A)" } },
+          missing_drive_name,
+          missing_name_diagnostic)
+        == Status::Invalid_parameters);
+  CHECK_FALSE(missing_name_diagnostic.message.empty());
+  CHECK(missing_drive_name.segments.size() == 1);
+  if (missing_drive_name.segments.size() == 1)
+    CHECK(missing_drive_name.segments[0].duration == 13.0);
 }
 
 TEST_CASE("Cycler validates direct segment metadata before stepping",

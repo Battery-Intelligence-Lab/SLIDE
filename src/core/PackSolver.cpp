@@ -76,8 +76,9 @@ namespace {
   {
     if (!is_finite(terminal_voltage))
       return false;
-    return std::all_of(current.begin(), current.end(), is_finite)
-           && std::all_of(node_voltage.begin(), node_voltage.end(), is_finite);
+    const auto finite = [](const real_t &value) { return is_finite(value); };
+    return std::all_of(current.begin(), current.end(), finite)
+           && std::all_of(node_voltage.begin(), node_voltage.end(), finite);
   }
 
   slide::Status validateElectricalNetlist(const CompiledElectricalNetlist &netlist,
@@ -775,9 +776,10 @@ slide::Status PackSolver::solveLadder(real_t applied_current)
 slide::Status PackSolver::solveRelaxation(real_t applied_current)
 {
   const auto &netlist = topology_.electrical;
+  const auto finite = [](const real_t &value) { return is_finite(value); };
   if (!std::all_of(candidate_node_voltage_.begin(),
                    candidate_node_voltage_.end(),
-                   is_finite))
+                   finite))
     return slide::Status::Invalid_states;
   std::fill(relaxation_diagonal_.begin(), relaxation_diagonal_.end(), 0.0);
   std::fill(relaxation_rhs_.begin(), relaxation_rhs_.end(), 0.0);

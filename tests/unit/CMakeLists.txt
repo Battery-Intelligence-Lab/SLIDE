@@ -141,6 +141,9 @@ target_link_libraries(unit_test_core_RecorderAllocation PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_ParameterSet core_ParameterSet_test.cpp)
 target_link_libraries(unit_test_core_ParameterSet PRIVATE slide_core)
 
+add_executable_with_coverage_and_test(unit_test_core_ParserAllocation core_ParserAllocation_test.cpp)
+target_link_libraries(unit_test_core_ParserAllocation PRIVATE slide_core)
+
 # Phase 7 P7-G3: hermetic behaviour parity against committed PyBaMM traces
 add_executable_with_coverage_and_test(unit_test_core_P7G3_PyBaMM core_P7G3_PyBaMM_test.cpp)
 target_link_libraries(unit_test_core_P7G3_PyBaMM PRIVATE slide_core)

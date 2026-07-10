@@ -8,14 +8,26 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
-#include <regex>
+#include <new>
+#include <stdexcept>
 
 namespace slide::core {
 namespace {
+
+  void assignDiagnosticNoThrow(std::string &target,
+                               std::string_view message) noexcept
+  {
+    try {
+      target.assign(message);
+    } catch (...) {
+      target.clear();
+    }
+  }
 
   std::string normalized(std::string text)
   {
@@ -37,23 +49,43 @@ namespace {
     return result;
   }
 
-  bool parseNumber(const std::string &text, real_t &value)
+  bool parseNumber(std::string_view text, real_t &value)
   {
-    char *end{};
-    value = std::strtod(text.c_str(), &end);
-    return end == text.c_str() + static_cast<std::ptrdiff_t>(text.size())
+    if (text.empty())
+      return false;
+    const auto parsed = std::from_chars(
+      text.data(), text.data() + text.size(), value, std::chars_format::general);
+    return parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size()
            && is_finite(value);
   }
 
-  bool parseDuration(const std::string &text, real_t &seconds)
+  bool parseDuration(std::string_view text, real_t &seconds)
   {
-    static const std::regex pattern{
-      R"(^([0-9]+(?:\.[0-9]+)?) ?(s|sec|secs|second|seconds|min|mins|minute|minutes|h|hr|hrs|hour|hours)$)"
-    };
-    std::smatch match;
-    if (!std::regex_match(text, match, pattern) || !parseNumber(match[1].str(), seconds))
+    std::size_t number_end{};
+    while (number_end < text.size() && text[number_end] >= '0'
+           && text[number_end] <= '9')
+      ++number_end;
+    if (number_end == 0)
       return false;
-    const auto unit = match[2].str();
+    if (number_end < text.size() && text[number_end] == '.') {
+      const std::size_t fraction = ++number_end;
+      while (number_end < text.size() && text[number_end] >= '0'
+             && text[number_end] <= '9')
+        ++number_end;
+      if (number_end == fraction)
+        return false;
+    }
+    const auto number = text.substr(0, number_end);
+    if (number_end < text.size() && text[number_end] == ' ')
+      ++number_end;
+    const auto unit = text.substr(number_end);
+    if (!parseNumber(number, seconds)
+        || !(unit == "s" || unit == "sec" || unit == "secs"
+             || unit == "second" || unit == "seconds" || unit == "min"
+             || unit == "mins" || unit == "minute" || unit == "minutes"
+             || unit == "h" || unit == "hr" || unit == "hrs"
+             || unit == "hour" || unit == "hours"))
+      return false;
     if (unit == "min" || unit == "mins" || unit.starts_with("minute"))
       seconds *= 60.0;
     else if (unit == "h" || unit == "hr" || unit == "hrs"
@@ -238,18 +270,29 @@ namespace {
 slide::Status Experiment::parse(std::span<const std::string> steps,
                                 Experiment &output,
                                 ParseDiagnostic &diagnostic)
-{
+try {
+  constexpr std::size_t max_expanded_segments = 10'000;
+  constexpr std::size_t max_expanded_text_bytes = 4U * 1024U * 1024U;
+  constexpr std::size_t max_drive_cycle_name_bytes = 1024;
+  constexpr std::size_t max_step_bytes = 65'536;
   diagnostic = {};
   if (steps.empty()) {
     diagnostic.message = "experiment must contain at least one step";
     return slide::Status::Invalid_parameters;
   }
+  if (steps.size() > max_expanded_segments) {
+    diagnostic.message = "experiment expanded segment limit (10000) exceeded";
+    return slide::Status::Invalid_parameters;
+  }
   std::vector<ExperimentSegment> parsed;
   parsed.reserve(steps.size());
-  static const std::regex rest_pattern{ R"(^rest for (.+)$)" };
-  static const std::regex run_pattern{ R"(^run (.+) \(a\)$)" };
-
+  std::size_t expanded_text_bytes{};
   for (std::size_t index = 0; index < steps.size(); ++index) {
+    if (steps[index].size() > max_step_bytes) {
+      diagnostic.step = index;
+      diagnostic.message = "experiment step exceeds 65536 bytes";
+      return slide::Status::Invalid_parameters;
+    }
     auto text = normalized(steps[index]);
     std::size_t repetitions = 1;
     constexpr std::string_view repeat_separator{ " * " };
@@ -276,7 +319,6 @@ slide::Status Experiment::parse(std::span<const std::string> steps,
       repetitions = parsed_count;
     }
     ExperimentSegment segment{ .source = steps[index] };
-    std::smatch match;
     bool valid{};
     if (text.starts_with("charge at ") || text.starts_with("discharge at ")) {
       const bool charge = text.starts_with("charge at ");
@@ -311,14 +353,21 @@ slide::Status Experiment::parse(std::span<const std::string> steps,
         segment.mode = ControlMode::voltage;
         segment.value = quantity.value;
       }
-    } else if (std::regex_match(text, match, rest_pattern)) {
+    } else if (text.starts_with("rest for ")) {
       segment.mode = ControlMode::rest;
       segment.direction = Direction::none;
-      valid = parseDuration(match[1].str(), segment.duration);
-    } else if (std::regex_match(text, match, run_pattern)) {
+      valid = parseDuration(
+        std::string_view{ text }.substr(std::string_view{ "rest for " }.size()),
+        segment.duration);
+    } else if (text.starts_with("run ") && text.ends_with(" (a)")) {
       segment.mode = ControlMode::drive_cycle;
-      segment.drive_cycle = match[1].str();
-      valid = !segment.drive_cycle.empty();
+      constexpr std::size_t prefix_size = std::string_view{ "run " }.size();
+      constexpr std::size_t suffix_size = std::string_view{ " (a)" }.size();
+      if (text.size() > prefix_size + suffix_size) {
+        segment.drive_cycle = text.substr(
+          prefix_size, text.size() - prefix_size - suffix_size);
+        valid = true;
+      }
     }
     if (!valid) {
       diagnostic.step = index;
@@ -326,11 +375,46 @@ slide::Status Experiment::parse(std::span<const std::string> steps,
       diagnostic.message = "malformed or unsupported experiment step: " + steps[index];
       return slide::Status::Invalid_parameters;
     }
+    if (segment.drive_cycle.size() > max_drive_cycle_name_bytes) {
+      diagnostic.step = index;
+      diagnostic.message = "drive-cycle name exceeds 1024 bytes";
+      return slide::Status::Invalid_parameters;
+    }
+    if (repetitions > max_expanded_segments - parsed.size()) {
+      diagnostic.step = index;
+      diagnostic.message = "experiment expanded segment limit (10000) exceeded";
+      return slide::Status::Invalid_parameters;
+    }
+    if (segment.source.size()
+        > max_expanded_text_bytes - segment.drive_cycle.size()) {
+      diagnostic.step = index;
+      diagnostic.message = "experiment expanded text limit (4194304 bytes) exceeded";
+      return slide::Status::Invalid_parameters;
+    }
+    const std::size_t retained_text = segment.source.size()
+                                      + segment.drive_cycle.size();
+    if (retained_text > 0
+        && repetitions
+             > (max_expanded_text_bytes - expanded_text_bytes) / retained_text) {
+      diagnostic.step = index;
+      diagnostic.message = "experiment expanded text limit (4194304 bytes) exceeded";
+      return slide::Status::Invalid_parameters;
+    }
+    expanded_text_bytes += repetitions * retained_text;
+    parsed.reserve(parsed.size() + repetitions);
     for (std::size_t repetition = 0; repetition < repetitions; ++repetition)
       parsed.push_back(segment);
   }
   output.segments = std::move(parsed);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  assignDiagnosticNoThrow(
+    diagnostic.message, "experiment parser allocation failed");
+  return slide::Status::Numerical_failure;
+} catch (const std::length_error &) {
+  assignDiagnosticNoThrow(
+    diagnostic.message, "experiment parser size is not representable");
+  return slide::Status::Numerical_failure;
 }
 
 slide::Status CyclerV2::configure(SpmBatch &batch,
