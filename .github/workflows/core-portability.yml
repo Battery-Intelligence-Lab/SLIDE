@@ -1,0 +1,58 @@
+name: Core-only portability
+
+on:
+  push:
+    branches: [master, develop]
+    paths:
+      - "src/core/**"
+      - "src/types/**"
+      - "tests/core_only/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/core-portability.yml"
+  pull_request:
+    branches: ["**"]
+    paths:
+      - "src/core/**"
+      - "src/types/**"
+      - "tests/core_only/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/core-portability.yml"
+  workflow_dispatch:
+
+jobs:
+  optional-toolchains-off:
+    name: ${{ matrix.os }} / core only
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure without optional toolchains
+        run: >-
+          cmake -S . -B build-core
+          -DCMAKE_BUILD_TYPE=Release
+          -DSLIDE_CORE_ONLY=ON
+          -DSLIDE_BUILD_CORE_TESTS=ON
+          -DSLIDE_BUILD_PYTHON=OFF
+          -DSLIDE_WITH_CUDA=OFF
+          -DSLIDE_WITH_MATLAB=OFF
+          -DSLIDE_WITH_ZSTD=OFF
+          -DSLIDE_WITH_ARROW=OFF
+      - name: Build external-consumer smoke
+        run: cmake --build build-core --config Release --parallel 2
+      - name: Test disabled capabilities and dependency boundary
+        run: ctest --test-dir build-core -C Release --output-on-failure
+      - name: Configure as a nested external dependency
+        run: >-
+          cmake -S tests/core_only/superproject -B build-consumer
+          -DCMAKE_BUILD_TYPE=Release
+          -DSLIDE_SOURCE_DIR=${{ github.workspace }}
+      - name: Build external public-header consumer
+        run: cmake --build build-consumer --config Release --parallel 2
+      - name: Test external consumer
+        run: ctest --test-dir build-consumer -C Release --output-on-failure

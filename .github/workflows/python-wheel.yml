@@ -6,6 +6,7 @@ on:
     paths:
       - "src/core/**"
       - "python/**"
+      - "cmake/**"
       - "pyproject.toml"
       - "CMakeLists.txt"
       - ".github/workflows/python-wheel.yml"
@@ -14,6 +15,7 @@ on:
     paths:
       - "src/core/**"
       - "python/**"
+      - "cmake/**"
       - "pyproject.toml"
       - "CMakeLists.txt"
       - ".github/workflows/python-wheel.yml"

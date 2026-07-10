@@ -9,13 +9,51 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 #
-if(TARGET Eigen3::Eigen)
-    return()
-endif()
-
 option(EIGEN_WITH_MKL "Use Eigen with MKL" OFF)
 option(EIGEN_DONT_VECTORIZE "Disable Eigen vectorization" OFF)
 option(EIGEN_MPL2_ONLY "Enable Eigen MPL2 license only" OFF)
+
+function(slide_configure_eigen_target target_name)
+    get_target_property(actual_target "${target_name}" ALIASED_TARGET)
+    if(NOT actual_target)
+        set(actual_target "${target_name}")
+    endif()
+    if(EIGEN_MPL2_ONLY)
+        target_compile_definitions("${actual_target}" INTERFACE EIGEN_MPL2_ONLY)
+    endif()
+    if(EIGEN_DONT_VECTORIZE)
+        target_compile_definitions("${actual_target}" INTERFACE EIGEN_DONT_VECTORIZE)
+    endif()
+    if(EIGEN_WITH_MKL)
+        # TODO: verify that 64-bit MKL targets use the LP64 interface.
+        include(mkl)
+        target_link_libraries("${actual_target}" INTERFACE mkl::mkl)
+        target_compile_definitions("${actual_target}" INTERFACE
+            EIGEN_USE_MKL_ALL
+            EIGEN_USE_LAPACKE_STRICT
+        )
+    endif()
+endfunction()
+
+if(TARGET Eigen3::Eigen)
+    slide_configure_eigen_target(Eigen3::Eigen)
+    return()
+endif()
+
+# Prefer an already-installed package so core-only and offline builds do not
+# contact the network when the required Eigen headers are available locally.
+find_package(Eigen3 3.4 CONFIG QUIET)
+if(TARGET Eigen3::Eigen)
+    message(STATUS "Third-party: using installed target 'Eigen3::Eigen'")
+    slide_configure_eigen_target(Eigen3::Eigen)
+    return()
+endif()
+
+# The source fallback is the only branch that needs CPM. Keeping this include
+# here lets a core-only build with installed Eigen configure fully offline.
+if(NOT COMMAND CPMAddPackage)
+    include("${PROJECT_SOURCE_DIR}/cmake/recipes/CPM.cmake")
+endif()
 
 message(STATUS "Third-party: creating target 'Eigen3::Eigen'")
 
@@ -34,25 +72,7 @@ target_include_directories(Eigen3_Eigen SYSTEM INTERFACE
     $<BUILD_INTERFACE:${eigen_SOURCE_DIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-
-if(EIGEN_MPL2_ONLY)
-    target_compile_definitions(Eigen3_Eigen INTERFACE EIGEN_MPL2_ONLY)
-endif()
-
-if(EIGEN_DONT_VECTORIZE)
-    target_compile_definitions(Eigen3_Eigen INTERFACE EIGEN_DONT_VECTORIZE)
-endif()
-
-if(EIGEN_WITH_MKL)
-    #TODO : Checks that, on 64bits systems, `mkl::mkl` is using the LP64 interface
-    # (by looking at the compile definition of the target)
-    include(mkl)
-    target_link_libraries(Eigen3_Eigen INTERFACE mkl::mkl)
-    target_compile_definitions(Eigen3_Eigen INTERFACE
-        EIGEN_USE_MKL_ALL
-        EIGEN_USE_LAPACKE_STRICT
-    )
-endif()
+slide_configure_eigen_target(Eigen3_Eigen)
 
 # On Windows, enable natvis files to improve debugging experience
 if(WIN32 AND eigen_SOURCE_DIR)

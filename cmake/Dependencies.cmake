@@ -2,8 +2,6 @@
 # Adapted from https://github.com/cpp-best-practices/cmake_template/tree/main
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/recipes/")
 
-include(cmake/recipes/CPM.cmake)
-
 # The v4 core deliberately depends only on Eigen. Wheel and future WASM builds
 # must not configure or compile legacy-only formatting, optimisation, and test
 # dependencies.
@@ -11,6 +9,8 @@ if(SLIDE_CORE_ONLY)
   include(eigen)
   return()
 endif()
+
+include(cmake/recipes/CPM.cmake)
 
 CPMAddPackage(
   NAME CPMLicenses.cmake 

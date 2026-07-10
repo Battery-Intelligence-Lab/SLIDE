@@ -171,6 +171,13 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Review channels down:** advisor unavailable, Fable agent out of usage credits — no external review
   this session. Decisions rest on the Debug bit-identity arbiter + derived accumulation bounds.
 
+## 2026-07-10 — P8-G0 optionality and portability
+
+- **Finding:** the existing `SLIDE_CORE_ONLY` configuration built successfully but registered zero tests, so its apparent CTest success could not support P8-G0. An independent review also found that `${CMAKE_SOURCE_DIR}/src` broke public includes when SLIDE was embedded and that CUDA's implementation macro leaked publicly.
+- **Decision:** add an opt-in dependency-light smoke plus a nested-superproject external consumer, use `PROJECT_SOURCE_DIR`, keep CUDA metadata private, prefer installed Eigen before the pinned fallback, and add a Linux/macOS/Windows core-only CI matrix. D-25 defines the registered “dependency-free” phrase as optional-toolchain-free; Eigen remains the required cold-path linear-algebra dependency.
+- **Evidence:** root core-only smoke 1/1, nested consumer 1/1, optional-off Debug 49/49, optional-off Release 49/49, and rebuilt installed CPython 3.13 wheel 9 passed/2 expected optional skips on Windows. Existing installed-wheel CI remains Linux/macOS/Windows × Python 3.10/3.13; `cmake/**` now triggers it. Cross-platform jobs require a push before GitHub can execute them.
+- **Next:** P8-G5 tested v4 documentation.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook
