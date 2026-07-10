@@ -17,9 +17,12 @@ namespace slide::core {
 
 SpmBatch::SpmBatch(void *implementation,
                    EvaluateFn evaluate,
+                   ObserveVoltageFn observe_voltage,
                    StoreStressFn store_stress,
                    DestroyFn destroy,
                    int nch,
+                   real_t capacity_Ah,
+                   real_t electrode_area,
                    SpmComposition composition,
                    SpmPipelineLayout layout,
                    StateArena state,
@@ -27,7 +30,9 @@ SpmBatch::SpmBatch(void *implementation,
                    std::vector<StateRole>
                      roles)
   : implementation_{ implementation }, evaluate_{ evaluate },
+    observe_voltage_{ observe_voltage },
     store_stress_{ store_stress }, destroy_{ destroy }, nch_{ nch },
+    capacity_Ah_{ capacity_Ah }, electrode_area_{ electrode_area },
     composition_{ composition }, layout_{ layout }, state_{ std::move(state) },
     derivative_{ std::move(derivative) }, roles_{ std::move(roles) }
 {}
@@ -40,9 +45,13 @@ SpmBatch::~SpmBatch()
 SpmBatch::SpmBatch(SpmBatch &&other) noexcept
   : implementation_{ std::exchange(other.implementation_, nullptr) },
     evaluate_{ std::exchange(other.evaluate_, nullptr) },
+    observe_voltage_{ std::exchange(other.observe_voltage_, nullptr) },
     store_stress_{ std::exchange(other.store_stress_, nullptr) },
     destroy_{ std::exchange(other.destroy_, nullptr) },
-    nch_{ std::exchange(other.nch_, 0) }, composition_{ other.composition_ },
+    nch_{ std::exchange(other.nch_, 0) },
+    capacity_Ah_{ std::exchange(other.capacity_Ah_, 0.0) },
+    electrode_area_{ std::exchange(other.electrode_area_, 0.0) },
+    composition_{ other.composition_ },
     layout_{ other.layout_ }, state_{ std::move(other.state_) },
     derivative_{ std::move(other.derivative_) }, roles_{ std::move(other.roles_) }
 {}
@@ -53,9 +62,12 @@ SpmBatch &SpmBatch::operator=(SpmBatch &&other) noexcept
     reset();
     implementation_ = std::exchange(other.implementation_, nullptr);
     evaluate_ = std::exchange(other.evaluate_, nullptr);
+    observe_voltage_ = std::exchange(other.observe_voltage_, nullptr);
     store_stress_ = std::exchange(other.store_stress_, nullptr);
     destroy_ = std::exchange(other.destroy_, nullptr);
     nch_ = std::exchange(other.nch_, 0);
+    capacity_Ah_ = std::exchange(other.capacity_Ah_, 0.0);
+    electrode_area_ = std::exchange(other.electrode_area_, 0.0);
     composition_ = other.composition_;
     layout_ = other.layout_;
     state_ = std::move(other.state_);
@@ -71,9 +83,12 @@ void SpmBatch::reset() noexcept
     destroy_(implementation_);
   implementation_ = nullptr;
   evaluate_ = nullptr;
+  observe_voltage_ = nullptr;
   store_stress_ = nullptr;
   destroy_ = nullptr;
   nch_ = 0;
+  capacity_Ah_ = 0.0;
+  electrode_area_ = 0.0;
   state_ = {};
   derivative_ = {};
   roles_.clear();
@@ -99,6 +114,19 @@ slide::Status SpmBatch::evaluate(const StepCtx &ctx)
   return rhs(std::span<const real_t>{ state_.raw() }, derivative_.raw(), ctx);
 }
 
+slide::Status SpmBatch::terminalVoltage(const StepCtx &ctx,
+                                        std::span<real_t>
+                                          output)
+{
+  if (!valid() || static_cast<int>(ctx.i_app.size()) != n_lanes()
+      || static_cast<int>(output.size()) != n_lanes()
+      || !is_finite(ctx.time) || !is_finite(ctx.dt))
+    return slide::Status::Invalid_parameters;
+  const ConstBatchView state_view{ BatchShape::from(state_),
+                                   std::span<const real_t>{ state_.raw() } };
+  return observe_voltage_(implementation_, state_view, ctx, output);
+}
+
 slide::Status SpmBatch::storeStressHistory(real_t interval)
 {
   if (!valid() || !is_finite(interval) || !(interval > 0.0))
@@ -113,6 +141,8 @@ struct SpmBatchFactoryAccess
   template <class Pipeline>
   static SpmBatch make(Pipeline &&pipeline,
                        int nch,
+                       real_t capacity_Ah,
+                       real_t electrode_area,
                        SpmComposition composition,
                        SpmPipelineLayout layout,
                        StateArena state,
@@ -126,11 +156,17 @@ struct SpmBatchFactoryAccess
              [](void *object, RhsViews &views, const StepCtx &ctx) {
                return static_cast<Concrete *>(object)->evaluate(views, ctx);
              },
+             [](void *object, const ConstBatchView &state_view, const StepCtx &ctx, std::span<real_t> output) {
+               return static_cast<Concrete *>(object)->observeTerminalVoltage(
+                 state_view, ctx, output);
+             },
              [](void *object, BatchView state_view, real_t interval) {
                static_cast<Concrete *>(object)->storeStressHistory(state_view, interval);
              },
              [](void *object) { delete static_cast<Concrete *>(object); },
              nch,
+             capacity_Ah,
+             electrode_area,
              composition,
              layout,
              std::move(state),
@@ -489,6 +525,8 @@ namespace {
 
     SpmBatch candidate = SpmBatchFactoryAccess::make(std::move(pipeline),
                                                      NCH,
+                                                     input.design.capacity_Ah,
+                                                     input.design.electrode_area,
                                                      composition,
                                                      layout,
                                                      std::move(state),

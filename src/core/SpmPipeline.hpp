@@ -62,6 +62,9 @@ struct SpmPipelineLayout
   SpmStateLayout spm{};
   ThermalLumpedLayout thermal{};
   StressHistoryLayout stress_history{};
+  StateSlice elapsed_time{};
+  StateSlice charge_throughput{};
+  StateSlice energy_throughput{};
 };
 
 template <int NCH>
@@ -112,6 +115,9 @@ public:
       layout.thermal = declareThermalLumped(builder, layout.spm.temperature);
     if constexpr (needs_stress)
       layout.stress_history = declareStressHistory(builder);
+    layout.elapsed_time = builder.declare({ "elapsed_time", 1, Unit::s, StateRole::cumulative });
+    layout.charge_throughput = builder.declare({ "charge_throughput", 1, Unit::Ah, StateRole::cumulative });
+    layout.energy_throughput = builder.declare({ "energy_throughput", 1, Unit::Wh, StateRole::cumulative });
     return layout;
   }
 
@@ -261,6 +267,28 @@ public:
                              std::span<const real_t>{ plating_current_ });
       }
     }
+    return slide::Status::Success;
+  }
+
+  [[nodiscard]] slide::Status observeTerminalVoltage(
+    const ConstBatchView &state,
+    const StepCtx &ctx,
+    std::span<real_t> terminal_voltage)
+  {
+    if (state.n_lanes() != n_lanes_
+        || static_cast<int>(terminal_voltage.size()) != n_lanes_)
+      return slide::Status::Invalid_parameters;
+    auto observable_view = observables_.view();
+    const auto status = computeSpmObservables(params_.electrical,
+                                              state,
+                                              layout_.spm,
+                                              ctx,
+                                              observable_view);
+    if (status != slide::Status::Success)
+      return status;
+    std::copy(observable_view.terminal_voltage.begin(),
+              observable_view.terminal_voltage.end(),
+              terminal_voltage.begin());
     return slide::Status::Success;
   }
 

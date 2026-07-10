@@ -86,6 +86,10 @@ target_link_libraries(unit_test_core_SpectralModel PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_SpmFactory core_SpmFactory_test.cpp)
 target_link_libraries(unit_test_core_SpmFactory PRIVATE slide_core)
 
+# Phase 1: allocation-free EulerLegacy stepping and minimal single-batch Simulation façade
+add_executable_with_coverage_and_test(unit_test_core_Simulation core_Simulation_test.cpp)
+target_link_libraries(unit_test_core_Simulation PRIVATE slide_core)
+
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Cycler Cycler_test.cpp)
 # add_executable_with_coverage_and_test(unit_test_Procedure Procedure_test.cpp)

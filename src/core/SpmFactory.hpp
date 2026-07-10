@@ -83,6 +83,8 @@ public:
   bool valid() const { return implementation_ != nullptr; }
   int nch() const { return nch_; }
   int n_lanes() const { return state_.n_lanes(); }
+  real_t capacity_Ah() const { return capacity_Ah_; }
+  real_t electrode_area() const { return electrode_area_; }
   SpmComposition composition() const { return composition_; }
   const SpmPipelineLayout &layout() const { return layout_; }
   std::span<const StateRole> roles() const { return roles_; }
@@ -96,18 +98,25 @@ public:
                                   std::span<real_t> trial_derivative,
                                   const StepCtx &ctx);
   [[nodiscard]] slide::Status evaluate(const StepCtx &ctx);
+  [[nodiscard]] slide::Status terminalVoltage(const StepCtx &ctx,
+                                              std::span<real_t> output);
   [[nodiscard]] slide::Status storeStressHistory(real_t interval);
 
 private:
   using EvaluateFn = slide::Status (*)(void *, RhsViews &, const StepCtx &);
+  using ObserveVoltageFn = slide::Status (*)(void *, const ConstBatchView &,
+                                             const StepCtx &, std::span<real_t>);
   using StoreStressFn = void (*)(void *, BatchView, real_t);
   using DestroyFn = void (*)(void *);
 
   SpmBatch(void *implementation,
            EvaluateFn evaluate,
+           ObserveVoltageFn observe_voltage,
            StoreStressFn store_stress,
            DestroyFn destroy,
            int nch,
+           real_t capacity_Ah,
+           real_t electrode_area,
            SpmComposition composition,
            SpmPipelineLayout layout,
            StateArena state,
@@ -118,9 +127,12 @@ private:
 
   void *implementation_{};
   EvaluateFn evaluate_{};
+  ObserveVoltageFn observe_voltage_{};
   StoreStressFn store_stress_{};
   DestroyFn destroy_{};
   int nch_{};
+  real_t capacity_Ah_{};
+  real_t electrode_area_{};
   SpmComposition composition_{ SpmComposition::isothermal };
   SpmPipelineLayout layout_{};
   StateArena state_{};
