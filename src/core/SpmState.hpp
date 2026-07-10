@@ -16,6 +16,7 @@ struct SpmStateLayout
   StateSlice temperature{};
   StateSlice sei_thickness{};
   StateSlice lost_lithium{};
+  StateSlice crack_surface{};
   PerDomain<StateSlice> active_fraction{};
   PerDomain<StateSlice> diffusion_coefficient{};
   PerDomain<StateSlice> electrode_thickness{};
@@ -33,6 +34,7 @@ SpmStateLayout declareSpmState(BatchBuilder &builder)
   layout.temperature = builder.declare({ "T", 1, Unit::K });
   layout.sei_thickness = builder.declare({ "delta_sei", 1, Unit::m });
   layout.lost_lithium = builder.declare({ "lost_lithium", 1, Unit::C });
+  layout.crack_surface = builder.declare({ "crack_surface", 1, Unit::m2 });
   domain_value(layout.active_fraction, Domain::neg) = builder.declare({ "active_fraction_neg", 1, Unit::none });
   domain_value(layout.active_fraction, Domain::pos) = builder.declare({ "active_fraction_pos", 1, Unit::none });
   domain_value(layout.diffusion_coefficient, Domain::neg) = builder.declare({ "diffusion_neg", 1, Unit::m2_s });
