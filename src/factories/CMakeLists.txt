@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.31)
 add_library(factories OBJECT)
 
 target_sources(factories
-  PUBLIC
+  PRIVATE
     makeBattery.cpp
+  PUBLIC
     makeBattery.hpp
   )
 

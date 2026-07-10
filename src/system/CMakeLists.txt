@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.31)
 add_library(system OBJECT)
 
 target_sources(system
-  PUBLIC
+  PRIVATE
     Battery.cpp
+  PUBLIC
     Battery.hpp
   )
 

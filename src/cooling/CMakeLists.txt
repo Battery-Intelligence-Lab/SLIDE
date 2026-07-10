@@ -2,12 +2,13 @@ cmake_minimum_required(VERSION 3.31)
 add_library(cooling OBJECT)
 
 target_sources(cooling
-  PUBLIC
+  PRIVATE
     CoolSystem.cpp
     CoolSystem_open.cpp
     CoolSystem_HVAC.cpp
     data_storage/CoolSystemData.cpp
     data_storage/CoolSystem_HVACData.cpp
+  PUBLIC
     CoolSystem.hpp
     CoolSystem_open.hpp
     CoolSystem_HVAC.hpp

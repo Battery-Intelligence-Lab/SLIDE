@@ -1,12 +1,13 @@
 add_library(procedures OBJECT)
 
 target_sources(procedures
-  PUBLIC
+  PRIVATE
   Procedure.cpp
   Cycler.cpp
   determine_OCV.cpp
 #  determine_characterisation.cpp
   #-------------------------
+  PUBLIC
   Procedure.hpp
   Cycler.hpp
   determine_OCV.hpp

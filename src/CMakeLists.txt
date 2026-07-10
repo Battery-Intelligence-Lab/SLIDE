@@ -1,7 +1,22 @@
 add_library(src STATIC)
 
 
-target_include_directories(src PUBLIC .)
+target_include_directories(src
+  PUBLIC
+    .
+    cells
+    cells/Cell_SPM
+    settings
+    types
+    modules
+    cooling
+    power_conversion
+    system
+    procedures
+    factories
+    utility
+    utility/io
+)
 
 add_subdirectory(core) # v4 slide::core — NOT linked into legacy `src` (strangler, PLAN.md §5)
 add_subdirectory(types)
@@ -22,8 +37,9 @@ if (UNIX)
 endif()
 
 target_link_libraries(src
-  PUBLIC
+  PRIVATE
   cells
+  Cell_SPM
   modules
   cooling
   power_conversion
@@ -34,6 +50,7 @@ target_link_libraries(src
   types
   utility
   ${PTHREADS} # -> for WSL
+  PUBLIC
   Boost::boost # -> for odeint
 )
 

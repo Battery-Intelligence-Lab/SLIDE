@@ -2,11 +2,12 @@ cmake_minimum_required(VERSION 3.31)
 add_library(modules OBJECT)
 
 target_sources(modules
-  PUBLIC
+  PRIVATE
     Module_p_impl.cpp
     Module_p.cpp
     Module_s.cpp
     Module.cpp
+  PUBLIC
     Module_p.hpp
     Module_s.hpp
     Module.hpp
