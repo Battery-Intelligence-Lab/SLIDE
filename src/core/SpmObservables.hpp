@@ -24,6 +24,7 @@
 #pragma once
 
 #include "BatchView.hpp"
+#include "CellDesign.hpp"
 
 #include <array>
 #include <cassert>
@@ -34,7 +35,7 @@ namespace slide::core {
 
 /**
  * Batch-shared parameters for the concentration observable of one SPM archetype.
- * Indexed [pos=0, neg=1] to match slide::Domain. Cold-built once (Phase 1: by the test/factory);
+ * Indexed by the explicit v4 Domain (negative first). Cold-built once (by the test/factory);
  * immutable in the hot loop. C/Dout contain the surface and interior Model_SPM output rows;
  * Cc/cc_coeff reconstruct the centre node from those outputs.
  */
@@ -48,16 +49,16 @@ struct SpmConcentrationParams
   real_t T_ref{};      //!< Arrhenius reference temperature [K]
   real_t elec_surf{};  //!< electrode surface area (geo.elec_surf) [m²]
 
-  std::array<std::array<std::array<real_t, NCH>, NCH + 1>, 2> C{};
-  std::array<std::array<real_t, NCH + 1>, 2> Dout{};
+  PerDomain<std::array<std::array<real_t, NCH>, NCH + 1>> C{};
+  PerDomain<std::array<real_t, NCH + 1>> Dout{};
   std::array<real_t, NCH + 1> Cc{}; //!< centre-node derivative map over surface+interior values
   real_t cc_coeff{};
-  std::array<real_t, 2> R{};     //!< particle radius [m]
-  std::array<real_t, 2> D0{};    //!< st.D(dom): diffusion constant at T_ref [m²/s]
-  std::array<real_t, 2> D_T{};   //!< electrode Arrhenius activation for D
-  std::array<real_t, 2> a{};     //!< st.a(dom): effective surface area
-  std::array<real_t, 2> thick{}; //!< st.thick(dom): electrode thickness [m]
-  std::array<int, 2> sgn{};      //!< molar-flux sign: pos=-1, neg=+1
+  PerDomain<real_t> R{};     //!< particle radius [m]
+  PerDomain<real_t> D0{};    //!< st.D(dom): diffusion constant at T_ref [m²/s]
+  PerDomain<real_t> D_T{};   //!< electrode Arrhenius activation for D
+  PerDomain<real_t> a{};     //!< st.a(dom): effective surface area
+  PerDomain<real_t> thick{}; //!< st.thick(dom): electrode thickness [m]
+  PerDomain<int> sgn{};      //!< molar-flux sign: pos=-1, neg=+1
 };
 
 /**
@@ -72,7 +73,7 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
                               const BasicBatchView<const Real> &state,
                               StateSlice zp, StateSlice zn, StateSlice temperature,
                               const BasicStepCtx<Real> &ctx,
-                              std::array<std::span<Real>, 2> concentration)
+                              PerDomain<std::span<Real>> concentration)
 {
   assert(zp.rows == NCH && zn.rows == NCH && temperature.rows == 1);
   const int L = state.n_lanes();
@@ -81,11 +82,14 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
   assert(static_cast<int>(concentration[0].size()) == output_rows * L
          && static_cast<int>(concentration[1].size()) == output_rows * L);
 
-  const std::array<StateSlice, 2> slice{ zp, zn };
+  PerDomain<StateSlice> slice{};
+  domain_value(slice, Domain::pos) = zp;
+  domain_value(slice, Domain::neg) = zn;
   const std::span<const Real> T = state.row(temperature.row_begin);
   using std::exp;
 
-  for (int d = 0; d < 2; ++d) {
+  for (const Domain domain : domains) {
+    const auto d = domain_index(domain);
     const Real D0d = p.D0[d], D_Td = p.D_T[d];
     const Real flux_den = p.a[d] * p.n * p.F * p.thick[d];
     const Real sgnd = static_cast<Real>(p.sgn[d]);

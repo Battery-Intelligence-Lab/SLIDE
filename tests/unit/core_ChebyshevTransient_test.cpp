@@ -43,6 +43,13 @@ struct NchTag
 
 using NchValues = std::tuple<NchTag<5>, NchTag<8>, NchTag<12>>;
 
+constexpr std::size_t core_index(int legacy_domain)
+{
+  return slide::core::domain_index(legacy_domain == slide::pos
+                                     ? slide::core::Domain::pos
+                                     : slide::core::Domain::neg);
+}
+
 double mu_root(int k)
 {
   const auto g = [](double mu) { return std::sin(mu) - mu * std::cos(mu); };
@@ -87,16 +94,17 @@ slide::core::SpmConcentrationParams<NCH> make_params(const slide::Model_SPM<NCH>
     p.Cc[node] = model.Cc(node);
 
   for (int dom = 0; dom < 2; ++dom) {
-    p.R[dom] = (dom == slide::pos) ? model.Rp : model.Rn;
-    p.D0[dom] = diffusivity;
-    p.D_T[dom] = 0.0;
-    p.a[dom] = 1.0;
-    p.thick[dom] = 1.0;
-    p.sgn[dom] = 1;
+    const auto d = core_index(dom);
+    p.R[d] = (dom == slide::pos) ? model.Rp : model.Rn;
+    p.D0[d] = diffusivity;
+    p.D_T[d] = 0.0;
+    p.a[d] = 1.0;
+    p.thick[d] = 1.0;
+    p.sgn[d] = 1;
     for (int node = 0; node < NCH + 1; ++node) {
-      p.Dout[dom][node] = model.D[dom](node);
+      p.Dout[d][node] = model.D[dom](node);
       for (int mode = 0; mode < NCH; ++mode)
-        p.C[dom][node][mode] = model.C[dom](node, mode);
+        p.C[d][node][mode] = model.C[dom](node, mode);
     }
   }
   return p;
@@ -130,7 +138,7 @@ TEMPLATE_LIST_TEST_CASE("Chebyshev constant-flux transient matches analytic sphe
 
   for (const double tau : tau_values) {
     for (int dom = 0; dom < 2; ++dom) {
-      const double radius = params.R[dom];
+      const double radius = params.R[core_index(dom)];
       Eigen::Vector<double, NCH> u;
       for (int node = 0; node < NCH; ++node)
         u(node) = radius * initial_concentration * model.xch(node);
@@ -153,12 +161,12 @@ TEMPLATE_LIST_TEST_CASE("Chebyshev constant-flux transient matches analytic sphe
       std::span<const slide::core::real_t>{ arena.raw() }
     };
     slide::core::computeSpmConcentrations(
-      params, state, zp, zn, temperature, ctx, { std::span<slide::core::real_t>{ cp }, std::span<slide::core::real_t>{ cn } });
+      params, state, zp, zn, temperature, ctx, { std::span<slide::core::real_t>{ cn }, std::span<slide::core::real_t>{ cp } });
 
     const std::array output{ cp, cn };
     double max_relative_error = 0.0;
     for (int dom = 0; dom < 2; ++dom) {
-      const double radius = params.R[dom];
+      const double radius = params.R[core_index(dom)];
       const double scale = flux * radius / diffusivity;
       for (int node = 0; node < NCH + 2; ++node) {
         const double x = (node == 0)         ? 1.0

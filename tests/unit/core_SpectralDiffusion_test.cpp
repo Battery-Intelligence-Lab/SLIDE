@@ -39,10 +39,10 @@
  * @date 2026-07-08
  */
 
-#include "../../src/slide.hpp"                    // legacy Cell_SPM, Model_SPM, settings, sign, Domain
+#include "../../src/slide.hpp" // legacy Cell_SPM, Model_SPM, settings, sign, Domain
 #include "../../src/core/BatchBuilder.hpp"
-#include "../../src/core/SpectralDiffusion.hpp"        // production kernel under test
-#include "../../src/core/SpectralDiffusionLegacy.hpp"  // per-lane oracle (legacy-validated)
+#include "../../src/core/SpectralDiffusion.hpp"       // production kernel under test
+#include "../../src/core/SpectralDiffusionLegacy.hpp" // per-lane oracle (legacy-validated)
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -76,16 +76,20 @@ TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per 
 
   core::DiffusionParams<NCH> p;
   p.T_ref = Tref;
-  p.D_T[pos] = 29000.0;      // Cell_SPM.hpp:46
-  p.D_T[neg] = 35000.0 / 5.0; // Cell_SPM.hpp:55
+  const auto core_index = [](slide::Domain domain) {
+    return core::domain_index(domain == pos ? core::Domain::pos : core::Domain::neg);
+  };
+  p.D_T[core_index(pos)] = 29000.0;       // Cell_SPM.hpp:46
+  p.D_T[core_index(neg)] = 35000.0 / 5.0; // Cell_SPM.hpp:55
   for (auto dom : { pos, neg }) {
-    p.D0[dom] = s0.D(dom);
-    p.a[dom] = s0.a(dom);
-    p.thick[dom] = s0.thick(dom);
-    p.sgn[dom] = sign(dom);
+    const auto d = core_index(dom);
+    p.D0[d] = s0.D(dom);
+    p.a[d] = s0.a(dom);
+    p.thick[d] = s0.thick(dom);
+    p.sgn[d] = sign(dom);
     for (int k = 0; k < NCH; ++k) {
-      p.A[dom][k] = M->A[dom](k);
-      p.B[dom][k] = M->B[dom](k);
+      p.A[d][k] = M->A[dom](k);
+      p.B[d][k] = M->B[dom](k);
     }
   }
 
@@ -94,7 +98,7 @@ TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per 
   // ---------------------------------------------------------------------------------------
   std::array<double, L> Tl{}, iappl{};
   for (int c = 0; c < L; ++c) {
-    Tl[c] = s0.T() + 2.0 * c;               // distinct temperatures (298.15 … +14 K)
+    Tl[c] = s0.T() + 2.0 * c;                // distinct temperatures (298.15 … +14 K)
     iappl[c] = (16.0 + 1.0 * c) / elec_surf; // distinct current densities
   }
 
@@ -120,7 +124,8 @@ TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per 
     core::BatchBuilder rb;
     const core::StateSlice rzp = rb.declare({ "zp", NCH, core::Unit::none });
     const core::StateSlice rzn = rb.declare({ "zn", NCH, core::Unit::none });
-    (void)rzp; (void)rzn; // same layout as the production batch (zp then zn)
+    (void)rzp;
+    (void)rzn; // same layout as the production batch (zp then zn)
     refArena.push_back(rb.build(1));
     for (int k = 0; k < NCH; ++k) {
       refArena[c].at(zp, k, 0) = arena.at(zp, k, c);
@@ -130,16 +135,17 @@ TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per 
     rk.T_ref = Tref;
     rk.T = Tl[c];
     rk.i_app = iappl[c];
-    rk.D_T[pos] = p.D_T[pos];
-    rk.D_T[neg] = p.D_T[neg];
+    rk.D_T[pos] = p.D_T[core_index(pos)];
+    rk.D_T[neg] = p.D_T[core_index(neg)];
     for (auto dom : { pos, neg }) {
-      rk.D0[dom] = p.D0[dom];
-      rk.a[dom] = p.a[dom];
-      rk.thick[dom] = p.thick[dom];
-      rk.sgn[dom] = p.sgn[dom];
+      const auto d = core_index(dom);
+      rk.D0[dom] = p.D0[d];
+      rk.a[dom] = p.a[d];
+      rk.thick[dom] = p.thick[d];
+      rk.sgn[dom] = p.sgn[d];
       for (int k = 0; k < NCH; ++k) {
-        rk.A[dom][k] = p.A[dom][k];
-        rk.B[dom][k] = p.B[dom][k];
+        rk.A[dom][k] = p.A[d][k];
+        rk.B[dom][k] = p.B[d][k];
       }
     }
   }
@@ -182,15 +188,18 @@ TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per 
   const double lane_spread = zmax - zmin;
 
   std::printf("SpectralDiffusion: max_abs(prod-legacyShaped)=%.17g  max_rel=%.17g  lane_spread=%.17g\n",
-              max_abs, max_rel, lane_spread);
+              max_abs,
+              max_rel,
+              lane_spread);
 
   REQUIRE(all_finite);
-  REQUIRE(lane_spread > 0.0);   // non-degeneracy: the batch is genuinely heterogeneous
+  REQUIRE(lane_spread > 0.0); // non-degeneracy: the batch is genuinely heterogeneous
 #ifndef NDEBUG
-  REQUIRE(max_abs == 0.0);      // H_math (Debug arbiter): vectorised sweep == legacy math exactly
+  REQUIRE(max_abs == 0.0); // H_math (Debug arbiter): vectorised sweep == legacy math exactly
 #else
-  std::printf("SpectralDiffusion: Release/-O3 -> exact bit-identity not expected for a vectorised "
-              "kernel; decisive rel band is the gate (see header, §7 Q8)\n");
+  std::printf(
+    "SpectralDiffusion: Release/-O3 -> exact bit-identity not expected for a vectorised "
+    "kernel; decisive rel band is the gate (see header, §7 Q8)\n");
 #endif
-  REQUIRE(max_rel <= 1e-12);    // Q8 decisive band for production vectorised kernels (both configs)
+  REQUIRE(max_rel <= 1e-12); // Q8 decisive band for production vectorised kernels (both configs)
 }

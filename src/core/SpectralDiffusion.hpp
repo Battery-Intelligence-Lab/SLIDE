@@ -37,6 +37,7 @@
 
 #pragma once
 
+#include "CellDesign.hpp"
 #include "StateArena.hpp"
 
 #include <array>
@@ -48,23 +49,24 @@
 namespace slide::core {
 
 //!< Batch-shared, cold-built, immutable-in-hot-loop material/geometry + state-space model
-//!< for one diffusion archetype. Indexed [pos=0, neg=1] to match slide::Domain.
+//!< for one diffusion archetype. Indexed by the explicit v4 Domain (negative first).
 //!< Populated once at build() from a CellDesign + Model_SPM (Phase 1: by the test/factory).
 template <int NCH>
-struct DiffusionParams {
+struct DiffusionParams
+{
   //!< Physical constants — mirror src/settings/constants.hpp PhyConst (F=96487, Rg=8.314, n=1).
-  real_t F{ 96487.0 };  //!< Faraday constant           [C mol⁻¹]
-  real_t Rg{ 8.314 };   //!< ideal gas constant         [J mol⁻¹ K⁻¹]
-  real_t n{ 1.0 };      //!< electrons in main reaction  [-]
-  real_t T_ref{};       //!< Arrhenius reference temperature [K]
+  real_t F{ 96487.0 }; //!< Faraday constant           [C mol⁻¹]
+  real_t Rg{ 8.314 };  //!< ideal gas constant         [J mol⁻¹ K⁻¹]
+  real_t n{ 1.0 };     //!< electrons in main reaction  [-]
+  real_t T_ref{};      //!< Arrhenius reference temperature [K]
 
-  std::array<std::array<real_t, NCH>, 2> A{}; //!< state-space diagonal A[dom](k) (Model_SPM)
-  std::array<std::array<real_t, NCH>, 2> B{}; //!< state-space input   B[dom](k) (Model_SPM)
-  std::array<real_t, 2> D0{};    //!< diffusion constant at T_ref, per domain [m²/s]
-  std::array<real_t, 2> D_T{};   //!< Arrhenius activation for D, per domain
-  std::array<real_t, 2> a{};     //!< effective surface area, per domain
-  std::array<real_t, 2> thick{}; //!< electrode thickness, per domain [m]
-  std::array<int, 2> sgn{};      //!< molar-flux sign: pos=-1, neg=+1 (enum_definitions.hpp:65)
+  PerDomain<std::array<real_t, NCH>> A{}; //!< state-space diagonal A[dom](k) (Model_SPM)
+  PerDomain<std::array<real_t, NCH>> B{}; //!< state-space input B[dom](k) (Model_SPM)
+  PerDomain<real_t> D0{};                 //!< diffusion constant at T_ref [m²/s]
+  PerDomain<real_t> D_T{};                //!< Arrhenius activation for D
+  PerDomain<real_t> a{};                  //!< effective surface area
+  PerDomain<real_t> thick{};              //!< electrode thickness [m]
+  PerDomain<int> sgn{};                   //!< molar-flux sign: pos=-1, neg=+1
 };
 
 /**
@@ -108,12 +110,15 @@ public:
     assert(zp.rows == NCH && zn.rows == NCH);
     assert(static_cast<int>(T.size()) == n_lanes_ && static_cast<int>(i_app.size()) == n_lanes_);
     assert(arena.n_lanes() == n_lanes_);
-    const std::array<StateSlice, 2> slice{ zp, zn };
+    PerDomain<StateSlice> slice{};
+    domain_value(slice, Domain::pos) = zp;
+    domain_value(slice, Domain::neg) = zn;
     const int L = n_lanes_;
 
     //!< Phase A — per-lane effective diffusion coefficient and molar flux, per domain.
     //!< These are mode-independent, so hoisted out of the k-loop (one exp per lane, not per mode).
-    for (int d = 0; d < 2; ++d) {
+    for (const Domain domain : domains) {
+      const auto d = domain_index(domain);
       real_t *De = D_eff_.data() + static_cast<std::size_t>(d) * L;
       real_t *fl = flux_.data() + static_cast<std::size_t>(d) * L;
       const real_t D0d = p_.D0[d], D_Td = p_.D_T[d];
@@ -127,7 +132,8 @@ public:
     }
 
     //!< Phase B — modal forward Euler, one state row (all lanes) at a time (SIMD sweep over c).
-    for (int d = 0; d < 2; ++d) {
+    for (const Domain domain : domains) {
+      const auto d = domain_index(domain);
       const real_t *De = D_eff_.data() + static_cast<std::size_t>(d) * L;
       const real_t *fl = flux_.data() + static_cast<std::size_t>(d) * L;
       for (int k = 0; k < NCH; ++k) {

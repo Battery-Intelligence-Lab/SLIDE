@@ -29,6 +29,11 @@ using namespace slide;
 
 namespace {
 
+constexpr std::size_t coreIndex(slide::Domain domain)
+{
+  return core::domain_index(domain == pos ? core::Domain::pos : core::Domain::neg);
+}
+
 template <int NCH>
 core::SpmConcentrationParams<NCH> captureParams(Cell_SPM &cell, Model_SPM<NCH> &model,
                                                 double Tref)
@@ -37,18 +42,19 @@ core::SpmConcentrationParams<NCH> captureParams(Cell_SPM &cell, Model_SPM<NCH> &
   core::SpmConcentrationParams<NCH> p;
   p.T_ref = Tref;
   p.elec_surf = 0.1 * 0.2 * 31; // Geometry_SPM::Acell * 31; protected in legacy
-  p.D_T[pos] = 29000.0;
-  p.D_T[neg] = 35000.0 / 5.0;
+  p.D_T[coreIndex(pos)] = 29000.0;
+  p.D_T[coreIndex(neg)] = 35000.0 / 5.0;
   for (auto dom : { pos, neg }) {
-    p.D0[dom] = state.D(dom);
-    p.a[dom] = state.a(dom);
-    p.thick[dom] = state.thick(dom);
-    p.sgn[dom] = sign(dom);
-    p.R[dom] = (dom == pos) ? model.Rp : model.Rn;
+    const auto d = coreIndex(dom);
+    p.D0[d] = state.D(dom);
+    p.a[d] = state.a(dom);
+    p.thick[d] = state.thick(dom);
+    p.sgn[d] = sign(dom);
+    p.R[d] = (dom == pos) ? model.Rp : model.Rn;
     for (int node = 0; node < NCH + 1; ++node) {
-      p.Dout[dom][node] = model.D[dom](node);
+      p.Dout[d][node] = model.D[dom](node);
       for (int mode = 0; mode < NCH; ++mode)
-        p.C[dom][node][mode] = model.C[dom](node, mode);
+        p.C[d][node][mode] = model.C[dom](node, mode);
     }
   }
   for (int node = 0; node < NCH + 1; ++node)
@@ -90,7 +96,7 @@ TEST_CASE("SPM concentration observable reproduces legacy Cell_SPM::getC", "[cor
   const core::ConstBatchView state{ core::BatchShape::from(arena),
                                     std::span<const core::real_t>{ arena.raw() } };
   const core::StepCtx ctx{ .time = 0.0, .dt = 0.0, .i_app = iapp };
-  core::computeSpmConcentrations(params, state, zp, zn, temperature, ctx, { std::span<core::real_t>{ cp }, std::span<core::real_t>{ cn } });
+  core::computeSpmConcentrations(params, state, zp, zn, temperature, ctx, { std::span<core::real_t>{ cn }, std::span<core::real_t>{ cp } });
 
   const std::array output{ cp, cn };
   double max_rel = 0.0;
@@ -137,7 +143,8 @@ TEST_CASE("SPM concentration observable uniform round trip on heterogeneous lane
       double uniform_mode = 0.0;
       for (int node = 0; node < NCH; ++node)
         uniform_mode += model->V[dom](model->zero, node)
-                        * (params.R[dom] * expected[dom][lane] * model->xch(node));
+                        * (params.R[coreIndex(static_cast<slide::Domain>(dom))]
+                           * expected[dom][lane] * model->xch(node));
       for (int mode = 0; mode < NCH; ++mode)
         arena.at(slices[dom], mode, lane) = (mode == model->zero) ? uniform_mode : 0.0;
     }
@@ -149,7 +156,7 @@ TEST_CASE("SPM concentration observable uniform round trip on heterogeneous lane
   const core::ConstBatchView state{ core::BatchShape::from(arena),
                                     std::span<const core::real_t>{ arena.raw() } };
   const core::StepCtx ctx{ .time = 0.0, .dt = 0.0, .i_app = iapp };
-  core::computeSpmConcentrations(params, state, zp, zn, temperature, ctx, { std::span<core::real_t>{ cp }, std::span<core::real_t>{ cn } });
+  core::computeSpmConcentrations(params, state, zp, zn, temperature, ctx, { std::span<core::real_t>{ cn }, std::span<core::real_t>{ cp } });
 
   const std::array output{ cp, cn };
   double max_rel = 0.0;
