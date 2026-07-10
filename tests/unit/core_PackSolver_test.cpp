@@ -4,6 +4,8 @@
  */
 
 #include "../../src/core/PackSolver.hpp"
+#include "../../src/core/EulerLegacy.hpp"
+#include "../support/KokamSpmFixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -153,4 +155,70 @@ TEST_CASE("Thevenin system dispatches once per archetype batch", "[core][pack][t
   REQUIRE(solver.solve(1.0) == Status::Success);
   REQUIRE(a.calls == solver.diagnostics().iterations);
   REQUIRE(b.calls == solver.diagnostics().iterations);
+}
+
+TEST_CASE("SPM batches expose a nonlinear Thevenin tangent to the pack solver",
+          "[core][pack][spm][chord]")
+{
+  constexpr int lanes = 4;
+  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, { .nch = 5 }, lanes, batch) == Status::Success);
+  auto collector = batch.state().row(batch.layout().spm.current_collector_resistance.row_begin);
+  collector[0] *= 0.8;
+  collector[1] *= 1.0;
+  collector[2] *= 1.2;
+  collector[3] *= 1.4;
+
+  const std::array<double, lanes> probe_current{ 8.0, 12.0, 16.0, 20.0 };
+  std::array<double, lanes> intercept{}, resistance{}, voltage{};
+  REQUIRE(batch.linearizeThevenin(probe_current, intercept, resistance)
+          == Status::Success);
+  std::array<double, lanes> density{};
+  for (int lane = 0; lane < lanes; ++lane)
+    density[static_cast<std::size_t>(lane)] = probe_current[static_cast<std::size_t>(lane)]
+                                              / batch.electrode_area();
+  REQUIRE(batch.terminalVoltage({ .time = 0.0, .dt = 0.0, .i_app = density }, voltage)
+          == Status::Success);
+  for (int lane = 0; lane < lanes; ++lane) {
+    const auto i = static_cast<std::size_t>(lane);
+    REQUIRE(resistance[i] > 0.0);
+    REQUIRE(std::abs(intercept[i] - resistance[i] * probe_current[i] - voltage[i])
+            <= 1e-14);
+  }
+
+  const auto topology = compile(core::parallel(
+    lanes, core::cell({ .archetype = "spm" })));
+  const std::array<core::TheveninBatchView, 1> batches{
+    core::TheveninBatchView::bind(batch, lanes)
+  };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, batches) == Status::Success);
+  REQUIRE(solver.solve(64.0, core::PackSolveMode::sparse_newton, 1e-10, 8)
+          == Status::Success);
+  REQUIRE(solver.diagnostics().iterations <= 8);
+
+  double sum{};
+  for (int lane = 0; lane < lanes; ++lane) {
+    const auto i = static_cast<std::size_t>(lane);
+    density[i] = solver.solution().cell_current[i] / batch.electrode_area();
+    sum += solver.solution().cell_current[i];
+  }
+  REQUIRE(batch.terminalVoltage({ .time = 0.0, .dt = 0.0, .i_app = density }, voltage)
+          == Status::Success);
+  REQUIRE(std::abs(sum - 64.0) <= 1e-10);
+  for (const auto cell_voltage : voltage)
+    REQUIRE(std::abs(cell_voltage - solver.solution().terminal_voltage) <= 1e-10);
+
+  const int factorization_before = solver.workspace().numericFactorizations();
+  core::EulerLegacy stepper{ batch };
+  for (int step = 0; step < 100; ++step) {
+    REQUIRE(solver.solve(64.0) == Status::Success);
+    for (int lane = 0; lane < lanes; ++lane)
+      density[static_cast<std::size_t>(lane)] = solver.solution().cell_current[static_cast<std::size_t>(lane)]
+                                                / batch.electrode_area();
+    REQUIRE(stepper.step(batch, density, static_cast<double>(step), 1.0)
+            == Status::Success);
+  }
+  REQUIRE(solver.workspace().numericFactorizations() - factorization_before <= 10);
 }

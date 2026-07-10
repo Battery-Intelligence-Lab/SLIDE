@@ -136,6 +136,11 @@ public:
       surface_crack_{ n_lanes }, lam_{ n_lanes },
       transport_cache_{ n_lanes },
       single_observables_{ 1 }, single_transport_cache_{ 1 },
+      thevenin_current_density_(static_cast<std::size_t>(n_lanes)),
+      thevenin_voltage_(static_cast<std::size_t>(n_lanes)),
+      thevenin_voltage_plus_(static_cast<std::size_t>(n_lanes)),
+      thevenin_voltage_minus_(static_cast<std::size_t>(n_lanes)),
+      thevenin_step_(static_cast<std::size_t>(n_lanes)),
       plating_current_(WithLithiumPlating ? static_cast<std::size_t>(n_lanes) : 0)
   {
     assert(n_lanes > 0);
@@ -388,6 +393,63 @@ public:
     return slide::Status::Success;
   }
 
+  /** Frozen-state tangent V(I) = intercept - resistance*I for the pack solver. */
+  [[nodiscard]] slide::Status linearizeThevenin(
+    const ConstBatchView &state,
+    std::span<const real_t> current,
+    std::span<real_t> intercept_ocv,
+    std::span<real_t> resistance)
+  {
+    if (state.n_lanes() != n_lanes_
+        || static_cast<int>(current.size()) != n_lanes_
+        || intercept_ocv.size() != current.size()
+        || resistance.size() != current.size()
+        || !(is_finite(params_.electrical.electrode_area)
+             && params_.electrical.electrode_area > 0.0))
+      return slide::Status::Invalid_parameters;
+
+    constexpr real_t relative_step = 6.0554544523933429e-6; // cbrt(epsilon)
+    for (int lane = 0; lane < n_lanes_; ++lane) {
+      const auto i = static_cast<std::size_t>(lane);
+      if (!is_finite(current[i]))
+        return slide::Status::Invalid_parameters;
+      thevenin_step_[i] = relative_step * std::max(real_t{ 1 }, std::abs(current[i]));
+      thevenin_current_density_[i] = current[i] / params_.electrical.electrode_area;
+    }
+    StepCtx ctx{ .time = 0.0, .dt = 0.0, .i_app = thevenin_current_density_ };
+    auto status = observeTerminalVoltage(state, ctx, thevenin_voltage_);
+    if (status != slide::Status::Success)
+      return status;
+    for (int lane = 0; lane < n_lanes_; ++lane) {
+      const auto i = static_cast<std::size_t>(lane);
+      thevenin_current_density_[i] = (current[i] + thevenin_step_[i])
+                                     / params_.electrical.electrode_area;
+    }
+    status = observeTerminalVoltage(state, ctx, thevenin_voltage_plus_);
+    if (status != slide::Status::Success)
+      return status;
+    for (int lane = 0; lane < n_lanes_; ++lane) {
+      const auto i = static_cast<std::size_t>(lane);
+      thevenin_current_density_[i] = (current[i] - thevenin_step_[i])
+                                     / params_.electrical.electrode_area;
+    }
+    status = observeTerminalVoltage(state, ctx, thevenin_voltage_minus_);
+    if (status != slide::Status::Success)
+      return status;
+    for (int lane = 0; lane < n_lanes_; ++lane) {
+      const auto i = static_cast<std::size_t>(lane);
+      const real_t tangent = (thevenin_voltage_plus_[i] - thevenin_voltage_minus_[i])
+                             / (2.0 * thevenin_step_[i]);
+      const real_t r = -tangent;
+      const real_t intercept = thevenin_voltage_[i] + r * current[i];
+      if (!is_finite(r) || !(r > 0.0) || !is_finite(intercept))
+        return slide::Status::Invalid_states;
+      resistance[i] = r;
+      intercept_ocv[i] = intercept;
+    }
+    return slide::Status::Success;
+  }
+
   /** Store accepted-step stress values in the checkpointed algebraic history rows. */
   void storeStressHistory(BatchView state, real_t interval)
   {
@@ -442,6 +504,11 @@ private:
   SpmTransportCache transport_cache_;
   SpmObservableScratch<NCH> single_observables_;
   SpmTransportCache single_transport_cache_;
+  std::vector<real_t> thevenin_current_density_{};
+  std::vector<real_t> thevenin_voltage_{};
+  std::vector<real_t> thevenin_voltage_plus_{};
+  std::vector<real_t> thevenin_voltage_minus_{};
+  std::vector<real_t> thevenin_step_{};
   std::vector<real_t> plating_current_{};
 };
 

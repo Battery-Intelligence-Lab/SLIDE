@@ -18,6 +18,7 @@ namespace slide::core {
 SpmBatch::SpmBatch(void *implementation,
                    EvaluateFn evaluate,
                    ObserveVoltageFn observe_voltage,
+                   LinearizeTheveninFn linearize_thevenin,
                    StoreStressFn store_stress,
                    FusedEulerFn fused_euler,
                    DestroyFn destroy,
@@ -32,6 +33,7 @@ SpmBatch::SpmBatch(void *implementation,
                      roles)
   : implementation_{ implementation }, evaluate_{ evaluate },
     observe_voltage_{ observe_voltage },
+    linearize_thevenin_{ linearize_thevenin },
     store_stress_{ store_stress }, fused_euler_{ fused_euler }, destroy_{ destroy }, nch_{ nch },
     capacity_Ah_{ capacity_Ah }, electrode_area_{ electrode_area },
     composition_{ composition }, layout_{ layout }, state_{ std::move(state) },
@@ -47,6 +49,7 @@ SpmBatch::SpmBatch(SpmBatch &&other) noexcept
   : implementation_{ std::exchange(other.implementation_, nullptr) },
     evaluate_{ std::exchange(other.evaluate_, nullptr) },
     observe_voltage_{ std::exchange(other.observe_voltage_, nullptr) },
+    linearize_thevenin_{ std::exchange(other.linearize_thevenin_, nullptr) },
     store_stress_{ std::exchange(other.store_stress_, nullptr) },
     fused_euler_{ std::exchange(other.fused_euler_, nullptr) },
     destroy_{ std::exchange(other.destroy_, nullptr) },
@@ -65,6 +68,7 @@ SpmBatch &SpmBatch::operator=(SpmBatch &&other) noexcept
     implementation_ = std::exchange(other.implementation_, nullptr);
     evaluate_ = std::exchange(other.evaluate_, nullptr);
     observe_voltage_ = std::exchange(other.observe_voltage_, nullptr);
+    linearize_thevenin_ = std::exchange(other.linearize_thevenin_, nullptr);
     store_stress_ = std::exchange(other.store_stress_, nullptr);
     fused_euler_ = std::exchange(other.fused_euler_, nullptr);
     destroy_ = std::exchange(other.destroy_, nullptr);
@@ -87,6 +91,7 @@ void SpmBatch::reset() noexcept
   implementation_ = nullptr;
   evaluate_ = nullptr;
   observe_voltage_ = nullptr;
+  linearize_thevenin_ = nullptr;
   store_stress_ = nullptr;
   fused_euler_ = nullptr;
   destroy_ = nullptr;
@@ -142,6 +147,23 @@ slide::Status SpmBatch::terminalVoltage(const StepCtx &ctx,
   return observe_voltage_(implementation_, state_view, ctx, output);
 }
 
+slide::Status SpmBatch::linearizeThevenin(
+  std::span<const real_t> current,
+  std::span<real_t>
+    intercept_ocv,
+  std::span<real_t>
+    resistance)
+{
+  if (!valid() || linearize_thevenin_ == nullptr
+      || static_cast<int>(current.size()) != n_lanes()
+      || intercept_ocv.size() != current.size()
+      || resistance.size() != current.size())
+    return slide::Status::Invalid_parameters;
+  const ConstBatchView state_view{ BatchShape::from(state_),
+                                   std::span<const real_t>{ state_.raw() } };
+  return linearize_thevenin_(implementation_, state_view, current, intercept_ocv, resistance);
+}
+
 slide::Status SpmBatch::storeStressHistory(real_t interval)
 {
   if (!valid() || !is_finite(interval) || !(interval > 0.0))
@@ -180,6 +202,10 @@ struct SpmBatchFactoryAccess
              [](void *object, const ConstBatchView &state_view, const StepCtx &ctx, std::span<real_t> output) {
                return static_cast<Concrete *>(object)->observeTerminalVoltage(
                  state_view, ctx, output);
+             },
+             [](void *object, const ConstBatchView &state_view, std::span<const real_t> current, std::span<real_t> intercept_ocv, std::span<real_t> resistance) {
+               return static_cast<Concrete *>(object)->linearizeThevenin(
+                 state_view, current, intercept_ocv, resistance);
              },
              [](void *object, BatchView state_view, real_t interval) {
                static_cast<Concrete *>(object)->storeStressHistory(state_view, interval);

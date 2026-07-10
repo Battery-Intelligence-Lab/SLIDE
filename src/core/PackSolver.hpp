@@ -74,6 +74,9 @@ struct PackSolveDiagnostics
   int iterations{};
   int numeric_factorizations{};
   int symbolic_factorizations{};
+  int jacobian_refreshes{};
+  int source_steps{};
+  real_t residual_norm{};
 };
 
 struct PackSolution
@@ -130,7 +133,15 @@ public:
   const SolverWorkspace &workspace() const { return workspace_; }
 
 private:
-  [[nodiscard]] slide::Status solveSparse(real_t applied_current);
+  [[nodiscard]] slide::Status solveImpl(real_t applied_current,
+                                        PackSolveMode mode,
+                                        real_t current_tolerance,
+                                        int max_iterations,
+                                        bool allow_source_stepping);
+  [[nodiscard]] slide::Status solveSparse(real_t applied_current,
+                                          real_t previous_residual,
+                                          int iteration,
+                                          int consecutive_divergence);
   [[nodiscard]] slide::Status solveLadder(real_t applied_current);
 
   CompiledPackTopology topology_{};
@@ -144,7 +155,10 @@ private:
   std::vector<real_t> resistance_{};
   std::vector<real_t> candidate_node_voltage_{};
   std::vector<real_t> layer_voltage_{};
+  std::vector<real_t> rollback_cell_current_{};
+  std::vector<real_t> rollback_node_voltage_{};
   real_t candidate_terminal_voltage_{};
+  real_t residual_norm_{};
   bool configured_{};
   bool has_solution_{};
 };

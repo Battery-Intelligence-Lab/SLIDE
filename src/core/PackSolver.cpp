@@ -131,7 +131,7 @@ slide::Status SolverWorkspace::configure(const CompiledElectricalNetlist &netlis
   candidate->rhs.resize(unknowns);
   candidate->unknown_voltage.resize(unknowns);
   impl_ = std::move(candidate);
-  factorized_resistance_.assign(cell_count, std::numeric_limits<real_t>::quiet_NaN());
+  factorized_resistance_.assign(cell_count, 0.0);
   valid_ = false;
   age_ = 0;
   numeric_factorizations_ = 0;
@@ -164,6 +164,8 @@ slide::Status PackSolver::configure(const CompiledPackTopology &topology,
   ocv_.assign(cells, 0.0);
   resistance_.assign(cells, 0.0);
   candidate_node_voltage_.assign(nodes, 0.0);
+  rollback_cell_current_.assign(cells, 0.0);
+  rollback_node_voltage_.assign(nodes, 0.0);
   layer_voltage_.assign(topology.electrical.ladder_offsets.empty()
                           ? 0
                           : topology.electrical.ladder_offsets.size() - 1,
@@ -177,6 +179,13 @@ slide::Status PackSolver::configure(const CompiledPackTopology &topology,
 slide::Status PackSolver::solve(real_t applied_current, PackSolveMode mode,
                                 real_t current_tolerance, int max_iterations)
 {
+  return solveImpl(applied_current, mode, current_tolerance, max_iterations, true);
+}
+
+slide::Status PackSolver::solveImpl(real_t applied_current, PackSolveMode mode,
+                                    real_t current_tolerance, int max_iterations,
+                                    bool allow_source_stepping)
+{
   if (!configured_ || !is_finite(applied_current) || !(current_tolerance > 0.0)
       || !is_finite(current_tolerance) || max_iterations <= 0)
     return slide::Status::Invalid_parameters;
@@ -186,17 +195,38 @@ slide::Status PackSolver::solve(real_t applied_current, PackSolveMode mode,
     std::copy(solution_.cell_current.begin(), solution_.cell_current.end(), current_guess_.begin());
   else
     std::fill(current_guess_.begin(), current_guess_.end(), 0.0);
+  if (has_solution_)
+    std::copy(solution_.node_voltage.begin(), solution_.node_voltage.end(), candidate_node_voltage_.begin());
+  else
+    std::fill(candidate_node_voltage_.begin(), candidate_node_voltage_.end(), 0.0);
 
   diagnostics_.iterations = 0;
+  diagnostics_.jacobian_refreshes = 0;
+  diagnostics_.source_steps = 0;
+  real_t previous_residual = std::numeric_limits<real_t>::max();
+  int consecutive_divergence{};
+  const int factorization_at_entry = workspace_.numericFactorizations();
   for (int iteration = 0; iteration < max_iterations; ++iteration) {
     auto status = thevenin_.linearize(current_guess_, ocv_, resistance_);
     if (status != slide::Status::Success)
       return status;
-    status = mode == PackSolveMode::sparse_newton ? solveSparse(applied_current)
+    status = mode == PackSolveMode::sparse_newton ? solveSparse(applied_current,
+                                                                previous_residual,
+                                                                iteration,
+                                                                consecutive_divergence)
                                                   : solveLadder(applied_current);
     if (status != slide::Status::Success)
       return status;
     ++diagnostics_.iterations;
+    if (mode == PackSolveMode::sparse_newton) {
+      if (is_finite(previous_residual) && previous_residual > 0.0
+          && residual_norm_ >= previous_residual)
+        ++consecutive_divergence;
+      else
+        consecutive_divergence = 0;
+      previous_residual = residual_norm_;
+      diagnostics_.residual_norm = residual_norm_;
+    }
     real_t max_change{};
     for (std::size_t cell = 0; cell < current_guess_.size(); ++cell)
       max_change = std::max(max_change,
@@ -207,21 +237,80 @@ slide::Status PackSolver::solve(real_t applied_current, PackSolveMode mode,
       solution_.node_voltage = candidate_node_voltage_;
       solution_.terminal_voltage = candidate_terminal_voltage_;
       has_solution_ = true;
+      if (workspace_.numericFactorizations() == factorization_at_entry)
+        ++workspace_.age_;
       diagnostics_.numeric_factorizations = workspace_.numericFactorizations();
       diagnostics_.symbolic_factorizations = workspace_.symbolicFactorizations();
       return slide::Status::Success;
     }
   }
   workspace_.invalidate();
+  if (allow_source_stepping && applied_current != 0.0) {
+    const bool rollback_has_solution = has_solution_;
+    std::copy(solution_.cell_current.begin(), solution_.cell_current.end(), rollback_cell_current_.begin());
+    std::copy(solution_.node_voltage.begin(), solution_.node_voltage.end(), rollback_node_voltage_.begin());
+    const real_t rollback_terminal_voltage = solution_.terminal_voltage;
+    has_solution_ = false;
+
+    constexpr int source_steps = 8;
+    auto status = solveImpl(0.0, mode, current_tolerance, max_iterations, false);
+    for (int step = 1; status == slide::Status::Success && step <= source_steps; ++step)
+      status = solveImpl(applied_current * static_cast<real_t>(step)
+                           / static_cast<real_t>(source_steps),
+                         mode,
+                         current_tolerance,
+                         max_iterations,
+                         false);
+    if (status == slide::Status::Success) {
+      diagnostics_.source_steps = source_steps;
+      return status;
+    }
+
+    std::copy(rollback_cell_current_.begin(), rollback_cell_current_.end(), solution_.cell_current.begin());
+    std::copy(rollback_node_voltage_.begin(), rollback_node_voltage_.end(), solution_.node_voltage.begin());
+    solution_.terminal_voltage = rollback_terminal_voltage;
+    has_solution_ = rollback_has_solution;
+    workspace_.invalidate();
+  }
   return slide::Status::Numerical_failure;
 }
 
-slide::Status PackSolver::solveSparse(real_t applied_current)
+slide::Status PackSolver::solveSparse(real_t applied_current,
+                                      real_t previous_residual,
+                                      int iteration,
+                                      int consecutive_divergence)
 {
   auto &impl = *workspace_.impl_;
+  impl.rhs.setZero();
+  auto addResidual = [&](std::uint32_t node, real_t value) {
+    const int unknown = impl.node_to_unknown[node];
+    if (unknown >= 0)
+      impl.rhs[unknown] += value;
+  };
+  for (const auto &branch : topology_.electrical.branches) {
+    const real_t voltage = candidate_node_voltage_[branch.node_positive]
+                           - candidate_node_voltage_[branch.node_negative];
+    const real_t branch_current = branch.kind == ElectricalBranchKind::cell
+                                    ? (voltage - ocv_[branch.cell])
+                                        / resistance_[branch.cell]
+                                    : voltage / branch.resistance;
+    addResidual(branch.node_positive, branch_current);
+    addResidual(branch.node_negative, -branch_current);
+  }
+  addResidual(topology_.electrical.terminal_positive, applied_current);
+  addResidual(topology_.electrical.terminal_negative, -applied_current);
+  residual_norm_ = impl.rhs.lpNorm<Eigen::Infinity>();
+  if (!is_finite(residual_norm_))
+    return slide::Status::Invalid_states;
+
+  const real_t contraction = is_finite(previous_residual) && previous_residual > 0.0
+                               ? residual_norm_ / previous_residual
+                               : 0.0;
+  const bool refresh_requested = contraction > 0.5 || iteration > 4
+                                 || consecutive_divergence >= 2;
   const bool same_resistance = workspace_.valid_
                                && std::equal(resistance_.begin(), resistance_.end(), workspace_.factorized_resistance_.begin());
-  if (!same_resistance) {
+  if (!workspace_.valid_ || (refresh_requested && !same_resistance)) {
     std::fill(impl.matrix.valuePtr(),
               impl.matrix.valuePtr() + impl.matrix.nonZeros(),
               0.0);
@@ -254,33 +343,20 @@ slide::Status PackSolver::solveSparse(real_t applied_current)
     workspace_.valid_ = true;
     workspace_.age_ = 0;
     ++workspace_.numeric_factorizations_;
-  } else {
-    ++workspace_.age_;
+    if (refresh_requested)
+      ++diagnostics_.jacobian_refreshes;
   }
 
-  impl.rhs.setZero();
-  auto addRhs = [&](std::uint32_t node, real_t value) {
-    const int unknown = impl.node_to_unknown[node];
-    if (unknown >= 0)
-      impl.rhs[unknown] += value;
-  };
-  for (const auto &branch : topology_.electrical.branches)
-    if (branch.kind == ElectricalBranchKind::cell) {
-      const real_t source = ocv_[branch.cell] / resistance_[branch.cell];
-      addRhs(branch.node_positive, source);
-      addRhs(branch.node_negative, -source);
-    }
-  addRhs(topology_.electrical.terminal_positive, -applied_current);
-  addRhs(topology_.electrical.terminal_negative, applied_current);
+  impl.rhs *= -1.0;
   impl.unknown_voltage = impl.factorization.solve(impl.rhs);
   if (impl.factorization.info() != Eigen::Success || !impl.unknown_voltage.allFinite())
     return slide::Status::Numerical_failure;
 
-  std::fill(candidate_node_voltage_.begin(), candidate_node_voltage_.end(), 0.0);
+  real_t damping = 1.0;
   for (std::uint32_t node = 0; node < topology_.electrical.node_count; ++node) {
     const int unknown = impl.node_to_unknown[node];
     if (unknown >= 0)
-      candidate_node_voltage_[node] = impl.unknown_voltage[unknown];
+      candidate_node_voltage_[node] += impl.unknown_voltage[unknown];
   }
   for (const auto &branch : topology_.electrical.branches)
     if (branch.kind == ElectricalBranchKind::cell) {
@@ -288,7 +364,26 @@ slide::Status PackSolver::solveSparse(real_t applied_current)
                              - candidate_node_voltage_[branch.node_negative];
       candidate_current_[branch.cell] = (ocv_[branch.cell] - voltage)
                                         / resistance_[branch.cell];
+      const real_t change = std::abs(candidate_current_[branch.cell]
+                                     - current_guess_[branch.cell]);
+      const real_t limit = 2.0 * std::max({ real_t{ 1.0 }, std::abs(applied_current), std::abs(current_guess_[branch.cell]) });
+      if (change > limit)
+        damping = std::min(damping, limit / change);
     }
+  if (damping < 1.0) {
+    for (std::uint32_t node = 0; node < topology_.electrical.node_count; ++node) {
+      const int unknown = impl.node_to_unknown[node];
+      if (unknown >= 0)
+        candidate_node_voltage_[node] -= (1.0 - damping) * impl.unknown_voltage[unknown];
+    }
+    for (const auto &branch : topology_.electrical.branches)
+      if (branch.kind == ElectricalBranchKind::cell) {
+        const real_t voltage = candidate_node_voltage_[branch.node_positive]
+                               - candidate_node_voltage_[branch.node_negative];
+        candidate_current_[branch.cell] = (ocv_[branch.cell] - voltage)
+                                          / resistance_[branch.cell];
+      }
+  }
   candidate_terminal_voltage_ = candidate_node_voltage_[topology_.electrical.terminal_positive]
                                 - candidate_node_voltage_[topology_.electrical.terminal_negative];
   return slide::Status::Success;

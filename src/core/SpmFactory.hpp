@@ -103,12 +103,20 @@ public:
                                          std::span<real_t> terminal_voltage);
   [[nodiscard]] slide::Status terminalVoltage(const StepCtx &ctx,
                                               std::span<real_t> output);
+  [[nodiscard]] slide::Status linearizeThevenin(
+    std::span<const real_t> current,
+    std::span<real_t> intercept_ocv,
+    std::span<real_t> resistance);
   [[nodiscard]] slide::Status storeStressHistory(real_t interval);
 
 private:
   using EvaluateFn = slide::Status (*)(void *, RhsViews &, const StepCtx &);
   using ObserveVoltageFn = slide::Status (*)(void *, const ConstBatchView &,
                                              const StepCtx &, std::span<real_t>);
+  using LinearizeTheveninFn = slide::Status (*)(void *, const ConstBatchView &,
+                                                std::span<const real_t>,
+                                                std::span<real_t>,
+                                                std::span<real_t>);
   using StoreStressFn = void (*)(void *, BatchView, real_t);
   using FusedEulerFn = slide::Status (*)(void *, BatchView, const StepCtx &, real_t,
                                          std::span<real_t>);
@@ -117,6 +125,7 @@ private:
   SpmBatch(void *implementation,
            EvaluateFn evaluate,
            ObserveVoltageFn observe_voltage,
+           LinearizeTheveninFn linearize_thevenin,
            StoreStressFn store_stress,
            FusedEulerFn fused_euler,
            DestroyFn destroy,
@@ -134,6 +143,7 @@ private:
   void *implementation_{};
   EvaluateFn evaluate_{};
   ObserveVoltageFn observe_voltage_{};
+  LinearizeTheveninFn linearize_thevenin_{};
   StoreStressFn store_stress_{};
   FusedEulerFn fused_euler_{};
   DestroyFn destroy_{};
