@@ -47,3 +47,12 @@ target_link_libraries(benchmark_PAY1_spm
   project_warnings
   project_options
 )
+
+add_executable(benchmark_PAY2_pack benchmark_PAY2_pack.cpp)
+target_link_libraries(benchmark_PAY2_pack
+  PRIVATE
+  src
+  slide_core
+  project_warnings
+  project_options
+)

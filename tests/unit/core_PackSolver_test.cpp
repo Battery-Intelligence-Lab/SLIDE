@@ -186,6 +186,23 @@ TEST_CASE("SPM batches expose a nonlinear Thevenin tangent to the pack solver",
     REQUIRE(std::abs(intercept[i] - resistance[i] * probe_current[i] - voltage[i])
             <= 1e-14);
   }
+  constexpr double derivative_step = 1e-4;
+  std::array<double, lanes> plus_density{}, minus_density{};
+  std::array<double, lanes> plus_voltage{}, minus_voltage{};
+  for (int lane = 0; lane < lanes; ++lane) {
+    const auto i = static_cast<std::size_t>(lane);
+    plus_density[i] = (probe_current[i] + derivative_step) / batch.electrode_area();
+    minus_density[i] = (probe_current[i] - derivative_step) / batch.electrode_area();
+  }
+  REQUIRE(batch.terminalVoltage({ .i_app = plus_density }, plus_voltage) == Status::Success);
+  REQUIRE(batch.terminalVoltage({ .i_app = minus_density }, minus_voltage) == Status::Success);
+  for (int lane = 0; lane < lanes; ++lane) {
+    const auto i = static_cast<std::size_t>(lane);
+    const double finite_difference = -(plus_voltage[i] - minus_voltage[i])
+                                     / (2.0 * derivative_step);
+    REQUIRE(std::abs(resistance[i] - finite_difference)
+            <= 1e-7 * std::max(1.0, std::abs(finite_difference)));
+  }
 
   const auto topology = compile(core::parallel(
     lanes, core::cell({ .archetype = "spm" })));

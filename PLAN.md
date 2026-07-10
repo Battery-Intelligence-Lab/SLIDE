@@ -806,9 +806,13 @@ hand-off stays rejected (D-06). Multirate (D-08) composes: outer and inner split
      core 0.436–0.471 s (median 0.460), legacy 2.900–3.466 s (median 3.209), median speedup 6.97× and conservative
      `min(legacy)/max(core)` 6.16×; max mapped-state error 8.67e-19 and max |ΔV| 8.88e-16 V. Target and abort gate
      both clear even under the conservative range calculation.
-   - **PAY-2 (Phase 2 exit):** 16s4p heterogeneous pack, CC cycle — v4 compiled pack vs legacy `Module_s/Module_p`.
-     Hypothesis: ≥10× (flat solve replaces nested iteration, D-03; workspace kills refactorisations, D-18).
-     Abort threshold: <3× → stop and re-examine before Phases 3–4.
+   - **PAY-2 (Phase 2 exit) — PASSED ABORT GATE 2026-07-10; 10× HYPOTHESIS FALSIFIED:** heterogeneous 16s4p
+     pack, 1,800 s CC cycle — v4 compiled pack vs legacy `Module_s/Module_p`. Three alternating Release repetitions:
+     compiled median 0.003089 s vs legacy 0.015049 s = 4.87×; conservative `min(legacy)/max(core)` = 4.83×.
+     The ≥10× hypothesis did not hold, but the <3× abort threshold clears. The initial 0.69× measurement forced
+     analytic SPM tangents, compiled periodic-brick proof/coalescing, compressed periodic rollback/cumulatives, and
+     outer CC substepping before rerun. Final legacy-arbiter differences: state 2.72e-8, current 2.70e-6 A, voltage
+     2.92e-8 V (legacy parallel solve itself uses a 1e-6 A residual). Timing remains quiet-machine-qualified.
    - **PAY-3 (Phase 4 exit):** 10⁵-cell pack advances on the quiet machine within memory budget (<1 GB state) —
      feasibility, the original goal (§1). Fails → Mode C redesign before GPU work.
    - **PAY-4 (Phase 7 exit; cross-tool positioning, quiet machine — registered TARGETS, not abort gates; Volkan
@@ -927,7 +931,8 @@ The evolving-state Kokam 4p gate meets P2-G3/G4.
 **Coupled step + gates DONE 2026-07-10:** `PackStepper` implements the checkpoint→electrical solve→thermal gather→
 batch advance→commit transaction with full rollback/invalidation and no accepted-step allocation. P2-G1's 300-step
 Kokam 3s2p trajectory meets the registered voltage/current/state bands; P2-G5 Mode B meets its linear, 16p SPM, and
-256p SPM admission bands. **NEXT:** PAY-2, then Phase 3.
+256p SPM admission bands. PAY-2 clears its 3× abort threshold at 4.83× conservative speedup after the first run
+forced periodic-brick and tangent redesign; the 10× hypothesis is explicitly falsified. **PHASE 2 COMPLETE.**
 **Gates:** P2-G1 parity vs legacy `Module_s`/`Module_p` on 3s2p (band §5.2) + rollback-invalidation test (solve after
 restore digit-matches cold solve). P2-G2 Mode B ≡ Mode A on ladders to
 1e-10 A. P2-G3 nested-constructed pack (p-in-p-in-s) compiles flat and solves in ONE Newton loop (no nested
@@ -1062,4 +1067,5 @@ CHANGELOG consolidation. Gates defined when phase opens.
 | 2026-07-10 | SPM Thevenin + contraction-monitored chord safeguards | DONE — the concrete SPM pipeline exposes an allocation-free frozen-state tangent including all direct current dependence. Sparse Mode A now solves cached-Jacobian residual corrections, refreshes on the registered contraction/iteration triggers, limits trial currents, and has atomic eight-stage source-stepping rescue. A heterogeneous Kokam 4p solve closes KCL/equal-voltage to 1e-10; a 100-step evolving-state CC segment uses ≤10 numeric factorizations. |
 | 2026-07-10 | P2-G1 coupled pack transaction + parity | PASSED — `PackStepper` owns whole-pack checkpoint/rollback, electrical solve, canonical thermal gather/scatter, and batch advance; restore drops both factorization and warm solution and repeats accepted arena bytes exactly. Accepted coupled steps allocate zero. The 300-step Kokam 3s2p trajectory vs legacy `Module_s/Module_p` has max ΔV=5.33e-15 V, ΔI=2.95e-13 A, and worst mapped state=0.013× its band. |
 | 2026-07-10 | P2-G5 Mode-B admission | PASSED — linear 16p with 1% R spread meets the 1e-8 A band; SPM with 2% active-content and 5% resistance spread over a 1C-to-taper trajectory has max relative branch-current error 8.49e-14 at 16p and 3.10e-13 at 256p vs Mode A, far below 1e-3. Mode B remains compile-detected ladder-only. |
-| — | Phases 1–8 | **Phase 1 COMPLETE. Phase 2 GATES COMPLETE; PAY-2 PENDING:** compile/D-21, affine/nonlinear Mode A, Mode B, workspace/chord, transactional coupled stepping, P2-G1–G5 DONE. **NEXT: PAY-2, then Phase 3.** Phases 3–8 not started. |
+| 2026-07-10 | PAY-2 Phase-2 payoff | PASSED ABORT GATE / TARGET FALSIFIED — reproducible heterogeneous 16s4p × 1,800-step harness, three alternating Release repetitions. Compiled median 0.003089 s vs legacy 0.015049 s = 4.87×; conservative speedup 4.83×. The 10× hypothesis is falsified, but the required ≥3× continue threshold clears. Initial 0.69× drove analytic tangents and compile-validated period-4 brick specialization. Final errors: state 2.72e-8, current 2.70e-6 A, voltage 2.92e-8 V. |
+| — | Phases 1–8 | **Phases 1–2 COMPLETE. Phase 3 NEXT:** all pack compile/solver/thermal/transaction gates P2-G1–G5 and PAY-2 are closed. **NEXT: exponential modal integration + multirate/events.** Phases 3–8 not started. |

@@ -137,10 +137,6 @@ public:
       transport_cache_{ n_lanes },
       single_observables_{ 1 }, single_transport_cache_{ 1 },
       thevenin_current_density_(static_cast<std::size_t>(n_lanes)),
-      thevenin_voltage_(static_cast<std::size_t>(n_lanes)),
-      thevenin_voltage_plus_(static_cast<std::size_t>(n_lanes)),
-      thevenin_voltage_minus_(static_cast<std::size_t>(n_lanes)),
-      thevenin_step_(static_cast<std::size_t>(n_lanes)),
       plating_current_(WithLithiumPlating ? static_cast<std::size_t>(n_lanes) : 0)
   {
     assert(n_lanes > 0);
@@ -312,17 +308,22 @@ public:
   {
     assert(static_cast<int>(terminal_voltage.size()) == n_lanes_);
     const ConstBatchView current{ state.shape(), std::span<const real_t>{ state.raw() } };
-    const bool coalesced = lanesEqual(current, ctx);
-    auto observable_view = coalesced ? single_observables_.view() : observables_.view();
+    const int period = lanePeriod(current, ctx);
+    const bool coalesced = period < n_lanes_;
+    auto observable_view = period == 1 ? single_observables_.view()
+                                       : observables_.view(period);
     const BatchShape evaluation_shape = coalesced
-                                          ? BatchShape{ state.n_rows(), 1, state.stride() }
+                                          ? BatchShape{ state.n_rows(), period, state.stride() }
                                           : state.shape();
     const ConstBatchView evaluation_state{ evaluation_shape,
                                            std::span<const real_t>{ state.raw() } };
     const StepCtx evaluation_ctx{ .time = ctx.time,
                                   .dt = ctx.dt,
-                                  .i_app = coalesced ? ctx.i_app.first(1) : ctx.i_app };
-    auto *cache = coalesced ? &single_transport_cache_ : &transport_cache_;
+                                  .i_app = coalesced ? ctx.i_app.first(static_cast<std::size_t>(period))
+                                                     : ctx.i_app };
+    auto *cache = period == 1          ? &single_transport_cache_
+                  : period == n_lanes_ ? &transport_cache_
+                                       : nullptr;
     computeSpmTransport(params_.electrical.concentration,
                         evaluation_state,
                         layout_.spm,
@@ -330,7 +331,7 @@ public:
                         observable_view.effective_diffusivity,
                         observable_view.molar_flux,
                         cache);
-    const int evaluated_lanes = coalesced ? 1 : n_lanes_;
+    const int evaluated_lanes = period;
     for (const Domain domain : domains) {
       const auto d = domain_index(domain);
       for (int mode = 0; mode < NCH; ++mode) {
@@ -343,7 +344,8 @@ public:
           z += dt * (observable_view.effective_diffusivity[d][i] * A * z + B * observable_view.molar_flux[d][i]);
         }
         if (coalesced)
-          std::fill(state_row.begin() + 1, state_row.end(), state_row.front());
+          for (int lane = period; lane < n_lanes_; ++lane)
+            state_row[static_cast<std::size_t>(lane)] = state_row[static_cast<std::size_t>(lane % period)];
       }
     }
 
@@ -361,7 +363,9 @@ public:
     if (status != slide::Status::Success)
       return status;
     if (coalesced) {
-      std::fill(terminal_voltage.begin(), terminal_voltage.end(), observable_view.terminal_voltage.front());
+      for (int lane = 0; lane < n_lanes_; ++lane)
+        terminal_voltage[static_cast<std::size_t>(lane)] =
+          observable_view.terminal_voltage[static_cast<std::size_t>(lane % period)];
     } else {
       std::copy(observable_view.terminal_voltage.begin(),
                 observable_view.terminal_voltage.end(),
@@ -408,44 +412,83 @@ public:
              && params_.electrical.electrode_area > 0.0))
       return slide::Status::Invalid_parameters;
 
-    constexpr real_t relative_step = 6.0554544523933429e-6; // cbrt(epsilon)
-    for (int lane = 0; lane < n_lanes_; ++lane) {
+    const int period = lanePeriod(state, current);
+    for (int lane = 0; lane < period; ++lane) {
       const auto i = static_cast<std::size_t>(lane);
       if (!is_finite(current[i]))
         return slide::Status::Invalid_parameters;
-      thevenin_step_[i] = relative_step * std::max(real_t{ 1 }, std::abs(current[i]));
       thevenin_current_density_[i] = current[i] / params_.electrical.electrode_area;
     }
-    StepCtx ctx{ .time = 0.0, .dt = 0.0, .i_app = thevenin_current_density_ };
-    auto status = observeTerminalVoltage(state, ctx, thevenin_voltage_);
+    const BatchShape evaluation_shape = period < n_lanes_
+                                          ? BatchShape{ state.n_rows(), period, state.stride() }
+                                          : state.shape();
+    const ConstBatchView evaluation_state{ evaluation_shape, state.raw() };
+    StepCtx ctx{ .time = 0.0,
+                 .dt = 0.0,
+                 .i_app = std::span<const real_t>{ thevenin_current_density_ }.first(
+                   static_cast<std::size_t>(period)) };
+    auto observable = observables_.view(period);
+    auto *cache = period == n_lanes_ ? &transport_cache_ : nullptr;
+    auto status = computeSpmObservables(params_.electrical, evaluation_state, layout_.spm, ctx, observable, cache);
     if (status != slide::Status::Success)
       return status;
-    for (int lane = 0; lane < n_lanes_; ++lane) {
+
+    const auto &p = params_.electrical;
+    for (int lane = 0; lane < period; ++lane) {
       const auto i = static_cast<std::size_t>(lane);
-      thevenin_current_density_[i] = (current[i] + thevenin_step_[i])
-                                     / params_.electrical.electrode_area;
-    }
-    status = observeTerminalVoltage(state, ctx, thevenin_voltage_plus_);
-    if (status != slide::Status::Success)
-      return status;
-    for (int lane = 0; lane < n_lanes_; ++lane) {
-      const auto i = static_cast<std::size_t>(lane);
-      thevenin_current_density_[i] = (current[i] - thevenin_step_[i])
-                                     / params_.electrical.electrode_area;
-    }
-    status = observeTerminalVoltage(state, ctx, thevenin_voltage_minus_);
-    if (status != slide::Status::Success)
-      return status;
-    for (int lane = 0; lane < n_lanes_; ++lane) {
-      const auto i = static_cast<std::size_t>(lane);
-      const real_t tangent = (thevenin_voltage_plus_[i] - thevenin_voltage_minus_[i])
-                             / (2.0 * thevenin_step_[i]);
-      const real_t r = -tangent;
-      const real_t intercept = thevenin_voltage_[i] + r * current[i];
+      const real_t temperature = state.at(layout_.spm.temperature, 0, lane);
+      PerDomain<real_t> concentration_slope{};
+      PerDomain<real_t> stoichiometry_slope{};
+      PerDomain<real_t> overpotential_slope{};
+      PerDomain<real_t> ocv_slope{};
+      for (const Domain domain : domains) {
+        const auto d = domain_index(domain);
+        const auto &electrode = p.electrode[d];
+        const real_t area = state.at(layout_.spm.specific_surface_area[d], 0, lane);
+        const real_t thickness = state.at(layout_.spm.electrode_thickness[d], 0, lane);
+        const real_t dflux_dcurrent = static_cast<real_t>(molar_flux_sign(domain))
+                                      / (p.electrode_area * area * p.n * p.F * thickness);
+        concentration_slope[d] = p.concentration.Dout[d][0] * dflux_dcurrent
+                                 / observable.effective_diffusivity[d][i];
+        stoichiometry_slope[d] = concentration_slope[d] / electrode.cs_max;
+        ocv_slope[d] = p.electrode_ocv[d].derivative(
+                         observable.surface_stoichiometry[d][i])
+                       * stoichiometry_slope[d];
+
+        const real_t exchange = observable.exchange_current_density[d][i];
+        const real_t cs = observable.concentration[d][i];
+        const real_t exchange_log_slope = 0.5 * concentration_slope[d]
+                                          * (1.0 / cs
+                                             - 1.0 / (electrode.cs_max - cs));
+        const real_t argument_factor = 0.5 * static_cast<real_t>(molar_flux_sign(domain))
+                                       / (p.electrode_area * area * thickness);
+        const real_t argument = argument_factor * current[i] / exchange;
+        const real_t argument_slope = argument_factor / exchange
+                                      - argument * exchange_log_slope;
+        overpotential_slope[d] = 2.0 * p.Rg * temperature / (p.n * p.F)
+                                 * argument_slope / std::sqrt(1.0 + argument * argument);
+      }
+      const auto neg = domain_index(Domain::neg);
+      const auto pos = domain_index(Domain::pos);
+      const real_t entropic_slope = p.total_entropic_coefficient.derivative(
+                                      observable.surface_stoichiometry[pos][i])
+                                    * stoichiometry_slope[pos];
+      const real_t voltage_slope = ocv_slope[pos] - ocv_slope[neg]
+                                   + (temperature - p.reference_temperature) * entropic_slope
+                                   + overpotential_slope[pos] - overpotential_slope[neg]
+                                   - observable.resistance[i];
+      const real_t r = -voltage_slope;
+      const real_t intercept = observable.terminal_voltage[i] + r * current[i];
       if (!is_finite(r) || !(r > 0.0) || !is_finite(intercept))
         return slide::Status::Invalid_states;
       resistance[i] = r;
       intercept_ocv[i] = intercept;
+    }
+    for (int lane = period; lane < n_lanes_; ++lane) {
+      const auto i = static_cast<std::size_t>(lane);
+      const auto source = static_cast<std::size_t>(lane % period);
+      resistance[i] = resistance[source];
+      intercept_ocv[i] = intercept_ocv[source];
     }
     return slide::Status::Success;
   }
@@ -474,27 +517,80 @@ public:
   const SpmPipelineLayout &layout() const { return layout_; }
   const SpmPipelineParams<NCH> &params() const { return params_; }
   int n_lanes() const { return n_lanes_; }
+  int trustedLanePeriod() const { return trusted_lane_period_; }
+
+  [[nodiscard]] slide::Status setTrustedLanePeriod(const ConstBatchView &state,
+                                                   int maximum_period)
+  {
+    if (state.n_lanes() != n_lanes_ || maximum_period <= 0
+        || n_lanes_ % maximum_period != 0)
+      return slide::Status::Invalid_parameters;
+    for (int period = 1; period <= maximum_period; ++period) {
+      if (maximum_period % period != 0)
+        continue;
+      bool equal = true;
+      for (int row = 0; row < state.n_rows() && equal; ++row) {
+        const auto values = state.row(row);
+        for (int lane = period; lane < n_lanes_; ++lane)
+          if (values[static_cast<std::size_t>(lane)]
+              != values[static_cast<std::size_t>(lane % period)]) {
+            equal = false;
+            break;
+          }
+      }
+      if (equal) {
+        trusted_lane_period_ = period;
+        return slide::Status::Success;
+      }
+    }
+    return slide::Status::Invalid_states;
+  }
 
 private:
-  bool lanesEqual(const ConstBatchView &state, const StepCtx &ctx) const
+  int lanePeriod(const ConstBatchView &state,
+                 std::span<const real_t>
+                   current) const
   {
     if (n_lanes_ <= 1)
-      return true;
-    for (int lane = 1; lane < n_lanes_; ++lane)
-      if (ctx.i_app[static_cast<std::size_t>(lane)] != ctx.i_app.front())
-        return false;
-    for (int row = 0; row < state.n_rows(); ++row) {
-      const auto values = state.row(row);
-      for (int lane = 1; lane < n_lanes_; ++lane)
-        if (values[static_cast<std::size_t>(lane)] != values.front())
-          return false;
+      return n_lanes_;
+    if (trusted_lane_period_ < n_lanes_) {
+      for (int lane = trusted_lane_period_; lane < n_lanes_; ++lane)
+        if (current[static_cast<std::size_t>(lane)]
+            != current[static_cast<std::size_t>(lane % trusted_lane_period_)])
+          return n_lanes_;
+      return trusted_lane_period_;
     }
-    return true;
+    for (int period = 1; period < n_lanes_; ++period) {
+      if (n_lanes_ % period != 0)
+        continue;
+      bool equal = true;
+      for (int lane = period; lane < n_lanes_ && equal; ++lane)
+        equal = current[static_cast<std::size_t>(lane)]
+                == current[static_cast<std::size_t>(lane % period)];
+      for (int row = 0; row < state.n_rows() && equal; ++row) {
+        const auto values = state.row(row);
+        for (int lane = period; lane < n_lanes_; ++lane)
+          if (values[static_cast<std::size_t>(lane)]
+              != values[static_cast<std::size_t>(lane % period)]) {
+            equal = false;
+            break;
+          }
+      }
+      if (equal)
+        return period;
+    }
+    return n_lanes_;
+  }
+
+  int lanePeriod(const ConstBatchView &state, const StepCtx &ctx) const
+  {
+    return lanePeriod(state, ctx.i_app);
   }
 
   SpmPipelineParams<NCH> params_;
   SpmPipelineLayout layout_{};
   int n_lanes_{};
+  int trusted_lane_period_{ n_lanes_ };
   SpmObservableScratch<NCH> observables_;
   std::conditional_t<needs_stress, SpmStressScratch<>, EmptyPipelineScratch> stress_;
   std::conditional_t<needs_sei_scratch, SeiScratch<>, EmptyPipelineScratch> sei_;
@@ -505,10 +601,6 @@ private:
   SpmObservableScratch<NCH> single_observables_;
   SpmTransportCache single_transport_cache_;
   std::vector<real_t> thevenin_current_density_{};
-  std::vector<real_t> thevenin_voltage_{};
-  std::vector<real_t> thevenin_voltage_plus_{};
-  std::vector<real_t> thevenin_voltage_minus_{};
-  std::vector<real_t> thevenin_step_{};
   std::vector<real_t> plating_current_{};
 };
 

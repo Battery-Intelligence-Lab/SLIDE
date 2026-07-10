@@ -25,7 +25,9 @@ public:
     real_t time,
     real_t dt,
     std::span<const real_t> boundary_temperature = {},
-    PackSolveMode mode = PackSolveMode::sparse_newton);
+    PackSolveMode mode = PackSolveMode::sparse_newton,
+    real_t current_tolerance = 1e-10,
+    int substeps = 1);
 
   std::size_t checkpointSize() const { return checkpoint_.size(); }
   [[nodiscard]] slide::Status checkpoint(std::span<real_t> destination) const;

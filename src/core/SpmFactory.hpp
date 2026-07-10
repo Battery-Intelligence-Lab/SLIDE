@@ -107,6 +107,9 @@ public:
     std::span<const real_t> current,
     std::span<real_t> intercept_ocv,
     std::span<real_t> resistance);
+  /** Cold pack compiler hook: enable an already-validated repeated-lane brick. */
+  [[nodiscard]] slide::Status setTrustedLanePeriod(int maximum_period);
+  int trustedLanePeriod() const;
   [[nodiscard]] slide::Status storeStressHistory(real_t interval);
 
 private:
@@ -117,6 +120,8 @@ private:
                                                 std::span<const real_t>,
                                                 std::span<real_t>,
                                                 std::span<real_t>);
+  using SetLanePeriodFn = slide::Status (*)(void *, const ConstBatchView &, int);
+  using GetLanePeriodFn = int (*)(const void *);
   using StoreStressFn = void (*)(void *, BatchView, real_t);
   using FusedEulerFn = slide::Status (*)(void *, BatchView, const StepCtx &, real_t,
                                          std::span<real_t>);
@@ -126,6 +131,8 @@ private:
            EvaluateFn evaluate,
            ObserveVoltageFn observe_voltage,
            LinearizeTheveninFn linearize_thevenin,
+           SetLanePeriodFn set_lane_period,
+           GetLanePeriodFn get_lane_period,
            StoreStressFn store_stress,
            FusedEulerFn fused_euler,
            DestroyFn destroy,
@@ -144,6 +151,8 @@ private:
   EvaluateFn evaluate_{};
   ObserveVoltageFn observe_voltage_{};
   LinearizeTheveninFn linearize_thevenin_{};
+  SetLanePeriodFn set_lane_period_{};
+  GetLanePeriodFn get_lane_period_{};
   StoreStressFn store_stress_{};
   FusedEulerFn fused_euler_{};
   DestroyFn destroy_{};

@@ -93,6 +93,24 @@ public:
                / static_cast<Real>(x_[i + 1] - x_[i]);
   }
 
+  /** Piecewise-constant slope using the same O(1) segment lookup as eval(). */
+  real_t derivative(real_t x) const
+  {
+    assert(valid());
+    if (x <= x_.front())
+      x = x_.front();
+    else if (x >= x_.back())
+      x = x_.back();
+    const auto raw_bin = static_cast<std::size_t>((x - x_.front()) * inv_bin_width_);
+    const auto bin = std::min(raw_bin, segment_.size() - 1);
+    std::size_t i = segment_[bin];
+    if (i + 1 < x_.size() - 1 && x >= x_[i + 1])
+      ++i;
+    else if (x < x_[i] && i > 0)
+      --i;
+    return (y_[i + 1] - y_[i]) / (x_[i + 1] - x_[i]);
+  }
+
   bool valid() const { return x_.size() >= 2 && segment_.size() >= 2; }
   real_t x_min() const { return x_.front(); }
   real_t x_max() const { return x_.back(); }

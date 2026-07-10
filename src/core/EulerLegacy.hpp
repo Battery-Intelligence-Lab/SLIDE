@@ -44,8 +44,9 @@ public:
         rollback_rows_.push_back(row);
     }
     lanes_ = batch.n_lanes();
+    active_lanes_ = batch.trustedLanePeriod();
     state_rows_ = batch.state().n_rows();
-    backup_.resize(rollback_rows_.size() * static_cast<std::size_t>(lanes_));
+    backup_.resize(rollback_rows_.size() * static_cast<std::size_t>(active_lanes_));
     terminal_voltage_.resize(static_cast<std::size_t>(batch.n_lanes()));
     return slide::Status::Success;
   }
@@ -100,12 +101,19 @@ public:
     }
 
     const auto &layout = batch.layout();
-    for (int lane = 0; lane < batch.n_lanes(); ++lane) {
+    for (int lane = 0; lane < active_lanes_; ++lane) {
       const auto i = static_cast<std::size_t>(lane);
       const real_t dAh = current_density[i] * batch.electrode_area() * dt / real_t{ 3600 };
       batch.state().at(layout.elapsed_time, 0, lane) += dt;
       batch.state().at(layout.charge_throughput, 0, lane) += std::abs(dAh);
       batch.state().at(layout.energy_throughput, 0, lane) += std::abs(dAh * terminal_voltage_[i]);
+    }
+    for (const auto slice : { layout.elapsed_time,
+                              layout.charge_throughput,
+                              layout.energy_throughput }) {
+      auto row = batch.state().row(slice.row_begin);
+      for (int lane = active_lanes_; lane < lanes_; ++lane)
+        row[static_cast<std::size_t>(lane)] = row[static_cast<std::size_t>(lane % active_lanes_)];
     }
 
     status = batch.storeStressHistory(dt);
@@ -124,8 +132,8 @@ private:
     std::size_t offset{};
     for (const int row : rollback_rows_) {
       const auto source = batch.state().row(row);
-      std::copy(source.begin(), source.end(), backup_.begin() + static_cast<std::ptrdiff_t>(offset));
-      offset += source.size();
+      std::copy_n(source.begin(), active_lanes_, backup_.begin() + static_cast<std::ptrdiff_t>(offset));
+      offset += static_cast<std::size_t>(active_lanes_);
     }
   }
 
@@ -135,9 +143,11 @@ private:
     for (const int row : rollback_rows_) {
       auto destination = batch.state().row(row);
       std::copy(backup_.begin() + static_cast<std::ptrdiff_t>(offset),
-                backup_.begin() + static_cast<std::ptrdiff_t>(offset + destination.size()),
+                backup_.begin() + static_cast<std::ptrdiff_t>(offset + active_lanes_),
                 destination.begin());
-      offset += destination.size();
+      for (int lane = active_lanes_; lane < lanes_; ++lane)
+        destination[static_cast<std::size_t>(lane)] = destination[static_cast<std::size_t>(lane % active_lanes_)];
+      offset += static_cast<std::size_t>(active_lanes_);
     }
   }
 
@@ -146,6 +156,7 @@ private:
   std::vector<int> ode_rows_{};
   std::vector<int> rollback_rows_{};
   int lanes_{};
+  int active_lanes_{};
   int state_rows_{};
 };
 

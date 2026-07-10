@@ -28,6 +28,26 @@ slide::Status PackStepper::configure(
     thermal_batch[cell.location.batch] |= static_cast<unsigned char>(cell.thermal);
   }
 
+  // A thermally uncoupled series of identical parallel-width layers preserves a repeated
+  // lane brick exactly. Validate before sizing the batch steppers so their rollback and
+  // cumulative workspaces also use only the unique brick.
+  if (batches.size() == 1 && batches[0] != nullptr
+      && topology.thermal.edges.empty()
+      && topology.electrical.series_parallel_ladder
+      && topology.electrical.ladder_offsets.size() > 2) {
+    const int width = static_cast<int>(topology.electrical.ladder_offsets[1]
+                                       - topology.electrical.ladder_offsets[0]);
+    bool repeated = width > 0;
+    for (std::size_t layer = 1;
+         layer + 1 < topology.electrical.ladder_offsets.size() && repeated;
+         ++layer)
+      repeated = topology.electrical.ladder_offsets[layer + 1]
+                   - topology.electrical.ladder_offsets[layer]
+                 == static_cast<std::uint32_t>(width);
+    if (repeated)
+      (void)batches[0]->setTrustedLanePeriod(width);
+  }
+
   std::vector<TheveninBatchView> views;
   std::vector<EulerLegacy> steppers;
   std::vector<std::vector<real_t>> current_density;
@@ -114,10 +134,12 @@ slide::Status PackStepper::step(
   real_t dt,
   std::span<const real_t>
     boundary_temperature,
-  PackSolveMode mode)
+  PackSolveMode mode,
+  real_t current_tolerance,
+  int substeps)
 {
   if (!configured_ || !is_finite(applied_current) || !is_finite(time)
-      || !is_finite(dt) || !(dt > 0.0)
+      || !is_finite(dt) || !(dt > 0.0) || substeps <= 0
       || boundary_temperature.size() != topology_.thermal.boundary_count)
     return slide::Status::Invalid_parameters;
 
@@ -127,7 +149,7 @@ slide::Status PackStepper::step(
     return status;
   };
 
-  auto status = solver_.solve(applied_current, mode);
+  auto status = solver_.solve(applied_current, mode, current_tolerance);
   if (status != slide::Status::Success)
     return fail(status);
 
@@ -154,11 +176,12 @@ slide::Status PackStepper::step(
                      static_cast<int>(location.lane)) = cell_external_heat_[cell];
   }
 
-  for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
-    status = steppers_[batch].step(*batches_[batch], current_density_[batch], time, dt);
-    if (status != slide::Status::Success)
-      return fail(status);
-  }
+  for (int substep = 0; substep < substeps; ++substep)
+    for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
+      status = steppers_[batch].step(*batches_[batch], current_density_[batch], time + static_cast<real_t>(substep) * dt, dt);
+      if (status != slide::Status::Success)
+        return fail(status);
+    }
   return slide::Status::Success;
 }
 

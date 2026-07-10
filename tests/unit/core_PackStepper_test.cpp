@@ -84,3 +84,37 @@ TEST_CASE("one archetype cannot mix thermal and isothermal lanes",
             topology)
           == Status::Invalid_parameters);
 }
+
+TEST_CASE("compiled repeated ladder bricks preserve their trusted lane period",
+          "[core][pack][periodic][mode-b]")
+{
+  constexpr int lanes = 6;
+  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, {}, lanes, batch) == Status::Success);
+  auto collector = batch.state().row(
+    batch.layout().spm.current_collector_resistance.row_begin);
+  for (int lane = 0; lane < lanes; ++lane)
+    collector[static_cast<std::size_t>(lane)] *= lane % 2 == 0 ? 0.9 : 1.1;
+
+  core::CompiledPackTopology topology;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::series(3,
+                                   core::parallel(2,
+                                                  core::cell({ .archetype = "spm" }))) },
+            topology)
+          == Status::Success);
+  std::array<core::SpmBatch *, 1> batches{ &batch };
+  core::PackStepper stepper;
+  REQUIRE(stepper.configure(topology, batches) == Status::Success);
+  REQUIRE(batch.trustedLanePeriod() == 2);
+  REQUIRE(stepper.step(32.0, 0.0, 1.0, {}, core::PackSolveMode::ladder, 1e-10, 10)
+          == Status::Success);
+  for (int row = 0; row < batch.state().n_rows(); ++row) {
+    const auto values = batch.state().row(row);
+    REQUIRE(values[0] == values[2]);
+    REQUIRE(values[0] == values[4]);
+    REQUIRE(values[1] == values[3]);
+    REQUIRE(values[1] == values[5]);
+  }
+}

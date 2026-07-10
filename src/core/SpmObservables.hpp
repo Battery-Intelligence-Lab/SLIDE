@@ -325,6 +325,12 @@ public:
 
   BasicSpmObservables<Real> view()
   {
+    return view(n_lanes_);
+  }
+
+  BasicSpmObservables<Real> view(int active_lanes)
+  {
+    assert(active_lanes > 0 && active_lanes <= n_lanes_);
     BasicSpmObservables<Real> output;
     std::size_t cursor = 0;
     auto take = [&](std::size_t count) {
@@ -332,7 +338,7 @@ public:
       cursor += count;
       return result;
     };
-    const auto L = static_cast<std::size_t>(n_lanes_);
+    const auto L = static_cast<std::size_t>(active_lanes);
     for (const Domain domain : domains)
       output.concentration[domain_index(domain)] = take(static_cast<std::size_t>(NCH + 2) * L);
     for (auto *field : { &output.effective_diffusivity,
@@ -352,7 +358,7 @@ public:
     output.reaction_heat = take(L);
     output.ohmic_heat = take(L);
     output.total_heat = take(L);
-    assert(cursor == storage_.size());
+    assert(cursor <= storage_.size());
     return output;
   }
 

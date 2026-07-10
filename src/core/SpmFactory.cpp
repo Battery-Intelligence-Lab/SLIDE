@@ -19,6 +19,8 @@ SpmBatch::SpmBatch(void *implementation,
                    EvaluateFn evaluate,
                    ObserveVoltageFn observe_voltage,
                    LinearizeTheveninFn linearize_thevenin,
+                   SetLanePeriodFn set_lane_period,
+                   GetLanePeriodFn get_lane_period,
                    StoreStressFn store_stress,
                    FusedEulerFn fused_euler,
                    DestroyFn destroy,
@@ -34,6 +36,8 @@ SpmBatch::SpmBatch(void *implementation,
   : implementation_{ implementation }, evaluate_{ evaluate },
     observe_voltage_{ observe_voltage },
     linearize_thevenin_{ linearize_thevenin },
+    set_lane_period_{ set_lane_period },
+    get_lane_period_{ get_lane_period },
     store_stress_{ store_stress }, fused_euler_{ fused_euler }, destroy_{ destroy }, nch_{ nch },
     capacity_Ah_{ capacity_Ah }, electrode_area_{ electrode_area },
     composition_{ composition }, layout_{ layout }, state_{ std::move(state) },
@@ -50,6 +54,8 @@ SpmBatch::SpmBatch(SpmBatch &&other) noexcept
     evaluate_{ std::exchange(other.evaluate_, nullptr) },
     observe_voltage_{ std::exchange(other.observe_voltage_, nullptr) },
     linearize_thevenin_{ std::exchange(other.linearize_thevenin_, nullptr) },
+    set_lane_period_{ std::exchange(other.set_lane_period_, nullptr) },
+    get_lane_period_{ std::exchange(other.get_lane_period_, nullptr) },
     store_stress_{ std::exchange(other.store_stress_, nullptr) },
     fused_euler_{ std::exchange(other.fused_euler_, nullptr) },
     destroy_{ std::exchange(other.destroy_, nullptr) },
@@ -69,6 +75,8 @@ SpmBatch &SpmBatch::operator=(SpmBatch &&other) noexcept
     evaluate_ = std::exchange(other.evaluate_, nullptr);
     observe_voltage_ = std::exchange(other.observe_voltage_, nullptr);
     linearize_thevenin_ = std::exchange(other.linearize_thevenin_, nullptr);
+    set_lane_period_ = std::exchange(other.set_lane_period_, nullptr);
+    get_lane_period_ = std::exchange(other.get_lane_period_, nullptr);
     store_stress_ = std::exchange(other.store_stress_, nullptr);
     fused_euler_ = std::exchange(other.fused_euler_, nullptr);
     destroy_ = std::exchange(other.destroy_, nullptr);
@@ -92,6 +100,8 @@ void SpmBatch::reset() noexcept
   evaluate_ = nullptr;
   observe_voltage_ = nullptr;
   linearize_thevenin_ = nullptr;
+  set_lane_period_ = nullptr;
+  get_lane_period_ = nullptr;
   store_stress_ = nullptr;
   fused_euler_ = nullptr;
   destroy_ = nullptr;
@@ -164,6 +174,23 @@ slide::Status SpmBatch::linearizeThevenin(
   return linearize_thevenin_(implementation_, state_view, current, intercept_ocv, resistance);
 }
 
+slide::Status SpmBatch::setTrustedLanePeriod(int maximum_period)
+{
+  if (!valid() || set_lane_period_ == nullptr || maximum_period <= 0
+      || n_lanes() % maximum_period != 0)
+    return slide::Status::Invalid_parameters;
+  const ConstBatchView state_view{ BatchShape::from(state_),
+                                   std::span<const real_t>{ state_.raw() } };
+  return set_lane_period_(implementation_, state_view, maximum_period);
+}
+
+int SpmBatch::trustedLanePeriod() const
+{
+  return valid() && get_lane_period_ != nullptr
+           ? get_lane_period_(implementation_)
+           : n_lanes();
+}
+
 slide::Status SpmBatch::storeStressHistory(real_t interval)
 {
   if (!valid() || !is_finite(interval) || !(interval > 0.0))
@@ -206,6 +233,13 @@ struct SpmBatchFactoryAccess
              [](void *object, const ConstBatchView &state_view, std::span<const real_t> current, std::span<real_t> intercept_ocv, std::span<real_t> resistance) {
                return static_cast<Concrete *>(object)->linearizeThevenin(
                  state_view, current, intercept_ocv, resistance);
+             },
+             [](void *object, const ConstBatchView &state_view, int maximum_period) {
+               return static_cast<Concrete *>(object)->setTrustedLanePeriod(
+                 state_view, maximum_period);
+             },
+             [](const void *object) {
+               return static_cast<const Concrete *>(object)->trustedLanePeriod();
              },
              [](void *object, BatchView state_view, real_t interval) {
                static_cast<Concrete *>(object)->storeStressHistory(state_view, interval);
