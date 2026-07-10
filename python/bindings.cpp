@@ -4,6 +4,7 @@
  */
 
 #include "core/Experiment.hpp"
+#include "core/CudaSpmBatch.hpp"
 #include "core/ExponentialModal.hpp"
 #include "core/ForwardSensitivity.hpp"
 #include "core/ParameterSet.hpp"
@@ -446,11 +447,16 @@ nb::dict solveEnsemble(
   const std::map<std::string, std::vector<double>> &variations,
   const std::map<std::string, int> &option_values,
   const std::vector<std::string> &steps,
-  double sample_step)
+  double sample_step,
+  const std::string &device)
 {
-  if (variations.empty())
-    fail("an ensemble requires at least one varied() parameter");
-  const int lanes = static_cast<int>(variations.begin()->second.size());
+  if (device != "cpu" && device != "cuda")
+    fail("device must be 'cpu' or 'cuda'");
+  if (device == "cuda" && !slide::core::CudaSpmBatch::available())
+    fail("device='cuda' is unavailable in this build/runtime");
+  const int lanes = variations.empty()
+                      ? 1
+                      : static_cast<int>(variations.begin()->second.size());
   const auto validated = validateVariations(variations, lanes);
 
   auto parameters = loadParameters(source);
@@ -476,10 +482,18 @@ nb::dict solveEnsemble(
   if (!slide::core::is_finite(sample_step) || !(sample_step > 0.0))
     fail("sample_step must be finite and positive");
 
-  slide::core::SpmBatch batch;
-  if (slide::core::buildSpmBatch(input, modelOptions(option_values), lanes, batch)
-      != slide::Status::Success)
+  const auto options = modelOptions(option_values);
+  slide::core::SpmBatch cpu_batch;
+  slide::core::CudaSpmBatch cuda_batch;
+  const auto build_status = device == "cuda"
+                              ? cuda_batch.build(input, options, lanes)
+                              : slide::core::buildSpmBatch(input,
+                                                          options,
+                                                          lanes,
+                                                          cpu_batch);
+  if (build_status != slide::Status::Success)
     fail("the selected parameters/options could not build an ensemble batch");
+  auto &batch = device == "cuda" ? cuda_batch.hostBatch() : cpu_batch;
   applyVariations(batch, input, validated);
 
   const double magnitude = segment.value_is_c_rate
@@ -506,18 +520,30 @@ nb::dict solveEnsemble(
       != slide::Status::Success)
     fail("ensemble initial observation failed");
   slide::core::ExponentialModal stepper;
-  if (stepper.configure(batch) != slide::Status::Success)
+  if (device == "cpu" && stepper.configure(batch) != slide::Status::Success)
     fail("ensemble stepper configuration failed");
+  if (device == "cuda" && cuda_batch.uploadState() != slide::Status::Success)
+    fail("CUDA ensemble state upload failed");
   double simulation_time{};
   for (std::size_t step = 0; step < number_of_steps; ++step) {
     const double dt = std::min(sample_step, segment.duration - simulation_time);
-    if (stepper.step(batch, current_density, simulation_time, dt)
-        != slide::Status::Success)
+    if (device == "cuda") {
+      if (cuda_batch.step(current_density, simulation_time, dt)
+            != slide::Status::Success
+          || cuda_batch.synchronize() != slide::Status::Success)
+        fail("CUDA ensemble integration failed at sample "
+             + std::to_string(step));
+    } else if (stepper.step(batch, current_density, simulation_time, dt)
+               != slide::Status::Success) {
       fail("ensemble integration failed at sample " + std::to_string(step));
+    }
     simulation_time += dt;
     time[step + 1] = simulation_time;
-    std::copy(stepper.terminalVoltage().begin(),
-              stepper.terminalVoltage().end(),
+    const auto sample_voltage = device == "cuda"
+                                  ? cuda_batch.terminalVoltage()
+                                  : stepper.terminalVoltage();
+    std::copy(sample_voltage.begin(),
+              sample_voltage.end(),
               voltage.begin()
                 + static_cast<std::ptrdiff_t>((step + 1)
                                               * static_cast<std::size_t>(lanes)));
@@ -543,6 +569,14 @@ std::vector<std::string> sensitivityParameterNames()
   for (const auto parameter : slide::core::supported_sensitivity_parameters)
     names.emplace_back(slide::core::sensitivityParameterName(parameter));
   return names;
+}
+
+std::vector<std::string> availableDevices()
+{
+  std::vector<std::string> devices{ "cpu" };
+  if (slide::core::CudaSpmBatch::available())
+    devices.emplace_back("cuda");
+  return devices;
 }
 
 nb::dict solveSensitivities(
@@ -628,7 +662,8 @@ NB_MODULE(_slide_core, module)
   module.def("parameter_values", &describeParameters, "source"_a = "Chen2020");
   module.def("solve_experiment", &solveExperiment, "source"_a, "overrides"_a, "options"_a, "steps"_a, "sample_step"_a);
   module.def("solve_advanced_experiment", &solveAdvancedExperiment, "source"_a, "overrides"_a, "options"_a, "descriptors"_a, "sample_step"_a);
-  module.def("solve_ensemble", &solveEnsemble, "source"_a, "overrides"_a, "variations"_a, "options"_a, "steps"_a, "sample_step"_a);
+  module.def("solve_ensemble", &solveEnsemble, "source"_a, "overrides"_a, "variations"_a, "options"_a, "steps"_a, "sample_step"_a, "device"_a = "cpu");
+  module.def("available_devices", &availableDevices);
   module.def("sensitivity_parameters", &sensitivityParameterNames);
   module.def("solve_sensitivities", &solveSensitivities, "source"_a, "overrides"_a, "options"_a, "steps"_a, "sample_step"_a, "parameter_names"_a);
 }

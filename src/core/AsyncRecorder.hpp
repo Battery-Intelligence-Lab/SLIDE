@@ -73,6 +73,16 @@ public:
   [[nodiscard]] slide::Status enqueue(
     std::uint64_t accepted_step,
     std::span<const real_t> total_current_A);
+  /**
+   * Enqueue an already-copied arena/current-density snapshot. This is the
+   * pinned CUDA bridge seam; it has the same ring/backpressure guarantees as
+   * enqueue() and performs no simulation-thread allocation or I/O.
+   */
+  [[nodiscard]] slide::Status enqueueSnapshot(
+    std::uint64_t accepted_step,
+    real_t time,
+    std::span<const real_t> current_density,
+    std::span<const real_t> state);
   /** Drain, finalize CRC/header metadata, and close. Idempotent. */
   [[nodiscard]] slide::Status finish();
 
@@ -110,6 +120,11 @@ private:
   };
 
   void drainLoop();
+  slide::Status enqueueValues(std::uint64_t accepted_step,
+                              real_t time,
+                              std::span<const real_t> currents,
+                              std::span<const real_t> state,
+                              bool currents_are_density);
   slide::Status drainSlot(Slot &slot);
   slide::Status finalizeFile();
   void setWorkerFailure(slide::Status status);

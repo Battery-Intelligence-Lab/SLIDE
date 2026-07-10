@@ -62,6 +62,7 @@ struct KernelParams
 };
 
 struct Runtime;
+struct RecordingRuntime;
 
 enum class RuntimeResult : int {
   success,
@@ -91,5 +92,20 @@ RuntimeResult restore(Runtime *runtime) noexcept;
 std::size_t deviceBytes(const Runtime *runtime) noexcept;
 std::size_t deviceAllocations(const Runtime *runtime) noexcept;
 std::size_t deviceWideSynchronizations(const Runtime *runtime) noexcept;
+
+RuntimeResult createRecording(Runtime *runtime,
+                              std::size_t slots,
+                              RecordingRuntime *&recording) noexcept;
+void destroyRecording(RecordingRuntime *recording) noexcept;
+RuntimeResult recordSnapshot(RecordingRuntime *recording,
+                             std::size_t slot) noexcept;
+RuntimeResult waitSnapshot(RecordingRuntime *recording,
+                           std::size_t slot) noexcept;
+std::span<double> recordingState(RecordingRuntime *recording,
+                                 std::size_t slot) noexcept;
+std::span<double> recordingCurrent(RecordingRuntime *recording,
+                                   std::size_t slot) noexcept;
+bool recordingUsesNonDefaultStream(const RecordingRuntime *recording) noexcept;
+bool recordingUsesPinnedMemory(const RecordingRuntime *recording) noexcept;
 
 } // namespace slide::core::cuda_detail

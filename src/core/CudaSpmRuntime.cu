@@ -207,6 +207,17 @@ struct Runtime
   std::size_t device_sync_count{};
 };
 
+struct RecordingRuntime
+{
+  Runtime *source{};
+  cudaStream_t stream{};
+  void *pinned{};
+  std::size_t slots{};
+  std::size_t values_per_slot{};
+  std::vector<cudaEvent_t> compute_ready{};
+  std::vector<cudaEvent_t> copy_ready{};
+};
+
 int deviceCount() noexcept
 {
   int count{};
@@ -437,6 +448,155 @@ std::size_t deviceAllocations(const Runtime *runtime) noexcept
 std::size_t deviceWideSynchronizations(const Runtime *runtime) noexcept
 {
   return runtime == nullptr ? 0 : runtime->device_sync_count;
+}
+
+RuntimeResult createRecording(Runtime *runtime,
+                              std::size_t slots,
+                              RecordingRuntime *&output) noexcept
+{
+  if (runtime == nullptr || output != nullptr || slots < 3 || slots > 1024)
+    return RuntimeResult::invalid_parameter;
+  const std::size_t values_per_slot = runtime->state_values
+                                      + static_cast<std::size_t>(
+                                        runtime->params.lanes);
+  if (values_per_slot > std::numeric_limits<std::size_t>::max() / slots
+      || values_per_slot * slots
+           > std::numeric_limits<std::size_t>::max() / sizeof(double))
+    return RuntimeResult::invalid_parameter;
+  RecordingRuntime *recording{};
+  try {
+    recording = new RecordingRuntime;
+    recording->source = runtime;
+    recording->slots = slots;
+    recording->values_per_slot = values_per_slot;
+    recording->compute_ready.resize(slots);
+    recording->copy_ready.resize(slots);
+  } catch (...) {
+    delete recording;
+    return RuntimeResult::cuda_failure;
+  }
+  if (cudaStreamCreateWithFlags(&recording->stream, cudaStreamNonBlocking)
+      != cudaSuccess) {
+    delete recording;
+    return RuntimeResult::cuda_failure;
+  }
+  const std::size_t bytes = values_per_slot * slots * sizeof(double);
+  if (cudaHostAlloc(&recording->pinned, bytes, cudaHostAllocPortable)
+      != cudaSuccess) {
+    cudaStreamDestroy(recording->stream);
+    delete recording;
+    return RuntimeResult::cuda_failure;
+  }
+  for (std::size_t slot = 0; slot < slots; ++slot) {
+    if (cudaEventCreateWithFlags(&recording->compute_ready[slot],
+                                 cudaEventDisableTiming)
+          != cudaSuccess
+        || cudaEventCreateWithFlags(&recording->copy_ready[slot],
+                                    cudaEventDisableTiming)
+             != cudaSuccess) {
+      destroyRecording(recording);
+      return RuntimeResult::cuda_failure;
+    }
+  }
+  output = recording;
+  return RuntimeResult::success;
+}
+
+void destroyRecording(RecordingRuntime *recording) noexcept
+{
+  if (recording == nullptr)
+    return;
+  for (auto event : recording->compute_ready)
+    if (event != nullptr)
+      cudaEventDestroy(event);
+  for (auto event : recording->copy_ready)
+    if (event != nullptr)
+      cudaEventDestroy(event);
+  if (recording->stream != nullptr)
+    cudaStreamDestroy(recording->stream);
+  if (recording->pinned != nullptr)
+    cudaFreeHost(recording->pinned);
+  delete recording;
+}
+
+RuntimeResult recordSnapshot(RecordingRuntime *recording,
+                             std::size_t slot) noexcept
+{
+  if (recording == nullptr || recording->source == nullptr
+      || slot >= recording->slots)
+    return RuntimeResult::invalid_parameter;
+  auto &source = *recording->source;
+  auto *destination = static_cast<double *>(recording->pinned)
+                      + slot * recording->values_per_slot;
+  auto *state_destination = destination;
+  auto *current_destination = destination + source.state_values;
+  if (cudaEventRecord(recording->compute_ready[slot], source.stream)
+        != cudaSuccess
+      || cudaStreamWaitEvent(recording->stream,
+                             recording->compute_ready[slot],
+                             0)
+           != cudaSuccess
+      || cudaMemcpyAsync(state_destination,
+                         source.state,
+                         source.state_values * sizeof(double),
+                         cudaMemcpyDeviceToHost,
+                         recording->stream)
+           != cudaSuccess
+      || cudaMemcpyAsync(current_destination,
+                         source.current,
+                         static_cast<std::size_t>(source.params.lanes)
+                           * sizeof(double),
+                         cudaMemcpyDeviceToHost,
+                         recording->stream)
+           != cudaSuccess
+      || cudaEventRecord(recording->copy_ready[slot], recording->stream)
+           != cudaSuccess
+      || cudaStreamWaitEvent(source.stream, recording->copy_ready[slot], 0)
+           != cudaSuccess)
+    return RuntimeResult::cuda_failure;
+  return RuntimeResult::success;
+}
+
+RuntimeResult waitSnapshot(RecordingRuntime *recording,
+                           std::size_t slot) noexcept
+{
+  if (recording == nullptr || slot >= recording->slots)
+    return RuntimeResult::invalid_parameter;
+  return fromCuda(cudaEventSynchronize(recording->copy_ready[slot]));
+}
+
+std::span<double> recordingState(RecordingRuntime *recording,
+                                 std::size_t slot) noexcept
+{
+  if (recording == nullptr || recording->source == nullptr
+      || slot >= recording->slots)
+    return {};
+  auto *data = static_cast<double *>(recording->pinned)
+               + slot * recording->values_per_slot;
+  return { data, recording->source->state_values };
+}
+
+std::span<double> recordingCurrent(RecordingRuntime *recording,
+                                   std::size_t slot) noexcept
+{
+  if (recording == nullptr || recording->source == nullptr
+      || slot >= recording->slots)
+    return {};
+  auto *data = static_cast<double *>(recording->pinned)
+               + slot * recording->values_per_slot
+               + recording->source->state_values;
+  return { data,
+           static_cast<std::size_t>(recording->source->params.lanes) };
+}
+
+bool recordingUsesNonDefaultStream(const RecordingRuntime *recording) noexcept
+{
+  return recording != nullptr && recording->stream != nullptr;
+}
+
+bool recordingUsesPinnedMemory(const RecordingRuntime *recording) noexcept
+{
+  return recording != nullptr && recording->pinned != nullptr;
 }
 
 } // namespace slide::core::cuda_detail

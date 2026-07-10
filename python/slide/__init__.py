@@ -568,9 +568,9 @@ def _compile_options(options: MutableMapping[str, Any]) -> dict[str, int]:
 
 
 def available_devices() -> tuple[str, ...]:
-    """Return compiled execution backends. CUDA is added by the Phase-8 build when available."""
+    """Return backends compiled into the extension and available at runtime."""
 
-    return ("cpu",)
+    return tuple(_slide_core.available_devices())
 
 
 class ProcessedVariable:
@@ -757,10 +757,27 @@ class Simulation:
                 _compile_options(self.model.options),
                 experiment.steps,
                 sample_step,
+                self.device,
             )
             lanes = int(native["n_lanes"])
             native["voltage"] = np.asarray(native["voltage"], dtype=float).reshape(-1, lanes)
             native["current"] = np.asarray(native["current"], dtype=float).reshape(-1, lanes)
+        elif self.device == "cuda":
+            if experiment.requires_advanced:
+                raise NotImplementedError(
+                    "device='cuda' currently supports fixed-duration CC string experiments"
+                )
+            native = _slide_core.solve_ensemble(
+                parameters.source,
+                parameters.scalar_overrides(),
+                {},
+                _compile_options(self.model.options),
+                experiment.steps,
+                sample_step,
+                self.device,
+            )
+            native["voltage"] = np.asarray(native["voltage"], dtype=float).reshape(-1)
+            native["current"] = np.asarray(native["current"], dtype=float).reshape(-1)
         elif experiment.requires_advanced:
             native = _slide_core.solve_advanced_experiment(
                 parameters.source,

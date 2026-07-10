@@ -242,12 +242,42 @@ slide::Status AsyncRecorder::enqueue(
   std::span<const real_t>
     total_current_A)
 {
+  if (!configured())
+    return slide::Status::Invalid_parameters;
+  return enqueueValues(accepted_step,
+                       batch_->state().at(batch_->layout().elapsed_time, 0, 0),
+                       total_current_A,
+                       batch_->state().raw(),
+                       false);
+}
+
+slide::Status AsyncRecorder::enqueueSnapshot(
+  std::uint64_t accepted_step,
+  real_t time,
+  std::span<const real_t> current_density,
+  std::span<const real_t> state)
+{
+  return enqueueValues(accepted_step,
+                       time,
+                       current_density,
+                       state,
+                       true);
+}
+
+slide::Status AsyncRecorder::enqueueValues(
+  std::uint64_t accepted_step,
+  real_t time,
+  std::span<const real_t> currents,
+  std::span<const real_t> state,
+  bool currents_are_density)
+{
   if (!configured() || finished_
-      || total_current_A.size() != static_cast<std::size_t>(lanes_))
+      || currents.size() != static_cast<std::size_t>(lanes_)
+      || state.size() != state_values_ || !is_finite(time))
     return slide::Status::Invalid_parameters;
   if (accepted_step % config_.cadence != 0)
     return slide::Status::Success;
-  for (const real_t current : total_current_A)
+  for (const real_t current : currents)
     if (!is_finite(current))
       return slide::Status::Invalid_parameters;
 
@@ -276,14 +306,15 @@ slide::Status AsyncRecorder::enqueue(
   Slot &slot = slots_[write_slot_];
   slot.state = SlotState::filling;
   slot.accepted_step = accepted_step;
-  slot.time = batch_->state().at(batch_->layout().elapsed_time, 0, 0);
+  slot.time = time;
   lock.unlock();
 
   for (int lane = 0; lane < lanes_; ++lane)
     slot.values[static_cast<std::size_t>(lane)] =
-      total_current_A[static_cast<std::size_t>(lane)] / batch_->electrode_area();
+      currents[static_cast<std::size_t>(lane)]
+      / (currents_are_density ? 1.0 : batch_->electrode_area());
   std::memcpy(slot.values.data() + lanes_,
-              batch_->state().raw().data(),
+              state.data(),
               state_values_ * sizeof(real_t));
 
   lock.lock();

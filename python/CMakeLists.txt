@@ -14,3 +14,12 @@ target_link_libraries(_slide_core PRIVATE slide_core)
 target_compile_features(_slide_core PRIVATE cxx_std_20)
 
 install(TARGETS _slide_core LIBRARY DESTINATION slide RUNTIME DESTINATION slide)
+if(SLIDE_WITH_CUDA)
+  # Keep the CUDA runtime boundary beside the extension so Windows can resolve
+  # its import library/DLL without modifying PATH.
+  install(TARGETS slide_cuda_runtime
+    LIBRARY DESTINATION slide
+    RUNTIME DESTINATION slide)
+  set_target_properties(_slide_core slide_cuda_runtime PROPERTIES
+    INSTALL_RPATH "$ORIGIN")
+endif()

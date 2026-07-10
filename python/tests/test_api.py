@@ -88,11 +88,47 @@ def test_p7g1_tutorial_five_segment_local_parity():
 
 
 def test_device_preflight_and_input_validation():
-    assert slide.available_devices() == ("cpu",)
+    assert slide.available_devices()[0] == "cpu"
+    assert set(slide.available_devices()).issubset({"cpu", "cuda"})
     with pytest.raises(RuntimeError, match="unavailable"):
         slide.Simulation(slide.SPM(), device="gpu")
     with pytest.raises(ValueError, match="registry"):
         slide.Simulation(slide.SPM({"nch": 7}), experiment=slide.Experiment("Rest for 1 second")).solve()
+
+
+def test_cuda_device_dispatch_matches_cpu_when_compiled():
+    if "cuda" not in slide.available_devices():
+        pytest.skip("CUDA was not compiled into this wheel")
+    values = slide.ParameterValues("Chen2020")
+    values["Initial state-of-charge"] = slide.varied(np.linspace(0.4, 0.8, 17))
+    values["Negative particle diffusivity [m2.s-1]"] = slide.varied(
+        np.linspace(0.95, 1.05, 17) * 3.3e-14
+    )
+    experiment = slide.Experiment(
+        "Discharge at 1 C for 600 seconds", period="10 seconds"
+    )
+    cpu = slide.Simulation(
+        slide.SPM({"nch": 12}),
+        experiment=experiment,
+        parameter_values=values,
+        device="cpu",
+    ).solve()
+    cuda = slide.Simulation(
+        slide.SPM({"nch": 12}),
+        experiment=experiment,
+        parameter_values=values,
+        device="cuda",
+    ).solve()
+    np.testing.assert_array_equal(cuda.t, cpu.t)
+    np.testing.assert_allclose(
+        cuda["Current [A]"].entries, cpu["Current [A]"].entries, rtol=0, atol=0
+    )
+    np.testing.assert_allclose(
+        cuda["Voltage [V]"].entries,
+        cpu["Voltage [V]"].entries,
+        rtol=0,
+        atol=2e-6,
+    )
 
 
 def test_varied_marker_is_defensive():

@@ -12,8 +12,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
+#include <filesystem>
 #include <span>
 #include <vector>
 
@@ -247,4 +249,68 @@ TEST_CASE("P8-G2 host PackSolver coupling stays inside voltage/current bands",
   CHECK(worst_pack_voltage <= 2e-6);
   CHECK(worst_branch_current <= 2e-6);
   requireStateBand(cpu.state().raw(), gpu.hostBatch().state().raw());
+}
+
+TEST_CASE("P8-G3 CUDA pinned side-stream snapshots decode bitwise",
+          "[core][cuda][recorder][P8-G3]")
+{
+  auto input = chen2020(0.7);
+  core::CudaSpmBatch gpu;
+  REQUIRE(gpu.build(input, { .nch = 12 }, 2) == Status::Success);
+  const auto path = std::filesystem::temp_directory_path()
+                    / "slide_cuda_async.slcmp";
+  std::error_code ignored;
+  std::filesystem::remove(path, ignored);
+  core::CudaAsyncRecorder recorder;
+  REQUIRE(recorder.configure(
+            gpu,
+            path,
+            { .ring_slots = 3,
+              .backpressure = core::AsyncBackpressurePolicy::block,
+              .codec = core::CompressionCodec::none })
+          == Status::Success);
+  CHECK(recorder.usesPinnedMemory());
+  CHECK(recorder.usesNonDefaultStream());
+
+  const std::array<double, 2> density{
+    input.design.capacity_Ah / input.design.electrode_area,
+    -0.5 * input.design.capacity_Ah / input.design.electrode_area
+  };
+  constexpr int snapshots = 6;
+  std::vector<double> expected;
+  expected.reserve(static_cast<std::size_t>(snapshots)
+                   * gpu.hostBatch().state().size());
+  for (int step = 0; step < snapshots; ++step) {
+    REQUIRE(gpu.step(density, step * 10.0, 10.0) == Status::Success);
+    REQUIRE(recorder.enqueue(static_cast<std::uint64_t>(step + 1))
+            == Status::Success);
+    REQUIRE(gpu.downloadState() == Status::Success);
+    expected.insert(expected.end(),
+                    gpu.hostBatch().state().raw().begin(),
+                    gpu.hostBatch().state().raw().end());
+  }
+  REQUIRE(recorder.finish() == Status::Success);
+  CHECK(recorder.snapshotsWritten() == snapshots);
+  CHECK(recorder.thinnedSnapshots() == 0);
+  CHECK(gpu.deviceWideSynchronizationCount() == 0);
+
+  core::CompressedRecording decoded;
+  REQUIRE(decoded.open(path) == Status::Success);
+  REQUIRE(decoded.size() == snapshots);
+  const auto state_values = gpu.hostBatch().state().size();
+  for (int snapshot = 0; snapshot < snapshots; ++snapshot) {
+    const auto actual = decoded.snapshot(static_cast<std::size_t>(snapshot));
+    CHECK(actual.accepted_step == static_cast<std::uint64_t>(snapshot + 1));
+    CHECK(std::equal(actual.current_density.begin(),
+                     actual.current_density.end(),
+                     density.begin(),
+                     density.end()));
+    const auto offset = static_cast<std::size_t>(snapshot) * state_values;
+    CHECK(std::equal(actual.state.begin(),
+                     actual.state.end(),
+                     expected.begin() + static_cast<std::ptrdiff_t>(offset),
+                     expected.begin()
+                       + static_cast<std::ptrdiff_t>(offset + state_values)));
+  }
+  std::filesystem::remove(path, ignored);
 }

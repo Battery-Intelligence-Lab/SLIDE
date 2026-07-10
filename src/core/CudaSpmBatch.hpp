@@ -5,13 +5,15 @@
 
 #pragma once
 
-#include "SpmFactory.hpp"
+#include "AsyncRecorder.hpp"
 
 #include <cstddef>
 #include <memory>
 #include <span>
 
 namespace slide::core {
+
+class CudaAsyncRecorder;
 
 /**
  * Owns one CPU metadata/state mirror and one CUDA arena. CUDA implementation
@@ -56,6 +58,34 @@ public:
   std::size_t deviceArenaBytes() const noexcept;
   std::size_t deviceAllocationCount() const noexcept;
   std::size_t deviceWideSynchronizationCount() const noexcept;
+
+private:
+  struct Impl;
+  std::unique_ptr<Impl> impl_{};
+  friend class CudaAsyncRecorder;
+};
+
+/** Pinned side-stream bridge into AsyncRecorder's shuffled/compressed writer. */
+class CudaAsyncRecorder
+{
+public:
+  CudaAsyncRecorder();
+  ~CudaAsyncRecorder();
+  CudaAsyncRecorder(const CudaAsyncRecorder &) = delete;
+  CudaAsyncRecorder &operator=(const CudaAsyncRecorder &) = delete;
+
+  [[nodiscard]] slide::Status configure(
+    CudaSpmBatch &batch,
+    const std::filesystem::path &path,
+    AsyncRecorderConfig config = {});
+  /** Queue a pinned snapshot after the most recently launched accepted step. */
+  [[nodiscard]] slide::Status enqueue(std::uint64_t accepted_step);
+  [[nodiscard]] slide::Status finish();
+
+  std::uint64_t thinnedSnapshots() const;
+  std::uint64_t snapshotsWritten() const;
+  bool usesPinnedMemory() const;
+  bool usesNonDefaultStream() const;
 
 private:
   struct Impl;

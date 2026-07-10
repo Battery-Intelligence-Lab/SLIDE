@@ -10,10 +10,14 @@
 #include "SpectralModel.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <cmath>
+#include <condition_variable>
 #include <limits>
+#include <mutex>
 #include <new>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -339,6 +343,272 @@ std::size_t CudaSpmBatch::deviceWideSynchronizationCount() const noexcept
   return valid() ? cuda_detail::deviceWideSynchronizations(impl_->runtime) : 0;
 #else
   return 0;
+#endif
+}
+
+struct CudaAsyncRecorder::Impl
+{
+  enum class SlotState : unsigned char { empty,
+                                         copying,
+                                         draining };
+
+  CudaSpmBatch *batch{};
+  AsyncRecorder writer{};
+  AsyncRecorderConfig config{};
+#if defined(SLIDE_WITH_CUDA)
+  cuda_detail::RecordingRuntime *runtime{};
+#endif
+  std::vector<SlotState> states{};
+  std::vector<std::uint64_t> steps{};
+  std::size_t write_slot{};
+  std::size_t read_slot{};
+  std::uint64_t previous_step{};
+  bool has_previous_step{};
+  bool closing{};
+  bool finished{};
+  std::mutex mutex{};
+  std::condition_variable ready{};
+  std::condition_variable space{};
+  std::thread worker{};
+  std::atomic<std::uint64_t> thinned{};
+  std::atomic<int> status{ static_cast<int>(slide::Status::Success) };
+
+  ~Impl()
+  {
+#if defined(SLIDE_WITH_CUDA)
+    cuda_detail::destroyRecording(runtime);
+#endif
+  }
+
+  slide::Status workerStatus() const
+  {
+    return static_cast<slide::Status>(status.load(std::memory_order_relaxed));
+  }
+
+  void fail(slide::Status failure)
+  {
+    int expected = static_cast<int>(slide::Status::Success);
+    status.compare_exchange_strong(expected,
+                                   static_cast<int>(failure),
+                                   std::memory_order_relaxed);
+  }
+
+  void drainLoop()
+  {
+#if defined(SLIDE_WITH_CUDA)
+    while (true) {
+      std::unique_lock lock{ mutex };
+      ready.wait(lock, [&] {
+        return states[read_slot] == SlotState::copying || closing;
+      });
+      if (states[read_slot] != SlotState::copying) {
+        if (closing)
+          break;
+        continue;
+      }
+      const std::size_t slot = read_slot;
+      const std::uint64_t accepted_step = steps[slot];
+      states[slot] = SlotState::draining;
+      lock.unlock();
+
+      auto result = cuda_detail::waitSnapshot(runtime, slot);
+      if (result == cuda_detail::RuntimeResult::success) {
+        const auto state = cuda_detail::recordingState(runtime, slot);
+        const auto current = cuda_detail::recordingCurrent(runtime, slot);
+        const auto &host = batch->hostBatch();
+        const auto index = static_cast<std::size_t>(
+                             host.layout().elapsed_time.row_begin)
+                           * static_cast<std::size_t>(host.state().stride());
+        if (index >= state.size()) {
+          fail(slide::Status::Invalid_states);
+        } else {
+          const auto write_status = writer.enqueueSnapshot(accepted_step,
+                                                            state[index],
+                                                            current,
+                                                            state);
+          if (write_status != slide::Status::Success)
+            fail(write_status);
+        }
+      } else {
+        fail(mapResult(result));
+      }
+
+      lock.lock();
+      states[slot] = SlotState::empty;
+      read_slot = (read_slot + 1) % states.size();
+      lock.unlock();
+      space.notify_all();
+    }
+#endif
+  }
+};
+
+CudaAsyncRecorder::CudaAsyncRecorder() = default;
+
+CudaAsyncRecorder::~CudaAsyncRecorder()
+{
+  (void)finish();
+}
+
+slide::Status CudaAsyncRecorder::configure(
+  CudaSpmBatch &batch,
+  const std::filesystem::path &path,
+  AsyncRecorderConfig config)
+{
+#if !defined(SLIDE_WITH_CUDA)
+  (void)batch;
+  (void)path;
+  (void)config;
+  return slide::Status::NotImplementedYet;
+#else
+  if (impl_ != nullptr || !batch.valid() || path.empty()
+      || config.cadence == 0 || config.ring_slots < 3
+      || config.ring_slots > 1024)
+    return slide::Status::Invalid_parameters;
+  try {
+    auto candidate = std::make_unique<Impl>();
+    candidate->batch = &batch;
+    candidate->config = config;
+    candidate->states.resize(config.ring_slots, Impl::SlotState::empty);
+    candidate->steps.resize(config.ring_slots);
+    auto result = cuda_detail::createRecording(batch.impl_->runtime,
+                                                config.ring_slots,
+                                                candidate->runtime);
+    if (result != cuda_detail::RuntimeResult::success)
+      return mapResult(result);
+    auto writer_config = config;
+    writer_config.cadence = 1;
+    writer_config.backpressure = AsyncBackpressurePolicy::block;
+    auto status = candidate->writer.configure(batch.hostBatch(),
+                                               path,
+                                               writer_config);
+    if (status != slide::Status::Success) {
+      cuda_detail::destroyRecording(candidate->runtime);
+      candidate->runtime = nullptr;
+      return status;
+    }
+    try {
+      candidate->worker = std::thread([object = candidate.get()] {
+        object->drainLoop();
+      });
+    } catch (...) {
+      (void)candidate->writer.finish();
+      cuda_detail::destroyRecording(candidate->runtime);
+      candidate->runtime = nullptr;
+      return slide::Status::Numerical_failure;
+    }
+    impl_ = std::move(candidate);
+    return slide::Status::Success;
+  } catch (const std::bad_alloc &) {
+    return slide::Status::Numerical_failure;
+  }
+#endif
+}
+
+slide::Status CudaAsyncRecorder::enqueue(std::uint64_t accepted_step)
+{
+#if !defined(SLIDE_WITH_CUDA)
+  (void)accepted_step;
+  return slide::Status::NotImplementedYet;
+#else
+  if (impl_ == nullptr || impl_->finished)
+    return slide::Status::Invalid_parameters;
+  if (accepted_step % impl_->config.cadence != 0)
+    return slide::Status::Success;
+  std::unique_lock lock{ impl_->mutex };
+  if (impl_->has_previous_step && accepted_step <= impl_->previous_step)
+    return slide::Status::Invalid_parameters;
+  impl_->previous_step = accepted_step;
+  impl_->has_previous_step = true;
+  if (impl_->workerStatus() != slide::Status::Success)
+    return impl_->workerStatus();
+  auto available = [&] {
+    return impl_->states[impl_->write_slot] == Impl::SlotState::empty
+           || impl_->closing
+           || impl_->workerStatus() != slide::Status::Success;
+  };
+  if (!available()) {
+    if (impl_->config.backpressure == AsyncBackpressurePolicy::thin) {
+      impl_->thinned.fetch_add(1, std::memory_order_relaxed);
+      return slide::Status::Success;
+    }
+    impl_->space.wait(lock, available);
+  }
+  if (impl_->closing || impl_->workerStatus() != slide::Status::Success)
+    return impl_->workerStatus() == slide::Status::Success
+             ? slide::Status::Invalid_states
+             : impl_->workerStatus();
+  const std::size_t slot = impl_->write_slot;
+  impl_->states[slot] = Impl::SlotState::copying;
+  impl_->steps[slot] = accepted_step;
+  const auto result = cuda_detail::recordSnapshot(impl_->runtime, slot);
+  if (result != cuda_detail::RuntimeResult::success) {
+    impl_->states[slot] = Impl::SlotState::empty;
+    impl_->fail(mapResult(result));
+    return impl_->workerStatus();
+  }
+  impl_->write_slot = (impl_->write_slot + 1) % impl_->states.size();
+  lock.unlock();
+  impl_->ready.notify_one();
+  return slide::Status::Success;
+#endif
+}
+
+slide::Status CudaAsyncRecorder::finish()
+{
+  if (impl_ == nullptr)
+    return slide::Status::Success;
+  if (impl_->finished)
+    return impl_->workerStatus();
+  {
+    const std::lock_guard lock{ impl_->mutex };
+    impl_->closing = true;
+  }
+  impl_->ready.notify_all();
+  impl_->space.notify_all();
+  if (impl_->worker.joinable())
+    impl_->worker.join();
+  const auto writer_status = impl_->writer.finish();
+  if (writer_status != slide::Status::Success)
+    impl_->fail(writer_status);
+#if defined(SLIDE_WITH_CUDA)
+  cuda_detail::destroyRecording(impl_->runtime);
+  impl_->runtime = nullptr;
+#endif
+  impl_->finished = true;
+  return impl_->workerStatus();
+}
+
+std::uint64_t CudaAsyncRecorder::thinnedSnapshots() const
+{
+  return impl_ == nullptr
+           ? 0
+           : impl_->thinned.load(std::memory_order_relaxed)
+               + impl_->writer.thinnedSnapshots();
+}
+
+std::uint64_t CudaAsyncRecorder::snapshotsWritten() const
+{
+  return impl_ == nullptr ? 0 : impl_->writer.snapshotsWritten();
+}
+
+bool CudaAsyncRecorder::usesPinnedMemory() const
+{
+#if defined(SLIDE_WITH_CUDA)
+  return impl_ != nullptr
+         && cuda_detail::recordingUsesPinnedMemory(impl_->runtime);
+#else
+  return false;
+#endif
+}
+
+bool CudaAsyncRecorder::usesNonDefaultStream() const
+{
+#if defined(SLIDE_WITH_CUDA)
+  return impl_ != nullptr
+         && cuda_detail::recordingUsesNonDefaultStream(impl_->runtime);
+#else
+  return false;
 #endif
 }
 
