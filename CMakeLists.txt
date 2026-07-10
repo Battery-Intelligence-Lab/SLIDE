@@ -6,6 +6,8 @@ project(SLIDE VERSION "3.0.0"
   HOMEPAGE_URL https://github.com/Battery-Intelligence-Lab/SLIDE/
   LANGUAGES CXX)
 
+option(SLIDE_CORE_ONLY "Configure only the dependency-light v4 core" OFF)
+
 include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
 include(cmake/Dependencies.cmake) # Include external projects
@@ -17,32 +19,43 @@ add_library(project_warnings INTERFACE)
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
 
-enable_testing()
-add_subdirectory(src bin)
+if(SLIDE_CORE_ONLY)
+  add_subdirectory(src/core bin/core)
+else()
+  enable_testing()
+  add_subdirectory(src bin)
+endif()
 
-include(cmake/Coverage.cmake)
-add_subdirectory(tests)
-add_subdirectory(benchmark)
+option(SLIDE_BUILD_PYTHON "Build the nanobind Python extension" OFF)
+if(SLIDE_BUILD_PYTHON)
+  add_subdirectory(python)
+endif()
 
-target_link_libraries(src PUBLIC Eigen3::Eigen range-v3 fmt Boost::boost) # Link dependencies to the src library.
-# glaze::glaze  -> maybe in future. 
+if(NOT SLIDE_CORE_ONLY)
+  include(cmake/Coverage.cmake)
+  add_subdirectory(tests)
+  add_subdirectory(benchmark)
 
-add_executable(slide
-  src/main.cpp
-)
+  target_link_libraries(src PUBLIC Eigen3::Eigen range-v3 fmt Boost::boost) # Link dependencies to the src library.
+  # glaze::glaze  -> maybe in future.
 
-target_link_libraries(slide
-  PRIVATE
-  src
-  project_warnings
-  project_options
-  nlopt
-)
+  add_executable(slide
+    src/main.cpp
+  )
 
-target_include_directories(slide
-  PUBLIC
-  data
-)
+  target_link_libraries(slide
+    PRIVATE
+    src
+    project_warnings
+    project_options
+    nlopt
+  )
+
+  target_include_directories(slide
+    PUBLIC
+    data
+  )
+endif()
 
 # message(STATUS "Project: ${PROJECT_NAME} version ${PROJECT_HOMEPAGE_URL}")
 
@@ -83,24 +96,28 @@ include(cmake/StaticAnalyzers.cmake)
 # include(GenerateExportHeader)
 
 # generate_export_header(${PROJECT_NAME})
-set(LIB_NAME slide-lib)
+if(NOT SLIDE_CORE_ONLY)
+  set(LIB_NAME slide-lib)
 
-add_library(${LIB_NAME} INTERFACE)
+  add_library(${LIB_NAME} INTERFACE)
 
-target_link_libraries(${LIB_NAME}
-  INTERFACE
-  src
-)
+  target_link_libraries(${LIB_NAME}
+    INTERFACE
+    src
+  )
 
-# # install header
-include(GNUInstallDirs)
+  # # install header
+  include(GNUInstallDirs)
 
-install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-  INCLUDES DESTINATION include
-)
+  install(TARGETS ${LIB_NAME} EXPORT ${LIB_NAME}Targets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+  )
+endif()
 
-# Prints out the licenses of third party packages in binary folder. 
-cpm_licenses_create_disclaimer_target(write-licenses "${CMAKE_CURRENT_SOURCE_DIR}/bin/third_party.txt" "${CPM_PACKAGES}")
+# Prints out the licenses of third party packages in binary folder.
+if(NOT SLIDE_CORE_ONLY)
+  cpm_licenses_create_disclaimer_target(write-licenses "${CMAKE_CURRENT_SOURCE_DIR}/bin/third_party.txt" "${CPM_PACKAGES}")
+endif()

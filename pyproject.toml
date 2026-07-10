@@ -1,0 +1,25 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2.4"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "slide-sim"
+version = "4.0.0.dev0"
+description = "Fast battery cell and pack simulation with a PyBaMM-compatible Python surface"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+license = { file = "LICENSE" }
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+matlab = ["scipy>=1.10"]
+test = ["pytest>=8", "pybamm==26.6.2.0"]
+
+[tool.scikit-build]
+cmake.args = ["-DSLIDE_CORE_ONLY=ON", "-DSLIDE_BUILD_PYTHON=ON"]
+wheel.packages = ["python/slide"]
+build-dir = "build/{wheel_tag}"
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]

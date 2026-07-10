@@ -59,9 +59,12 @@ if(WIN32 AND eigen_SOURCE_DIR)
     target_sources(Eigen3_Eigen INTERFACE $<BUILD_INTERFACE:${eigen_SOURCE_DIR}/debug/msvc/eigen.natvis>)
 endif()
 
-# Install rules
-set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME eigen)
-set_target_properties(Eigen3_Eigen PROPERTIES EXPORT_NAME Eigen)
-install(DIRECTORY ${eigen_SOURCE_DIR} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(TARGETS Eigen3_Eigen EXPORT Eigen_Targets)
-install(EXPORT Eigen_Targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/eigen NAMESPACE Eigen3::)
+# Install rules belong to the C++ SDK, never to core-only consumers such as a
+# Python wheel (which statically compiles the required header code).
+if(NOT SLIDE_CORE_ONLY)
+    set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME eigen)
+    set_target_properties(Eigen3_Eigen PROPERTIES EXPORT_NAME Eigen)
+    install(DIRECTORY ${eigen_SOURCE_DIR} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(TARGETS Eigen3_Eigen EXPORT Eigen_Targets)
+    install(EXPORT Eigen_Targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/eigen NAMESPACE Eigen3::)
+endif()

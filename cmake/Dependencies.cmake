@@ -4,6 +4,14 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/recipes/")
 
 include(cmake/recipes/CPM.cmake)
 
+# The v4 core deliberately depends only on Eigen. Wheel and future WASM builds
+# must not configure or compile legacy-only formatting, optimisation, and test
+# dependencies.
+if(SLIDE_CORE_ONLY)
+  include(eigen)
+  return()
+endif()
+
 CPMAddPackage(
   NAME CPMLicenses.cmake 
   GITHUB_REPOSITORY cpm-cmake/CPMLicenses.cmake
