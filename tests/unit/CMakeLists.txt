@@ -23,6 +23,10 @@ target_link_libraries(unit_test_core_StateArena PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_CellDesign core_CellDesign_test.cpp)
 target_link_libraries(unit_test_core_CellDesign PRIVATE slide_core)
 
+# Phase 1: parameter-function canonicalisation to exact indexed curves / uniform LUTs (§3.11)
+add_executable_with_coverage_and_test(unit_test_core_CompiledCurve core_CompiledCurve_test.cpp)
+target_link_libraries(unit_test_core_CompiledCurve PRIVATE slide_core)
+
 # Phase 1 P1-G0 pilot (Q8): legacy vs v4 core diffusion parity-drift — needs BOTH legacy src and slide_core
 add_executable_with_coverage_and_test(unit_test_core_P1G0_pilot core_P1G0_pilot_test.cpp)
 target_link_libraries(unit_test_core_P1G0_pilot PRIVATE slide_core)

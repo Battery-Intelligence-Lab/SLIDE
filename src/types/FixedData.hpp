@@ -13,6 +13,8 @@
 #include <functional>
 #include <cmath>
 #include <filesystem>
+#include <iostream>
+#include <iterator>
 
 namespace slide {
 template <typename T, bool extrapolation = true>

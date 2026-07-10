@@ -35,6 +35,8 @@ enum class Status : int_fast8_t //!< -128 to 127 = 1 byte.
   RedistributeCurrent_failed,
   timeStep_CC_failed,
   setVoltage_not_defined,
+  Invalid_parameters = 120,
+  Numerical_failure,
   NotImplementedYet = 126,
   Unknown_problem = 127,
 
@@ -102,6 +104,10 @@ inline const char *getStatusMessage(Status status)
     return "timeStep_CC_failed!";
   case Status::setVoltage_not_defined:
     return "setVoltage is not defined for this class!";
+  case Status::Invalid_parameters:
+    return "Invalid parameters!";
+  case Status::Numerical_failure:
+    return "Numerical failure!";
   case Status::Unknown_problem:
     return "Unknown problem!";
   default:
