@@ -26,3 +26,9 @@ This file records reusable findings from the v4 implementation and validation wo
 - Prefer an exact analytic oracle over a tolerance-converged numerical reference when the isolated subproblem is genuinely linear and closed form. Independence still matters: evaluate through a different branch and operation order, and state what shared coefficients define the ODE rather than pretending the oracle validates them.
 - Scope every waiver narrowly. D-26 replaces CVODE only for the frozen diagonal modal subflow; it does not validate a generic RHS adapter, nonlinear integration, or splitting. D-27 waives a historical timing protocol, not the need to label development-host timings as qualified evidence.
 - Busy-host noise has no guaranteed direction in a ratio. Preserve raw timing ranges, repeat both tools, and require a named stable host before making an unqualified performance claim.
+
+## A transaction boundary includes every fallible post-step observation
+
+- Saving state before an integrator call is insufficient if voltage reconstruction, algebraic control, or an event callback can fail after the state changes. Restore on every path until the step is both observed and committed.
+- Validate public value-semantic descriptors before constructing output or touching an arena. Exhaustive enum checks are required because an invalid scoped-enum value otherwise reaches a plausible default branch in Release.
+- Revalidate derived quantities after unit conversion and arithmetic. Finite input is not evidence that `value * scale` is finite, especially under the project's fast-math build; adversarial tests should inject IEEE values by bit pattern rather than relying on optimizer-sensitive `infinity()` construction.

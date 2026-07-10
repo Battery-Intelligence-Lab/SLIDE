@@ -59,7 +59,7 @@ namespace {
     else if (unit == "h" || unit == "hr" || unit == "hrs"
              || unit.starts_with("hour"))
       seconds *= 3600.0;
-    return seconds > 0.0;
+    return is_finite(seconds) && seconds > 0.0;
   }
 
   struct Quantity
@@ -171,6 +171,68 @@ namespace {
     return is_finite(quantity.value) && quantity.value > 0.0;
   }
 
+  bool validDirection(Direction direction)
+  {
+    return direction == Direction::charge || direction == Direction::none
+           || direction == Direction::discharge;
+  }
+
+  bool validSegment(const ExperimentSegment &segment)
+  {
+    if (!validDirection(segment.direction) || !is_finite(segment.value)
+        || !is_finite(segment.duration) || segment.duration < 0.0
+        || !is_finite(segment.voltage_limit) || segment.voltage_limit < 0.0
+        || !is_finite(segment.current_cutoff) || segment.current_cutoff < 0.0
+        || !is_finite(segment.scheduled_start)
+        || !is_finite(segment.sample_period) || segment.sample_period == 0.0)
+      return false;
+
+    const bool custom_mode = segment.mode == ControlMode::custom_explicit
+                             || segment.mode == ControlMode::custom_implicit
+                             || segment.mode == ControlMode::custom_differential;
+    if (custom_mode != static_cast<bool>(segment.custom_control))
+      return false;
+    for (const auto &termination : segment.custom_terminations)
+      if (termination.name.empty() || !termination.indicator)
+        return false;
+
+    switch (segment.mode) {
+    case ControlMode::current:
+    case ControlMode::power:
+      if (!(segment.value > 0.0)
+          || !(segment.direction == Direction::charge
+               || segment.direction == Direction::discharge))
+        return false;
+      break;
+    case ControlMode::voltage:
+      if (!(segment.value > 0.0))
+        return false;
+      break;
+    case ControlMode::rest:
+      if (segment.direction != Direction::none)
+        return false;
+      break;
+    case ControlMode::drive_cycle:
+      if (segment.drive_cycle.empty())
+        return false;
+      break;
+    case ControlMode::custom_explicit:
+    case ControlMode::custom_implicit:
+    case ControlMode::custom_differential:
+      break;
+    default:
+      return false;
+    }
+
+    if (segment.voltage_limit > 0.0 && segment.direction == Direction::none)
+      return false;
+    const bool has_event = segment.voltage_limit > 0.0
+                           || segment.current_cutoff > 0.0
+                           || !segment.custom_terminations.empty();
+    return segment.mode == ControlMode::drive_cycle
+           || segment.duration > 0.0 || has_event;
+  }
+
 } // namespace
 
 slide::Status Experiment::parse(std::span<const std::string> steps,
@@ -274,7 +336,9 @@ slide::Status Experiment::parse(std::span<const std::string> steps,
 slide::Status CyclerV2::configure(SpmBatch &batch,
                                   CyclerIntegrator integrator)
 {
-  if (!batch.valid() || batch.n_lanes() != 1)
+  if (!batch.valid() || batch.n_lanes() != 1
+      || !(integrator == CyclerIntegrator::euler_legacy
+           || integrator == CyclerIntegrator::exponential))
     return slide::Status::Invalid_parameters;
   auto status = euler_.configure(batch);
   if (status != slide::Status::Success)
@@ -501,19 +565,13 @@ slide::Status CyclerV2::run(const Experiment &experiment,
     return slide::Status::Invalid_parameters;
   real_t previous_scheduled_start{};
   for (const auto &segment : experiment.segments) {
+    if (!validSegment(segment))
+      return slide::Status::Invalid_parameters;
     if (is_finite(segment.scheduled_start) && segment.scheduled_start >= 0.0) {
       if (segment.scheduled_start < previous_scheduled_start)
         return slide::Status::Invalid_parameters;
       previous_scheduled_start = segment.scheduled_start;
     }
-    const bool custom_mode = segment.mode == ControlMode::custom_explicit
-                             || segment.mode == ControlMode::custom_implicit
-                             || segment.mode == ControlMode::custom_differential;
-    if (custom_mode != static_cast<bool>(segment.custom_control))
-      return slide::Status::Invalid_parameters;
-    for (const auto &termination : segment.custom_terminations)
-      if (termination.name.empty() || !termination.indicator)
-        return slide::Status::Invalid_parameters;
   }
 
   ExperimentSolution solution;
@@ -709,9 +767,14 @@ slide::Status CyclerV2::run(const Experiment &experiment,
         break;
       }
       std::memcpy(event_backup_.data(), batch_->state().raw().data(), batch_->state().raw().size_bytes());
+      const auto restore_event_state = [&] {
+        std::memcpy(batch_->state().raw().data(), event_backup_.data(), batch_->state().raw().size_bytes());
+      };
       status = advance(current, time, dt);
-      if (status != slide::Status::Success)
+      if (status != slide::Status::Success) {
+        restore_event_state();
         break;
+      }
       real_t after_voltage{};
       status = voltageAt(current, after_voltage);
       real_t after_current = current;
@@ -736,8 +799,10 @@ slide::Status CyclerV2::run(const Experiment &experiment,
                                   after_current);
       if (status == slide::Status::Success && after_current != current)
         status = voltageAt(after_current, after_voltage);
-      if (status != slide::Status::Success)
+      if (status != slide::Status::Success) {
+        restore_event_state();
         break;
+      }
       real_t after_indicator{};
       std::string after_event_name;
       status = indicator(time + dt,
@@ -746,8 +811,10 @@ slide::Status CyclerV2::run(const Experiment &experiment,
                          after_current,
                          after_indicator,
                          after_event_name);
-      if (status != slide::Status::Success)
+      if (status != slide::Status::Success) {
+        restore_event_state();
         break;
+      }
       real_t accepted_dt = dt;
       if (before_indicator > 0.0 && after_indicator <= 0.0) {
         real_t low{}, high = dt;
@@ -799,12 +866,16 @@ slide::Status CyclerV2::run(const Experiment &experiment,
           else
             high = middle;
         }
-        if (status != slide::Status::Success)
+        if (status != slide::Status::Success) {
+          restore_event_state();
           break;
+        }
         std::memcpy(batch_->state().raw().data(), event_backup_.data(), batch_->state().raw().size_bytes());
         status = advance(current, time, high);
-        if (status != slide::Status::Success)
+        if (status != slide::Status::Success) {
+          restore_event_state();
           break;
+        }
         accepted_dt = high;
         status = voltageAt(current, after_voltage);
         if (segment.mode == ControlMode::voltage)
@@ -836,8 +907,10 @@ slide::Status CyclerV2::run(const Experiment &experiment,
         }
         event_reached = status == slide::Status::Success;
       }
-      if (status != slide::Status::Success)
+      if (status != slide::Status::Success) {
+        restore_event_state();
         break;
+      }
       time += accepted_dt;
       local_time += accepted_dt;
       solution.time.push_back(time);

@@ -11,7 +11,10 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstring>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -103,6 +106,143 @@ TEST_CASE("P5-G1 documented experiment strings compile atomically",
     REQUIRE(unchanged.segments.size() == 1);
     CHECK(unchanged.segments[0].duration == 7.0);
   }
+
+  // The numeric token itself is finite, but conversion from hours to seconds
+  // overflows. Parser success here would feed an infinite execution horizon.
+  const std::string overflowing_duration =
+    "Rest for " + std::string(306, '9') + " hours";
+  core::ParseDiagnostic overflow;
+  CHECK(core::Experiment::parse(
+          std::array{ overflowing_duration }, unchanged, overflow)
+        == Status::Invalid_parameters);
+  CHECK_FALSE(overflow.message.empty());
+  REQUIRE(unchanged.segments.size() == 1);
+  CHECK(unchanged.segments[0].duration == 7.0);
+}
+
+TEST_CASE("Cycler validates direct segment metadata before stepping",
+          "[core][experiment][validation][P9]")
+{
+  auto batch = makeBatch();
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  auto invalid_integrator_batch = makeBatch();
+  core::CyclerV2 invalid_integrator_cycler;
+  CHECK(invalid_integrator_cycler.configure(
+          invalid_integrator_batch,
+          static_cast<core::CyclerIntegrator>(255))
+        == Status::Invalid_parameters);
+  const std::vector<double> initial(batch.state().raw().begin(),
+                                    batch.state().raw().end());
+  core::ExperimentSolution sentinel;
+  sentinel.time = { 123.0 };
+
+  const double infinity = std::bit_cast<double>(UINT64_C(0x7ff0000000000000));
+  const double nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  for (const core::ExperimentSegment invalid : {
+         core::ExperimentSegment{ .mode = core::ControlMode::current,
+                                  .direction = core::Direction::discharge,
+                                  .value = 1.0,
+                                  .duration = infinity,
+                                  .current_cutoff = 2.0 },
+         core::ExperimentSegment{ .mode = core::ControlMode::current,
+                                  .direction = core::Direction::discharge,
+                                  .value = nan,
+                                  .duration = 1.0 },
+         core::ExperimentSegment{ .mode = core::ControlMode::rest,
+                                  .duration = 1.0,
+                                  .sample_period = infinity },
+         core::ExperimentSegment{ .mode = core::ControlMode::rest,
+                                  .duration = 1.0,
+                                  .scheduled_start = infinity },
+         core::ExperimentSegment{ .mode = static_cast<core::ControlMode>(255),
+                                  .duration = 1.0 },
+       }) {
+    core::Experiment experiment;
+    experiment.segments.push_back(invalid);
+    core::ExperimentSolution output = sentinel;
+    CHECK(cycler.run(experiment, 1.0, output) == Status::Invalid_parameters);
+    CHECK(output.time == sentinel.time);
+    REQUIRE(batch.state().raw().size() == initial.size());
+    CHECK(std::memcmp(batch.state().raw().data(), initial.data(), initial.size() * sizeof(double))
+          == 0);
+  }
+}
+
+TEST_CASE("Cycler rolls back a step when post-advance event evaluation fails",
+          "[core][experiment][rollback][P9]")
+{
+  auto batch = makeBatch();
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  const std::vector<double> initial(batch.state().raw().begin(),
+                                    batch.state().raw().end());
+
+  core::Experiment experiment;
+  experiment.segments.push_back(
+    { .mode = core::ControlMode::custom_explicit,
+      .direction = core::Direction::discharge,
+      .duration = 2.0,
+      .custom_control = [](const core::ExperimentVariables &) { return 1.0; },
+      .custom_terminations = {
+        { .name = "injected callback failure",
+          .indicator = [](const core::ExperimentVariables &variables) {
+            if (variables.local_time > 0.0)
+              throw std::runtime_error("injected post-advance failure");
+            return 1.0;
+          } } } });
+  core::ExperimentSolution output;
+  CHECK(cycler.run(experiment, 1.0, output) == Status::Invalid_parameters);
+  CHECK(output.reason == core::TerminationReason::error);
+  REQUIRE(batch.state().raw().size() == initial.size());
+  CHECK(std::memcmp(batch.state().raw().data(), initial.data(), initial.size() * sizeof(double))
+        == 0);
+}
+
+TEST_CASE("event bisection selects the first of two roots and exact breakpoints",
+          "[core][experiment][event][P9]")
+{
+  auto first_batch = makeBatch();
+  core::CyclerV2 first_cycler;
+  REQUIRE(first_cycler.configure(first_batch) == Status::Success);
+  core::Experiment first;
+  first.segments.push_back(
+    { .mode = core::ControlMode::rest,
+      .duration = 1.0,
+      .custom_terminations = {
+        { .name = "quarter",
+          .indicator = [](const core::ExperimentVariables &variables) {
+            return 0.25 - variables.local_time;
+          } },
+        { .name = "three quarters", .indicator = [](const core::ExperimentVariables &variables) {
+           return 0.75 - variables.local_time;
+         } },
+      } });
+  core::ExperimentSolution first_solution;
+  REQUIRE(first_cycler.run(first, 1.0, first_solution) == Status::Success);
+  CHECK(first_solution.reason == core::TerminationReason::event);
+  CHECK(first_solution.termination_name == "quarter");
+  CHECK(first_solution.time.back() == Catch::Approx(0.25).margin(1e-12));
+
+  auto breakpoint_batch = makeBatch();
+  core::CyclerV2 breakpoint_cycler;
+  REQUIRE(breakpoint_cycler.configure(breakpoint_batch) == Status::Success);
+  core::Experiment breakpoint;
+  breakpoint.segments.push_back(
+    { .mode = core::ControlMode::rest,
+      .duration = 2.0,
+      .custom_terminations = {
+        { .name = "breakpoint",
+          .indicator = [](const core::ExperimentVariables &variables) {
+            return 1.0 - variables.local_time;
+          } },
+      } });
+  core::ExperimentSolution breakpoint_solution;
+  REQUIRE(breakpoint_cycler.run(breakpoint, 1.0, breakpoint_solution)
+          == Status::Success);
+  CHECK(breakpoint_solution.reason == core::TerminationReason::event);
+  CHECK(breakpoint_solution.termination_name == "breakpoint");
+  CHECK(breakpoint_solution.time.back() == 1.0);
 }
 
 TEST_CASE("P5-G1 cycler executes power rest and drive-cycle controls",

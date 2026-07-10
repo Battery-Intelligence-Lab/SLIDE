@@ -195,6 +195,14 @@ This document tracks design decisions, architecture evolution, and session notes
 - **Evidence:** targeted Debug and Release CTest each pass 3/3 (`P2G1_pack`, `core_Experiment`, `core_ExponentialModal`). Release Phase-5 reproduction observes 0.101674 µV, 12.479451 µA, and 0.116939 µAh against the unchanged empirical envelopes. Full derivation: `.claude/reports/p9a-audit-debt-2026-07-10.md`.
 - **Next:** Phase 9B systematic adversarial bug-hunt.
 
+## 2026-07-10 — Phase 9B Experiment adversarial pass
+
+- **Confirmed:** direct `ExperimentSegment` values bypassed parser invariants; invalid enums and NaN/Inf metadata could enter execution. Duration parsing checked finiteness before, but not after, unit scaling.
+- **Confirmed:** `CyclerV2` checkpointed before an event-aware trial but did not restore on several post-advance failures. A throwing custom event callback therefore returned an error while leaking the advanced arena.
+- **Fix:** one exhaustive cold-path validator runs before output/state initialization; invalid integrator values are rejected at configure time; every fallible operation between trial advance and commit restores the byte-exact arena. The event-corner tests also refuted incorrect-first-root and exact-breakpoint concerns.
+- **Evidence:** the registered tests were written first and the pre-fix `[P9]` run produced 13 assertion failures. The corrected Debug and `-Ofast` Release binaries each pass the complete Experiment subsystem: 183 assertions in 9 cases. The focused slice is 42/42 P9 assertions plus 56/56 parser-atomicity assertions.
+- **Next:** continue the PackSolver/topology, PackStepper, recorder, curve, parser-fuzz, sanitizer, and Status-coverage passes; do not close 9B until P9-G1..G4 all pass.
+
 ## Quick Links
 
 - [CLAUDE.md](CLAUDE.md) - Main runbook
