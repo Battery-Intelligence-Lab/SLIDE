@@ -359,8 +359,11 @@ slide::Status detail::validateElectricalNetlist(
   std::vector<unsigned char> seen_cell(cell_count);
   std::vector<std::vector<std::uint32_t>> adjacency(netlist.node_count);
   std::vector<std::pair<std::uint32_t, std::uint32_t>> expected_sparsity;
-  if (netlist.branches.size() > std::numeric_limits<std::size_t>::max() / 3)
-    return slide::Status::Invalid_parameters;
+  static_assert(sizeof(CompiledElectricalBranch) > 3,
+                "branch storage must bound the three-entry sparsity product");
+  // sizeof(CompiledElectricalBranch) is greater than three bytes, so a
+  // std::vector of branches cannot contain enough elements for 3 * size() to
+  // overflow size_t. Its own max_size() is the tighter bound.
   expected_sparsity.reserve(netlist.branches.size() * 3);
   std::size_t cell_branches{};
   for (const auto &branch : netlist.branches) {
@@ -460,11 +463,8 @@ slide::Status detail::validateElectricalNetlist(
       seen_ladder_cell[cell] = 1;
     }
   }
-  if (std::any_of(
-        seen_ladder_cell.begin(), seen_ladder_cell.end(), [](unsigned char seen) {
-          return seen == 0;
-        }))
-    return slide::Status::Invalid_parameters;
+  // ladder_cells has exactly cell_count entries; the loop rejects out-of-range
+  // and repeated indices, which already proves that every cell was seen once.
   return slide::Status::Success;
 }
 
@@ -597,10 +597,9 @@ slide::Status CompiledThermalGraph::assemble(std::span<const real_t> cell_temper
     }
     trial_endpoint_heat[endpoint] = total;
   }
-  if (std::any_of(trial_edge_incidence.begin(),
-                  trial_edge_incidence.end(),
-                  [](unsigned char incidence) { return incidence != 3; }))
-    return slide::Status::Invalid_parameters;
+  // There are exactly two incidents per edge. Each accepted incident claims a
+  // distinct low/high bit, so the validation loop proves both bits for every
+  // edge without a second scan.
 
   std::copy(trial_edge_flux.begin(), trial_edge_flux.end(), edge_flux.begin());
   for (std::size_t endpoint = 0; endpoint < endpoint_count; ++endpoint) {

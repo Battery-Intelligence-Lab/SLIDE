@@ -49,6 +49,7 @@ ThreadPool::~ThreadPool()
 
 BatchExecutor::BatchExecutor(BatchExecutor &&other) noexcept
   : pool_{ std::move(other.pool_) },
+    pool_factory_{ std::exchange(other.pool_factory_, &BatchExecutor::makePool) },
     batches_{ std::exchange(other.batches_, 0) },
     workers_{ std::exchange(other.workers_, 0) },
     configured_{ std::exchange(other.configured_, false) }
@@ -58,11 +59,17 @@ BatchExecutor &BatchExecutor::operator=(BatchExecutor &&other) noexcept
 {
   if (this != &other) {
     pool_ = std::move(other.pool_);
+    pool_factory_ = std::exchange(other.pool_factory_, &BatchExecutor::makePool);
     batches_ = std::exchange(other.batches_, 0);
     workers_ = std::exchange(other.workers_, 0);
     configured_ = std::exchange(other.configured_, false);
   }
   return *this;
+}
+
+std::unique_ptr<ThreadPool> BatchExecutor::makePool(unsigned workers)
+{
+  return std::make_unique<ThreadPool>(workers);
 }
 
 slide::Status BatchExecutor::configure(std::size_t batches, unsigned workers)
@@ -79,7 +86,7 @@ slide::Status BatchExecutor::configure(std::size_t batches, unsigned workers)
   std::unique_ptr<ThreadPool> pool;
   try {
     if (workers > 1)
-      pool = std::make_unique<ThreadPool>(workers);
+      pool = pool_factory_(workers);
   } catch (...) {
     return slide::Status::Numerical_failure;
   }

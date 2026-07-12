@@ -26,6 +26,8 @@ namespace slide::core {
 
 namespace detail {
 
+  struct BatchExecutorTestAccess;
+
   template <class Callable>
   slide::Status invokeIndexed(Callable &target, std::size_t index)
   {
@@ -152,10 +154,16 @@ public:
   }
 
 private:
+  using PoolFactory = std::unique_ptr<ThreadPool> (*)(unsigned);
+  static std::unique_ptr<ThreadPool> makePool(unsigned workers);
+
   std::unique_ptr<ThreadPool> pool_{};
+  PoolFactory pool_factory_{ &BatchExecutor::makePool };
   std::size_t batches_{};
   unsigned workers_{};
   bool configured_{};
+
+  friend struct detail::BatchExecutorTestAccess;
 };
 
 /** Fixed-order sum: result does not depend on pool scheduling or worker count. */

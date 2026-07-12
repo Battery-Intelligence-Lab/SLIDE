@@ -200,6 +200,26 @@ TEST_CASE("one archetype cannot mix thermal and isothermal lanes",
           == Status::Invalid_parameters);
 }
 
+TEST_CASE("pack stepper rejects malformed public calls before touching batch state",
+          "[core][pack][validation][coverage]")
+{
+  core::PackStepper stepper;
+  core::CompiledPackTopology empty_topology;
+  CHECK(stepper.configure(empty_topology, {}) == Status::Invalid_parameters);
+
+  std::array<double, 1> state{};
+  CHECK(stepper.checkpoint(state) == Status::Invalid_parameters);
+  CHECK(stepper.restore(state) == Status::Invalid_parameters);
+  CHECK(stepper.step(1.0, 0.0, 1.0) == Status::Invalid_parameters);
+
+  core::CompiledPackTopology topology;
+  REQUIRE(core::compilePackDescription({ .root = core::cell() }, topology)
+          == Status::Success);
+  topology.cells[0].location.batch = 1;
+  std::array<core::SpmBatch *, 1> batches{};
+  CHECK(stepper.configure(topology, batches) == Status::Invalid_parameters);
+}
+
 TEST_CASE("parallel pack step configuration rejects aliased batch arenas",
           "[core][pack][thread-pool][alias][P9-B36]")
 {

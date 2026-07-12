@@ -12,12 +12,28 @@
 #include <atomic>
 #include <bit>
 #include <cmath>
+#include <limits>
+#include <new>
 #include <stdexcept>
 #include <string_view>
 #include <thread>
 #include <vector>
 
 using namespace slide;
+
+namespace slide::core::detail {
+
+struct BatchExecutorTestAccess
+{
+  static void failPoolCreation(BatchExecutor &executor)
+  {
+    executor.pool_factory_ = [](unsigned) -> std::unique_ptr<ThreadPool> {
+      throw std::bad_alloc{};
+    };
+  }
+};
+
+} // namespace slide::core::detail
 
 TEST_CASE("P8-G4 persistent pool executes each task exactly once and propagates failure",
           "[core][thread-pool][P8-G4]")
@@ -111,6 +127,12 @@ TEST_CASE("P9-B31 const and null function callbacks obey the public contract",
   FunctionPointer null_callback{};
   CHECK(pool.parallelFor(1, null_callback) == Status::Invalid_parameters);
   CHECK(pool.parallelFor(0, null_callback) == Status::Success);
+
+  bool invoked{};
+  CHECK(pool.parallelFor(std::numeric_limits<std::size_t>::max(),
+                         [&](std::size_t) { invoked = true; })
+        == Status::Invalid_parameters);
+  CHECK_FALSE(invoked);
 }
 
 TEST_CASE("P9-B30 exceptions finish every task and the pool remains reusable",
@@ -195,6 +217,14 @@ TEST_CASE("production batch executor is bounded and reports its selected workers
     invoked = std::this_thread::get_id();
   }) == Status::Success);
   CHECK(invoked == caller);
+
+  using FunctionPointer = Status (*)(std::size_t);
+  FunctionPointer null_callback{};
+  CHECK(executor.parallelFor(1, null_callback) == Status::Invalid_parameters);
+
+  core::detail::BatchExecutorTestAccess::failPoolCreation(executor);
+  CHECK(executor.configure(2, 2) == Status::Numerical_failure);
+  CHECK(executor.workerCount() == 1);
 
   core::BatchExecutor source;
   REQUIRE(source.configure(2, 2) == Status::Success);
