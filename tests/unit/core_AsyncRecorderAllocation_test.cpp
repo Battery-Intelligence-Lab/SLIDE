@@ -119,7 +119,10 @@ public:
     matching_failure_triggered = false;
     fail_matching_allocation = true;
   }
-  ~FailAllocationOfSize() { fail_matching_allocation = false; }
+  ~FailAllocationOfSize()
+  {
+    fail_matching_allocation = false;
+  }
 };
 
 } // namespace
@@ -173,6 +176,7 @@ TEST_CASE("Async configure rolls back a path-copy allocation failure",
   REQUIRE(matching_failure_triggered);
   CHECK(status == Status::Numerical_failure);
   CHECK_FALSE(recorder.configured());
+
   if (recorder.configured())
     (void)recorder.finish();
   else {
@@ -185,6 +189,51 @@ TEST_CASE("Async configure rolls back a path-copy allocation failure",
             == Status::Success);
     REQUIRE(recorder.finish() == Status::Success);
   }
+  std::filesystem::remove(path, ignored);
+}
+
+TEST_CASE("Compressed reader translates allocation failure",
+          "[core][async-recorder][reader][allocation][coverage]")
+{
+  core::SpmBatch batch;
+  const auto input = test_support::make_legacy_kokam_input(
+    0.55, 298.0, 298.0);
+  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
+  const auto path = std::filesystem::temp_directory_path()
+                    / "slide_async_reader_allocation.slcmp";
+  std::error_code ignored;
+  std::filesystem::remove(path, ignored);
+
+  core::AsyncRecorder writer;
+  REQUIRE(writer.configure(
+            batch,
+            path,
+            { .ring_slots = 3,
+              .backpressure = core::AsyncBackpressurePolicy::block,
+              .codec = core::CompressionCodec::none })
+          == Status::Success);
+  const std::array current{ 1.0, -1.0 };
+  REQUIRE(writer.enqueue(0, current) == Status::Success);
+  REQUIRE(writer.finish() == Status::Success);
+
+  const std::size_t raw_bytes =
+    (batch.state().size() + static_cast<std::size_t>(batch.n_lanes()))
+    * sizeof(double);
+  REQUIRE(raw_bytes > 0);
+
+  core::CompressedRecording allocation_failure;
+  Status status{};
+  {
+    FailAllocationOfSize failure{ raw_bytes };
+    status = allocation_failure.open(path);
+  }
+  REQUIRE(matching_failure_triggered);
+  CHECK(status == Status::Numerical_failure);
+  CHECK_FALSE(allocation_failure.valid());
+
+  core::CompressedRecording valid;
+  REQUIRE(valid.open(path) == Status::Success);
+  CHECK(valid.valid());
   std::filesystem::remove(path, ignored);
 }
 

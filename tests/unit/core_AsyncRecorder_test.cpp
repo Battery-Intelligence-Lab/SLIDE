@@ -10,13 +10,16 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <bit>
 #include <chrono>
 #include <cstddef>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iterator>
 #include <limits>
+#include <mutex>
 #include <span>
 #include <string>
 #include <thread>
@@ -82,6 +85,17 @@ void writeScalar(std::span<std::byte> bytes, std::size_t offset, T value)
   REQUIRE(offset <= bytes.size());
   REQUIRE(sizeof(T) <= bytes.size() - offset);
   std::memcpy(bytes.data() + offset, &value, sizeof(value));
+}
+
+template <class T>
+T readScalar(std::span<const std::byte> bytes, std::size_t offset)
+{
+  static_assert(std::is_trivially_copyable_v<T>);
+  REQUIRE(offset <= bytes.size());
+  REQUIRE(sizeof(T) <= bytes.size() - offset);
+  T value{};
+  std::memcpy(&value, bytes.data() + offset, sizeof(value));
+  return value;
 }
 
 void sealHeader(std::span<std::byte> bytes,
@@ -166,6 +180,74 @@ TEST_CASE("Async recorder rejects adversarial metadata without exceptions",
     CHECK(status == Status::Invalid_parameters);
     CHECK_FALSE(recording.valid());
     std::filesystem::remove(path, ignored);
+  }
+
+  SECTION("checked buffer layout rejects each overflowing intermediate")
+  {
+    core::detail::AsyncBufferLayout layout;
+    CHECK(core::detail::asyncBufferLayout(
+            std::numeric_limits<std::size_t>::max(),
+            1,
+            core::CompressionCodec::none,
+            layout)
+          == Status::Invalid_parameters);
+    CHECK(core::detail::asyncBufferLayout(
+            std::numeric_limits<std::size_t>::max() / sizeof(double) + 1,
+            0,
+            core::CompressionCodec::none,
+            layout)
+          == Status::Invalid_parameters);
+    CHECK(core::detail::asyncBufferLayout(
+            1,
+            1,
+            static_cast<core::CompressionCodec>(255),
+            layout)
+          == Status::Invalid_parameters);
+    REQUIRE(core::detail::asyncBufferLayout(
+              2, 8, core::CompressionCodec::none, layout)
+            == Status::Success);
+    CHECK(layout.values == 10);
+    CHECK(layout.raw_bytes == 10 * sizeof(double));
+  }
+
+  SECTION("unconfigured and finished producers reject snapshots")
+  {
+    const auto path = temporary("p9_snapshot_guards.slcmp");
+    std::filesystem::remove(path, ignored);
+    core::AsyncRecorder recorder;
+    const std::array current{ 1.0, -1.0 };
+    CHECK(recorder.enqueue(0, current) == Status::Invalid_parameters);
+
+    auto batch = makeBatch();
+    REQUIRE(recorder.configure(
+              batch,
+              path,
+              { .ring_slots = 3,
+                .backpressure = core::AsyncBackpressurePolicy::block,
+                .codec = core::CompressionCodec::none })
+            == Status::Success);
+    CHECK(recorder.enqueueSnapshot(
+            0, 0.0, std::span<const double>{}, batch.state().raw())
+          == Status::Invalid_parameters);
+    REQUIRE(recorder.enqueue(1, current) == Status::Success);
+    CHECK(recorder.enqueue(1, current) == Status::Invalid_parameters);
+    REQUIRE(recorder.finish() == Status::Success);
+    CHECK(recorder.enqueue(2, current) == Status::Invalid_parameters);
+    std::filesystem::remove(path, ignored);
+  }
+
+  SECTION("a directory cannot be configured as an output file")
+  {
+    auto batch = makeBatch();
+    core::AsyncRecorder recorder;
+    CHECK(recorder.configure(
+            batch,
+            std::filesystem::temp_directory_path(),
+            { .ring_slots = 3,
+              .backpressure = core::AsyncBackpressurePolicy::block,
+              .codec = core::CompressionCodec::none })
+          == Status::Invalid_parameters);
+    CHECK_FALSE(recorder.configured());
   }
 
   SECTION("wide codec values cannot alias a supported byte-sized enum")
@@ -379,6 +461,76 @@ TEST_CASE("P8-G3 thin never waits silently and block stays lossless",
   std::filesystem::remove(block_path, ignored);
 }
 
+TEST_CASE("closing wakes a producer blocked behind a full async ring",
+          "[core][async-recorder][backpressure][coverage]")
+{
+  const auto path = temporary("closing_wakeup.slcmp");
+  std::error_code ignored;
+  std::filesystem::remove(path, ignored);
+  auto batch = makeBatch();
+
+  std::promise<void> drain_entered;
+  auto entered = drain_entered.get_future();
+  std::promise<void> release_drain;
+  auto release = release_drain.get_future().share();
+  std::once_flag first_drain;
+  core::AsyncRecorder recorder;
+  struct DrainRelease
+  {
+    std::promise<void> &promise;
+    bool released{};
+
+    void release() noexcept
+    {
+      if (!released) {
+        promise.set_value();
+        released = true;
+      }
+    }
+
+    ~DrainRelease() { release(); }
+  } unblock{ release_drain };
+  recorder.setDrainHook([&] {
+    std::call_once(first_drain, [&] {
+      drain_entered.set_value();
+      release.wait();
+    });
+  });
+  REQUIRE(recorder.configure(
+            batch,
+            path,
+            { .ring_slots = 3,
+              .backpressure = core::AsyncBackpressurePolicy::block,
+              .codec = core::CompressionCodec::none })
+          == Status::Success);
+  const std::array current{ 1.0, -1.0 };
+  REQUIRE(recorder.enqueue(0, current) == Status::Success);
+  REQUIRE(entered.wait_for(std::chrono::seconds{ 2 })
+          == std::future_status::ready);
+  REQUIRE(recorder.enqueue(1, current) == Status::Success);
+  REQUIRE(recorder.enqueue(2, current) == Status::Success);
+
+  Status producer_status{};
+  std::promise<void> producer_done;
+  auto producer_finished = producer_done.get_future();
+  std::thread producer([&] {
+    producer_status = recorder.enqueue(3, current);
+    producer_done.set_value();
+  });
+  Status finish_status{};
+  std::thread finisher([&] { finish_status = recorder.finish(); });
+  const bool producer_woke =
+    producer_finished.wait_for(std::chrono::seconds{ 2 })
+    == std::future_status::ready;
+  unblock.release();
+  producer.join();
+  finisher.join();
+  CHECK(producer_woke);
+  CHECK(producer_status == Status::Invalid_states);
+  CHECK(finish_status == Status::Success);
+  std::filesystem::remove(path, ignored);
+}
+
 TEST_CASE("P8-G3 compressed reader atomically rejects corruption and truncation",
           "[core][async-recorder][hardened][P8-G3]")
 {
@@ -418,5 +570,118 @@ TEST_CASE("P8-G3 compressed reader atomically rejects corruption and truncation"
   CHECK(recording.open(truncated) == Status::Invalid_parameters);
   CHECK(recording.valid());
   for (const auto &path : { valid, header_corrupt, payload_corrupt, truncated })
+    std::filesystem::remove(path, ignored);
+}
+
+TEST_CASE("compressed reader rejects exact block and layout corruptions",
+          "[core][async-recorder][hardened][coverage]")
+{
+  const auto valid = temporary("coverage_valid.slcmp");
+  const auto invalid_block = temporary("coverage_block.slcmp");
+  const auto short_payload = temporary("coverage_payload_size.slcmp");
+  const auto raw_corrupt = temporary("coverage_raw_crc.slcmp");
+  const auto trailing = temporary("coverage_trailing.slcmp");
+  const auto overflow = temporary("coverage_overflow.slcmp");
+  const auto absent = temporary("coverage_absent.slcmp");
+  const auto short_file = temporary("coverage_short.slcmp");
+  std::error_code ignored;
+  for (const auto &path : { valid,
+                            invalid_block,
+                            short_payload,
+                            raw_corrupt,
+                            trailing,
+                            overflow,
+                            absent,
+                            short_file })
+    std::filesystem::remove(path, ignored);
+
+  auto batch = makeBatch();
+  core::AsyncRecorder recorder;
+  REQUIRE(recorder.configure(
+            batch,
+            valid,
+            { .ring_slots = 3,
+              .backpressure = core::AsyncBackpressurePolicy::block,
+              .codec = core::CompressionCodec::none })
+          == Status::Success);
+  const std::array current{ 1.0, -1.0 };
+  REQUIRE(recorder.enqueue(0, current) == Status::Success);
+  REQUIRE(recorder.finish() == Status::Success);
+  const auto original = readBytes(valid);
+  REQUIRE(original.size() > 128);
+
+  auto block_bytes = original;
+  writeScalar<double>(block_bytes, 64 + 24, std::bit_cast<double>(UINT64_C(0x7ff8000000000000)));
+  sealHeader(block_bytes, 64, 56);
+  writeBytes(invalid_block, block_bytes);
+
+  auto short_payload_bytes = original;
+  const auto raw_bytes = readScalar<std::uint64_t>(short_payload_bytes, 64 + 32);
+  REQUIRE(raw_bytes > sizeof(double));
+  const auto payload_bytes = raw_bytes - sizeof(double);
+  writeScalar<std::uint64_t>(short_payload_bytes, 64 + 40, payload_bytes);
+  const auto payload = std::span<const std::byte>{ short_payload_bytes }.subspan(
+    128, static_cast<std::size_t>(payload_bytes));
+  writeScalar<std::uint32_t>(short_payload_bytes, 64 + 52, testCrc32(payload));
+  sealHeader(short_payload_bytes, 64, 56);
+  writeBytes(short_payload, short_payload_bytes);
+
+  auto raw_corrupt_bytes = original;
+  raw_corrupt_bytes[128] ^= std::byte{ 0x5a };
+  const auto complete_payload = std::span<const std::byte>{ raw_corrupt_bytes }.subspan(
+    128, static_cast<std::size_t>(raw_bytes));
+  writeScalar<std::uint32_t>(raw_corrupt_bytes,
+                             64 + 52,
+                             testCrc32(complete_payload));
+  sealHeader(raw_corrupt_bytes, 64, 56);
+  writeBytes(raw_corrupt, raw_corrupt_bytes);
+
+  auto trailing_bytes = original;
+  trailing_bytes.push_back(std::byte{});
+  writeScalar<std::uint64_t>(trailing_bytes, 48, trailing_bytes.size());
+  sealHeader(trailing_bytes, 0, 20);
+  writeBytes(trailing, trailing_bytes);
+
+  std::array<std::byte, 64> overflow_header{};
+  constexpr std::array magic{ 'S', 'L', 'I', 'D', 'E', 'C', 'M', 'P' };
+  std::memcpy(overflow_header.data(), magic.data(), magic.size());
+  writeScalar<std::uint16_t>(overflow_header, 8, 1U);
+  writeScalar<std::uint16_t>(overflow_header, 10, 0U);
+  writeScalar<std::uint32_t>(overflow_header, 12, 0x01020304U);
+  writeScalar<std::uint32_t>(overflow_header, 16, 64U);
+  constexpr auto maximum_dimension =
+    static_cast<std::uint32_t>(std::numeric_limits<int>::max());
+  writeScalar<std::uint32_t>(overflow_header, 24, maximum_dimension);
+  writeScalar<std::uint32_t>(overflow_header, 28, maximum_dimension);
+  writeScalar<std::uint32_t>(overflow_header, 32, maximum_dimension);
+  writeScalar<std::uint32_t>(overflow_header, 36, 0U);
+  writeScalar<std::uint64_t>(overflow_header, 40, 0U);
+  writeScalar<std::uint64_t>(overflow_header, 48, 64U);
+  sealHeader(overflow_header, 0, 20);
+  writeBytes(overflow, overflow_header);
+
+  {
+    std::ofstream output(short_file, std::ios::binary | std::ios::trunc);
+    REQUIRE(output.good());
+    output.put('x');
+  }
+
+  core::CompressedRecording recording;
+  CHECK(recording.open(absent) == Status::Invalid_parameters);
+  CHECK(recording.open(short_file) == Status::Invalid_parameters);
+  CHECK(recording.open(overflow) == Status::Invalid_parameters);
+  CHECK(recording.open(invalid_block) == Status::Invalid_parameters);
+  CHECK(recording.open(short_payload) == Status::Invalid_parameters);
+  CHECK(recording.open(raw_corrupt) == Status::Invalid_parameters);
+  CHECK(recording.open(trailing) == Status::Invalid_parameters);
+  CHECK_FALSE(recording.valid());
+
+  for (const auto &path : { valid,
+                            invalid_block,
+                            short_payload,
+                            raw_corrupt,
+                            trailing,
+                            overflow,
+                            short_file })
     std::filesystem::remove(path, ignored);
 }

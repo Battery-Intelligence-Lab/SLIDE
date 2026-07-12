@@ -48,6 +48,24 @@ struct AsyncRecorderConfig
 /** True when the requested codec is compiled into this build. */
 bool compressionCodecAvailable(CompressionCodec codec);
 
+namespace detail {
+
+  struct AsyncBufferLayout
+  {
+    std::size_t values{};
+    std::size_t raw_bytes{};
+    std::size_t compressed_bound{};
+  };
+
+  /** Pure checked layout seam shared by configure() and boundary tests. */
+  [[nodiscard]] slide::Status asyncBufferLayout(
+    std::size_t lanes,
+    std::size_t state_values,
+    CompressionCodec codec,
+    AsyncBufferLayout &output);
+
+} // namespace detail
+
 /** Reversible Blosc-style byte transpose for homogeneous fixed-width values. */
 [[nodiscard]] slide::Status byteShuffle(std::span<const std::byte> input,
                                         std::span<std::byte> output,

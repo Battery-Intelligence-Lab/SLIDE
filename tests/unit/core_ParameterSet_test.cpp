@@ -46,6 +46,24 @@ void replaceRequired(std::string &text,
   text.replace(position, needle.size(), replacement);
 }
 
+core::ParameterSet copyWithout(
+  const core::ParameterSet &source,
+  std::initializer_list<std::string_view>
+    omitted)
+{
+  core::ParameterSet result;
+  for (const auto &description : source.describe()) {
+    if (std::find(omitted.begin(), omitted.end(), description.name)
+        != omitted.end())
+      continue;
+    REQUIRE(result.set(description.name,
+                       description.value,
+                       description.provenance)
+            == Status::Success);
+  }
+  return result;
+}
+
 constexpr std::string_view bpx_fixture = R"json({
   "Header": {"BPX": "1.0.0", "Title": "LGM50 \u03bc fixture", "Model": "SPM"},
   "Parameterisation": {
@@ -175,6 +193,48 @@ TEST_CASE("P7-G3 BPX 1.x tables absorb exactly and malformed input is atomic",
   CHECK(core::ParameterSet::fromBpxJson(old_version, parameters, diagnostic)
         == Status::Invalid_parameters);
   CHECK(parameters.size() == previous_size);
+}
+
+TEST_CASE("ParameterSet public guards reject incomplete scalar and curve tables",
+          "[core][parameters][validation][coverage]")
+{
+  core::ParameterSet parameters;
+  CHECK(parameters.set("", 1.0, "test") == Status::Invalid_parameters);
+  CHECK(parameters.set("x", 1.0, "") == Status::Invalid_parameters);
+  CHECK(parameters.set(
+          "curve",
+          core::OCVCurve{ .stoichiometry = { 0.0, 1.0 },
+                          .value = { 1.0 } },
+          "test")
+        == Status::Invalid_parameters);
+
+  core::SpmFactoryInput sentinel;
+  sentinel.design.capacity_Ah = 123.0;
+  CHECK(parameters.toSpmInput(sentinel) == Status::Invalid_parameters);
+  CHECK(sentinel.design.capacity_Ah == 123.0);
+
+  core::ParameterSet complete;
+  REQUIRE(core::ParameterSet::chen2020(complete) == Status::Success);
+
+  auto missing_curves = copyWithout(
+    complete,
+    { "Negative electrode OCP [V]", "Positive electrode OCP [V]" });
+  CHECK(missing_curves.toSpmInput(sentinel) == Status::Invalid_parameters);
+  CHECK(sentinel.design.capacity_Ah == 123.0);
+
+  auto missing_electrode = copyWithout(
+    complete, { "Negative electrode thickness [m]" });
+  CHECK(missing_electrode.toSpmInput(sentinel)
+        == Status::Invalid_parameters);
+  CHECK(sentinel.design.capacity_Ah == 123.0);
+
+  auto missing_initial_state = copyWithout(
+    complete,
+    { "Initial state-of-charge",
+      "Initial concentration in negative electrode [mol.m-3]" });
+  CHECK(missing_initial_state.toSpmInput(sentinel)
+        == Status::Invalid_parameters);
+  CHECK(sentinel.design.capacity_Ah == 123.0);
 }
 
 TEST_CASE("BPX 1.x semantic functions and legacy headers are absorbed safely",
@@ -314,6 +374,43 @@ TEST_CASE("BPX JSON rejects hostile grammar and resource amplification atomicall
     "      \"Porosity\": \"unknown\",");
   require_atomic_rejection(invalid_optional_porosity);
 
+  std::string missing_cell_scalar{ bpx_fixture };
+  replaceRequired(missing_cell_scalar,
+                  "\"Electrode area [m2]\"",
+                  "\"Missing electrode area [m2]\"");
+  require_atomic_rejection(missing_cell_scalar);
+
+  std::string missing_electrode_number{ bpx_fixture };
+  replaceRequired(missing_electrode_number,
+                  "\"Thickness [m]\"",
+                  "\"Missing thickness [m]\"");
+  require_atomic_rejection(missing_electrode_number);
+
+  std::string missing_electrode_constant{ bpx_fixture };
+  replaceRequired(missing_electrode_constant,
+                  "\"Diffusivity [m2.s-1]\"",
+                  "\"Missing diffusivity [m2.s-1]\"");
+  require_atomic_rejection(missing_electrode_constant);
+
+  std::string missing_surface_area{ bpx_fixture };
+  replaceRequired(missing_surface_area,
+                  "\"Surface area per unit volume [m-1]\"",
+                  "\"Missing surface area per unit volume [m-1]\"");
+  require_atomic_rejection(missing_surface_area);
+
+  std::string invalid_reaction_activation{ bpx_fixture };
+  replaceRequired(invalid_reaction_activation,
+                  "\"Reaction rate constant activation energy [J.mol-1]\": 35000.0",
+                  "\"Reaction rate constant activation energy [J.mol-1]\": \"bad\"");
+  require_atomic_rejection(invalid_reaction_activation);
+
+  std::string invalid_diffusion_activation{ bpx_fixture };
+  replaceRequired(invalid_diffusion_activation,
+                  "\"Diffusivity [m2.s-1]\": 3.3e-14,",
+                  "\"Diffusivity [m2.s-1]\": 3.3e-14,\n"
+                  "      \"Diffusivity activation energy [J.mol-1]\": \"bad\",");
+  require_atomic_rejection(invalid_diffusion_activation);
+
   // Bound the wire representation before constructing an amplified JSON tree.
   std::string oversized{ bpx_fixture };
   oversized.append(4U * 1024U * 1024U, ' ');
@@ -403,4 +500,7 @@ TEST_CASE("BPX file reads are bounded, complete, and atomic",
   }
 
   std::filesystem::remove(path, ignored);
+  CHECK(core::ParameterSet::fromBpxFile(path, parameters, diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(diagnostic.find("open") != std::string::npos);
 }

@@ -268,7 +268,11 @@ slide::Status Recorder::configure(SpmBatch &batch, RecorderConfig config)
   const auto lanes = static_cast<std::size_t>(batch.n_lanes());
   std::size_t state_storage{}, current_storage{};
   if (!checkedMultiply(config.capacity, state_values, state_storage)
-      || !checkedMultiply(config.capacity, lanes, current_storage))
+      || !checkedMultiply(config.capacity, lanes, current_storage)
+      || config.capacity > std::vector<std::uint64_t>{}.max_size()
+      || config.capacity > std::vector<real_t>{}.max_size()
+      || state_storage > std::vector<real_t>{}.max_size()
+      || current_storage > std::vector<real_t>{}.max_size())
     return slide::Status::Invalid_parameters;
   try {
     std::vector<std::uint64_t> steps(config.capacity);

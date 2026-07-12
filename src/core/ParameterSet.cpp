@@ -4,6 +4,7 @@
  */
 
 #include "ParameterSet.hpp"
+#include "BoundedFileReader.hpp"
 
 #include <algorithm>
 #include <array>
@@ -33,6 +34,13 @@ namespace {
     } catch (...) {
       target.clear();
     }
+  }
+
+  slide::Status allocationFailure(std::string &diagnostic,
+                                  std::string_view message) noexcept
+  {
+    assignDiagnosticNoThrow(diagnostic, message);
+    return slide::Status::Numerical_failure;
   }
 
   bool validCurve(const OCVCurve &curve)
@@ -1455,65 +1463,31 @@ try {
   output = std::move(candidate);
   return slide::Status::Success;
 } catch (const std::bad_alloc &) {
-  assignDiagnosticNoThrow(diagnostic, "BPX JSON allocation failed");
-  return slide::Status::Numerical_failure;
+  return allocationFailure(diagnostic, "BPX JSON allocation failed");
 } catch (const std::length_error &) {
-  assignDiagnosticNoThrow(diagnostic, "BPX JSON size is not representable");
-  return slide::Status::Numerical_failure;
+  return allocationFailure(diagnostic, "BPX JSON size is not representable");
 }
 
 slide::Status ParameterSet::fromBpxFile(const std::filesystem::path &path,
                                         ParameterSet &output,
                                         std::string &diagnostic)
 try {
-  std::ifstream input(path, std::ios::binary);
-  if (!input) {
-    diagnostic = "could not open BPX file";
-    return slide::Status::Invalid_parameters;
-  }
-  input.seekg(0, std::ios::end);
-  if (!input) {
-    diagnostic = "could not seek BPX file";
-    return slide::Status::Numerical_failure;
-  }
-  const auto end = input.tellg();
-  if (end < std::streampos{ 0 }) {
-    diagnostic = "could not determine BPX file size";
-    return slide::Status::Numerical_failure;
-  }
-  const auto size = static_cast<std::uintmax_t>(end);
-  if (size > max_bpx_json_bytes) {
-    diagnostic = "BPX JSON exceeds 4194304 bytes";
-    return slide::Status::Invalid_parameters;
-  }
-  input.seekg(0, std::ios::beg);
-  if (!input) {
-    diagnostic = "could not rewind BPX file";
-    return slide::Status::Numerical_failure;
-  }
-  std::string contents(static_cast<std::size_t>(size), '\0');
-  input.read(contents.data(), static_cast<std::streamsize>(contents.size()));
-  if (input.gcount() != static_cast<std::streamsize>(contents.size())) {
-    diagnostic = "could not read complete BPX file";
-    return slide::Status::Numerical_failure;
-  }
-  char trailing{};
-  input.read(&trailing, 1);
-  if (input.gcount() != 0) {
-    diagnostic = "BPX file changed size while reading";
-    return slide::Status::Invalid_parameters;
-  }
-  if (!input.eof()) {
-    diagnostic = "could not verify the end of the BPX file";
-    return slide::Status::Numerical_failure;
+  std::string contents;
+  const auto read = detail::readBoundedFile(path, max_bpx_json_bytes, contents);
+  if (read != detail::BoundedFileRead::success) {
+    if (read == detail::BoundedFileRead::open_failed)
+      diagnostic = "could not open BPX file";
+    else if (read == detail::BoundedFileRead::too_large)
+      diagnostic = "BPX JSON exceeds 4194304 bytes";
+    else
+      diagnostic = "could not read complete BPX file";
+    return detail::boundedFileStatus(read);
   }
   return fromBpxJson(contents, output, diagnostic);
 } catch (const std::bad_alloc &) {
-  assignDiagnosticNoThrow(diagnostic, "BPX file allocation failed");
-  return slide::Status::Numerical_failure;
+  return allocationFailure(diagnostic, "BPX file allocation failed");
 } catch (const std::length_error &) {
-  assignDiagnosticNoThrow(diagnostic, "BPX file size is not representable");
-  return slide::Status::Numerical_failure;
+  return allocationFailure(diagnostic, "BPX file size is not representable");
 }
 
 } // namespace slide::core

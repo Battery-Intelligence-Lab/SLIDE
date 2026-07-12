@@ -4,12 +4,16 @@
  */
 
 #include "../../src/core/NetlistCsv.hpp"
+#include "../../src/core/BoundedFileReader.hpp"
 #include "../../src/core/PackSolver.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <filesystem>
 #include <fstream>
+#include <istream>
+#include <sstream>
+#include <streambuf>
 #include <string>
 #include <utility>
 
@@ -64,6 +68,15 @@ void requireSentinel(const core::CompiledPackTopology &topology)
   CHECK(topology.thermal.cell_count == 1);
   CHECK(topology.thermal.edges.empty());
 }
+
+class ThrowingReadBuffer : public std::streambuf
+{
+protected:
+  std::streamsize xsgetn(char *, std::streamsize) override
+  {
+    throw std::ios_base::failure("injected bounded-read failure");
+  }
+};
 
 } // namespace
 
@@ -257,4 +270,72 @@ TEST_CASE("liionpack CSV file reads are bounded and exact",
         == Status::Invalid_parameters);
   requireSentinel(topology);
   std::filesystem::remove(path, ignored);
+
+  CHECK(core::loadLiionpackNetlistCsv(path, topology, diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(diagnostic.message.find("open") != std::string::npos);
+  requireSentinel(topology);
+}
+
+TEST_CASE("bounded parser reads distinguish exact EOF, limits, and I/O faults",
+          "[core][parser][file][coverage]")
+{
+  std::string output{ "sentinel" };
+  std::istringstream exact{ "abcd" };
+  const auto exact_result = core::detail::readBoundedStream(exact, 4, output);
+  CHECK(exact_result == core::detail::BoundedFileRead::success);
+  CHECK(core::detail::boundedFileStatus(exact_result) == Status::Success);
+  CHECK(output == "abcd");
+
+  output = "sentinel";
+  std::istringstream oversized{ "abcde" };
+  const auto oversized_result =
+    core::detail::readBoundedStream(oversized, 4, output);
+  CHECK(oversized_result == core::detail::BoundedFileRead::too_large);
+  CHECK(core::detail::boundedFileStatus(oversized_result)
+        == Status::Invalid_parameters);
+  CHECK(output == "sentinel");
+
+  ThrowingReadBuffer buffer;
+  std::istream failing{ &buffer };
+  const auto failure_result =
+    core::detail::readBoundedStream(failing, 4, output);
+  CHECK(failure_result == core::detail::BoundedFileRead::io_failed);
+  CHECK(core::detail::boundedFileStatus(failure_result)
+        == Status::Numerical_failure);
+  CHECK(output == "sentinel");
+
+  CHECK(core::detail::boundedFileStatus(
+          core::detail::BoundedFileRead::open_failed)
+        == Status::Invalid_parameters);
+}
+
+TEST_CASE("liionpack CSV enforces row and retained archetype budgets",
+          "[core][pack][netlist][csv][limits][coverage]")
+{
+  std::string too_many_rows{ "desc,node1,node2,value\n" };
+  too_many_rows.reserve(2U * 1024U * 1024U);
+  for (std::size_t row = 0; row <= 100'000; ++row)
+    too_many_rows += "V" + std::to_string(row) + ",1,0,4.2\n";
+  core::CompiledPackTopology topology = sentinelTopology();
+  core::NetlistCsvDiagnostic diagnostic;
+  CHECK(core::parseLiionpackNetlistCsv(
+          too_many_rows, topology, diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(diagnostic.message.find("100000 rows") != std::string::npos);
+  requireSentinel(topology);
+
+  std::string retained{ "desc,node1,node2,value\n" };
+  for (std::size_t cell = 0; cell < 4097; ++cell)
+    retained += "V" + std::to_string(cell) + ",1,0,4.2\n";
+  retained += "I0,1,0,1\n";
+  topology = sentinelTopology();
+  CHECK(core::parseLiionpackNetlistCsv(
+          retained,
+          topology,
+          diagnostic,
+          { .archetype = std::string(1024, 'x') })
+        == Status::Invalid_parameters);
+  CHECK(diagnostic.message.find("retained-text budget") != std::string::npos);
+  requireSentinel(topology);
 }

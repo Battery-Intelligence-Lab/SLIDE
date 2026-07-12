@@ -102,11 +102,12 @@ namespace {
     if (codec == CompressionCodec::none)
       return raw_bytes;
 #if defined(SLIDE_WITH_ZSTD)
-    return ZSTD_compressBound(raw_bytes);
+    if (codec == CompressionCodec::zstd)
+      return ZSTD_compressBound(raw_bytes);
 #else
     (void)raw_bytes;
-    return 0;
 #endif
+    return 0;
   }
 
 } // namespace
@@ -120,6 +121,28 @@ bool compressionCodecAvailable(CompressionCodec codec)
 #else
   return false;
 #endif
+}
+
+slide::Status detail::asyncBufferLayout(std::size_t lanes,
+                                        std::size_t state_values,
+                                        CompressionCodec codec,
+                                        AsyncBufferLayout &output)
+{
+  if (lanes > std::numeric_limits<std::size_t>::max() - state_values)
+    return slide::Status::Invalid_parameters;
+  const std::size_t raw_values = lanes + state_values;
+  std::size_t raw_bytes{};
+  if (!checkedMultiply(raw_values, sizeof(real_t), raw_bytes))
+    return slide::Status::Invalid_parameters;
+  const std::size_t bound = compressionBound(codec, raw_bytes);
+  if (bound == 0 || raw_values > std::vector<real_t>{}.max_size()
+      || raw_bytes > std::vector<std::byte>{}.max_size()
+      || bound > std::vector<std::byte>{}.max_size())
+    return slide::Status::Invalid_parameters;
+  output = { .values = raw_values,
+             .raw_bytes = raw_bytes,
+             .compressed_bound = bound };
+  return slide::Status::Success;
 }
 
 namespace {
@@ -192,27 +215,24 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
       || !(config.backpressure == AsyncBackpressurePolicy::block
            || config.backpressure == AsyncBackpressurePolicy::thin)
       || !compressionCodecAvailable(config.codec)
+      || config.ring_slots > std::vector<Slot>{}.max_size()
       || config.compression_level < -20 || config.compression_level > 22)
     return slide::Status::Invalid_parameters;
   const std::size_t state_values = batch.state().size();
   const std::size_t lanes = static_cast<std::size_t>(batch.n_lanes());
-  std::size_t raw_values{}, raw_bytes{};
-  if (lanes > std::numeric_limits<std::size_t>::max() - state_values)
-    return slide::Status::Invalid_parameters;
-  raw_values = lanes + state_values;
-  if (!checkedMultiply(raw_values, sizeof(real_t), raw_bytes))
-    return slide::Status::Invalid_parameters;
-  const std::size_t bound = compressionBound(config.codec, raw_bytes);
-  if (bound == 0)
-    return slide::Status::Invalid_parameters;
+  detail::AsyncBufferLayout layout;
+  const auto layout_status = detail::asyncBufferLayout(
+    lanes, state_values, config.codec, layout);
+  if (layout_status != slide::Status::Success)
+    return layout_status;
 
   try {
     std::filesystem::path candidate_path{ path };
     std::vector<Slot> slots(config.ring_slots);
     for (auto &slot : slots) {
-      slot.values.resize(raw_values);
-      slot.shuffled.resize(raw_bytes);
-      slot.compressed.resize(bound);
+      slot.values.resize(layout.values);
+      slot.shuffled.resize(layout.raw_bytes);
+      slot.compressed.resize(layout.compressed_bound);
     }
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
     if (!output)
@@ -238,7 +258,7 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
     lanes_ = batch.state().n_lanes();
     stride_ = batch.state().stride();
     state_values_ = state_values;
-    raw_values_ = raw_values;
+    raw_values_ = layout.values;
     slots_ = std::move(slots);
     output_ = std::move(output);
     codec_context_ = context;
@@ -267,8 +287,6 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
     }
   } catch (const std::bad_alloc &) {
     return slide::Status::Numerical_failure;
-  } catch (const std::length_error &) {
-    return slide::Status::Invalid_parameters;
   }
   return slide::Status::Success;
 }
@@ -535,6 +553,7 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
       || header.rows > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
       || header.lanes > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
       || header.stride > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
+      || header.snapshots > std::numeric_limits<std::size_t>::max()
       || (header.codec != static_cast<std::uint32_t>(CompressionCodec::none)
           && header.codec
                != static_cast<std::uint32_t>(CompressionCodec::zstd))
@@ -555,14 +574,17 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
            > std::numeric_limits<std::size_t>::max() - state_values)
     return slide::Status::Invalid_parameters;
   raw_values = static_cast<std::size_t>(header.lanes) + state_values;
+  const auto snapshots = static_cast<std::size_t>(header.snapshots);
+  const auto real_vector_limit = std::vector<real_t>{}.max_size();
+  const auto byte_vector_limit = std::vector<std::byte>{}.max_size();
   if (!checkedMultiply(raw_values, sizeof(real_t), raw_bytes)
-      || header.snapshots > std::numeric_limits<std::size_t>::max()
-      || !checkedMultiply(static_cast<std::size_t>(header.snapshots),
-                          state_values,
-                          state_storage)
-      || !checkedMultiply(static_cast<std::size_t>(header.snapshots),
+      || !checkedMultiply(snapshots, state_values, state_storage)
+      || !checkedMultiply(snapshots,
                           static_cast<std::size_t>(header.lanes),
-                          current_storage))
+                          current_storage)
+      || snapshots > std::vector<std::uint64_t>{}.max_size()
+      || snapshots > real_vector_limit || state_storage > real_vector_limit
+      || current_storage > real_vector_limit || raw_bytes > byte_vector_limit)
     return slide::Status::Invalid_parameters;
 
   try {
@@ -588,6 +610,7 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
           || block.codec != header.codec || block.flags != 1U
           || block.raw_bytes != raw_bytes || block.payload_bytes > remaining
           || block.payload_bytes > std::numeric_limits<std::size_t>::max()
+          || block.payload_bytes > payload.max_size()
           || block.payload_bytes
                > static_cast<std::uint64_t>(
                  std::numeric_limits<std::streamsize>::max())
@@ -645,8 +668,6 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
     valid_ = true;
   } catch (const std::bad_alloc &) {
     return slide::Status::Numerical_failure;
-  } catch (const std::length_error &) {
-    return slide::Status::Invalid_parameters;
   }
   return slide::Status::Success;
 }

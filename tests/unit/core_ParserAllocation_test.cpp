@@ -7,12 +7,15 @@
 #include "../../src/core/NetlistCsv.hpp"
 #include "../../src/core/PackSolver.hpp"
 #include "../../src/core/ParameterSet.hpp"
+#include "../support/KokamSpmFixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <new>
 #include <span>
 #include <string>
@@ -234,6 +237,63 @@ void operator delete[](void *pointer, std::size_t, std::align_val_t) noexcept
 
 using namespace slide;
 
+TEST_CASE("Cycler reconfiguration publishes allocation-heavy scratch atomically",
+          "[core][experiment][allocation][coverage]")
+{
+  const auto input = test_support::make_legacy_kokam_input(
+    0.55, settings::T_ENV, 298.0);
+  core::SpmBatch old_batch;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, old_batch) == Status::Success);
+  core::SpmModelOptions new_options;
+  new_options.nch = 8;
+  core::SpmBatch new_batch;
+  REQUIRE(core::buildSpmBatch(input, new_options, 1, new_batch)
+          == Status::Success);
+  REQUIRE(new_batch.state().size() != old_batch.state().size());
+
+  const std::size_t state_bytes = new_batch.state().size() * sizeof(double);
+  Status probe_status{};
+  {
+    core::CyclerV2 probe;
+    MeasureAllocationsOfSize measure{ state_bytes };
+    probe_status =
+      probe.configure(new_batch, core::CyclerIntegrator::exponential);
+  }
+  REQUIRE(probe_status == Status::Success);
+  REQUIRE(measured_matching_allocations > 0);
+
+  core::Experiment rest;
+  rest.segments.push_back(
+    { .mode = core::ControlMode::rest, .duration = 1.0 });
+  for (std::size_t occurrence = 0;
+       occurrence < measured_matching_allocations;
+       ++occurrence) {
+    core::CyclerV2 cycler;
+    REQUIRE(cycler.configure(old_batch, core::CyclerIntegrator::euler_legacy)
+            == Status::Success);
+    const std::vector<double> old_before(old_batch.state().raw().begin(),
+                                         old_batch.state().raw().end());
+    const std::vector<double> new_before(new_batch.state().raw().begin(),
+                                         new_batch.state().raw().end());
+    Status status{};
+    {
+      FailAllocationOfSize failure{ state_bytes, occurrence };
+      status = cycler.configure(new_batch,
+                                core::CyclerIntegrator::exponential);
+    }
+    CAPTURE(occurrence, measured_matching_allocations);
+    REQUIRE(allocation_failure_triggered);
+    CHECK(status == Status::Numerical_failure);
+    CHECK(std::equal(old_before.begin(), old_before.end(), old_batch.state().raw().begin()));
+    CHECK(std::equal(new_before.begin(), new_before.end(), new_batch.state().raw().begin()));
+
+    core::ExperimentSolution output;
+    CHECK(cycler.run(rest, 1.0, output) == Status::Success);
+    CHECK_FALSE(std::equal(old_before.begin(), old_before.end(), old_batch.state().raw().begin()));
+    CHECK(std::equal(new_before.begin(), new_before.end(), new_batch.state().raw().begin()));
+  }
+}
+
 TEST_CASE("Experiment parser maps a late expansion allocation failure without publication",
           "[core][experiment][parser][allocation][P9]")
 {
@@ -304,6 +364,25 @@ TEST_CASE("BPX parser propagates every ParameterSet node allocation failure atom
   CHECK(failed_node_status == Status::Numerical_failure);
   CHECK(failed_node.size() == 0);
 
+  core::ParameterSet update_target;
+  REQUIRE(update_target.set("sentinel", 7.0, "allocation-test")
+          == Status::Success);
+  const std::array updates{
+    core::ParameterDescription{ .name = "new value",
+                                .value = 2.0,
+                                .provenance = "allocation-test" }
+  };
+  Status update_status{};
+  {
+    FailAllocationOfSize failure{ parameter_node_bytes, 0, true };
+    update_status = update_target.update(updates);
+  }
+  REQUIRE(allocation_failure_triggered);
+  CHECK(update_status == Status::Numerical_failure);
+  CHECK(update_target.size() == 1);
+  CHECK(update_target.findScalar("sentinel") != nullptr);
+  CHECK_FALSE(update_target.contains("new value"));
+
   const std::string long_name(513, 'x');
   core::ParameterSet canonical_measured;
   Status canonical_measured_status{};
@@ -364,6 +443,86 @@ TEST_CASE("BPX parser propagates every ParameterSet node allocation failure atom
     REQUIRE(value != nullptr);
     CHECK(*value == 7.0);
   }
+}
+
+TEST_CASE("bounded parser files translate reader allocation failures atomically",
+          "[core][parser][file][allocation][P9]")
+{
+  constexpr std::size_t reader_reserve = 8192;
+  std::size_t reader_allocation{};
+  {
+    std::string probe;
+    MeasureLargestAllocation measure;
+    probe.reserve(reader_reserve);
+    reader_allocation = largest_allocation_size;
+  }
+  REQUIRE(reader_allocation >= reader_reserve);
+
+  const auto directory = std::filesystem::temp_directory_path();
+  const auto bpx_path = directory / "slide_bounded_alloc_bpx.json";
+  const auto csv_path = directory / "slide_bounded_alloc_netlist.csv";
+  std::error_code ignored;
+  std::filesystem::remove(bpx_path, ignored);
+  std::filesystem::remove(csv_path, ignored);
+  {
+    std::ofstream output(bpx_path, std::ios::binary | std::ios::trunc);
+    REQUIRE(output.good());
+    output.write(bpx_fixture.data(),
+                 static_cast<std::streamsize>(bpx_fixture.size()));
+    REQUIRE(output.good());
+  }
+  const std::string csv =
+    "desc,node1,node2,value\nV0,1,0,4.2\nI0,1,0,1\n";
+  {
+    std::ofstream output(csv_path, std::ios::binary | std::ios::trunc);
+    REQUIRE(output.good());
+    output.write(csv.data(), static_cast<std::streamsize>(csv.size()));
+    REQUIRE(output.good());
+  }
+
+  core::ParameterSet warm_bpx;
+  std::string bpx_diagnostic;
+  REQUIRE(core::ParameterSet::fromBpxFile(
+            bpx_path, warm_bpx, bpx_diagnostic)
+          == Status::Success);
+  core::CompiledPackTopology warm_topology;
+  core::NetlistCsvDiagnostic csv_diagnostic;
+  REQUIRE(core::loadLiionpackNetlistCsv(
+            csv_path, warm_topology, csv_diagnostic)
+          == Status::Success);
+
+  core::ParameterSet bpx_sentinel;
+  REQUIRE(bpx_sentinel.set("sentinel", 7.0, "allocation-test")
+          == Status::Success);
+  Status bpx_status{};
+  {
+    FailAllocationOfSize failure{ reader_allocation, 0, true };
+    bpx_status = core::ParameterSet::fromBpxFile(
+      bpx_path, bpx_sentinel, bpx_diagnostic);
+  }
+  REQUIRE(allocation_failure_triggered);
+  CHECK(bpx_status == Status::Numerical_failure);
+  REQUIRE(bpx_sentinel.size() == 1);
+  CHECK(bpx_sentinel.findScalar("sentinel") != nullptr);
+
+  core::CompiledPackTopology topology_sentinel;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::cell({ .archetype = "sentinel" }) },
+            topology_sentinel)
+          == Status::Success);
+  Status csv_status{};
+  {
+    FailAllocationOfSize failure{ reader_allocation, 0, true };
+    csv_status = core::loadLiionpackNetlistCsv(
+      csv_path, topology_sentinel, csv_diagnostic);
+  }
+  REQUIRE(allocation_failure_triggered);
+  CHECK(csv_status == Status::Numerical_failure);
+  REQUIRE(topology_sentinel.cells.size() == 1);
+  CHECK(topology_sentinel.cells[0].archetype == "sentinel");
+
+  std::filesystem::remove(bpx_path, ignored);
+  std::filesystem::remove(csv_path, ignored);
 }
 
 TEST_CASE("netlist CSV maps a late cell-vector allocation failure atomically",

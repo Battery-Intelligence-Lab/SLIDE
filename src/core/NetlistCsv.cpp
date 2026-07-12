@@ -4,6 +4,7 @@
  */
 
 #include "NetlistCsv.hpp"
+#include "BoundedFileReader.hpp"
 #include "PackTopologyInternal.hpp"
 
 #include <algorithm>
@@ -34,6 +35,15 @@ namespace {
     } catch (...) {
       target.clear();
     }
+  }
+
+  slide::Status allocationFailure(NetlistCsvDiagnostic &diagnostic,
+                                  std::string_view message) noexcept
+  {
+    diagnostic.row = 0;
+    diagnostic.offset = 0;
+    assignDiagnosticNoThrow(diagnostic.message, message);
+    return slide::Status::Numerical_failure;
   }
 
   class CsvReader
@@ -463,17 +473,10 @@ try {
   output = std::move(candidate);
   return slide::Status::Success;
 } catch (const std::bad_alloc &) {
-  diagnostic.row = 0;
-  diagnostic.offset = 0;
-  assignDiagnosticNoThrow(diagnostic.message,
-                          "liionpack CSV allocation failed");
-  return slide::Status::Numerical_failure;
+  return allocationFailure(diagnostic, "liionpack CSV allocation failed");
 } catch (const std::length_error &) {
-  diagnostic.row = 0;
-  diagnostic.offset = 0;
-  assignDiagnosticNoThrow(diagnostic.message,
-                          "liionpack CSV size is not representable");
-  return slide::Status::Numerical_failure;
+  return allocationFailure(
+    diagnostic, "liionpack CSV size is not representable");
 }
 
 slide::Status loadLiionpackNetlistCsv(
@@ -482,60 +485,24 @@ slide::Status loadLiionpackNetlistCsv(
   NetlistCsvDiagnostic &diagnostic,
   const NetlistCsvOptions &options)
 try {
-  std::ifstream input(path, std::ios::binary);
-  if (!input) {
-    diagnostic = { .message = "could not open liionpack CSV file" };
-    return slide::Status::Invalid_parameters;
-  }
-  input.seekg(0, std::ios::end);
-  if (!input) {
-    diagnostic = { .message = "could not seek liionpack CSV file" };
-    return slide::Status::Numerical_failure;
-  }
-  const auto end = input.tellg();
-  if (end < std::streampos{ 0 }) {
-    diagnostic = { .message = "could not determine liionpack CSV size" };
-    return slide::Status::Numerical_failure;
-  }
-  const auto size = static_cast<std::uintmax_t>(end);
-  if (size > max_csv_bytes) {
-    diagnostic = { .message = "liionpack CSV exceeds 4194304 bytes" };
-    return slide::Status::Invalid_parameters;
-  }
-  input.seekg(0, std::ios::beg);
-  if (!input) {
-    diagnostic = { .message = "could not rewind liionpack CSV file" };
-    return slide::Status::Numerical_failure;
-  }
-  std::string contents(static_cast<std::size_t>(size), '\0');
-  input.read(contents.data(), static_cast<std::streamsize>(contents.size()));
-  if (input.gcount() != static_cast<std::streamsize>(contents.size())) {
-    diagnostic = { .message = "could not read complete liionpack CSV file" };
-    return slide::Status::Numerical_failure;
-  }
-  char trailing{};
-  input.read(&trailing, 1);
-  if (input.gcount() != 0) {
-    diagnostic = { .message = "liionpack CSV file changed size while reading" };
-    return slide::Status::Invalid_parameters;
-  }
-  if (!input.eof()) {
-    diagnostic = { .message = "could not verify liionpack CSV end of file" };
-    return slide::Status::Numerical_failure;
+  std::string contents;
+  const auto read = detail::readBoundedFile(path, max_csv_bytes, contents);
+  if (read != detail::BoundedFileRead::success) {
+    if (read == detail::BoundedFileRead::open_failed)
+      diagnostic = { .message = "could not open liionpack CSV file" };
+    else if (read == detail::BoundedFileRead::too_large)
+      diagnostic = { .message = "liionpack CSV exceeds 4194304 bytes" };
+    else
+      diagnostic = { .message = "could not read complete liionpack CSV file" };
+    return detail::boundedFileStatus(read);
   }
   return parseLiionpackNetlistCsv(contents, output, diagnostic, options);
 } catch (const std::bad_alloc &) {
-  diagnostic.row = 0;
-  diagnostic.offset = 0;
-  assignDiagnosticNoThrow(diagnostic.message,
-                          "liionpack CSV file allocation failed");
-  return slide::Status::Numerical_failure;
+  return allocationFailure(
+    diagnostic, "liionpack CSV file allocation failed");
 } catch (const std::length_error &) {
-  diagnostic.row = 0;
-  diagnostic.offset = 0;
-  assignDiagnosticNoThrow(diagnostic.message,
-                          "liionpack CSV file size is not representable");
-  return slide::Status::Numerical_failure;
+  return allocationFailure(
+    diagnostic, "liionpack CSV file size is not representable");
 }
 
 } // namespace slide::core

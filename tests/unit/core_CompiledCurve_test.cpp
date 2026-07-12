@@ -158,3 +158,84 @@ TEST_CASE("Compiled curve domain edges never cast NaN to an index",
     CHECK((bits & exponent_mask) == exponent_mask);
   }
 }
+
+TEST_CASE("Compiled curve builders classify every representable arithmetic boundary",
+          "[core][parameters][curve][coverage]")
+{
+  const double nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  const double denormal = std::bit_cast<double>(UINT64_C(1));
+  const double maximum = std::numeric_limits<double>::max();
+
+  SECTION("the first knot is validated independently")
+  {
+    const std::array x{ nan, 1.0 };
+    const std::array y{ 0.0, 1.0 };
+    core::IndexedPiecewiseLinear curve;
+    CHECK(curve.build(x, y) == Status::Invalid_parameters);
+  }
+
+  SECTION("a finite range divided by a denormal spacing is rejected")
+  {
+    const std::array x{ 0.0, denormal, 1.0 };
+    const std::array y{ 1.0, 1.0, 1.0 };
+    core::IndexedPiecewiseLinear curve;
+    CHECK(curve.build(x, y) == Status::Invalid_parameters);
+  }
+
+  SECTION("an unrepresentable indexed reciprocal is rejected")
+  {
+    const std::array x{ 0.0, denormal };
+    const std::array y{ 1.0, 1.0 };
+    core::IndexedPiecewiseLinear curve;
+    CHECK(curve.build(x, y) == Status::Invalid_parameters);
+  }
+
+  SECTION("the finer uniform reciprocal is checked separately")
+  {
+    const std::array x{ 0.0, 1e-305 };
+    const std::array y{ 1.0, 1.0 };
+    core::UniformLut lut;
+    CHECK(lut.build(x, y, 1e-6, 4096) == Status::Invalid_parameters);
+  }
+
+  SECTION("sampling detects overflow in the legacy interpolation order")
+  {
+    const std::array x{ 0.0, 1e308 };
+    const std::array y{ 0.0, 1e308 };
+    core::UniformLut lut;
+    CHECK(lut.build(x, y, 1e-6, 3) == Status::Numerical_failure);
+  }
+
+  SECTION("sampling rejects rounded addition beyond finite endpoints")
+  {
+    const double xmin = std::bit_cast<double>(UINT64_C(0x7fc665fc6bf52b9e));
+    const std::array x{ xmin, maximum };
+    const std::array y{ 1.0, 1.0 };
+    core::UniformLut lut;
+    CHECK(lut.build(x, y, 1e-6, 2) == Status::Numerical_failure);
+  }
+
+  SECTION("knot validation rejects an unrepresentable relative error")
+  {
+    const std::array x{ 0.0, 1.0, 2.0, 3.0, 4.0 };
+    const std::array y{ maximum, 0.0, -maximum, 0.0, maximum };
+    core::UniformLut lut;
+    CHECK(lut.build(x, y, 1e-6, 2) == Status::Numerical_failure);
+  }
+
+  SECTION("midpoint validation independently rejects interpolation overflow")
+  {
+    const std::array x{ 0.0, 1e308 };
+    const std::array y{ 0.0, 1e308 };
+    core::UniformLut lut;
+    CHECK(lut.build(x, y, 1e-6, 2) == Status::Numerical_failure);
+  }
+
+  SECTION("a finite but inaccurate coarse LUT fails its requested tolerance")
+  {
+    const std::array x{ 0.0, 0.5, 1.0 };
+    const std::array y{ 0.0, 1.0, 0.0 };
+    core::UniformLut lut;
+    CHECK(lut.build(x, y, 0.1, 2) == Status::Numerical_failure);
+  }
+}

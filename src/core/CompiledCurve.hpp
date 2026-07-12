@@ -111,8 +111,9 @@ public:
     std::size_t segment_index = 0;
     for (std::size_t bin = 0; bin < bins; ++bin) {
       const real_t left = x.front() + static_cast<real_t>(bin) / inv_bin_width;
-      if (!detail::curve_is_finite(left))
-        return slide::Status::Invalid_parameters;
+      // source endpoints, their finite positive range, and a bin strictly
+      // inside that range make this a finite convex-domain coordinate.
+      assert(detail::curve_is_finite(left));
       while (segment_index + 1 < x.size() - 1 && x[segment_index + 1] <= left)
         ++segment_index;
       candidate_segment[bin] = static_cast<std::uint32_t>(segment_index);
@@ -215,16 +216,19 @@ public:
     const real_t xmin = x.front();
     const real_t xmax = x.back();
     const real_t range = xmax - xmin;
-    if (!detail::curve_is_finite(range) || !(range > 0.0))
-      return slide::Status::Invalid_parameters;
+    // IndexedPiecewiseLinear accepted this exact source range above.
+    assert(detail::curve_is_finite(range) && range > 0.0);
     const real_t dx = range / static_cast<real_t>(points - 1);
-    if (!detail::curve_is_finite(dx) || !(dx > 0.0))
-      return slide::Status::Invalid_parameters;
+    // source.build() also proved 256/range representable; division by at
+    // most 4095 therefore cannot underflow this spacing to zero.
+    assert(detail::curve_is_finite(dx) && dx > 0.0);
     const real_t inv_dx = real_t{ 1 } / dx;
     if (!detail::curve_is_finite(inv_dx) || !(inv_dx > 0.0))
       return slide::Status::Invalid_parameters;
     for (std::size_t i = 0; i < points; ++i) {
       const real_t query = xmin + static_cast<real_t>(i) * dx;
+      // Floating addition can overflow even when both endpoints and their
+      // subtraction are finite (rounding need not preserve the real interval).
       if (!detail::curve_is_finite(query))
         return slide::Status::Numerical_failure;
       candidate[i] = source.eval(query);

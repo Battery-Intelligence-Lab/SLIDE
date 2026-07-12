@@ -571,3 +571,192 @@ TEST_CASE("scheduled starts cut steps and insert exact rest gaps",
   core::ExperimentSolution invalid;
   CHECK(cycler.run(experiment, 600.0, invalid) == Status::Invalid_parameters);
 }
+
+TEST_CASE("Experiment public limits and drive-cycle tables reject exact boundaries",
+          "[core][experiment][validation][coverage]")
+{
+  core::Experiment sentinel;
+  sentinel.segments.push_back(
+    { .mode = core::ControlMode::rest, .duration = 7.0 });
+  core::ParseDiagnostic diagnostic;
+
+  const std::vector<std::string> empty;
+  CHECK(core::Experiment::parse(empty, sentinel, diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(sentinel.segments.size() == 1);
+
+  const std::vector<std::string> too_many(10'001, "Rest for 1 s");
+  CHECK(core::Experiment::parse(too_many, sentinel, diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(sentinel.segments.size() == 1);
+
+  const std::array oversized_step{ std::string(65'537, 'x') };
+  CHECK(core::Experiment::parse(oversized_step, sentinel, diagnostic)
+        == Status::Invalid_parameters);
+  CHECK(sentinel.segments.size() == 1);
+
+  auto batch = makeBatch();
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  CHECK(cycler.registerDriveCycle({}) == Status::Invalid_parameters);
+  CHECK(cycler.registerDriveCycle(
+          { .name = "nonmonotone",
+            .time = { 0.0, 1.0, 1.0 },
+            .current = { 0.0, 1.0, 2.0 } })
+        == Status::Invalid_parameters);
+}
+
+TEST_CASE("Cycler failure solvers are reached through validated public segments",
+          "[core][experiment][solver][coverage]")
+{
+  core::CyclerV2 unconfigured;
+  core::Experiment rest;
+  rest.segments.push_back(
+    { .mode = core::ControlMode::rest, .duration = 1.0 });
+  core::ExperimentSolution output;
+  CHECK(unconfigured.run(rest, 1.0, output) == Status::Invalid_parameters);
+
+  auto batch = makeBatch();
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+
+  core::Experiment decreasing_schedule;
+  decreasing_schedule.segments = {
+    { .mode = core::ControlMode::rest,
+      .duration = 1.0,
+      .scheduled_start = 2.0 },
+    { .mode = core::ControlMode::rest,
+      .duration = 1.0,
+      .scheduled_start = 1.0 },
+  };
+  CHECK(cycler.run(decreasing_schedule, 1.0, output)
+        == Status::Invalid_parameters);
+
+  core::Experiment missing_cycle;
+  missing_cycle.segments.push_back(
+    { .mode = core::ControlMode::drive_cycle,
+      .drive_cycle = "missing" });
+  CHECK(cycler.run(missing_cycle, 1.0, output)
+        == Status::Invalid_parameters);
+
+  const double maximum = std::numeric_limits<double>::max();
+  core::Experiment invalid_voltage_iteration;
+  invalid_voltage_iteration.segments.push_back(
+    { .mode = core::ControlMode::voltage,
+      .value = maximum,
+      .duration = 1.0 });
+  CHECK(cycler.run(invalid_voltage_iteration, 1.0, output)
+        == Status::Invalid_states);
+
+  const double nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  core::Experiment nonfinite_custom;
+  nonfinite_custom.segments.push_back(
+    { .mode = core::ControlMode::custom_explicit,
+      .duration = 1.0,
+      .custom_control = [nan](const core::ExperimentVariables &) {
+        return nan;
+      } });
+  CHECK(cycler.run(nonfinite_custom, 1.0, output)
+        == Status::Invalid_states);
+
+  core::Experiment singular_custom;
+  singular_custom.segments.push_back(
+    { .mode = core::ControlMode::custom_implicit,
+      .duration = 1.0,
+      .custom_control = [](const core::ExperimentVariables &) {
+        return 1.0;
+      } });
+  CHECK(cycler.run(singular_custom, 1.0, output)
+        == Status::Numerical_failure);
+
+  core::Experiment cycling_newton;
+  cycling_newton.segments.push_back(
+    { .mode = core::ControlMode::custom_implicit,
+      .duration = 1.0,
+      .custom_control = [](const core::ExperimentVariables &variables) {
+        const double current = variables.current;
+        // The finite-difference Newton map is exactly 0 -> 1 -> 0:
+        // f(x)=2-2x around zero and f(x)=x around one.
+        return current < 0.5 ? 2.0 - 2.0 * current : current;
+      } });
+  CHECK(cycler.run(cycling_newton, 1.0, output)
+        == Status::Numerical_failure);
+
+  core::Experiment unbounded_event;
+  unbounded_event.segments.push_back(
+    { .mode = core::ControlMode::rest,
+      .custom_terminations = {
+        { .name = "never",
+          .indicator = [](const core::ExperimentVariables &) { return 1.0; } } } });
+  CHECK(cycler.run(unbounded_event, 7.0 * 24.0 * 3600.0, output)
+        == Status::Numerical_failure);
+  CHECK(output.termination_name == "maximum step duration");
+}
+
+TEST_CASE("Cycler revalidates callback-mutable segment controls",
+          "[core][experiment][callback][validation][coverage]")
+{
+  auto batch = makeBatch();
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  core::ExperimentSolution output;
+
+  SECTION("a later power direction cannot be invalidated")
+  {
+    core::Experiment experiment;
+    experiment.segments.push_back(
+      { .mode = core::ControlMode::custom_explicit,
+        .duration = 1.0,
+        .custom_control = [&experiment](const core::ExperimentVariables &) {
+          experiment.segments[1].direction = core::Direction::none;
+          return 0.0;
+        } });
+    experiment.segments.push_back(
+      { .mode = core::ControlMode::power,
+        .direction = core::Direction::discharge,
+        .value = 1.0,
+        .duration = 1.0 });
+    CHECK(cycler.run(experiment, 1.0, output)
+          == Status::Invalid_parameters);
+  }
+
+  SECTION("a later custom controller cannot be removed")
+  {
+    core::Experiment experiment;
+    experiment.segments.push_back(
+      { .mode = core::ControlMode::custom_explicit,
+        .duration = 1.0,
+        .custom_control = [&experiment](const core::ExperimentVariables &) {
+          experiment.segments[1].custom_control = {};
+          return 0.0;
+        } });
+    experiment.segments.push_back(
+      { .mode = core::ControlMode::custom_implicit,
+        .duration = 1.0,
+        .custom_control = [](const core::ExperimentVariables &variables) {
+          return variables.current;
+        } });
+    CHECK(cycler.run(experiment, 1.0, output)
+          == Status::Invalid_parameters);
+  }
+
+  SECTION("a later voltage event direction cannot be invalidated")
+  {
+    core::Experiment experiment;
+    experiment.segments.push_back(
+      { .mode = core::ControlMode::custom_explicit,
+        .duration = 1.0,
+        .custom_control = [&experiment](const core::ExperimentVariables &) {
+          experiment.segments[1].direction = core::Direction::none;
+          return 0.0;
+        } });
+    experiment.segments.push_back(
+      { .mode = core::ControlMode::current,
+        .direction = core::Direction::discharge,
+        .value = 1.0,
+        .duration = 1.0,
+        .voltage_limit = 3.0 });
+    CHECK(cycler.run(experiment, 1.0, output)
+          == Status::Invalid_parameters);
+  }
+}

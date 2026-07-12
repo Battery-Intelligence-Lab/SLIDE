@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -78,6 +79,41 @@ TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering
               .backpressure = static_cast<core::BackpressurePolicy>(255) })
           == Status::Invalid_parameters);
     CHECK_FALSE(recorder.configured());
+  }
+
+  SECTION("overflowing capacity is rejected before allocation")
+  {
+    auto batch = makeBatch();
+    core::Recorder recorder;
+    CHECK(recorder.configure(
+            batch,
+            { .capacity = std::numeric_limits<std::size_t>::max() })
+          == Status::Invalid_parameters);
+    CHECK_FALSE(recorder.configured());
+  }
+
+  SECTION("unconfigured calls and invalid sinks are rejected")
+  {
+    core::Recorder recorder;
+    const std::array current{ 1.0, -1.0 };
+    std::array<double, 2> voltage{};
+    CHECK(recorder.record(0, current) == Status::Invalid_parameters);
+    CHECK(recorder.terminalVoltage(0, voltage)
+          == Status::Invalid_parameters);
+    CHECK(recorder.writeCsv(temporary("unconfigured.csv"))
+          == Status::Invalid_parameters);
+    CHECK(recorder.writeBinary(temporary("unconfigured.slrec"))
+          == Status::Invalid_parameters);
+
+    auto batch = makeBatch();
+    REQUIRE(recorder.configure(batch, { .capacity = 1 })
+            == Status::Success);
+    CHECK(recorder.terminalVoltage(0, voltage)
+          == Status::Invalid_parameters);
+    CHECK(recorder.writeCsv(std::filesystem::temp_directory_path())
+          == Status::Invalid_parameters);
+    CHECK(recorder.writeBinary(std::filesystem::temp_directory_path())
+          == Status::Invalid_parameters);
   }
 
   SECTION("thin mode tracks the last omitted cadence point")
@@ -238,9 +274,14 @@ TEST_CASE("P6-G1 mmap open rejects truncated CRC and offset corruption",
   const auto valid = temporary("hardened_valid.slrec");
   const auto header_corrupt = temporary("header_corrupt.slrec");
   const auto offset_corrupt = temporary("offset_corrupt.slrec");
+  const auto record_offset_corrupt = temporary("record_offset_corrupt.slrec");
   const auto truncated = temporary("truncated.slrec");
   std::error_code ignored;
-  for (const auto &path : { valid, header_corrupt, offset_corrupt, truncated })
+  for (const auto &path : { valid,
+                            header_corrupt,
+                            offset_corrupt,
+                            record_offset_corrupt,
+                            truncated })
     std::filesystem::remove(path, ignored);
 
   auto batch = makeBatch();
@@ -251,9 +292,11 @@ TEST_CASE("P6-G1 mmap open rejects truncated CRC and offset corruption",
   REQUIRE(recorder.writeBinary(valid) == Status::Success);
   REQUIRE(std::filesystem::copy_file(valid, header_corrupt));
   REQUIRE(std::filesystem::copy_file(valid, offset_corrupt));
+  REQUIRE(std::filesystem::copy_file(valid, record_offset_corrupt));
   REQUIRE(std::filesystem::copy_file(valid, truncated));
-  flipByte(header_corrupt, 24); // first dimension byte; CRC must catch it
-  flipByte(offset_corrupt, 64); // first absolute offset
+  flipByte(header_corrupt, 24);        // first dimension byte; CRC must catch it
+  flipByte(offset_corrupt, 64);        // first absolute offset
+  flipByte(record_offset_corrupt, 72); // second absolute offset
   const auto truncated_size = std::filesystem::file_size(truncated);
   REQUIRE(truncated_size > 64);
   std::filesystem::resize_file(truncated, truncated_size - 1);
@@ -263,9 +306,34 @@ TEST_CASE("P6-G1 mmap open rejects truncated CRC and offset corruption",
   CHECK(recording.open(header_corrupt) == Status::Invalid_parameters);
   CHECK(recording.valid()); // failed open is atomic
   CHECK(recording.open(offset_corrupt) == Status::Invalid_parameters);
+  CHECK(recording.open(record_offset_corrupt) == Status::Invalid_parameters);
   CHECK(recording.open(truncated) == Status::Invalid_parameters);
   recording.close();
 
-  for (const auto &path : { valid, header_corrupt, offset_corrupt, truncated })
+  for (const auto &path : { valid,
+                            header_corrupt,
+                            offset_corrupt,
+                            record_offset_corrupt,
+                            truncated })
     std::filesystem::remove(path, ignored);
+}
+
+TEST_CASE("Binary recording rejects absent and header-short files",
+          "[core][recorder][mmap][coverage]")
+{
+  const auto absent = temporary("absent.slrec");
+  const auto short_file = temporary("short.slrec");
+  std::error_code ignored;
+  std::filesystem::remove(absent, ignored);
+  std::filesystem::remove(short_file, ignored);
+  {
+    std::ofstream output(short_file, std::ios::binary | std::ios::trunc);
+    REQUIRE(output.good());
+    output.put('x');
+  }
+  core::BinaryRecording recording;
+  CHECK(recording.open(absent) == Status::Invalid_parameters);
+  CHECK(recording.open(short_file) == Status::Invalid_parameters);
+  CHECK_FALSE(recording.valid());
+  std::filesystem::remove(short_file, ignored);
 }

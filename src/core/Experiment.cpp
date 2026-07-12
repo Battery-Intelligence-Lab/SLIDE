@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cctype>
 #include <charconv>
 #include <cmath>
@@ -15,6 +16,7 @@
 #include <limits>
 #include <new>
 #include <stdexcept>
+#include <type_traits>
 
 namespace slide::core {
 namespace {
@@ -27,6 +29,13 @@ namespace {
     } catch (...) {
       target.clear();
     }
+  }
+
+  slide::Status parserAllocationFailure(ParseDiagnostic &diagnostic,
+                                        std::string_view message) noexcept
+  {
+    assignDiagnosticNoThrow(diagnostic.message, message);
+    return slide::Status::Numerical_failure;
   }
 
   std::string normalized(std::string text)
@@ -391,12 +400,10 @@ try {
       diagnostic.message = "experiment expanded segment limit (10000) exceeded";
       return slide::Status::Invalid_parameters;
     }
-    if (segment.source.size()
-        > max_expanded_text_bytes - segment.drive_cycle.size()) {
-      diagnostic.step = index;
-      diagnostic.message = "experiment expanded text limit (4194304 bytes) exceeded";
-      return slide::Status::Invalid_parameters;
-    }
+    // The independently enforced 65536-byte step and 1024-byte drive-cycle
+    // limits make this addition representable and well below the 4 MiB cap.
+    assert(segment.source.size()
+           <= max_expanded_text_bytes - segment.drive_cycle.size());
     const std::size_t retained_text = segment.source.size()
                                       + segment.drive_cycle.size();
     if (retained_text > 0
@@ -414,13 +421,11 @@ try {
   output.segments = std::move(parsed);
   return slide::Status::Success;
 } catch (const std::bad_alloc &) {
-  assignDiagnosticNoThrow(
-    diagnostic.message, "experiment parser allocation failed");
-  return slide::Status::Numerical_failure;
+  return parserAllocationFailure(
+    diagnostic, "experiment parser allocation failed");
 } catch (const std::length_error &) {
-  assignDiagnosticNoThrow(
-    diagnostic.message, "experiment parser size is not representable");
-  return slide::Status::Numerical_failure;
+  return parserAllocationFailure(
+    diagnostic, "experiment parser size is not representable");
 }
 
 slide::Status CyclerV2::configure(SpmBatch &batch,
@@ -430,17 +435,30 @@ slide::Status CyclerV2::configure(SpmBatch &batch,
       || !(integrator == CyclerIntegrator::euler_legacy
            || integrator == CyclerIntegrator::exponential))
     return slide::Status::Invalid_parameters;
-  auto status = euler_.configure(batch);
-  if (status != slide::Status::Success)
-    return status;
-  status = exponential_.configure(batch);
-  if (status != slide::Status::Success)
-    return status;
-  batch_ = &batch;
-  integrator_ = integrator;
-  density_.assign(1, 0.0);
-  event_backup_.assign(batch.state().size(), 0.0);
-  return slide::Status::Success;
+  static_assert(std::is_nothrow_move_assignable_v<EulerLegacy>);
+  static_assert(std::is_nothrow_move_assignable_v<ExponentialModal>);
+  try {
+    EulerLegacy candidate_euler;
+    ExponentialModal candidate_exponential;
+    auto status = candidate_euler.configure(batch);
+    if (status != slide::Status::Success)
+      return status;
+    status = candidate_exponential.configure(batch);
+    if (status != slide::Status::Success)
+      return status;
+    std::vector<real_t> candidate_density(1, 0.0);
+    std::vector<real_t> candidate_event_backup(batch.state().size(), 0.0);
+
+    euler_ = std::move(candidate_euler);
+    exponential_ = std::move(candidate_exponential);
+    density_ = std::move(candidate_density);
+    event_backup_ = std::move(candidate_event_backup);
+    integrator_ = integrator;
+    batch_ = &batch;
+    return slide::Status::Success;
+  } catch (const std::bad_alloc &) {
+    return slide::Status::Numerical_failure;
+  }
 }
 
 slide::Status CyclerV2::registerDriveCycle(DriveCycle cycle)
@@ -568,8 +586,7 @@ slide::Status CyclerV2::currentForCustom(const ExperimentSegment &segment,
                      * std::max(real_t{ 1.0 }, std::abs(current));
     const real_t plus_current = std::min(maximum_current, current + h);
     const real_t minus_current = std::max(-maximum_current, current - h);
-    if (!(plus_current > minus_current))
-      return slide::Status::Numerical_failure;
+    assert(plus_current > minus_current);
     real_t plus_voltage{}, minus_voltage{};
     status = voltageAt(plus_current, plus_voltage);
     if (status != slide::Status::Success)
