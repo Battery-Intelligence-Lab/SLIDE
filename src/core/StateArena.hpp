@@ -18,9 +18,11 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <new>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -86,6 +88,14 @@ struct StateSlice
  */
 class StateArena
 {
+  struct CheckedShape
+  {
+    int n_rows{};
+    int n_lanes{};
+    int stride{};
+    std::size_t elements{};
+  };
+
 public:
   static constexpr std::size_t alignment = 64; //!< cache line / AVX-512 vector
   static constexpr int lanes_per_block = static_cast<int>(alignment / sizeof(real_t));
@@ -114,13 +124,8 @@ public:
   }
 
   StateArena(int n_rows, int n_lanes)
-    : n_rows_{ n_rows }, n_lanes_{ n_lanes },
-      stride_{ pad_lanes(n_lanes) },
-      data_{ allocate(static_cast<std::size_t>(n_rows) * static_cast<std::size_t>(stride_)) }
-  {
-    assert(n_rows > 0 && n_lanes > 0);
-    std::fill_n(data_.get(), size(), real_t{}); // zero-init incl. padding lanes
-  }
+    : StateArena{ checked_shape(n_rows, n_lanes) }
+  {}
 
   //!< One variable across all lanes. Excludes the alignment padding.
   std::span<real_t> row(int r)
@@ -181,9 +186,31 @@ public:
   std::size_t size() const { return static_cast<std::size_t>(n_rows_) * static_cast<std::size_t>(stride_); }
 
 private:
-  static int pad_lanes(int n_lanes)
+  explicit StateArena(CheckedShape shape)
+    : n_rows_{ shape.n_rows }, n_lanes_{ shape.n_lanes }, stride_{ shape.stride },
+      data_{ allocate(shape.elements) }
   {
-    return ((n_lanes + lanes_per_block - 1) / lanes_per_block) * lanes_per_block;
+    std::fill_n(data_.get(), shape.elements, real_t{}); // zero-init incl. padding lanes
+  }
+
+  static CheckedShape checked_shape(int n_rows, int n_lanes)
+  {
+    if (n_rows <= 0 || n_lanes <= 0)
+      throw std::invalid_argument{ "StateArena requires positive row and lane counts" };
+
+    constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+    const auto lanes = static_cast<std::size_t>(n_lanes);
+    const auto block = static_cast<std::size_t>(lanes_per_block);
+    const auto stride = ((lanes + block - 1) / block) * block;
+    if (stride > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+      throw std::length_error{ "StateArena padded lane count is not representable" };
+    const auto rows = static_cast<std::size_t>(n_rows);
+    if (rows > maximum / stride)
+      throw std::length_error{ "StateArena element count is not representable" };
+    const auto elements = rows * stride;
+    if (elements > maximum / sizeof(real_t))
+      throw std::length_error{ "StateArena byte count is not representable" };
+    return { n_rows, n_lanes, static_cast<int>(stride), elements };
   }
 
   struct AlignedDelete

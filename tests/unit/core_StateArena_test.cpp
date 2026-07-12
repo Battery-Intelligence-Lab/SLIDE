@@ -21,7 +21,9 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <new>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -280,4 +282,14 @@ TEST_CASE("Moving StateArena leaves a safe empty source", "[core][P1]")
   REQUIRE(source.n_lanes() == 0);
   REQUIRE(source.stride() == 0);
   REQUIRE(source.raw().empty());
+}
+
+TEST_CASE("StateArena rejects invalid extents before allocation", "[core][P1][validation]")
+{
+  REQUIRE_THROWS_AS(StateArena(0, 1), std::invalid_argument);
+  REQUIRE_THROWS_AS(StateArena(1, 0), std::invalid_argument);
+  REQUIRE_THROWS_AS(StateArena(-1, 1), std::invalid_argument);
+  REQUIRE_THROWS_AS(StateArena(1, -1), std::invalid_argument);
+  REQUIRE_THROWS_AS(StateArena(1, std::numeric_limits<int>::max()),
+                    std::length_error);
 }

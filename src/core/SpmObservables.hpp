@@ -32,7 +32,9 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <span>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 
@@ -340,10 +342,8 @@ class SpmObservableScratch
 {
 public:
   explicit SpmObservableScratch(int n_lanes)
-    : n_lanes_{ n_lanes }, storage_(required_size(n_lanes))
-  {
-    assert(n_lanes > 0);
-  }
+    : n_lanes_{ checked_lane_count(n_lanes) }, storage_(required_size(n_lanes))
+  {}
 
   BasicSpmObservables<Real> view()
   {
@@ -387,9 +387,23 @@ public:
   int n_lanes() const { return n_lanes_; }
 
 private:
+  static int checked_lane_count(int n_lanes)
+  {
+    if (n_lanes <= 0)
+      throw std::invalid_argument{ "SPM observable scratch requires at least one lane" };
+    return n_lanes;
+  }
+
   static std::size_t required_size(int n_lanes)
   {
-    return static_cast<std::size_t>(n_lanes) * (2 * (NCH + 2) + 21);
+    if (n_lanes <= 0)
+      throw std::invalid_argument{ "SPM observable scratch requires at least one lane" };
+    static_assert(NCH > 0);
+    constexpr std::size_t per_lane = 2 * (static_cast<std::size_t>(NCH) + 2) + 21;
+    const auto lanes = static_cast<std::size_t>(n_lanes);
+    if (lanes > std::numeric_limits<std::size_t>::max() / per_lane)
+      throw std::length_error{ "SPM observable scratch extent is not representable" };
+    return lanes * per_lane;
   }
 
   int n_lanes_{};
