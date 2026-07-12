@@ -41,6 +41,7 @@
 #include <cassert>
 #include <cmath>
 #include <span>
+#include <stdexcept>
 #include <vector>
 
 namespace slide::core {
@@ -80,11 +81,14 @@ class SpectralDiffusion
 {
 public:
   SpectralDiffusion(DiffusionParams<NCH> params, int n_lanes)
-    : p_{ params }, n_lanes_{ n_lanes },
-      D_eff_(static_cast<std::size_t>(2) * n_lanes),
-      flux_(static_cast<std::size_t>(2) * n_lanes)
+    : p_{ params }, n_lanes_{ n_lanes }
   {
-    assert(n_lanes > 0);
+    if (n_lanes <= 0)
+      throw std::invalid_argument{ "SpectralDiffusion requires at least one lane" };
+    const auto scratch_size = static_cast<std::size_t>(2)
+                              * static_cast<std::size_t>(n_lanes);
+    D_eff_.resize(scratch_size);
+    flux_.resize(scratch_size);
   }
 
   //!< Rows this component contributes to the batch layout: zp (NCH) then zn (NCH).

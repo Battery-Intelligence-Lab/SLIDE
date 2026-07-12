@@ -51,9 +51,21 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <stdexcept>
 #include <vector>
 
 using namespace slide;
+
+TEST_CASE("SpectralDiffusion rejects invalid lane counts before allocation",
+          "[core][diffusion][validation]")
+{
+  constexpr int NCH = static_cast<int>(settings::nch);
+  const core::DiffusionParams<NCH> parameters;
+  REQUIRE_THROWS_AS(core::SpectralDiffusion<NCH>(parameters, 0),
+                    std::invalid_argument);
+  REQUIRE_THROWS_AS(core::SpectralDiffusion<NCH>(parameters, -1),
+                    std::invalid_argument);
+}
 
 TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per lane", "[core][diffusion]")
 {
