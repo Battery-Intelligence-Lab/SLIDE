@@ -218,94 +218,110 @@ public:
     if constexpr (needs_sei_scratch)
       sei_view = sei_.view();
     if constexpr (WithSei) {
-      if (params_.enable_sei) {
-        status = computeSei(params_.sei.mechanism,
+      status = detail::evaluate_ageing_stage(
+        params_.enable_sei,
+        sei_view,
+        [&](BasicSeiOutput<real_t> output) {
+          return computeSei(params_.sei.mechanism,
                             views.y,
                             layout_.spm,
                             ctx,
                             observable_view,
-                            sei_view);
-        if (status != slide::Status::Success)
-          return status;
-        addSeiRhs(params_.sei,
-                  views.y,
-                  views.ydot,
-                  layout_.spm,
-                  sei_view);
-      } else if constexpr (WithSurfaceCrack) {
-        std::fill(sei_view.side_reaction_current.begin(),
-                  sei_view.side_reaction_current.end(),
-                  real_t{});
-        std::fill(sei_view.active_fraction_rate.begin(),
-                  sei_view.active_fraction_rate.end(),
-                  real_t{});
-      }
-    } else if constexpr (WithSurfaceCrack) {
-      std::fill(sei_view.side_reaction_current.begin(),
-                sei_view.side_reaction_current.end(),
-                real_t{});
-      std::fill(sei_view.active_fraction_rate.begin(),
-                sei_view.active_fraction_rate.end(),
-                real_t{});
+                            output);
+        },
+        [&](const BasicSeiOutput<real_t> &output) {
+          addSeiRhs(params_.sei,
+                    views.y,
+                    views.ydot,
+                    layout_.spm,
+                    output);
+        });
+      if (status != slide::Status::Success)
+        return status;
+    }
+    if constexpr (WithSurfaceCrack) {
+      bool sei_enabled = false;
+      if constexpr (WithSei)
+        sei_enabled = params_.enable_sei;
+      if (!sei_enabled)
+        detail::clear_ageing_fields<real_t, 2>(
+          n_lanes_,
+          { sei_view.side_reaction_current, sei_view.active_fraction_rate });
     }
 
     if constexpr (WithSurfaceCrack) {
-      if (params_.enable_surface_crack) {
-        auto crack_view = surface_crack_.view();
-        status = computeSurfaceCrack(params_.surface_crack.mechanism,
+      auto crack_view = surface_crack_.view();
+      status = detail::evaluate_ageing_stage(
+        params_.enable_surface_crack,
+        crack_view,
+        [&](BasicSurfaceCrackOutput<real_t> output) {
+          return computeSurfaceCrack(params_.surface_crack.mechanism,
                                      views.y,
                                      layout_.spm,
                                      layout_.stress_history,
                                      ctx,
                                      observable_view,
                                      stress_view,
-                                     crack_view);
-        if (status != slide::Status::Success)
-          return status;
-        addSurfaceCrackRhs(params_.surface_crack,
-                           views.y,
-                           views.ydot,
-                           layout_.spm,
-                           sei_view,
-                           crack_view);
-      }
+                                     output);
+        },
+        [&](const BasicSurfaceCrackOutput<real_t> &output) {
+          addSurfaceCrackRhs(params_.surface_crack,
+                             views.y,
+                             views.ydot,
+                             layout_.spm,
+                             sei_view,
+                             output);
+        });
+      if (status != slide::Status::Success)
+        return status;
     }
 
     if constexpr (WithLam) {
-      if (params_.enable_lam) {
-        auto lam_view = lam_.view();
-        status = computeLam(params_.lam,
+      auto lam_view = lam_.view();
+      status = detail::evaluate_ageing_stage(
+        params_.enable_lam,
+        lam_view,
+        [&](BasicLamOutput<real_t> output) {
+          return computeLam(params_.lam,
                             views.y,
                             layout_.spm,
                             layout_.stress_history,
                             ctx,
                             observable_view,
                             stress_view,
-                            lam_view);
-        if (status != slide::Status::Success)
-          return status;
-        addLamRhs(params_.lam, views.ydot, layout_.spm, lam_view);
-      }
+                            output);
+        },
+        [&](const BasicLamOutput<real_t> &output) {
+          addLamRhs(params_.lam, views.ydot, layout_.spm, output);
+        });
+      if (status != slide::Status::Success)
+        return status;
     }
 
     if constexpr (WithLithiumPlating) {
-      if (params_.enable_lithium_plating) {
-        auto plating_view = plating_.view();
-        status = computeLithiumPlating(params_.lithium_plating.mechanism,
+      auto plating_view = plating_.view();
+      status = detail::evaluate_ageing_stage(
+        params_.enable_lithium_plating,
+        plating_view,
+        [&](BasicLithiumPlatingOutput<real_t> output) {
+          return computeLithiumPlating(params_.lithium_plating.mechanism,
                                        views.y,
                                        layout_.spm,
                                        ctx,
                                        observable_view,
-                                       plating_view);
-        if (status != slide::Status::Success)
-          return status;
-        addLithiumPlatingRhs(params_.lithium_plating,
-                             views.y,
-                             views.ydot,
-                             layout_.spm,
-                             BasicLithiumPlatingOutput<const real_t>{
-                               plating_view.side_reaction_current });
-      }
+                                       output);
+        },
+        [&](const BasicLithiumPlatingOutput<real_t> &output) {
+          addLithiumPlatingRhs(
+            params_.lithium_plating,
+            views.y,
+            views.ydot,
+            layout_.spm,
+            BasicLithiumPlatingOutput<const real_t>{
+              output.side_reaction_current });
+        });
+      if (status != slide::Status::Success)
+        return status;
     }
     return slide::Status::Success;
   }

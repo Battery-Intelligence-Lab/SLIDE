@@ -336,4 +336,42 @@ TEST_CASE("9C-2 common ageing scaffold fixes mask, scratch, and traversal order"
     });
   REQUIRE(failure == Status::Invalid_states);
   REQUIRE(last_lane == 2);
+
+  int computes{}, applies{};
+  auto stage = core::detail::evaluate_ageing_stage(
+    false,
+    7,
+    [&](int) {
+      ++computes;
+      return Status::Success;
+    },
+    [&](int) { ++applies; });
+  REQUIRE(stage == Status::Success);
+  REQUIRE(computes == 0);
+  REQUIRE(applies == 0);
+  stage = core::detail::evaluate_ageing_stage(
+    true,
+    7,
+    [&](int) {
+      ++computes;
+      return Status::Numerical_failure;
+    },
+    [&](int) { ++applies; });
+  REQUIRE(stage == Status::Numerical_failure);
+  REQUIRE(computes == 1);
+  REQUIRE(applies == 0);
+  stage = core::detail::evaluate_ageing_stage(
+    true,
+    7,
+    [&](int output) {
+      ++computes;
+      return output == 7 ? Status::Success : Status::Invalid_states;
+    },
+    [&](int output) {
+      REQUIRE(output == 7);
+      ++applies;
+    });
+  REQUIRE(stage == Status::Success);
+  REQUIRE(computes == 2);
+  REQUIRE(applies == 1);
 }

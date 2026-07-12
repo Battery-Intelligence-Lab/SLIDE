@@ -164,6 +164,23 @@ template <unsigned ModelCount, class Body>
   return slide::Status::Success;
 }
 
+/** The common pipeline transaction: disabled -> no-op; compute -> check -> apply. */
+template <class Output, class Compute, class Apply>
+[[nodiscard]] SLIDE_AGEING_FORCE_INLINE slide::Status evaluate_ageing_stage(
+  bool enabled,
+  Output output,
+  Compute &&compute,
+  Apply &&apply)
+{
+  if (!enabled)
+    return slide::Status::Success;
+  const auto status = compute(output);
+  if (status != slide::Status::Success)
+    return status;
+  apply(output);
+  return slide::Status::Success;
+}
+
 } // namespace detail
 } // namespace slide::core
 
