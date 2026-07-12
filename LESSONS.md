@@ -2,6 +2,14 @@
 
 This file records reusable findings from the v4 implementation and validation work. Detailed design decisions remain in `PLAN.md`; session chronology remains in `.claude/discussions.md` and `.claude/summaries/`.
 
+## Single-source numerical kernels still need code-generation provenance
+
+- An algebraically identical inline helper can change fast-math loop IR, vector-loop/code-generation shape, and final bits. Freeze whole traces before refactoring, inspect optimized code, and use a narrowly documented shared statement/expression kernel when an ordinary function boundary breaks a required operation-order contract.
+- Recorded bits are compiler, CRT, ISA, and build-configuration evidence—not portable mathematical truth. Make them explicit opt-in, retain the historical producer commit, and never bless new post-refactor hashes merely because another toolchain differs; portable analytic, finite-difference, parity, and structural gates remain mandatory.
+- A single-source gate must enumerate every production consumer and keep independent oracles outside that source. The first CPU/CUDA/Dual map missed `SpectralDiffusion`; expanding the structural scan found it, while forbidding the raw legacy oracle from including the shared header preserves its ability to catch common-mode wiring errors.
+- Preflight multiplication without evaluating the dangerous product in the guard. Once finite nonnegative factors are established, a factor at most one cannot cause overflow; for larger factors compare safely against the maximum, treat a rounded equality conservatively, and validate every derived parameter scale before either compute or RHS publication.
+- Differentiated observations need the full primal algebra, including temperature corrections that vanish at a reference fixture. A reference-temperature exact trace cannot expose an omitted entropic tangent, so pair it with an off-reference difference-of-differences arbiter.
+
 ## Portability gates must exercise a consumer
 
 - A successful `SLIDE_CORE_ONLY` build followed by a zero-test CTest run is not validation. Keep a dependency-light executable smoke that checks the state arena, owned thread pool, and disabled optional capabilities.

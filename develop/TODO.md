@@ -4,12 +4,12 @@
 >
 > **Disclaimer**: Some items are informal notes. Priority may shift based on user needs.
 >
-> **2026-07-10 — v4 refactor active.** The authoritative vision/roadmap is [/PLAN.md](../PLAN.md)
+> **2026-07-12 — v5 refactor active.** The authoritative vision/roadmap is [/PLAN.md](../PLAN.md)
 > (architecture, decision log, phased gates, open questions). Phases 0–8 and 9A are complete;
-> Phase 9B systematic adversarial bug-hunt is active; its Experiment transaction/parser,
+> Phase 9B systematic adversarial bug-hunt is complete; its Experiment transaction/parser,
 > BPX parser/allocation, recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
-> Phase 9B is complete through P9-G4: the live ledger closes P9-B01..B50 with short red evidence and fixes, retains 23 refuted candidates, and the refreshed optional-off Linux Clang/LLVM 18 gate resolves all 336 active Status-failure arms (329 measured plus seven hash-pinned exceptions) with zero failures. Native Debug/Release are 52/52; focused sanitizers and Linux Release PackSolver are green. Hosted workflows are committed but have not run. M0.5/9C-1 single-source modal/observable physics extraction is next.
+> M0.5/9C-1 is complete: CPU, CUDA, Dual, observable, curve, and spectral-diffusion production math now shares one scalar-generic source; three audit defects are fixed. Native Debug/Release/CUDA and full Clang 18 ASan+UBSan are 54/54. Exact optional-off Status coverage resolves all 339 active arms (332 measured plus seven structural exceptions) with zero uncovered/unmapped. Hosted workflows are committed but have not run. M0.6/9C-2 ageing-kernel scaffolding unification is next.
 
 ---
 
