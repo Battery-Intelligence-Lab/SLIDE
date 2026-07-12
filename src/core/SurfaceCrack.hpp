@@ -9,7 +9,6 @@
 #include "Sei.hpp"
 #include "SpmStress.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -130,6 +129,9 @@ template <class Real>
   using std::exp;
   using std::pow;
   using std::sqrt;
+  const auto exceeds_crack_surface_ceiling = [&](Real crack_surface) {
+    return primal_value(crack_surface) > p.model4_max_surface;
+  };
 
   const auto model_status = detail::for_each_enabled_ageing_model_lane<5>(
     p.model_mask, lanes, [&](unsigned model, int lane) {
@@ -161,9 +163,11 @@ template <class Real>
         const Real gradient = (surface - centre) / p.negative_cs_max;
         output.crack_surface_rate[i] += p.model3_alpha * gradient * gradient;
       } else if (model == 4) {
-        const Real maximum = std::max(p.model4_max_surface, primal_value(crack_surface));
+        const Real remaining_surface = exceeds_crack_surface_ceiling(crack_surface)
+                                         ? Real{}
+                                         : Real{ p.model4_max_surface } - crack_surface;
         const Real current = ctx.i_app[i] * p.electrode_area;
-        output.crack_surface_rate[i] += p.model4_alpha * (maximum - crack_surface) * abs(current);
+        output.crack_surface_rate[i] += p.model4_alpha * remaining_surface * abs(current);
       } else {
         const Real T = state.at(layout.temperature, 0, lane);
         const Real current = ctx.i_app[i] * p.electrode_area;
@@ -196,9 +200,14 @@ template <class Real>
     const auto i = static_cast<std::size_t>(lane);
     if (p.reduce_negative_diffusivity) {
       const Real crack_surface = state.at(layout.crack_surface, 0, lane);
-      const Real maximum = std::max(p.model4_max_surface, primal_value(crack_surface));
+      const bool saturated = exceeds_crack_surface_ceiling(crack_surface);
+      const Real maximum = saturated ? crack_surface
+                                     : Real{ p.model4_max_surface };
+      const Real intact_fraction = saturated
+                                     ? Real{}
+                                     : Real{ 1 } - crack_surface / maximum;
       Real rate_fraction = p.diffusion_exponent
-                           * pow(Real{ 1 } - crack_surface / maximum,
+                           * pow(intact_fraction,
                                  p.diffusion_exponent - real_t{ 1 })
                            / maximum * output.crack_surface_rate[i];
       if (primal_value(rate_fraction) > 2e-7)

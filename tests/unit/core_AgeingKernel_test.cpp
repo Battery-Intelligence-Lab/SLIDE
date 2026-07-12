@@ -398,6 +398,23 @@ TEST_CASE("9C-2 surface-crack diffusivity is scalar-generic for Dual",
           <= 1e-8 * std::max(std::abs(crack_fd), 1e-30));
   REQUIRE(std::abs(dual[1].derivative - diffusion_fd)
           <= 1e-8 * std::max(std::abs(diffusion_fd), 1e-30));
+
+  // Above the configured model-4 ceiling, max(ceiling, crack_surface) follows
+  // crack_surface.  Its Dual tangent must therefore follow the selected operand
+  // too; retaining only the selected primal silently differentiates a different
+  // piecewise function.
+  constexpr double saturated_surface = 0.04;
+  const auto saturated_dual = crack_diffusivity_at(
+    core::Dual{ saturated_surface, 1.0 });
+  const auto saturated_below = crack_diffusivity_at(saturated_surface - h);
+  const auto saturated_above = crack_diffusivity_at(saturated_surface + h);
+  for (std::size_t field = 0; field < saturated_dual.size(); ++field) {
+    const double finite_difference =
+      (saturated_above[field] - saturated_below[field]) / (2.0 * h);
+    CAPTURE(field, saturated_dual[field].derivative, finite_difference);
+    REQUIRE(std::abs(saturated_dual[field].derivative - finite_difference)
+            <= 1e-8 * std::max(std::abs(finite_difference), 1e-30));
+  }
 }
 
 TEST_CASE("9C-2 every ageing body propagates a Dual tangent",
