@@ -1,0 +1,112 @@
+name: Core sanitizers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, develop]
+    paths:
+      - '.github/workflows/core-sanitizers.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'src/**'
+      - 'tests/**'
+  pull_request:
+    branches: ['**']
+    paths:
+      - '.github/workflows/core-sanitizers.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'src/**'
+      - 'tests/**'
+
+permissions:
+  contents: read
+
+jobs:
+  asan-ubsan:
+    name: Debug ASan + UBSan full suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CC: clang
+      CXX: clang++
+      ASAN_OPTIONS: detect_leaks=1:abort_on_error=1:strict_string_checks=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: lukka/get-cmake@80ed063af494e28dd56b85fb7a630f2f8f55ceed
+      - name: Configure isolated lane
+        run: >-
+          cmake -S . -B build-sanitized -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DENABLE_IPO=OFF
+          -DENABLE_SANITIZER_ADDRESS=ON
+          -DENABLE_SANITIZER_UNDEFINED_BEHAVIOR=ON
+      - name: Build full suite
+        run: cmake --build build-sanitized --parallel 2
+      - name: Prove instrumentation and lane identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ninja -C build-sanitized -t commands slide_core > build-sanitized/slide-core.commands
+          ninja -C build-sanitized -t commands src > build-sanitized/legacy-src.commands
+          ninja -C build-sanitized -t commands unit_test_core_ThreadPool > build-sanitized/thread-pool-test.commands
+          grep 'src/core/ThreadPool.cpp' build-sanitized/slide-core.commands | grep -F -- '-fsanitize=address,undefined'
+          grep 'src/cells/Cell_SPM/Cell_SPM.cpp' build-sanitized/legacy-src.commands | grep -F -- '-fsanitize=address,undefined'
+          grep 'tests/unit/core_ThreadPool_test.cpp' build-sanitized/thread-pool-test.commands | grep -F -- '-fsanitize=address,undefined'
+          nm -A build-sanitized/bin/core/libslide_core.a > build-sanitized/slide-core.symbols
+          nm -A build-sanitized/bin/libsrc.a > build-sanitized/legacy-src.symbols
+          nm -A build-sanitized/bin/Debug/unit_test_core_ThreadPool > build-sanitized/thread-pool-test.symbols
+          grep -q '__asan_' build-sanitized/slide-core.symbols
+          grep -q '__ubsan_' build-sanitized/slide-core.symbols
+          grep -q '__asan_' build-sanitized/legacy-src.symbols
+          grep -q '__ubsan_' build-sanitized/legacy-src.symbols
+          grep -q '__asan_init' build-sanitized/thread-pool-test.symbols
+          ctest --test-dir build-sanitized -N -V > build-sanitized/ctest-discovery.txt
+          test "$(grep -c 'Test command:' build-sanitized/ctest-discovery.txt)" -eq 51
+          grep -F "$PWD/build-sanitized/bin/Debug" build-sanitized/ctest-discovery.txt
+          ! grep -F "$PWD/bin/Debug" build-sanitized/ctest-discovery.txt
+      - name: Run full instrumented suite
+        run: ctest --test-dir build-sanitized --output-on-failure --no-tests=error -j2
+
+  tsan:
+    name: Debug TSan concurrency suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CC: clang
+      CXX: clang++
+      TSAN_OPTIONS: halt_on_error=1:history_size=7:second_deadlock_stack=1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: lukka/get-cmake@80ed063af494e28dd56b85fb7a630f2f8f55ceed
+      - name: Configure isolated lane
+        run: >-
+          cmake -S . -B build-sanitized -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DENABLE_IPO=OFF
+          -DENABLE_SANITIZER_THREAD=ON
+      - name: Build focused concurrency suite
+        run: >-
+          cmake --build build-sanitized --parallel 2 --target
+          unit_test_core_ThreadPool
+          unit_test_core_AsyncRecorder
+          unit_test_core_PackStepper
+      - name: Prove instrumentation and lane identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ninja -C build-sanitized -t commands slide_core > build-sanitized/slide-core.commands
+          ninja -C build-sanitized -t commands unit_test_core_ThreadPool > build-sanitized/thread-pool-test.commands
+          grep 'src/core/ThreadPool.cpp' build-sanitized/slide-core.commands | grep -F -- '-fsanitize=thread'
+          grep 'tests/unit/core_ThreadPool_test.cpp' build-sanitized/thread-pool-test.commands | grep -F -- '-fsanitize=thread'
+          nm -A build-sanitized/bin/core/libslide_core.a > build-sanitized/slide-core.symbols
+          nm -A build-sanitized/bin/Debug/unit_test_core_ThreadPool > build-sanitized/thread-pool-test.symbols
+          grep -q '__tsan_' build-sanitized/slide-core.symbols
+          grep -q '__tsan_init' build-sanitized/thread-pool-test.symbols
+          ctest --test-dir build-sanitized -N -V -L tsan > build-sanitized/ctest-discovery.txt
+          test "$(grep -c 'Test command:' build-sanitized/ctest-discovery.txt)" -eq 3
+          grep -F "$PWD/build-sanitized/bin/Debug" build-sanitized/ctest-discovery.txt
+          ! grep -F "$PWD/bin/Debug" build-sanitized/ctest-discovery.txt
+      - name: Run focused instrumented suite
+        run: ctest --test-dir build-sanitized --output-on-failure --no-tests=error -L tsan -j1

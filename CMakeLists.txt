@@ -37,6 +37,12 @@ add_library(project_warnings INTERFACE)
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
 
+# Sanitizer lanes are homogeneous whole-project builds. Apply their directory
+# options before creating any SLIDE library or executable so static core,
+# legacy objects, test translation units, and final links are all instrumented.
+include(cmake/Sanitizers.cmake)
+enable_sanitizers()
+
 if(SLIDE_CORE_ONLY)
   add_subdirectory(src/core bin/core)
 else()
@@ -110,10 +116,6 @@ endif()
 # standard compiler warnings
 include(cmake/CompilerWarnings.cmake)
 set_project_warnings(project_warnings)
-
-# # sanitizer options if supported by compiler
-include(cmake/Sanitizers.cmake)
-enable_sanitizers(project_options)
 
 # enable doxygen
 # include(cmake/Doxygen.cmake)

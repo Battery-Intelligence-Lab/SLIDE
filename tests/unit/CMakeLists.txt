@@ -167,6 +167,14 @@ target_link_libraries(unit_test_core_AsyncRecorder PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_AsyncRecorderAllocation core_AsyncRecorderAllocation_test.cpp)
 target_link_libraries(unit_test_core_AsyncRecorderAllocation PRIVATE slide_core)
 
+set_tests_properties(
+  unit_test_core_ThreadPool
+  unit_test_core_AsyncRecorder
+  unit_test_core_PackStepper
+  PROPERTIES
+    LABELS "tsan"
+    RUN_SERIAL TRUE)
+
 if(SLIDE_WITH_CUDA)
   # Phase 8 P8-G2: non-block-multiple device parity, host coupling, and rollback
   add_executable_with_coverage_and_test(unit_test_core_CudaSpmBatch core_CudaSpmBatch_test.cpp)

@@ -1,66 +1,65 @@
-function(enable_sanitizers project_name)
+include_guard(GLOBAL)
 
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-    option(ENABLE_COVERAGE "Enable coverage reporting for gcc/clang" FALSE)
+option(ENABLE_SANITIZER_ADDRESS "Enable AddressSanitizer" OFF)
+option(ENABLE_SANITIZER_LEAK "Enable LeakSanitizer" OFF)
+option(ENABLE_SANITIZER_UNDEFINED_BEHAVIOR "Enable UndefinedBehaviorSanitizer" OFF)
+option(ENABLE_SANITIZER_THREAD "Enable ThreadSanitizer" OFF)
+option(ENABLE_SANITIZER_MEMORY "Enable MemorySanitizer" OFF)
 
-    if(ENABLE_COVERAGE)
-      target_compile_options(${project_name} INTERFACE --coverage -O0 -g)
-      target_link_libraries(${project_name} INTERFACE --coverage)
-    endif()
-
-    set(SANITIZERS "")
-
-    option(ENABLE_SANITIZER_ADDRESS "Enable address sanitizer" FALSE)
-    if(ENABLE_SANITIZER_ADDRESS)
-      list(APPEND SANITIZERS "address")
-    endif()
-
-    option(ENABLE_SANITIZER_LEAK "Enable leak sanitizer" FALSE)
-    if(ENABLE_SANITIZER_LEAK)
-      list(APPEND SANITIZERS "leak")
-    endif()
-
-    option(ENABLE_SANITIZER_UNDEFINED_BEHAVIOR "Enable undefined behavior sanitizer" FALSE)
-    if(ENABLE_SANITIZER_UNDEFINED_BEHAVIOR)
-      list(APPEND SANITIZERS "undefined")
-    endif()
-
-    option(ENABLE_SANITIZER_THREAD "Enable thread sanitizer" FALSE)
-    if(ENABLE_SANITIZER_THREAD)
-      if("address" IN_LIST SANITIZERS OR "leak" IN_LIST SANITIZERS)
-        message(WARNING "Thread sanitizer does not work with Address and Leak sanitizer enabled")
-      else()
-        list(APPEND SANITIZERS "thread")
-      endif()
-    endif()
-
-    option(ENABLE_SANITIZER_MEMORY "Enable memory sanitizer" FALSE)
-    if(ENABLE_SANITIZER_MEMORY AND CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-      if("address" IN_LIST SANITIZERS
-         OR "thread" IN_LIST SANITIZERS
-         OR "leak" IN_LIST SANITIZERS)
-        message(WARNING "Memory sanitizer does not work with Address, Thread and Leak sanitizer enabled")
-      else()
-        list(APPEND SANITIZERS "memory")
-      endif()
-    endif()
-
-    list(
-      JOIN
-      SANITIZERS
-      ","
-      LIST_OF_SANITIZERS)
-
+function(enable_sanitizers)
+  set(sanitizers)
+  if(ENABLE_SANITIZER_ADDRESS)
+    list(APPEND sanitizers address)
+  endif()
+  if(ENABLE_SANITIZER_LEAK)
+    list(APPEND sanitizers leak)
+  endif()
+  if(ENABLE_SANITIZER_UNDEFINED_BEHAVIOR)
+    list(APPEND sanitizers undefined)
+  endif()
+  if(ENABLE_SANITIZER_THREAD)
+    list(APPEND sanitizers thread)
+  endif()
+  if(ENABLE_SANITIZER_MEMORY)
+    list(APPEND sanitizers memory)
   endif()
 
-  if(LIST_OF_SANITIZERS)
-    if(NOT
-       "${LIST_OF_SANITIZERS}"
-       STREQUAL
-       "")
-      target_compile_options(${project_name} INTERFACE -fsanitize=${LIST_OF_SANITIZERS})
-      target_link_libraries(${project_name} INTERFACE -fsanitize=${LIST_OF_SANITIZERS})
-    endif()
+  if(NOT sanitizers)
+    return()
+  endif()
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+     AND NOT CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+    message(FATAL_ERROR
+      "Sanitizers require GCC or Clang; found ${CMAKE_CXX_COMPILER_ID}")
+  endif()
+  if(ENABLE_IPO)
+    message(FATAL_ERROR
+      "Sanitizer builds require -DENABLE_IPO=OFF so instrumentation is inspectable")
+  endif()
+  if(ENABLE_SANITIZER_THREAD AND WIN32)
+    message(FATAL_ERROR "ThreadSanitizer is unsupported on Windows; use Linux or WSL")
+  endif()
+  if(ENABLE_SANITIZER_THREAD AND (ENABLE_SANITIZER_ADDRESS
+                                  OR ENABLE_SANITIZER_LEAK
+                                  OR ENABLE_SANITIZER_UNDEFINED_BEHAVIOR
+                                  OR ENABLE_SANITIZER_MEMORY))
+    message(FATAL_ERROR "ThreadSanitizer must run in its own build tree")
+  endif()
+  if(ENABLE_SANITIZER_MEMORY AND (ENABLE_SANITIZER_ADDRESS
+                                  OR ENABLE_SANITIZER_LEAK
+                                  OR ENABLE_SANITIZER_THREAD
+                                  OR ENABLE_SANITIZER_UNDEFINED_BEHAVIOR))
+    message(FATAL_ERROR "MemorySanitizer must run in its own build tree")
+  endif()
+  if(ENABLE_SANITIZER_MEMORY AND NOT CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+    message(FATAL_ERROR "MemorySanitizer requires Clang")
   endif()
 
+  list(JOIN sanitizers "," sanitizer_list)
+  add_compile_options(
+    "$<$<COMPILE_LANGUAGE:CXX>:-fsanitize=${sanitizer_list}>"
+    "$<$<COMPILE_LANGUAGE:CXX>:-fno-omit-frame-pointer>"
+    "$<$<COMPILE_LANGUAGE:CXX>:-fno-sanitize-recover=all>")
+  add_link_options("$<$<LINK_LANGUAGE:CXX>:-fsanitize=${sanitizer_list}>")
+  message(STATUS "SLIDE project sanitizer instrumentation: ${sanitizer_list}")
 endfunction()

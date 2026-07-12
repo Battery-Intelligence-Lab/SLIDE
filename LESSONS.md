@@ -71,6 +71,9 @@ This file records reusable findings from the v4 implementation and validation wo
 
 ## Fuzz gates need independent publication oracles
 
+- A sanitizer lane is not real until production and test compile commands carry the requested flags, linked executables contain the runtime symbols, and verbose CTest discovery points only into that lane's build directory. Shared source-root runtime outputs can make a perfectly green lane execute another configuration's binary.
+- Embedded-NUL and hostile-byte fixtures must derive their view length from the backing array (`sizeof(array)-1`), never a hand-counted constant. The parser test itself otherwise becomes the out-of-bounds read that ASan reports.
+- TSan owns global allocation interceptors. An allocation-counter executable that deliberately replaces global new/delete is structurally incompatible with that runtime; keep it in ASan/UBSan and run TSan on the actual concurrency suites, recording the exclusion explicitly.
 - Instrument a separate library target. Adding sanitizer and Windows runtime/iterator flags privately to a shared static library still changes its object ABI and can break every non-fuzzer consumer in the same build graph.
 - A deterministic double parse is not an atomicity proof. Seed the output with validly copyable poison across every public field, require byte/value identity on failure, and require every poison marker to disappear on success; otherwise append or merge publication can pass both parses.
 - Do not call the production validator as the only success oracle. Independently recompute graph connectivity, cell bijection, sparsity, ladder classification, and cold thermal metadata so a correlated validator defect cannot bless its own output.

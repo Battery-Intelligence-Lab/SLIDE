@@ -190,8 +190,9 @@ TEST_CASE("liionpack CSV rejects hostile grammar and topology without publicatio
   reject("desc,node1,node2,value\nV0,1,0,4.2\nI0,2,0,1\n");
   reject("desc,node1,node2,value\nV0,1,0,4.2\nR0,2,1,0\nI0,2,1,1\n");
   reject("desc,node1,node2,value\rV0,1,0,4.2\rI0,1,0,1\r");
-  reject(std::string{ "desc,node1,node2,value\nV0,1,0,4.2\0I0,1,0,1\n",
-                      50 });
+  constexpr char embedded_nul_csv[] =
+    "desc,node1,node2,value\nV0,1,0,4.2\0I0,1,0,1\n";
+  reject(std::string_view{ embedded_nul_csv, sizeof embedded_nul_csv - 1 });
 
   const std::string overlong_descriptor(128, 'V');
   reject("desc,node1,node2,value\n" + overlong_descriptor
