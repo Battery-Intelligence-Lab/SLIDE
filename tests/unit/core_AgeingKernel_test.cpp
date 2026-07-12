@@ -9,6 +9,7 @@
  */
 
 #include "../support/RecordedBits.hpp"
+#include "../../src/core/AgeingKernel.hpp"
 #include "../../src/core/Dual.hpp"
 #include "../../src/core/SpmFactory.hpp"
 
@@ -274,4 +275,57 @@ TEST_CASE("9C-2 surface-crack diffusivity is scalar-generic for Dual",
           <= 1e-8 * std::max(std::abs(crack_fd), 1e-30));
   REQUIRE(std::abs(dual[1].derivative - diffusion_fd)
           <= 1e-8 * std::max(std::abs(diffusion_fd), 1e-30));
+}
+
+TEST_CASE("9C-2 common ageing scaffold fixes mask, scratch, and traversal order",
+          "[core][ageing][9C-2][scaffold]")
+{
+  STATIC_REQUIRE(core::ageing_model_bit<4>(0) == 0);
+  STATIC_REQUIRE(core::ageing_model_bit<4>(1) == 0x01);
+  STATIC_REQUIRE(core::ageing_model_bit<4>(4) == 0x08);
+  STATIC_REQUIRE(core::ageing_model_bit<4>(5) == 0);
+  STATIC_REQUIRE(core::ageing_model_mask<5>() == 0x1f);
+  STATIC_REQUIRE(core::valid_ageing_model_mask<4>(0x0f));
+  STATIC_REQUIRE_FALSE(core::valid_ageing_model_mask<4>(0));
+  STATIC_REQUIRE_FALSE(core::valid_ageing_model_mask<4>(0x10));
+  STATIC_REQUIRE(core::valid_optional_ageing_model_mask<4>(0));
+
+  REQUIRE_THROWS_AS((core::detail::AgeingScratchStorage<double, 3>{ 0 }),
+                    std::invalid_argument);
+  REQUIRE_THROWS_AS((core::detail::AgeingScratchStorage<double, 3>{ -1 }),
+                    std::invalid_argument);
+  core::detail::AgeingScratchStorage<double, 3> scratch{ 4 };
+  REQUIRE(scratch.n_lanes() == 4);
+  for (std::size_t field = 0; field < scratch.field_count; ++field) {
+    REQUIRE(scratch.field(field).size() == 4);
+    std::fill(scratch.field(field).begin(), scratch.field(field).end(),
+              static_cast<double>(field + 1));
+  }
+  core::detail::clear_ageing_fields<double, 3>(
+    4, { scratch.field(0), scratch.field(1), scratch.field(2) });
+  for (std::size_t field = 0; field < scratch.field_count; ++field)
+    REQUIRE(std::all_of(scratch.field(field).begin(),
+                        scratch.field(field).end(),
+                        [](double value) { return value == 0.0; }));
+
+  std::vector<std::array<unsigned, 2>> visits;
+  const auto status = core::detail::for_each_enabled_ageing_model_lane<4>(
+    0x05, 3, [&](unsigned model, int lane) {
+      visits.push_back({ model, static_cast<unsigned>(lane) });
+      return Status::Success;
+    });
+  REQUIRE(status == Status::Success);
+  const std::vector<std::array<unsigned, 2>> expected{
+    { 1, 0 }, { 1, 1 }, { 1, 2 }, { 3, 0 }, { 3, 1 }, { 3, 2 }
+  };
+  REQUIRE(visits == expected);
+
+  int last_lane = -1;
+  const auto failure = core::detail::for_each_ageing_lane_while_success(
+    5, [&](int lane) {
+      last_lane = lane;
+      return lane == 2 ? Status::Invalid_states : Status::Success;
+    });
+  REQUIRE(failure == Status::Invalid_states);
+  REQUIRE(last_lane == 2);
 }
