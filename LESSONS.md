@@ -95,3 +95,12 @@ This file records reusable findings from the v4 implementation and validation wo
 - Hardware discovery may legally return zero. Normalize that explicitly, cap workers to available tasks, and never let an exception cross a worker entry point: join first, then rethrow through the caller's channel.
 - One worker and many workers need the same failure contract. The first legacy fix completed all tasks only in the threaded branch; a 1-vs-2 regression exposed the serial branch stopping at its first throw.
 - Const ownership views should stay const. When diagnostics or benchmarks need one stateful operation, expose that operation narrowly on the owner instead of returning a mutable child that can invalidate topology and workspace invariants.
+
+## Exact failure coverage needs source-level identity, not line coverage
+
+- A failure arm can share a source line and region with success, especially for a conditional Status return. Ordinary line totals do not prove the failure token executed; scan the actual arm and intersect its token interval with LLVM segment counts.
+- Do not combine unrelated standalone executables in one llvm-cov export: same-named inline or template functions can carry incompatible mapping hashes. Export each test against only its own profile, union counts by source-site identity, and use a whole-archive zero-count anchor to prove every production mapping exists.
+- Bind a report to the code that produced it. Record source, compiled-source, manifest, compile-command, and binary identities; require one fresh profile per registered test; reject pending build work and mismatched Clang, llvm-cov, and llvm-profdata majors.
+- An exception is a proof obligation, not an ignored line. Pin the exact site plus source/context hashes, allow only a named structural class and reason, and fail if the site becomes covered, inactive, unmapped, stale, or pushes the cap over budget.
+- Finite positive resistance does not guarantee a usable conductance: `1/R` can underflow or flush to zero. Validate the derived coefficient used by the algebra, in every solver mode.
+- Representable sizes are not allocation budgets. Bounded readers must account for simultaneously retained input, decoded payload, output, and scratch storage before allocation, and translate allocation or I/O failures without partially publishing state.

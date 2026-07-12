@@ -9,8 +9,7 @@
 > Phase 9B systematic adversarial bug-hunt is active; its Experiment transaction/parser,
 > BPX parser/allocation, recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
-> The bounded liionpack CSV importer and P9-G2 parser gate are complete: three isolated ASan+UBSan fuzz targets, poisoned/independent oracles, corpora/dictionaries, Debug+Release limit replays, mutation checks, and exact 60-second Linux campaigns are green. The matching hosted workflow is committed but awaits its first pushed run. P9-G3 (measured Status-branch coverage) and P9-G4 (remaining subsystem ledger) are next.
-> The ThreadPool runtime/integration audit is complete: production Thevenin/PackStepper batch work now uses one persistent movable executor, failure selection and strict-FP reductions are deterministic, 1/2/7-worker pack outputs are bit-identical, and the legacy facade cannot silently select zero workers. M0.1 closed the remaining `PackSolver::configure` allocation-publication defect; M0.2 now passes isolated whole-project ASan+UBSan 51/51 and focused TSan 3/3 locally, with build-local binaries and instrumentation proven structurally. M0.3 measured Status-failure branch coverage is next.
+> P9-G2, the ThreadPool integration audit, M0.1 atomic reconfiguration, and M0.2 sanitizer lanes are complete. P9-G3 is also complete: the optional-off Linux Clang/LLVM 18 lane resolves all 336 active Status-failure arms (329 measured plus seven hash-pinned structural exceptions), with 30 inactive optional arms and zero uncovered/unmapped. The 52-test report requires fresh per-binary profiles; the hosted workflow is committed but has not run. M0.4/P9-G4 bug-ledger closure is next.
 
 ---
 
@@ -36,6 +35,7 @@
 ## Short-Term (This Quarter)
 
 ### Code Quality
+- [ ] Resolve M0.3 MC-1 debt during M0.7/M0.8: split the 1,281-line coverage reporter and oversized recorder/solver/factory translation units; factor repeated fixtures out of the >700-line PackSolver, AsyncRecorder, and Experiment tests without reducing assertion or exact-site coverage.
 - [ ] Replace `assert()` with Catch2 `REQUIRE()` in tests
 - [ ] Convert `#define DATASTORE_BATT` to constexpr (settings.hpp)
 - [ ] `StorageUnit::copy()` should return `unique_ptr` not raw pointer
