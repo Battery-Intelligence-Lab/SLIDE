@@ -9,6 +9,8 @@
 
 #include <bit>
 #include <cstdint>
+#include <limits>
+#include <type_traits>
 
 namespace slide::core {
 
@@ -55,10 +57,42 @@ inline bool is_strictly_positive_finite(const real_t &value) noexcept
          && (bits & magnitude_mask) != 0;
 }
 
+/**
+ * Multiply two finite, nonnegative scalars without ever evaluating an
+ * overflowing product or an overflowing overflow guard.  `maximum / right`
+ * is safe only when `right > 1`; when either operand is at most one, their
+ * product cannot exceed the other finite operand.  Equality at the rounded
+ * overflow boundary is rejected conservatively.
+ */
+inline bool try_multiply_nonnegative(const real_t &left,
+                                     const real_t &right,
+                                     real_t &product) noexcept
+{
+  if (!(is_finite(left) && left >= 0.0
+        && is_finite(right) && right >= 0.0))
+    return false;
+
+  constexpr real_t maximum = std::numeric_limits<real_t>::max();
+  if (left > 1.0 && right > 1.0 && left >= maximum / right)
+    return false;
+
+  const real_t candidate = left * right;
+  product = candidate;
+  return true;
+}
+
 template <class Real>
 inline bool is_finite_primal(const Real &value) noexcept
 {
-  return is_finite(primal_value(value));
+  if constexpr (std::is_same_v<std::remove_cvref_t<Real>, real_t>) {
+    // Preserve the opaque reference boundary for the native scalar.  Routing a double
+    // through primal_value() creates a by-value SSA edge on which ThinLTO may attach
+    // `nofpclass` under finite-math, defeating the integer classifier in is_finite().
+    return is_finite(value);
+  } else {
+    const real_t primal = primal_value(value);
+    return is_finite(primal);
+  }
 }
 
 } // namespace slide::core

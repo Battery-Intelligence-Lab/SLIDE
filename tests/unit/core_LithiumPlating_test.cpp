@@ -14,9 +14,14 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cfenv>
 #include <cmath>
 #include <cstdint>
 #include <limits>
+
+#if (defined(__clang__) || defined(__GNUC__)) && !defined(__FAST_MATH__)
+#pragma STDC FENV_ACCESS ON
+#endif
 
 using namespace slide;
 
@@ -91,10 +96,75 @@ TEST_CASE("Lithium plating matches legacy Cell_SPM", "[core][ageing][plating]")
     if (current < 0.0) {
       auto explosive = params;
       explosive.reaction_rate_ref = std::numeric_limits<double>::max();
+      REQUIRE(core::validateLithiumPlatingParams(explosive) == Status::Success);
+      const auto before_failure = actual;
       REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, std::span<double>{ actual })
               == Status::Numerical_failure);
+      CHECK(actual == before_failure);
+
+      explosive = params;
+      explosive.n = std::numeric_limits<double>::max();
+      explosive.F = std::numeric_limits<double>::max();
+      REQUIRE(core::validateLithiumPlatingParams(explosive)
+              == Status::Invalid_parameters);
+      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, std::span<double>{ actual })
+              == Status::Numerical_failure);
+      CHECK(actual == before_failure);
+
+      explosive = params;
+      explosive.n_plating = std::numeric_limits<double>::max();
+      explosive.F = std::numeric_limits<double>::max();
+      REQUIRE(core::validateLithiumPlatingParams(explosive)
+              == Status::Invalid_parameters);
+      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, std::span<double>{ actual })
+              == Status::Numerical_failure);
+      CHECK(actual == before_failure);
+
+      const double saved_overpotential = observables.overpotential[neg][0];
+      observables.overpotential[neg][0] = -1e6;
+      REQUIRE(core::computeLithiumPlating(params, state, layout, ctx, observables, std::span<double>{ actual })
+              == Status::Numerical_failure);
+      CHECK(actual == before_failure);
+      observables.overpotential[neg][0] = saved_overpotential;
     }
   }
+}
+
+TEST_CASE("Checked nonnegative products do not overflow their guard",
+          "[core][numeric][overflow]")
+{
+  volatile double volatile_maximum = std::numeric_limits<double>::max();
+  volatile double volatile_half = 0.5;
+  const double maximum = volatile_maximum;
+  const double half = volatile_half;
+  double product = -1.0;
+
+  std::feclearexcept(FE_ALL_EXCEPT);
+  REQUIRE(core::try_multiply_nonnegative(maximum, half, product));
+  CHECK(product == maximum * half);
+#if (defined(__clang__) || defined(__GNUC__)) && !defined(__FAST_MATH__)
+  CHECK((std::fetestexcept(FE_OVERFLOW) & FE_OVERFLOW) == 0);
+#endif
+
+  REQUIRE(core::try_multiply_nonnegative(maximum, 1.0, product));
+  CHECK(product == maximum);
+
+  const double unchanged = product;
+  std::feclearexcept(FE_ALL_EXCEPT);
+  REQUIRE_FALSE(core::try_multiply_nonnegative(maximum, maximum, product));
+  CHECK(product == unchanged);
+#if (defined(__clang__) || defined(__GNUC__)) && !defined(__FAST_MATH__)
+  CHECK((std::fetestexcept(FE_OVERFLOW) & FE_OVERFLOW) == 0);
+#endif
+  volatile std::uint64_t volatile_nan_bits = UINT64_C(0x7ff8000000000000);
+  const std::uint64_t nan_bits = volatile_nan_bits;
+  const double not_a_number = std::bit_cast<double>(nan_bits);
+  REQUIRE_FALSE(core::try_multiply_nonnegative(not_a_number, half, product));
+  CHECK(product == unchanged);
+  volatile std::uint64_t volatile_infinity_bits = UINT64_C(0x7ff0000000000000);
+  const std::uint64_t infinity_bits = volatile_infinity_bits;
+  const double infinity = std::bit_cast<double>(infinity_bits);
+  CHECK_FALSE(core::is_finite_primal(infinity));
 }
 
 TEST_CASE("Lithium-plating parameters reject non-finite and non-physical values",
@@ -112,6 +182,12 @@ TEST_CASE("Lithium-plating parameters reject non-finite and non-physical values"
 
   invalid = valid;
   invalid.F = 0.0;
+  REQUIRE(core::validateLithiumPlatingParams(invalid)
+          == Status::Invalid_parameters);
+
+  invalid = valid;
+  invalid.F = std::numeric_limits<double>::max();
+  invalid.plated_lithium_molar_density = 2.0;
   REQUIRE(core::validateLithiumPlatingParams(invalid)
           == Status::Invalid_parameters);
 }

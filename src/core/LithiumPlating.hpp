@@ -11,6 +11,7 @@
 #include <cassert>
 #include <cmath>
 #include <span>
+#include <type_traits>
 
 namespace slide::core {
 
@@ -30,6 +31,31 @@ struct LithiumPlatingParams
   real_t reaction_rate_activation{ -2.014008e5 };
 };
 
+struct LithiumPlatingScales
+{
+  real_t faradaic_scale{};        //!< n_plating * F
+  real_t kinetic_charge{};        //!< n * F
+  real_t thickness_denominator{}; //!< n_plating * F * plated molar density
+};
+
+[[nodiscard]] inline bool tryLithiumPlatingScales(
+  const LithiumPlatingParams &p,
+  LithiumPlatingScales &scales) noexcept
+{
+  LithiumPlatingScales candidate;
+  if (!try_multiply_nonnegative(
+        p.n_plating, p.F, candidate.faradaic_scale)
+      || !try_multiply_nonnegative(
+        p.n, p.F, candidate.kinetic_charge)
+      || !try_multiply_nonnegative(
+        candidate.faradaic_scale,
+        p.plated_lithium_molar_density,
+        candidate.thickness_denominator))
+    return false;
+  scales = candidate;
+  return true;
+}
+
 [[nodiscard]] inline slide::Status validateLithiumPlatingParams(
   const LithiumPlatingParams &p)
 {
@@ -48,6 +74,9 @@ struct LithiumPlatingParams
   for (const real_t value : values)
     if (!is_finite(value))
       return slide::Status::Invalid_parameters;
+  LithiumPlatingScales scales;
+  if (!tryLithiumPlatingScales(p, scales))
+    return slide::Status::Invalid_parameters;
   return (p.F > 0.0 && p.Rg > 0.0 && p.n > 0.0 && p.n_plating > 0.0
           && p.reference_temperature > 0.0 && p.electrode_area > 0.0
           && p.plated_lithium_molar_density > 0.0 && p.reaction_rate_ref >= 0.0)
@@ -55,6 +84,10 @@ struct LithiumPlatingParams
            : slide::Status::Invalid_parameters;
 }
 
+/**
+ * Compute lane-wise plating current.  A non-success status invalidates the
+ * entire output span; lanes completed before the failing lane may be present.
+ */
 template <class Real>
 [[nodiscard]] slide::Status computeLithiumPlating(
   const LithiumPlatingParams &p,
@@ -70,21 +103,45 @@ template <class Real>
   ctx.assert_valid_for(lanes);
   const auto neg = domain_index(Domain::neg);
   using std::exp;
+  LithiumPlatingScales scales;
+  if (!tryLithiumPlatingScales(p, scales))
+    return slide::Status::Numerical_failure;
   for (int lane = 0; lane < lanes; ++lane) {
     const auto i = static_cast<std::size_t>(lane);
     const Real T = state.at(layout.temperature, 0, lane);
     const Real current = ctx.i_app[i] * p.electrode_area;
     const Real arrhenius = (Real{ 1 } / p.reference_temperature - Real{ 1 } / T) / p.Rg;
-    const Real reaction_rate = p.reaction_rate_ref * exp(p.reaction_rate_activation * arrhenius);
+    const Real reaction_rate = p.reaction_rate_ref
+                               * exp(p.reaction_rate_activation * arrhenius);
     const Real ocv_negative_temperature = observables.electrode_ocv[neg][i]
                                           + (T - p.reference_temperature) * observables.negative_entropic_coefficient[i];
     const Real plating_overpotential = ocv_negative_temperature + observables.overpotential[neg][i]
                                        - p.equilibrium_potential
                                        + p.sei_resistivity_area * state.at(layout.sei_thickness, 0, lane) * current;
-    side_reaction_current[i] = p.n_plating * p.F * reaction_rate
-                               * exp(-p.n * p.F / (p.Rg * T) * p.alpha_plating * plating_overpotential);
-    if (!is_finite_primal(side_reaction_current[i]))
+    const Real kinetic_factor = exp(
+      -scales.kinetic_charge / (p.Rg * T)
+      * p.alpha_plating * plating_overpotential);
+    if (!(is_finite_primal(reaction_rate)
+          && is_finite_primal(kinetic_factor)))
       return slide::Status::Numerical_failure;
+    const real_t reaction_primal = primal_value(reaction_rate);
+    const real_t kinetic_primal = primal_value(kinetic_factor);
+    real_t faradaic_reaction{};
+    real_t current_primal{};
+    if (!try_multiply_nonnegative(
+          scales.faradaic_scale, reaction_primal, faradaic_reaction)
+        || !try_multiply_nonnegative(
+          faradaic_reaction, kinetic_primal, current_primal))
+      return slide::Status::Numerical_failure;
+    if constexpr (std::is_same_v<std::remove_cvref_t<Real>, real_t>) {
+      side_reaction_current[i] = current_primal;
+    } else {
+      const Real faradaic_reaction_real = scales.faradaic_scale * reaction_rate;
+      const Real candidate = faradaic_reaction_real * kinetic_factor;
+      if (!is_finite_primal(candidate))
+        return slide::Status::Numerical_failure;
+      side_reaction_current[i] = candidate;
+    }
   }
   return slide::Status::Success;
 }
@@ -107,19 +164,23 @@ void addLithiumPlatingRhs(const LithiumPlatingRhsParams<NCH> &p,
 {
   const int lanes = state.n_lanes();
   assert(static_cast<int>(side_reaction_current.size()) == lanes);
+  LithiumPlatingScales scales;
+  const bool valid_scales = tryLithiumPlatingScales(p.mechanism, scales);
+  assert(valid_scales);
+  if (!valid_scales)
+    return;
   const auto neg = domain_index(Domain::neg);
   for (int lane = 0; lane < lanes; ++lane) {
     const auto i = static_cast<std::size_t>(lane);
     const Real plating_current = side_reaction_current[i];
     for (int mode = 0; mode < NCH; ++mode)
       derivative.at(layout.z[neg], mode, lane) += p.negative_input_map[static_cast<std::size_t>(mode)] * plating_current
-                                                  / (p.mechanism.n_plating * p.mechanism.F);
+                                                  / scales.faradaic_scale;
     derivative.at(layout.lost_lithium, 0, lane) += plating_current * p.mechanism.electrode_area
                                                    * state.at(layout.electrode_thickness[neg], 0, lane)
                                                    * state.at(layout.specific_surface_area[neg], 0, lane);
     derivative.at(layout.plated_lithium_thickness, 0, lane) += plating_current
-                                                               / (p.mechanism.n_plating * p.mechanism.F
-                                                                  * p.mechanism.plated_lithium_molar_density);
+                                                               / scales.thickness_denominator;
   }
 }
 
