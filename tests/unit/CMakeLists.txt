@@ -78,6 +78,10 @@ target_link_libraries(unit_test_core_LithiumPlating PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_SpmPipeline core_SpmPipeline_test.cpp)
 target_link_libraries(unit_test_core_SpmPipeline PRIVATE slide_core)
 
+# Phase 9C PC-10: device-safe scalar physics instantiated for double and Dual
+add_executable_with_coverage_and_test(unit_test_core_SpmScalarKernels core_SpmScalarKernels_test.cpp)
+target_link_libraries(unit_test_core_SpmScalarKernels PRIVATE slide_core)
+
 # Phase 1 factory prerequisite: validated per-batch spectral model build (C1-C3)
 add_executable_with_coverage_and_test(unit_test_core_SpectralModel core_SpectralModel_test.cpp)
 target_link_libraries(unit_test_core_SpectralModel PRIVATE slide_core)
