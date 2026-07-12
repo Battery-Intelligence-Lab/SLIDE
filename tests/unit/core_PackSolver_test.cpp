@@ -4,6 +4,7 @@
  */
 
 #include "../../src/core/PackSolver.hpp"
+#include "../../src/core/PackSolverInternal.hpp"
 #include "../../src/core/EulerLegacy.hpp"
 #include "../support/KokamSpmFixture.hpp"
 
@@ -20,6 +21,7 @@
 #include <limits>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -88,11 +90,73 @@ struct AffineBatch
   }
 };
 
+struct ScriptedAffineBatch
+{
+  std::vector<std::vector<double>> ocv_by_call;
+  std::vector<std::vector<double>> resistance_by_call;
+  std::size_t calls{};
+
+  Status linearizeThevenin(std::span<const double> current,
+                           std::span<double>
+                             output_ocv,
+                           std::span<double>
+                             output_resistance)
+  {
+    if (ocv_by_call.empty() || resistance_by_call.empty()
+        || current.size() != ocv_by_call.front().size()
+        || output_ocv.size() != current.size()
+        || output_resistance.size() != current.size())
+      return Status::Invalid_parameters;
+    const auto index = std::min(calls, ocv_by_call.size() - 1);
+    const auto resistance_index =
+      std::min(calls, resistance_by_call.size() - 1);
+    ++calls;
+    std::copy(ocv_by_call[index].begin(),
+              ocv_by_call[index].end(),
+              output_ocv.begin());
+    std::copy(resistance_by_call[resistance_index].begin(),
+              resistance_by_call[resistance_index].end(),
+              output_resistance.begin());
+    return Status::Success;
+  }
+};
+
+struct AffineFailureCase
+{
+  std::string_view name;
+  core::PackNode root;
+  std::vector<double> ocv;
+  std::vector<double> resistance;
+  double applied_current;
+  core::PackSolveMode mode;
+};
+
 core::CompiledPackTopology compile(const core::PackNode &root)
 {
   core::CompiledPackTopology topology;
   REQUIRE(core::compilePackDescription({ .root = root }, topology) == Status::Success);
   return topology;
+}
+
+Status solveAffineOnce(const core::PackNode &root,
+                       std::vector<double>
+                         ocv,
+                       std::vector<double>
+                         resistance,
+                       double applied_current,
+                       core::PackSolveMode mode,
+                       double tolerance = 1e-12,
+                       int max_iterations = 2)
+{
+  auto topology = compile(root);
+  AffineBatch batch{ .ocv = std::move(ocv),
+                     .resistance = std::move(resistance) };
+  const std::array views{
+    core::TheveninBatchView::bind(batch, static_cast<int>(batch.ocv.size()))
+  };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, views) == Status::Success);
+  return solver.solve(applied_current, mode, tolerance, max_iterations);
 }
 
 } // namespace
@@ -484,7 +548,7 @@ TEST_CASE("ladder terminal overflow cannot publish a finite-current trial",
 
   batch.ocv = { 1e308, 1e308 };
   REQUIRE(solver.solve(0.0, core::PackSolveMode::ladder, 1e-12, 2)
-          != Status::Success);
+          == Status::Invalid_states);
   REQUIRE(solver.solution().cell_current == expected_current);
   REQUIRE(solver.solution().node_voltage == expected_voltage);
   REQUIRE(solver.solution().terminal_voltage == expected_terminal);
@@ -523,6 +587,390 @@ TEST_CASE("all solver modes reject extreme derived values without publishing a t
   exercise(core::PackSolveMode::relaxation, 0.0, 1e308, 2.0);
 }
 
+TEST_CASE("all solver modes reject a flushed or subnormal conductance",
+          "[core][pack][solver][finite][fast-math][coverage]")
+{
+  for (const auto mode : { core::PackSolveMode::sparse_newton,
+                           core::PackSolveMode::ladder,
+                           core::PackSolveMode::relaxation }) {
+    DYNAMIC_SECTION(static_cast<int>(mode))
+    {
+      CHECK(solveAffineOnce(core::cell({ .archetype = "affine" }),
+                            { 0.0 },
+                            { std::numeric_limits<double>::max() },
+                            1.0,
+                            mode)
+            != Status::Success);
+    }
+  }
+}
+
+TEST_CASE("finite trial currents with an unrepresentable delta are rejected atomically",
+          "[core][pack][solver][finite][coverage]")
+{
+  const auto maximum = std::numeric_limits<double>::max();
+  const auto topology = compile(core::cell({ .archetype = "affine" }));
+  AffineBatch batch{ .ocv = { 0.0 }, .resistance = { 1.0 } };
+  const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, views) == Status::Success);
+  REQUIRE(solver.solve(-maximum,
+                       core::PackSolveMode::ladder,
+                       maximum,
+                       1)
+          == Status::Success);
+  const auto expected = solver.solution();
+
+  REQUIRE(solver.solve(maximum,
+                       core::PackSolveMode::ladder,
+                       1.0,
+                       1)
+          == Status::Invalid_states);
+  CHECK(solver.solution().cell_current == expected.cell_current);
+  CHECK(solver.solution().node_voltage == expected.node_voltage);
+  CHECK(solver.solution().terminal_voltage == expected.terminal_voltage);
+}
+
+TEST_CASE("sparse residual assembly rejects each finite arithmetic overflow",
+          "[core][pack][solver][mode-a][finite][coverage]")
+{
+  const auto maximum = std::numeric_limits<double>::max();
+  const auto smallest = std::numeric_limits<double>::denorm_min();
+
+  SECTION("cell voltage minus OCV")
+  {
+    const auto topology = compile(core::cell({ .archetype = "affine" }));
+    AffineBatch batch{ .ocv = { -maximum }, .resistance = { 1.0 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.solve(0.0) == Status::Success);
+    batch.ocv[0] = maximum;
+    CHECK(solver.solve(0.0) == Status::Invalid_states);
+  }
+
+  SECTION("branch-current quotient")
+  {
+    CHECK(solveAffineOnce(core::cell({ .archetype = "affine" }),
+                          { 1.0 },
+                          { smallest },
+                          0.0,
+                          core::PackSolveMode::sparse_newton)
+          == Status::Invalid_states);
+  }
+
+  SECTION("parallel residual accumulation")
+  {
+    CHECK(solveAffineOnce(
+            core::parallel(2, core::cell({ .archetype = "affine" })),
+            { -maximum, -maximum },
+            { 1.0, 1.0 },
+            0.0,
+            core::PackSolveMode::sparse_newton)
+          == Status::Invalid_states);
+  }
+
+  SECTION("terminal-current accumulation")
+  {
+    CHECK(solveAffineOnce(core::cell({ .archetype = "affine" }),
+                          { -maximum },
+                          { 1.0 },
+                          maximum,
+                          core::PackSolveMode::sparse_newton)
+          == Status::Invalid_states);
+  }
+}
+
+TEST_CASE("sparse contraction rejects an overflow between finite residuals",
+          "[core][pack][solver][mode-a][finite][coverage]")
+{
+  const auto maximum = std::numeric_limits<double>::max();
+  const auto topology = compile(core::cell({ .archetype = "scripted" }));
+  ScriptedAffineBatch batch{
+    .ocv_by_call = { { 0.0 }, { -maximum } },
+    .resistance_by_call = { { 1.0 } }
+  };
+  const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, views) == Status::Success);
+  CHECK(solver.solve(1e-300,
+                     core::PackSolveMode::sparse_newton,
+                     std::numeric_limits<double>::denorm_min(),
+                     2)
+        == Status::Invalid_states);
+  CHECK(batch.calls == 2);
+}
+
+TEST_CASE("sparse factorization rejects non-representable and singular matrices",
+          "[core][pack][solver][mode-a][finite][coverage]")
+{
+  const auto smallest = std::numeric_limits<double>::denorm_min();
+  const auto maximum = std::numeric_limits<double>::max();
+
+  SECTION("reciprocal conductance")
+  {
+    CHECK(solveAffineOnce(core::cell({ .archetype = "affine" }),
+                          { 0.0 },
+                          { smallest },
+                          0.0,
+                          core::PackSolveMode::sparse_newton)
+          == Status::Invalid_states);
+  }
+
+  SECTION("parallel coefficient accumulation")
+  {
+    CHECK(solveAffineOnce(
+            core::parallel(2, core::cell({ .archetype = "affine" })),
+            { 0.0, 0.0 },
+            { 1e-308, 1e-308 },
+            0.0,
+            core::PackSolveMode::sparse_newton)
+          == Status::Invalid_states);
+  }
+
+  SECTION("rounded singular pivot")
+  {
+    CHECK(solveAffineOnce(
+            core::series(2, core::cell({ .archetype = "affine" })),
+            { 0.0, 0.0 },
+            { 1.0, maximum },
+            0.0,
+            core::PackSolveMode::sparse_newton)
+          == Status::Numerical_failure);
+  }
+}
+
+TEST_CASE("sparse updates reject every non-representable finite candidate",
+          "[core][pack][solver][mode-a][finite][coverage]")
+{
+  const auto maximum = std::numeric_limits<double>::max();
+
+  SECTION("node correction")
+  {
+    const auto topology = compile(core::cell({ .archetype = "affine" }));
+    AffineBatch batch{ .ocv = { maximum }, .resistance = { 1.0 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.solve(0.0) == Status::Success);
+    batch.resistance[0] = 0.5;
+    CHECK(solver.solve(-maximum) == Status::Invalid_states);
+  }
+
+  SECTION("cell-current numerator")
+  {
+    CHECK(solveAffineOnce(core::cell({ .archetype = "affine" }),
+                          { maximum },
+                          { 2.0 },
+                          maximum,
+                          core::PackSolveMode::sparse_newton)
+          == Status::Invalid_states);
+  }
+
+  SECTION("cell-current quotient")
+  {
+    CHECK(solveAffineOnce(
+            core::parallel(2, core::cell({ .archetype = "affine" })),
+            { maximum / 2.0, -maximum / 2.0 },
+            { 0.5, 1.0 },
+            maximum,
+            core::PackSolveMode::sparse_newton)
+          == Status::Invalid_states);
+  }
+
+  SECTION("current change")
+  {
+    const auto topology = compile(core::parallel(
+      2, core::cell({ .archetype = "affine" })));
+    AffineBatch batch{ .ocv = { -maximum, maximum },
+                       .resistance = { 1.0, 1.0 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 2) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.solve(0.0,
+                         core::PackSolveMode::sparse_newton,
+                         maximum,
+                         1)
+            == Status::Success);
+    batch.ocv = { maximum, -maximum };
+    CHECK(solver.solve(0.0) == Status::Invalid_states);
+  }
+}
+
+TEST_CASE("solver kernels reject an unrepresentable resistor drop before publication",
+          "[core][pack][solver][finite][coverage]")
+{
+  const auto maximum = std::numeric_limits<double>::max();
+
+  SECTION("sparse candidate")
+  {
+    CHECK(solveAffineOnce(
+            core::series(2,
+                         core::cell({ .archetype = "affine" }),
+                         { .resistance = 3.0 }),
+            { maximum, maximum },
+            { 1.0, 1.0 },
+            maximum / 2.0,
+            core::PackSolveMode::sparse_newton,
+            maximum,
+            1)
+          == Status::Invalid_states);
+  }
+
+  SECTION("relaxation candidate")
+  {
+    auto topology = compile(core::series(
+      2,
+      core::cell({ .archetype = "affine" }),
+      { .resistance = 4.0 }));
+    const auto resistor = std::find_if(
+      topology.electrical.branches.begin(),
+      topology.electrical.branches.end(),
+      [](const auto &branch) {
+        return branch.kind == core::ElectricalBranchKind::resistor;
+      });
+    REQUIRE(resistor != topology.electrical.branches.end());
+    std::iter_swap(topology.electrical.branches.begin(), resistor);
+    AffineBatch batch{ .ocv = { -maximum, -maximum },
+                       .resistance = { 1.0, 1.0 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 2) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.setRelaxationGain(1.0) == Status::Success);
+    CHECK(solver.solve(-maximum, core::PackSolveMode::relaxation)
+          == Status::Invalid_states);
+  }
+}
+
+TEST_CASE("ladder layers reject every non-representable affine operation",
+          "[core][pack][solver][mode-b][finite][coverage]")
+{
+  const auto maximum = std::numeric_limits<double>::max();
+  const auto smallest = std::numeric_limits<double>::denorm_min();
+  const auto single = core::cell({ .archetype = "affine" });
+  const std::vector<AffineFailureCase> cases{
+    { "conductance reciprocal", single, { 0.0 }, { smallest }, 0.0, core::PackSolveMode::ladder },
+    { "source product", single, { maximum }, { 0.5 }, 0.0, core::PackSolveMode::ladder },
+    { "conductance accumulation", core::parallel(2, single), { 0.0, 0.0 }, { 1e-308, 1e-308 }, 0.0, core::PackSolveMode::ladder },
+    { "source accumulation", core::parallel(2, single), { maximum, maximum }, { 1.0, 1.0 }, 0.0, core::PackSolveMode::ladder },
+    { "layer numerator", single, { maximum }, { 1.0 }, -maximum, core::PackSolveMode::ladder },
+    { "cell-current numerator", single, { maximum }, { 2.0 }, maximum, core::PackSolveMode::ladder },
+    { "cell-current quotient", core::parallel(2, single), { maximum / 2.0, -maximum / 2.0 }, { 0.5, 1.0 }, maximum, core::PackSolveMode::ladder },
+  };
+  for (const auto &test : cases) {
+    DYNAMIC_SECTION(test.name)
+    {
+      CHECK(solveAffineOnce(test.root,
+                            test.ocv,
+                            test.resistance,
+                            test.applied_current,
+                            test.mode)
+            == Status::Invalid_states);
+    }
+  }
+}
+
+TEST_CASE("relaxation assembly rejects every non-representable affine operation",
+          "[core][pack][solver][relaxation][finite][coverage]")
+{
+  const auto maximum = std::numeric_limits<double>::max();
+  const auto smallest = std::numeric_limits<double>::denorm_min();
+  const auto single = core::cell({ .archetype = "affine" });
+  const std::vector<AffineFailureCase> cases{
+    { "conductance reciprocal", single, { 0.0 }, { smallest }, 0.0, core::PackSolveMode::relaxation },
+    { "source product", single, { maximum }, { 0.5 }, 0.0, core::PackSolveMode::relaxation },
+    { "coefficient accumulation", core::parallel(2, single), { 0.0, 0.0 }, { 1e-308, 1e-308 }, 0.0, core::PackSolveMode::relaxation },
+    { "terminal-current accumulation", single, { maximum }, { 1.0 }, -maximum, core::PackSolveMode::relaxation },
+  };
+  for (const auto &test : cases) {
+    DYNAMIC_SECTION(test.name)
+    {
+      CHECK(solveAffineOnce(test.root,
+                            test.ocv,
+                            test.resistance,
+                            test.applied_current,
+                            test.mode)
+            == Status::Invalid_states);
+    }
+  }
+}
+
+TEST_CASE("relaxation updates reject every non-representable finite candidate",
+          "[core][pack][solver][relaxation][finite][coverage]")
+{
+  const auto maximum = std::numeric_limits<double>::max();
+
+  SECTION("correction difference")
+  {
+    const auto topology = compile(core::cell({ .archetype = "affine" }));
+    AffineBatch batch{ .ocv = { 0.0 }, .resistance = { 1.0 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.setRelaxationGain(1.0) == Status::Success);
+    REQUIRE(solver.solve(-maximum,
+                         core::PackSolveMode::ladder,
+                         maximum,
+                         1)
+            == Status::Success);
+    batch.ocv[0] = maximum;
+    batch.resistance[0] = 2.0;
+    CHECK(solver.solve(maximum, core::PackSolveMode::relaxation)
+          == Status::Invalid_states);
+  }
+
+  SECTION("cell-current numerator")
+  {
+    const auto topology = compile(core::cell({ .archetype = "affine" }));
+    AffineBatch batch{ .ocv = { maximum }, .resistance = { 2.0 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.setRelaxationGain(1.0) == Status::Success);
+    CHECK(solver.solve(maximum, core::PackSolveMode::relaxation)
+          == Status::Invalid_states);
+  }
+
+  SECTION("cell-current quotient")
+  {
+    const auto topology = compile(core::parallel(
+      2, core::cell({ .archetype = "affine" })));
+    AffineBatch batch{ .ocv = { maximum / 2.0, -maximum / 2.0 },
+                       .resistance = { 0.5, 1.0 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 2) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.setRelaxationGain(1.0) == Status::Success);
+    CHECK(solver.solve(maximum, core::PackSolveMode::relaxation)
+          == Status::Invalid_states);
+  }
+
+  SECTION("roundoff operation-scale sum")
+  {
+    const auto topology = compile(core::cell({ .archetype = "affine" }));
+    AffineBatch batch{ .ocv = { maximum }, .resistance = { 2.0 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.setRelaxationGain(1.0) == Status::Success);
+    CHECK(solver.solve(0.0, core::PackSolveMode::relaxation)
+          == Status::Invalid_states);
+  }
+
+  SECTION("roundoff operation-scale quotient")
+  {
+    const auto topology = compile(core::cell({ .archetype = "affine" }));
+    AffineBatch batch{ .ocv = { maximum / 2.0 },
+                       .resistance = { 0.5 } };
+    const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    REQUIRE(solver.setRelaxationGain(1.0) == Status::Success);
+    CHECK(solver.solve(0.0, core::PackSolveMode::relaxation)
+          == Status::Invalid_states);
+  }
+}
+
 TEST_CASE("pack solve diagnostics are reset when changing modes",
           "[core][pack][solver][diagnostics][P9-G4]")
 {
@@ -543,6 +991,21 @@ TEST_CASE("pack solve diagnostics are reset when changing modes",
   REQUIRE(solver.diagnostics().constraint_drift == 0.0);
   REQUIRE(solver.diagnostics().constraint_bound == 0.0);
   REQUIRE(solver.diagnostics().relaxation_gain == 0.0);
+}
+
+TEST_CASE("pack roundoff diagnostics saturate conservatively",
+          "[core][pack][solver][diagnostics][coverage]")
+{
+  const auto epsilon = std::numeric_limits<double>::epsilon();
+  const auto expected = (2.0 * epsilon) / (1.0 - 2.0 * epsilon) * 3.0
+                        + 8.0 * epsilon * 5.0;
+  CHECK(core::detail::conservativePackRoundoffBound(2.0 * epsilon, 3.0, 5.0)
+        == expected);
+  CHECK(core::detail::conservativePackRoundoffBound(1.0, 1.0, 1.0)
+        == std::numeric_limits<double>::max());
+  CHECK(core::detail::conservativePackRoundoffBound(
+          0.5, std::numeric_limits<double>::max(), 1.0)
+        == std::numeric_limits<double>::max());
 }
 
 TEST_CASE("SPM batches expose a nonlinear Thevenin tangent to the pack solver",

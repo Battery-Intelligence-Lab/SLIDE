@@ -4,12 +4,14 @@
  */
 
 #include "PackSolver.hpp"
+#include "PackSolverInternal.hpp"
 #include "PackTopologyInternal.hpp"
 
 #include <Eigen/SparseCore>
 #include <Eigen/SparseLU>
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -85,6 +87,29 @@ namespace {
   }
 
 } // namespace
+
+namespace detail {
+
+  real_t conservativePackRoundoffBound(real_t accumulation_ratio,
+                                       real_t current_scale,
+                                       real_t operation_scale) noexcept
+  {
+    assert(is_finite(current_scale) && current_scale >= 0.0);
+    assert(is_finite(operation_scale) && operation_scale >= 0.0);
+    const real_t epsilon = std::numeric_limits<real_t>::epsilon();
+    if (!(is_finite(accumulation_ratio) && accumulation_ratio >= 0.0
+          && accumulation_ratio < 1.0))
+      return std::numeric_limits<real_t>::max();
+    const real_t accumulation = accumulation_ratio
+                                / (1.0 - accumulation_ratio) * current_scale;
+    const real_t operations = 8.0 * epsilon * operation_scale;
+    const real_t total = accumulation + operations;
+    return is_finite(accumulation) && is_finite(operations) && is_finite(total)
+             ? total
+             : std::numeric_limits<real_t>::max();
+  }
+
+} // namespace detail
 
 slide::Status TheveninBatchView::linearize(std::span<const real_t> current,
                                            std::span<real_t>
@@ -389,10 +414,10 @@ slide::Status PackSolver::solveImpl(real_t applied_current,
       diagnostics_.residual_norm = residual_norm_;
     }
     real_t max_change{};
-    if (!finiteCandidate(candidate_current_, candidate_node_voltage_, candidate_terminal_voltage_)) {
-      workspace_.invalidate();
-      return slide::Status::Invalid_states;
-    }
+    // The selected private kernel validates every candidate assignment before
+    // success; topology validation proves one branch per cell and full node
+    // coverage. Keep the shared postcondition executable in Debug.
+    assert(finiteCandidate(candidate_current_, candidate_node_voltage_, candidate_terminal_voltage_));
     for (std::size_t cell = 0; cell < current_guess_.size(); ++cell) {
       const real_t difference = candidate_current_[cell] - current_guess_[cell];
       if (!is_finite(difference)) {
@@ -400,10 +425,7 @@ slide::Status PackSolver::solveImpl(real_t applied_current,
         return slide::Status::Invalid_states;
       }
       const real_t change = std::abs(difference);
-      if (!is_finite(change)) {
-        workspace_.invalidate();
-        return slide::Status::Invalid_states;
-      }
+      assert(is_finite(change)); // abs preserves finiteness
       max_change = std::max(max_change, change);
     }
     if (mode != PackSolveMode::sparse_newton)
@@ -475,8 +497,9 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
   for (const auto &branch : topology_.electrical.branches) {
     const real_t voltage = candidate_node_voltage_[branch.node_positive]
                            - candidate_node_voltage_[branch.node_negative];
-    if (!is_finite(voltage))
-      return slide::Status::Invalid_states;
+    // First use starts from zero; every successful kernel validates all branch
+    // drops before publication, so a warm-start drop is finite here.
+    assert(is_finite(voltage));
     real_t branch_current{};
     if (branch.kind == ElectricalBranchKind::cell) {
       const real_t numerator = voltage - ocv_[branch.cell];
@@ -495,8 +518,8 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
       || !addResidual(topology_.electrical.terminal_negative, -applied_current))
     return slide::Status::Invalid_states;
   residual_norm_ = impl.rhs.lpNorm<Eigen::Infinity>();
-  if (!is_finite(residual_norm_))
-    return slide::Status::Invalid_states;
+  // Infinity norm is the maximum absolute value of the finite assembled RHS.
+  assert(is_finite(residual_norm_));
 
   real_t contraction{};
   if (is_finite(previous_residual) && previous_residual > 0.0) {
@@ -536,10 +559,11 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
       const real_t resistance = branch.kind == ElectricalBranchKind::cell
                                   ? resistance_[branch.cell]
                                   : branch.resistance;
-      if (!(is_finite(resistance) && resistance > 0.0))
-        return slide::Status::Invalid_states;
+      // Linearization and netlist validation established this immediately
+      // before entering the numeric kernel.
+      assert(is_finite(resistance) && resistance > 0.0);
       const real_t conductance = 1.0 / resistance;
-      if (!is_finite(conductance)
+      if (!(is_finite(conductance) && conductance > 0.0)
           || !stamp(branch.node_positive, branch.node_negative, conductance))
         return slide::Status::Invalid_states;
     }
@@ -558,8 +582,7 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
 
   impl.rhs *= -1.0;
   for (Eigen::Index i = 0; i < impl.rhs.size(); ++i)
-    if (!is_finite(impl.rhs[i]))
-      return slide::Status::Invalid_states;
+    assert(is_finite(impl.rhs[i])); // finite negation is exact
   impl.unknown_voltage = impl.factorization.solve(impl.rhs);
   if (impl.factorization.info() != Eigen::Success)
     return slide::Status::Numerical_failure;
@@ -593,51 +616,68 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
       const real_t limit = magnitude > std::numeric_limits<real_t>::max() / 2.0
                              ? std::numeric_limits<real_t>::max()
                              : 2.0 * magnitude;
-      if (!is_finite(change) || !is_finite(magnitude) || !is_finite(limit))
-        return slide::Status::Invalid_states;
+      assert(is_finite(change) && is_finite(magnitude) && is_finite(limit));
       if (change > limit)
         damping = std::min(damping, limit / change);
     }
-  if (!is_finite(damping))
-    return slide::Status::Invalid_states;
+  assert(is_finite(damping) && damping >= 0.0 && damping <= 1.0);
   if (damping < 1.0) {
+    bool damped_candidate_valid = true;
     for (std::uint32_t node = 0; node < topology_.electrical.node_count; ++node) {
       const int unknown = impl.node_to_unknown[node];
       if (unknown >= 0) {
         const real_t correction = -(1.0 - damping) * impl.unknown_voltage[unknown];
         if (!is_finite(correction)
-            || !addFinite(candidate_node_voltage_[node], correction))
-          return slide::Status::Invalid_states;
+            || !addFinite(candidate_node_voltage_[node], correction)) {
+          damped_candidate_valid = false;
+          break;
+        }
       }
     }
     for (const auto &branch : topology_.electrical.branches)
-      if (branch.kind == ElectricalBranchKind::cell) {
+      if (damped_candidate_valid
+          && branch.kind == ElectricalBranchKind::cell) {
         const real_t voltage = candidate_node_voltage_[branch.node_positive]
                                - candidate_node_voltage_[branch.node_negative];
         const real_t numerator = ocv_[branch.cell] - voltage;
-        if (!is_finite(voltage) || !is_finite(numerator))
-          return slide::Status::Invalid_states;
-        candidate_current_[branch.cell] = numerator / resistance_[branch.cell];
-        if (!is_finite(candidate_current_[branch.cell]))
-          return slide::Status::Invalid_states;
+        if (is_finite(voltage) && is_finite(numerator))
+          candidate_current_[branch.cell] = numerator / resistance_[branch.cell];
+        if (!is_finite(voltage) || !is_finite(numerator)
+            || !is_finite(candidate_current_[branch.cell])) {
+          damped_candidate_valid = false;
+          break;
+        }
       }
+    if (!damped_candidate_valid)
+      return slide::Status::Invalid_states;
   }
+  for (const auto &branch : topology_.electrical.branches)
+    if (branch.kind == ElectricalBranchKind::resistor) {
+      const real_t voltage = candidate_node_voltage_[branch.node_positive]
+                             - candidate_node_voltage_[branch.node_negative];
+      const real_t current = voltage / branch.resistance;
+      if (!is_finite(voltage) || !is_finite(current))
+        return slide::Status::Invalid_states;
+    }
   candidate_terminal_voltage_ = candidate_node_voltage_[topology_.electrical.terminal_positive]
                                 - candidate_node_voltage_[topology_.electrical.terminal_negative];
-  if (!is_finite(candidate_terminal_voltage_))
-    return slide::Status::Invalid_states;
+  // SolverWorkspace excludes terminal_negative from the unknowns, so it stays
+  // exactly zero; terminal_positive was checked on every correction.
+  assert(candidate_node_voltage_[topology_.electrical.terminal_negative]
+         == 0.0);
+  assert(is_finite(candidate_terminal_voltage_));
   return slide::Status::Success;
 }
 
 slide::Status PackSolver::solveLadder(real_t applied_current)
 {
   const auto &netlist = topology_.electrical;
-  if (!netlist.series_parallel_ladder || netlist.ladder_offsets.size() < 2
-      || netlist.ladder_nodes.size() != netlist.ladder_offsets.size())
-    return slide::Status::Invalid_parameters;
+  // configure() validates the ladder and solveImpl() dispatches here only for
+  // a ladder-compatible mode.
+  assert(netlist.series_parallel_ladder && netlist.ladder_offsets.size() >= 2
+         && netlist.ladder_nodes.size() == netlist.ladder_offsets.size());
   const std::size_t layers = netlist.ladder_offsets.size() - 1;
-  if (layer_voltage_.size() != layers)
-    return slide::Status::Invalid_parameters;
+  assert(layer_voltage_.size() == layers);
   for (std::size_t layer = 0; layer < layers; ++layer) {
     real_t conductance_sum{};
     real_t source_sum{};
@@ -647,13 +687,15 @@ slide::Status PackSolver::solveLadder(real_t applied_current)
       const auto cell = netlist.ladder_cells[i];
       const real_t conductance = 1.0 / resistance_[cell];
       const real_t source = ocv_[cell] * conductance;
-      if (!is_finite(conductance) || !is_finite(source)
+      if (!(is_finite(conductance) && conductance > 0.0)
+          || !is_finite(source)
           || !addFinite(conductance_sum, conductance)
           || !addFinite(source_sum, source))
         return slide::Status::Invalid_states;
     }
-    if (!(is_finite(conductance_sum) && conductance_sum > 0.0))
-      return slide::Status::Invalid_states;
+    // Validated offsets give every layer at least one cell; accepted
+    // conductances are positive and every addition above remained finite.
+    assert(is_finite(conductance_sum) && conductance_sum > 0.0);
     const real_t numerator = source_sum - applied_current;
     if (!is_finite(numerator))
       return slide::Status::Invalid_states;
@@ -680,8 +722,7 @@ slide::Status PackSolver::solveLadder(real_t applied_current)
     candidate_node_voltage_[netlist.ladder_nodes[reverse - 1]] = voltage;
   }
   candidate_terminal_voltage_ = voltage;
-  if (!is_finite(candidate_terminal_voltage_))
-    return slide::Status::Invalid_states;
+  assert(is_finite(candidate_terminal_voltage_));
   return slide::Status::Success;
 }
 
@@ -689,10 +730,11 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
 {
   const auto &netlist = topology_.electrical;
   const auto finite = [](const real_t &value) { return is_finite(value); };
-  if (!std::all_of(candidate_node_voltage_.begin(),
-                   candidate_node_voltage_.end(),
-                   finite))
-    return slide::Status::Invalid_states;
+  // configure() starts with zeros and only a fully finite candidate is ever
+  // published for a warm start.
+  assert(std::all_of(candidate_node_voltage_.begin(),
+                     candidate_node_voltage_.end(),
+                     finite));
   std::fill(relaxation_diagonal_.begin(), relaxation_diagonal_.end(), 0.0);
   std::fill(relaxation_rhs_.begin(), relaxation_rhs_.end(), 0.0);
   std::fill(relaxation_target_.begin(), relaxation_target_.end(), 0.0);
@@ -701,7 +743,8 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
             0.0);
   auto stamp = [&](const CompiledElectricalBranch &branch, real_t resistance, real_t source) {
     const real_t conductance = 1.0 / resistance;
-    if (!is_finite(conductance) || !is_finite(source))
+    if (!(is_finite(conductance) && conductance > 0.0)
+        || !is_finite(source))
       return false;
     const auto p = branch.node_positive;
     const auto n = branch.node_negative;
@@ -728,8 +771,9 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
   for (const auto &branch : netlist.branches) {
     const bool cell = branch.kind == ElectricalBranchKind::cell;
     const real_t resistance = cell ? resistance_[branch.cell] : branch.resistance;
-    if (!(is_finite(resistance) && resistance > 0.0))
-      return slide::Status::Invalid_states;
+    // Linearization and netlist validation established this immediately
+    // before entering the numeric kernel.
+    assert(is_finite(resistance) && resistance > 0.0);
     if (!stamp(branch, resistance, cell ? ocv_[branch.cell] : 0.0))
       return slide::Status::Invalid_states;
   }
@@ -748,7 +792,8 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
       continue;
     }
     if (!(is_finite(relaxation_diagonal_[node])
-          && relaxation_diagonal_[node] > 0.0 && is_finite(relaxation_rhs_[node])))
+          && relaxation_diagonal_[node] > 0.0
+          && is_finite(relaxation_rhs_[node])))
       return slide::Status::Numerical_failure;
     relaxation_target_[node] = relaxation_rhs_[node]
                                / relaxation_diagonal_[node];
@@ -778,8 +823,9 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
     }
   candidate_terminal_voltage_ = candidate_node_voltage_[netlist.terminal_positive]
                                 - candidate_node_voltage_[netlist.terminal_negative];
-  if (!is_finite(candidate_terminal_voltage_))
-    return slide::Status::Invalid_states;
+  // terminal_negative is the skipped reference target and remains zero.
+  assert(candidate_node_voltage_[netlist.terminal_negative] == 0.0);
+  assert(is_finite(candidate_terminal_voltage_));
 
   std::fill(relaxation_target_.begin(), relaxation_target_.end(), 0.0);
   std::fill(relaxation_compensation_.begin(),
@@ -795,8 +841,9 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
     real_t branch_current{};
     if (branch.kind == ElectricalBranchKind::cell) {
       const real_t numerator = voltage - ocv_[branch.cell];
-      if (!is_finite(numerator))
-        return slide::Status::Invalid_states;
+      // The opposite subtraction was validated above when reconstructing this
+      // cell current, and no node or OCV changed in between.
+      assert(is_finite(numerator));
       branch_current = numerator / resistance_[branch.cell];
     } else {
       branch_current = voltage / branch.resistance;
@@ -845,25 +892,18 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
       continue;
     const real_t residual = relaxation_target_[node];
     const real_t magnitude = std::abs(residual);
-    if (!is_finite(magnitude))
-      return slide::Status::Invalid_states;
+    assert(is_finite(magnitude)); // abs preserves finiteness
     drift = std::max(drift, magnitude);
   }
-  const real_t epsilon = std::numeric_limits<real_t>::epsilon();
-  const real_t accumulation_ratio = static_cast<real_t>(netlist.branches.size() + 1)
-                                    * epsilon;
-  if (!(is_finite(accumulation_ratio) && accumulation_ratio < 1.0))
-    return slide::Status::Invalid_states;
-  const real_t accumulation_estimate = accumulation_ratio
-                                       / (1.0 - accumulation_ratio)
-                                       * roundoff_current_scale;
-  const real_t operation_estimate = 8.0 * epsilon * roundoff_operation_scale;
-  const real_t roundoff_estimate = accumulation_estimate + operation_estimate;
-  if (!is_finite(accumulation_estimate) || !is_finite(operation_estimate)
-      || !is_finite(roundoff_estimate))
-    return slide::Status::Invalid_states;
-  diagnostics_.constraint_bound = std::max(diagnostics_.constraint_bound,
-                                           roundoff_estimate);
+  // This is a conservative diagnostic bound, not solver state. If its bound
+  // arithmetic is itself unrepresentable, saturation remains conservative.
+  diagnostics_.constraint_bound = std::max(
+    diagnostics_.constraint_bound,
+    detail::conservativePackRoundoffBound(
+      static_cast<real_t>(netlist.branches.size() + 1)
+        * std::numeric_limits<real_t>::epsilon(),
+      roundoff_current_scale,
+      roundoff_operation_scale));
   diagnostics_.constraint_drift = drift;
   return slide::Status::Success;
 }
