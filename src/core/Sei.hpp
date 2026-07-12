@@ -208,25 +208,27 @@ template <class Real>
   if (model_status != slide::Status::Success)
     return model_status;
 
-  return detail::for_each_ageing_lane_while_success(lanes, [&](int lane) {
-    const auto i = static_cast<std::size_t>(lane);
-    const Real side_current = output.side_reaction_current[i];
-    if (!is_finite_primal(side_current))
-      return slide::Status::Numerical_failure;
-    if (p.reduce_active_fraction) {
-      const Real area = state.at(layout.specific_surface_area[neg], 0, lane);
-      const Real thickness = state.at(layout.electrode_thickness[neg], 0, lane);
-      if (!(primal_value(area) > 0.0 && primal_value(thickness) > 0.0))
-        return slide::Status::Invalid_states;
-      const Real molar_flux = ctx.i_app[i] / (area * p.n * p.F * thickness);
-      output.active_fraction_rate[i] = -p.porosity_coefficient
-                                       * (molar_flux * p.main_molar_volume
-                                          + side_current * p.side_molar_volume);
-      if (!is_finite_primal(output.active_fraction_rate[i]))
+  const auto lane_status = detail::for_each_ageing_lane_while_success(
+    lanes, [&](int lane) {
+      const auto i = static_cast<std::size_t>(lane);
+      const Real side_current = output.side_reaction_current[i];
+      if (!is_finite_primal(side_current))
         return slide::Status::Numerical_failure;
-    }
-    return slide::Status::Success;
-  });
+      if (p.reduce_active_fraction) {
+        const Real area = state.at(layout.specific_surface_area[neg], 0, lane);
+        const Real thickness = state.at(layout.electrode_thickness[neg], 0, lane);
+        if (!(primal_value(area) > 0.0 && primal_value(thickness) > 0.0))
+          return slide::Status::Invalid_states;
+        const Real molar_flux = ctx.i_app[i] / (area * p.n * p.F * thickness);
+        output.active_fraction_rate[i] = -p.porosity_coefficient
+                                         * (molar_flux * p.main_molar_volume
+                                            + side_current * p.side_molar_volume);
+        if (!is_finite_primal(output.active_fraction_rate[i]))
+          return slide::Status::Numerical_failure;
+      }
+      return slide::Status::Success;
+    });
+  return lane_status;
 }
 
 template <int NCH>

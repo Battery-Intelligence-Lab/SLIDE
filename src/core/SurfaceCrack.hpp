@@ -196,30 +196,32 @@ template <class Real>
   if (model_status != slide::Status::Success)
     return model_status;
 
-  return detail::for_each_ageing_lane_while_success(lanes, [&](int lane) {
-    const auto i = static_cast<std::size_t>(lane);
-    if (p.reduce_negative_diffusivity) {
-      const Real crack_surface = state.at(layout.crack_surface, 0, lane);
-      const bool saturated = exceeds_crack_surface_ceiling(crack_surface);
-      const Real maximum = saturated ? crack_surface
-                                     : Real{ p.model4_max_surface };
-      const Real intact_fraction = saturated
-                                     ? Real{}
-                                     : Real{ 1 } - crack_surface / maximum;
-      Real rate_fraction = p.diffusion_exponent
-                           * pow(intact_fraction,
-                                 p.diffusion_exponent - real_t{ 1 })
-                           / maximum * output.crack_surface_rate[i];
-      if (primal_value(rate_fraction) > 2e-7)
-        rate_fraction = Real{ 2e-7 };
-      output.negative_diffusivity_rate[i] = -rate_fraction * state.at(layout.diffusion_coefficient[neg], 0, lane);
-    }
-    if (!(is_finite_primal(output.sei_multiplier[i])
-          && is_finite_primal(output.crack_surface_rate[i])
-          && is_finite_primal(output.negative_diffusivity_rate[i])))
-      return slide::Status::Numerical_failure;
-    return slide::Status::Success;
-  });
+  const auto lane_status = detail::for_each_ageing_lane_while_success(
+    lanes, [&](int lane) {
+      const auto i = static_cast<std::size_t>(lane);
+      if (p.reduce_negative_diffusivity) {
+        const Real crack_surface = state.at(layout.crack_surface, 0, lane);
+        const bool saturated = exceeds_crack_surface_ceiling(crack_surface);
+        const Real maximum = saturated ? crack_surface
+                                       : Real{ p.model4_max_surface };
+        const Real intact_fraction = saturated
+                                       ? Real{}
+                                       : Real{ 1 } - crack_surface / maximum;
+        Real rate_fraction = p.diffusion_exponent
+                             * pow(intact_fraction,
+                                   p.diffusion_exponent - real_t{ 1 })
+                             / maximum * output.crack_surface_rate[i];
+        if (primal_value(rate_fraction) > 2e-7)
+          rate_fraction = Real{ 2e-7 };
+        output.negative_diffusivity_rate[i] = -rate_fraction * state.at(layout.diffusion_coefficient[neg], 0, lane);
+      }
+      if (!(is_finite_primal(output.sei_multiplier[i])
+            && is_finite_primal(output.crack_surface_rate[i])
+            && is_finite_primal(output.negative_diffusivity_rate[i])))
+        return slide::Status::Numerical_failure;
+      return slide::Status::Success;
+    });
+  return lane_status;
 }
 
 template <int NCH>
