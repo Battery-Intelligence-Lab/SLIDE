@@ -16,21 +16,17 @@
  * sgn are batch-shared material/geometry constants. T[c] and i_app[c] are the per-lane
  * operating point (each cell has its own temperature and current density).
  *
- * STEPPING MODE (Phase 1): forward Euler — z(d,k,c) += dt · dz/dt(d,k,c). This is the
- * "legacy-Euler mode" the parity gates require (§5.2). The exact exponential modal
- * propagator (D-07, unconditionally stable) is added in Phase 3 as an alternative step
- * routine on the SAME state layout and params; it is intentionally NOT here yet.
+ * STEPPING MODE: forward Euler — z(d,k,c) += dt · dz/dt(d,k,c). This compatibility
+ * kernel retains the legacy-Euler mode required by §5.2; the main SPM pipeline also
+ * provides the exact exponential modal propagator on the same state layout.
  *
- * PER-LANE ARITHMETIC IDENTITY: for a single lane, stepEuler executes the identical
- * operations, in the identical order, as SpectralDiffusionLegacyKernel::step — so a batch
- * of identical lanes reproduces that (already legacy-validated, §7 Q8) kernel bit-for-bit
- * within one TU. That is this file's Phase-1 correctness gate (core_SpectralDiffusion_test).
+ * PER-LANE EXPRESSION IDENTITY: stepEuler uses the PC-10 scalar leaves in the same order as
+ * SpectralDiffusionLegacyKernel::step. Debug is bit-identical; Release permits vectorisation
+ * and FMA drift and is gated at 1e-12 relative by core_SpectralDiffusion_test.
  *
- * DEFERRED (needs the §3.11 BatchView/StepCtx interface + architecture review, not Phase-1
- * blocking): T[c]/i_app[c] arrive here as plain spans; in the final design a BatchView
- * bundles arena rows + resolved parameter views and a StepCtx carries dt. The math and
- * memory layout below are the durable part; the argument bundling is the thin part that
- * changes when BatchView lands.
+ * COMPATIBILITY ROLE: this Phase-1 oracle-facing adapter retains its direct spans. New
+ * orchestration uses BatchView/StepCtx through SpmPipeline; the scalar physics definitions
+ * are shared with that path through SpmScalarKernels.hpp.
  *
  * @date 2026-07-08
  */
@@ -38,6 +34,7 @@
 #pragma once
 
 #include "CellDesign.hpp"
+#include "SpmScalarKernels.hpp"
 #include "StateArena.hpp"
 
 #include <array>
@@ -122,12 +119,14 @@ public:
       real_t *De = D_eff_.data() + static_cast<std::size_t>(d) * L;
       real_t *fl = flux_.data() + static_cast<std::size_t>(d) * L;
       const real_t D0d = p_.D0[d], D_Td = p_.D_T[d];
-      const real_t flux_den = p_.a[d] * p_.n * p_.F * p_.thick[d];
+      const real_t flux_den = spm_scalar::fluxDenominator(
+        p_.a[d], p_.n, p_.F, p_.thick[d]);
       const real_t sgnd = static_cast<real_t>(p_.sgn[d]);
       for (int c = 0; c < L; ++c) {
-        const real_t ArrheniusCoeff = (1.0 / p_.T_ref - 1.0 / T[c]) / p_.Rg; //!< == calcArrheniusCoeff()
-        De[c] = D0d * std::exp(D_Td * ArrheniusCoeff);                       //!< Electrode_SPM::Dt
-        fl[c] = sgnd * i_app[c] / flux_den;                                  //!< Electrode_SPM::molarFlux
+        const real_t ArrheniusCoeff = spm_scalar::arrheniusFactor(
+          p_.T_ref, T[c], p_.Rg);
+        De[c] = spm_scalar::activatedValue(D0d, D_Td, ArrheniusCoeff);
+        fl[c] = spm_scalar::molarFlux(sgnd, i_app[c], flux_den);
       }
     }
 
@@ -140,12 +139,13 @@ public:
         const real_t Ak = p_.A[d][k], Bk = p_.B[d][k];
         std::span<real_t> z = arena.row(slice[d].row_begin + k); //!< this mode across all lanes
         for (int c = 0; c < L; ++c) {
-          const real_t dz = De[c] * Ak * z[c] + Bk * fl[c]; //!< dz/dt = D·A·z + B·j
-          z[c] += dt * dz;                                  //!< forward-Euler advance
+          const real_t dz = SLIDE_SPM_DIFFUSION_RATE(
+            z[c], De[c], Ak, Bk, fl[c]); //!< dz/dt = D·A·z + B·j
+          z[c] += dt * dz;               //!< forward-Euler advance
         }
         //!< Two statements (compute dz, then advance) — not a fused z += dt·(…) — to match the
         //!< legacy-shaped kernel's evaluation structure operation-for-operation, so a batch of
-        //!< identical lanes reproduces it bit-for-bit (independent of -O3 FMA contraction).
+        //!< identical lanes reproduces it exactly in the Debug arithmetic regime.
       }
     }
   }

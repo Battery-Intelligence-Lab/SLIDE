@@ -35,6 +35,19 @@ function(forbid_tokens label content_variable)
   endforeach()
 endfunction()
 
+function(require_token_count label content_variable token expected)
+  string(LENGTH "${${content_variable}}" original_length)
+  string(REPLACE "${token}" "" without_token "${${content_variable}}")
+  string(LENGTH "${without_token}" stripped_length)
+  string(LENGTH "${token}" token_length)
+  math(EXPR count "(${original_length} - ${stripped_length}) / ${token_length}")
+  if(NOT count EQUAL expected)
+    message(
+      FATAL_ERROR
+      "PC-10 ${label}: expected ${expected} occurrences of ${token}, found ${count}")
+  endif()
+endfunction()
+
 function(slice_between label content_variable begin_marker end_marker output)
   string(FIND "${${content_variable}}" "${begin_marker}" begin)
   if(begin EQUAL -1)
@@ -54,8 +67,10 @@ load_compact("src/core/SpmObservables.hpp" observables)
 load_compact("src/core/ForwardSensitivity.cpp" dual)
 load_compact("src/core/CudaSpmRuntime.cu" cuda)
 load_compact("src/core/CompiledCurve.hpp" curves)
+load_compact("src/core/SpectralDiffusion.hpp" spectral)
+load_compact("src/core/SpectralDiffusionLegacy.hpp" spectral_legacy)
 
-foreach(consumer IN ITEMS pipeline observables dual cuda curves)
+foreach(consumer IN ITEMS pipeline observables dual cuda curves spectral)
   require_tokens("${consumer}" ${consumer} "#include\"SpmScalarKernels.hpp\"")
 endforeach()
 
@@ -68,6 +83,9 @@ slice_between(
 require_tokens("CPU modal" pipeline_modal "SLIDE_SPM_ADVANCE_MODAL_STD(")
 forbid_tokens("CPU modal" pipeline_modal
   "std::expm1(" "std::exp(x)" "1.0/6.0" "/24.0")
+
+require_token_count(
+  "CPU diffusion leaves" pipeline "spm_scalar::diffusionRate(" 3)
 
 require_tokens("CPU observables" observables
   "spm_scalar::arrheniusFactor("
@@ -133,5 +151,21 @@ slice_between(
 require_tokens("indexed curve" indexed_curve "spm_scalar::linearInterpolate(")
 forbid_tokens("indexed curve" indexed_curve
   "y_[i+1]-y_[i]" "x_[i+1]-x_[i]")
+
+require_tokens("spectral diffusion" spectral
+  "spm_scalar::arrheniusFactor("
+  "spm_scalar::activatedValue("
+  "spm_scalar::fluxDenominator("
+  "spm_scalar::molarFlux("
+  "SLIDE_SPM_DIFFUSION_RATE(")
+forbid_tokens("spectral diffusion" spectral
+  "std::exp("
+  "(1.0/p_.T_ref-1.0/T[c])/p_.Rg"
+  "p_.a[d]*p_.n*p_.F*p_.thick[d]"
+  "sgnd*i_app[c]/flux_den"
+  "De[c]*Ak*z[c]+Bk*fl[c]")
+
+forbid_tokens("spectral legacy oracle" spectral_legacy
+  "SpmScalarKernels.hpp" "spm_scalar::")
 
 message(STATUS "PC-10 single-source structural gate passed")

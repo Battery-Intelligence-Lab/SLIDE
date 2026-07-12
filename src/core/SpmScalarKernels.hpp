@@ -1,11 +1,12 @@
 /**
  * @file SpmScalarKernels.hpp
- * @brief Scalar-only SPM physics shared by CPU, CUDA, Dual, and WASM paths.
+ * @brief Scalar-only SPM physics shared by CPU, CUDA, Dual, and ordinary-C++ paths.
  *
- * This header deliberately owns expression trees, not orchestration.  Callers retain
- * indexing, caches, curve-segment selection, validation, Status publication, and rollback.
- * Keeping the functions allocation-free and container-free makes the same definitions usable
- * from ordinary C++, nvcc device code, and forward-mode scalar types.
+ * M0.5 / PC-10 hot-path contract: this header is the sole owner of SPM scalar
+ * expression trees. Adapters own only indexing, caches, curve-segment selection,
+ * validation, Status publication, and rollback. The allocation-free, container-free
+ * definitions instantiate for CPU, CUDA, and Dual; WASM uses the ordinary C++
+ * instantiation, with independent wasm/native validation deferred to M10.
  */
 
 #pragma once
@@ -144,6 +145,13 @@ SLIDE_SPM_HOST_DEVICE inline auto molarFlux(
   return sign * current_density / denominator;
 }
 
+/**
+ * Modal RHS expression kernel for vectorized consumers whose optimizer changes
+ * loop IR across an inline-function boundary. Each argument is evaluated once.
+ */
+#define SLIDE_SPM_DIFFUSION_RATE(state, diffusivity, eigenvalue, input, flux) \
+  ((diffusivity) * (eigenvalue) * (state) + (input) * (flux))
+
 template <class State, class Diffusivity, class Eigenvalue, class InputCoefficient, class Flux>
 SLIDE_SPM_HOST_DEVICE inline auto diffusionRate(
   State state,
@@ -152,7 +160,8 @@ SLIDE_SPM_HOST_DEVICE inline auto diffusionRate(
   InputCoefficient input,
   Flux flux) noexcept
 {
-  return diffusivity * eigenvalue * state + input * flux;
+  return SLIDE_SPM_DIFFUSION_RATE(
+    state, diffusivity, eigenvalue, input, flux);
 }
 
 /**
@@ -162,36 +171,35 @@ SLIDE_SPM_HOST_DEVICE inline auto diffusionRate(
  * boundary changed those choices under Clang -Ofast even with always_inline, violating the
  * recorded-bit contract.  This one hygienically-prefixed statement kernel keeps the expression
  * tree in one source while preserving each backend's existing math entry points and loop IR.
- * `destination` must be a side-effect-free lvalue; the remaining arguments must be values.
+ * `destination` and `dt` are each evaluated twice and must be side-effect-free;
+ * callable arguments must be function-name tokens, and the remaining arguments values.
  */
-#define SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                      \
-  destination, diffusivity, eigenvalue, dt, input, flux, abs_function, exp_function,           \
-  expm1_function)                                                                               \
-  do {                                                                                           \
-    const auto slide_spm_modal_x = (diffusivity) * (eigenvalue) * (dt);                          \
-    const auto slide_spm_modal_phi1 =                                                           \
-      abs_function(slide_spm_modal_x) < 1e-7                                                    \
-        ? decltype(slide_spm_modal_x){ 1.0 }                                                    \
-            + slide_spm_modal_x                                                                 \
-                * (0.5                                                                          \
-                   + slide_spm_modal_x                                                          \
-                       * (1.0 / 6.0 + slide_spm_modal_x / 24.0))                                \
-        : expm1_function(slide_spm_modal_x) / slide_spm_modal_x;                                \
-    (destination) = exp_function(slide_spm_modal_x) * (destination)                             \
-                    + (dt) * slide_spm_modal_phi1 * (input) * (flux);                           \
+#define SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                            \
+  destination, diffusivity, eigenvalue, dt, input, flux, abs_function, exp_function, expm1_function) \
+  do {                                                                                               \
+    const auto slide_spm_modal_x = (diffusivity) * (eigenvalue) * (dt);                              \
+    const auto slide_spm_modal_phi1 =                                                                \
+      abs_function(slide_spm_modal_x) < 1e-7                                                         \
+        ? decltype(slide_spm_modal_x){ 1.0 }                                                         \
+            + slide_spm_modal_x                                                                      \
+                * (0.5                                                                               \
+                   + slide_spm_modal_x                                                               \
+                       * (1.0 / 6.0 + slide_spm_modal_x / 24.0))                                     \
+        : expm1_function(slide_spm_modal_x) / slide_spm_modal_x;                                     \
+    (destination) = exp_function(slide_spm_modal_x) * (destination)                                  \
+                    + (dt) * slide_spm_modal_phi1 * (input) * (flux);                                \
   } while (false)
 
-#define SLIDE_SPM_ADVANCE_MODAL_STD(destination, diffusivity, eigenvalue, dt, input, flux)       \
-  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                              \
+#define SLIDE_SPM_ADVANCE_MODAL_STD(destination, diffusivity, eigenvalue, dt, input, flux) \
+  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                        \
     destination, diffusivity, eigenvalue, dt, input, flux, std::abs, std::exp, std::expm1)
 
-#define SLIDE_SPM_ADVANCE_MODAL_ADL(destination, diffusivity, eigenvalue, dt, input, flux)       \
-  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                              \
-    destination, diffusivity, eigenvalue, dt, input, flux,                                      \
-    ::slide::core::spm_scalar::detail::primalMagnitude, exp, expm1)
+#define SLIDE_SPM_ADVANCE_MODAL_ADL(destination, diffusivity, eigenvalue, dt, input, flux) \
+  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                        \
+    destination, diffusivity, eigenvalue, dt, input, flux, ::slide::core::spm_scalar::detail::primalMagnitude, exp, expm1)
 
-#define SLIDE_SPM_ADVANCE_MODAL_CUDA(destination, diffusivity, eigenvalue, dt, input, flux)      \
-  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                              \
+#define SLIDE_SPM_ADVANCE_MODAL_CUDA(destination, diffusivity, eigenvalue, dt, input, flux) \
+  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                         \
     destination, diffusivity, eigenvalue, dt, input, flux, ::fabs, ::exp, ::expm1)
 
 template <class State, class Diffusivity, class Eigenvalue, class Time, class InputCoefficient, class Flux>
