@@ -5,6 +5,7 @@
 
 #include "../../src/core/Experiment.hpp"
 #include "../support/KokamSpmFixture.hpp"
+#include "../support/RecordedBits.hpp"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -14,6 +15,7 @@
 #include <bit>
 #include <cmath>
 #include <cstring>
+#include <iterator>
 #include <numeric>
 #include <stdexcept>
 #include <string>
@@ -38,6 +40,29 @@ double terminalVoltage(core::SpmBatch &batch, double current)
   std::array<double, 1> voltage{};
   REQUIRE(batch.terminalVoltage({ .i_app = density }, voltage) == Status::Success);
   return voltage[0];
+}
+
+void recordParsedSegment(test_support::RecordedBits &recorded,
+                         const core::ExperimentSegment &segment)
+{
+  // Keep enums, flags, and vector cardinalities in the numerical trace.  Each
+  // segment is a separate frame, so moving a field or a repeated segment is
+  // distinguishable even when the flattened values happen to be identical.
+  const std::array fields{
+    static_cast<double>(static_cast<int>(segment.mode)),
+    static_cast<double>(static_cast<int>(segment.direction)),
+    segment.value,
+    segment.value_is_c_rate ? 1.0 : 0.0,
+    segment.duration,
+    segment.voltage_limit,
+    segment.current_cutoff,
+    segment.cutoff_is_c_rate ? 1.0 : 0.0,
+    segment.custom_control ? 1.0 : 0.0,
+    static_cast<double>(segment.custom_terminations.size()),
+    segment.scheduled_start,
+    segment.sample_period,
+  };
+  recorded.append(fields);
 }
 
 } // namespace
@@ -88,6 +113,58 @@ TEST_CASE("P5-G1 documented experiment strings compile atomically",
   CHECK(experiment.segments[5].drive_cycle == "us06");
   CHECK(experiment.segments[6].value == 0.5);
   CHECK(experiment.segments[7].source == source.back());
+
+  // 9C-3 pre-refactor parser fixture.  Numeric and integer-valued metadata are
+  // fingerprinted independently of text so a parser change cannot hide a
+  // source-order or normalisation regression behind the same floating trace.
+  test_support::RecordedBits parsed_bits;
+  std::vector<std::string> parsed_sources;
+  std::vector<std::string> parsed_drive_cycles;
+  for (const auto &segment : experiment.segments) {
+    recordParsedSegment(parsed_bits, segment);
+    parsed_sources.push_back(segment.source);
+    parsed_drive_cycles.push_back(segment.drive_cycle);
+  }
+  const std::vector<std::string> expected_sources{
+    source[0],
+    source[1],
+    source[2],
+    source[3],
+    source[4],
+    source[5],
+    source[6],
+    source[6],
+  };
+  const std::vector<std::string> expected_drive_cycles{
+    "",
+    "",
+    "",
+    "",
+    "",
+    "us06",
+    "",
+    "",
+  };
+  CHECK(parsed_sources == expected_sources);
+  CHECK(parsed_drive_cycles == expected_drive_cycles);
+  CAPTURE(parsed_bits.values, parsed_bits.fnv1a, parsed_bits.mixed);
+  REQUIRE(parsed_bits.values == 96);
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
+  // Filled from the pre-split production TU in the three supported capture
+  // configurations before any Experiment.cpp ownership is moved.
+#if defined(SLIDE_TEST_RELEASE) && defined(SLIDE_TEST_IPO)
+  constexpr auto expected_parser_fnv = UINT64_C(0x1e404a3be7365df5);
+  constexpr auto expected_parser_mixed = UINT64_C(0x94a28984eed0159b);
+#elif defined(SLIDE_TEST_RELEASE)
+  constexpr auto expected_parser_fnv = UINT64_C(0x1e404a3be7365df5);
+  constexpr auto expected_parser_mixed = UINT64_C(0x94a28984eed0159b);
+#else
+  constexpr auto expected_parser_fnv = UINT64_C(0x1e404a3be7365df5);
+  constexpr auto expected_parser_mixed = UINT64_C(0x94a28984eed0159b);
+#endif
+  CHECK(parsed_bits.fnv1a == expected_parser_fnv);
+  CHECK(parsed_bits.mixed == expected_parser_mixed);
+#endif
 
   core::Experiment unchanged;
   unchanged.segments.push_back({ .mode = core::ControlMode::rest, .duration = 7.0 });
@@ -175,6 +252,98 @@ TEST_CASE("P5-G1 documented experiment strings compile atomically",
   CHECK(missing_drive_name.segments.size() == 1);
   if (missing_drive_name.segments.size() == 1)
     CHECK(missing_drive_name.segments[0].duration == 13.0);
+}
+
+TEST_CASE("9C-3 manually constructed cycler trace retains its pre-split bits",
+          "[core][experiment][cycler][9C-3][recorded]")
+{
+  // This fixture deliberately bypasses Experiment::parse: correlated parser
+  // and runner changes must not be able to bless one another.  The sign-changing
+  // nonuniform drive samples distinguish interpolation and exact breakpoint
+  // ownership; the final current segment crosses a dyadic quarter-second root
+  // inside a half-second step, forcing event rollback and bisection.
+  auto batch = makeBatch();
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  REQUIRE(cycler.registerDriveCycle(
+            { .name = "9c3-breakpoints",
+              .time = { 0.0, 0.25, 0.5 },
+              .current = { 0.25, -0.75, 0.5 } })
+          == Status::Success);
+
+  core::Experiment experiment;
+  experiment.segments = {
+    { .mode = core::ControlMode::power,
+      .direction = core::Direction::discharge,
+      .value = 1.25,
+      .duration = 0.5,
+      .sample_period = 0.25 },
+    { .mode = core::ControlMode::rest,
+      .duration = 0.25,
+      .sample_period = 0.25 },
+    { .mode = core::ControlMode::drive_cycle,
+      .drive_cycle = "9c3-breakpoints",
+      .sample_period = 0.125 },
+    { .mode = core::ControlMode::current,
+      .direction = core::Direction::discharge,
+      .value = 0.4,
+      .duration = 1.0,
+      .custom_terminations = {
+        { .name = "quarter-step event",
+          .indicator = [](const core::ExperimentVariables &variables) {
+            return 0.25 - variables.local_time;
+          } },
+      },
+      .sample_period = 0.5 },
+  };
+
+  test_support::RecordedBits run_bits;
+  run_bits.append(batch.state().raw());
+  core::ExperimentSolution solution;
+  const auto run_status = cycler.run(experiment, 0.5, solution);
+  REQUIRE(run_status == Status::Success);
+  REQUIRE(solution.status == Status::Success);
+  REQUIRE(solution.reason == core::TerminationReason::event);
+  REQUIRE(solution.segment == 3);
+  REQUIRE(solution.termination_name == "quarter-step event");
+  REQUIRE(solution.time.size() == 9);
+  REQUIRE(solution.time.back() == 1.5);
+
+  run_bits.append(solution.time);
+  run_bits.append(solution.voltage);
+  run_bits.append(solution.current);
+  std::vector<double> recorded_segments;
+  recorded_segments.reserve(solution.sample_segment.size());
+  std::ranges::transform(solution.sample_segment,
+                         std::back_inserter(recorded_segments),
+                         [](std::size_t segment) {
+                           return static_cast<double>(segment);
+                         });
+  run_bits.append(recorded_segments);
+  const std::array metadata{
+    static_cast<double>(static_cast<int>(solution.reason)),
+    static_cast<double>(static_cast<int>(solution.status)),
+    static_cast<double>(solution.segment),
+  };
+  run_bits.append(metadata);
+  run_bits.append(batch.state().raw());
+
+  CAPTURE(run_bits.values, run_bits.fnv1a, run_bits.mixed);
+  REQUIRE(run_bits.values == 503);
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
+#if defined(SLIDE_TEST_RELEASE) && defined(SLIDE_TEST_IPO)
+  constexpr auto expected_run_fnv = UINT64_C(0x9d97787b3976978b);
+  constexpr auto expected_run_mixed = UINT64_C(0x4c7bcd0565164aa2);
+#elif defined(SLIDE_TEST_RELEASE)
+  constexpr auto expected_run_fnv = UINT64_C(0xe9616b6ce3131bb6);
+  constexpr auto expected_run_mixed = UINT64_C(0xb72cecb529e7c3c0);
+#else
+  constexpr auto expected_run_fnv = UINT64_C(0xc779e41caac8339c);
+  constexpr auto expected_run_mixed = UINT64_C(0x32dec619a41e0324);
+#endif
+  CHECK(run_bits.fnv1a == expected_run_fnv);
+  CHECK(run_bits.mixed == expected_run_mixed);
+#endif
 }
 
 TEST_CASE("Cycler validates direct segment metadata before stepping",

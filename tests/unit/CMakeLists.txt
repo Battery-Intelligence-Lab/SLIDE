@@ -21,6 +21,7 @@ function(slide_configure_recorded_scalar_fixture target)
   endif()
   target_compile_definitions(
     ${target} PRIVATE
+    "$<$<CONFIG:Release>:SLIDE_TEST_RELEASE=1>"
     "$<$<AND:$<CONFIG:Release>,$<BOOL:$<TARGET_PROPERTY:INTERPROCEDURAL_OPTIMIZATION>>>:SLIDE_TEST_IPO=1>")
 endfunction()
 
@@ -175,6 +176,7 @@ add_executable_with_coverage_and_test(unit_test_core_Experiment core_Experiment_
 # would make that return undefined before Experiment can validate it.
 slide_use_strict_fp(core_Experiment_test.cpp)
 target_link_libraries(unit_test_core_Experiment PRIVATE slide_core)
+slide_configure_recorded_scalar_fixture(unit_test_core_Experiment)
 
 # Phase 6: lazy snapshot recording, CSV, and hardened mmap binary I/O
 add_executable_with_coverage_and_test(unit_test_core_Recorder core_Recorder_test.cpp)
@@ -186,6 +188,7 @@ target_link_libraries(unit_test_core_RecorderAllocation PRIVATE slide_core)
 # Phase 7: PyBaMM-named Chen2020 and BPX 1.x parameter absorption
 add_executable_with_coverage_and_test(unit_test_core_ParameterSet core_ParameterSet_test.cpp)
 target_link_libraries(unit_test_core_ParameterSet PRIVATE slide_core)
+slide_configure_recorded_scalar_fixture(unit_test_core_ParameterSet)
 
 add_executable_with_coverage_and_test(unit_test_core_ParserAllocation core_ParserAllocation_test.cpp)
 target_link_libraries(unit_test_core_ParserAllocation PRIVATE slide_core)
