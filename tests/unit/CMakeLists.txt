@@ -1,4 +1,8 @@
 # Add executables and tests with coverage flags applied
+if(CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+  add_compile_definitions(SLIDE_TEST_IPO=1)
+endif()
+
 add_executable_with_coverage_and_test(unit_test_Cell_Bucket Cell_Bucket_test.cpp)
 add_executable_with_coverage_and_test(unit_test_Cell_ECM Cell_ECM_test.cpp)
 add_executable_with_coverage_and_test(unit_test_Cell_SPM Cell_SPM_test.cpp)

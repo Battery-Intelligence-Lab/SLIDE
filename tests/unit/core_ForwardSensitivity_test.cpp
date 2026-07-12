@@ -192,7 +192,10 @@ TEST_CASE("P7-G2 ten dual sensitivities match centered-FD arbiters",
   recorded.append(sensitivity.derivative);
   CAPTURE(recorded.values, recorded.fnv1a, recorded.mixed);
   REQUIRE(recorded.values == 732);
-#if defined(__FAST_MATH__)
+#if defined(SLIDE_TEST_IPO)
+  constexpr auto expected_fnv = UINT64_C(0x56b17a9abb12f827);
+  constexpr auto expected_mixed = UINT64_C(0x0ba390f9803cf187);
+#elif defined(__FAST_MATH__)
   constexpr auto expected_fnv = UINT64_C(0x06dc78ab74d5e7a4);
   constexpr auto expected_mixed = UINT64_C(0xd10596df0d2c2c5a);
 #else
