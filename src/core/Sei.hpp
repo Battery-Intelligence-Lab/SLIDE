@@ -5,25 +5,22 @@
 
 #pragma once
 
+#include "AgeingKernel.hpp"
 #include "Numeric.hpp"
 #include "SpmObservables.hpp"
 #include "SpmState.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <span>
-#include <vector>
 
 namespace slide::core {
 
 constexpr std::uint8_t sei_model_bit(unsigned model)
 {
-  return model >= 1 && model <= 4
-           ? static_cast<std::uint8_t>(std::uint8_t{ 1 } << (model - 1))
-           : std::uint8_t{};
+  return ageing_model_bit<4>(model);
 }
 
 /** Batch-shared, cold-built constants for legacy-compatible SEI models 1--4. */
@@ -66,7 +63,7 @@ struct SeiParams
 
 [[nodiscard]] inline slide::Status validateSeiParams(const SeiParams &p)
 {
-  if ((p.model_mask & std::uint8_t{ 0xf0 }) != 0 || p.model_mask == 0)
+  if (!valid_ageing_model_mask<4>(p.model_mask))
     return slide::Status::Invalid_parameters;
   const std::array values{ p.F,
                            p.Rg,
@@ -122,21 +119,16 @@ class SeiScratch
 {
 public:
   explicit SeiScratch(int n_lanes)
-    : storage_(static_cast<std::size_t>(2 * n_lanes)), n_lanes_(n_lanes)
-  {
-    assert(n_lanes > 0);
-  }
+    : storage_{ n_lanes }
+  {}
 
   BasicSeiOutput<Real> view()
   {
-    auto storage = std::span<Real>{ storage_ };
-    return { storage.first(static_cast<std::size_t>(n_lanes_)),
-             storage.subspan(static_cast<std::size_t>(n_lanes_)) };
+    return { storage_.field(0), storage_.field(1) };
   }
 
 private:
-  std::vector<Real> storage_{};
-  int n_lanes_{};
+  detail::AgeingScratchStorage<Real, 2> storage_;
 };
 
 template <class Real>
@@ -154,15 +146,14 @@ template <class Real>
          && output.active_fraction_rate.size() == count);
   assert(observables.negative_entropic_coefficient.size() == count);
   ctx.assert_valid_for(lanes);
-  std::fill(output.side_reaction_current.begin(), output.side_reaction_current.end(), Real{});
-  std::fill(output.active_fraction_rate.begin(), output.active_fraction_rate.end(), Real{});
+  detail::clear_ageing_fields<Real, 2>(
+    lanes,
+    { output.side_reaction_current, output.active_fraction_rate });
 
   const auto neg = domain_index(Domain::neg);
   using std::exp;
-  auto add_model = [&](unsigned model) {
-    if ((p.model_mask & sei_model_bit(model)) == 0)
-      return;
-    for (int lane = 0; lane < lanes; ++lane) {
+  const auto model_status = detail::for_each_enabled_ageing_model_lane<4>(
+    p.model_mask, lanes, [&](unsigned model, int lane) {
       const Real T = state.at(layout.temperature, 0, lane);
       const Real delta = state.at(layout.sei_thickness, 0, lane);
       const Real current = ctx.i_app[static_cast<std::size_t>(lane)] * p.electrode_area;
@@ -212,13 +203,12 @@ template <class Real>
         contribution = first / (Real{ 1 } / second + third);
       }
       output.side_reaction_current[static_cast<std::size_t>(lane)] += contribution;
-    }
-  };
+      return slide::Status::Success;
+    });
+  if (model_status != slide::Status::Success)
+    return model_status;
 
-  for (unsigned model = 1; model <= 4; ++model)
-    add_model(model);
-
-  for (int lane = 0; lane < lanes; ++lane) {
+  return detail::for_each_ageing_lane_while_success(lanes, [&](int lane) {
     const auto i = static_cast<std::size_t>(lane);
     const Real side_current = output.side_reaction_current[i];
     if (!is_finite_primal(side_current))
@@ -235,8 +225,8 @@ template <class Real>
       if (!is_finite_primal(output.active_fraction_rate[i]))
         return slide::Status::Numerical_failure;
     }
-  }
-  return slide::Status::Success;
+    return slide::Status::Success;
+  });
 }
 
 template <int NCH>
@@ -257,7 +247,7 @@ void addSeiRhs(const SeiRhsParams<NCH> &p,
   const int lanes = state.n_lanes();
   const auto neg = domain_index(Domain::neg);
   assert(derivative.n_lanes() == lanes && layout.z[neg].rows == NCH);
-  for (int lane = 0; lane < lanes; ++lane) {
+  detail::for_each_ageing_lane(lanes, [&](int lane) {
     const auto i = static_cast<std::size_t>(lane);
     const Real side_current = output.side_reaction_current[i];
     const Real active_fraction_rate = output.active_fraction_rate[i];
@@ -271,7 +261,7 @@ void addSeiRhs(const SeiRhsParams<NCH> &p,
                                                    * state.at(layout.specific_surface_area[neg], 0, lane);
     derivative.at(layout.active_fraction[neg], 0, lane) += active_fraction_rate;
     derivative.at(layout.specific_surface_area[neg], 0, lane) += Real{ 3 } / p.mechanism.negative_particle_radius * active_fraction_rate;
-  }
+  });
 }
 
 } // namespace slide::core
