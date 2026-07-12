@@ -48,6 +48,7 @@ function(require_token_count label content_variable token expected)
 endfunction()
 
 load_compact("src/core/Sei.hpp" sei)
+load_compact("src/core/AgeingKernel.hpp" scaffold)
 load_compact("src/core/SurfaceCrack.hpp" crack)
 load_compact("src/core/Lam.hpp" lam)
 load_compact("src/core/LithiumPlating.hpp" plating)
@@ -59,6 +60,11 @@ load_compact("src/cells/Cell_SPM/Cell_SPM_degradation.cpp" legacy)
 foreach(consumer IN ITEMS sei crack lam plating stress pipeline)
   require_tokens("${consumer}" ${consumer} "#include\"AgeingKernel.hpp\"")
 endforeach()
+
+require_tokens("shared scaffold" scaffold
+  "for(unsignedmodel=1;model<=ModelCount;++model)"
+  "SLIDE_AGEING_FORCE_INLINEslide::Statusfor_each_enabled_ageing_model_lane("
+  "SLIDE_AGEING_FORCE_INLINEslide::Statusevaluate_ageing_stage(")
 
 require_tokens("SEI" sei
   "ageing_model_bit<4>(model)"
