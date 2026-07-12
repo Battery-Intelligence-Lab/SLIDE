@@ -136,4 +136,3 @@ of these controlled mutations:
 The first functional migration is the exact Recorder/AsyncRecorder batch
 factory pair. Trace extraction follows only after the harness's independent
 literal forwarding/framing/metric tests are mutation-red.
-
