@@ -47,6 +47,22 @@ function(require_token_count label content_variable token expected)
   endif()
 endfunction()
 
+function(require_ordered_tokens label content_variable)
+  set(search_offset 0)
+  foreach(token IN LISTS ARGN)
+    string(SUBSTRING "${${content_variable}}" ${search_offset} -1 remaining)
+    string(FIND "${remaining}" "${token}" relative_position)
+    if(relative_position EQUAL -1)
+      message(
+        FATAL_ERROR
+        "9C-2 ${label}: required ordered token is absent after offset ${search_offset}: ${token}")
+    endif()
+    string(LENGTH "${token}" token_length)
+    math(EXPR search_offset
+      "${search_offset} + ${relative_position} + ${token_length}")
+  endforeach()
+endfunction()
+
 load_compact("src/core/Sei.hpp" sei)
 load_compact("src/core/AgeingKernel.hpp" scaffold)
 load_compact("src/core/SurfaceCrack.hpp" crack)
@@ -106,6 +122,11 @@ require_tokens("lithium plating" plating
 
 require_tokens("stress scratch" stress "detail::AgeingScratchStorage<Real,3>")
 require_token_count("pipeline stages" pipeline "detail::evaluate_ageing_stage(" 4)
+require_ordered_tokens("pipeline stage order" pipeline
+  "detail::evaluate_ageing_stage(params_.enable_sei,"
+  "detail::evaluate_ageing_stage(params_.enable_surface_crack,"
+  "detail::evaluate_ageing_stage(params_.enable_lam,"
+  "detail::evaluate_ageing_stage(params_.enable_lithium_plating,")
 require_tokens("pipeline disabled-SEI dependency" pipeline
   "detail::clear_ageing_fields<real_t,2>(")
 require_tokens("factory masks" factory
