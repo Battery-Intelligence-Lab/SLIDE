@@ -218,7 +218,7 @@ int main(int argc, char **argv)
   if (core_status != Status::Success || legacy_status != Status::Success)
     return 7;
 
-  if (compiled.solver().solve(pack_current, core::PackSolveMode::ladder) != Status::Success
+  if (compiled.solveElectrical(pack_current, core::PackSolveMode::ladder) != Status::Success
       || final_legacy.root->setCurrent(pack_current, false, false) != Status::Success)
     return 8;
   double max_current_error{};

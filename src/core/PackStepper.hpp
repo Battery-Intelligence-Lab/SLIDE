@@ -42,6 +42,15 @@ public:
   [[nodiscard]] slide::Status checkpoint(std::span<real_t> destination) const;
   [[nodiscard]] slide::Status restore(std::span<const real_t> source);
 
+  /** Refresh the electrical solution without advancing any cell state. */
+  [[nodiscard]] slide::Status solveElectrical(
+    real_t applied_current,
+    PackSolveMode mode = PackSolveMode::sparse_newton,
+    real_t current_tolerance = 1e-10)
+  {
+    return solver_.solve(applied_current, mode, current_tolerance);
+  }
+
   const PackSolution &solution() const { return solver_.solution(); }
   const PackSolveDiagnostics &diagnostics() const { return solver_.diagnostics(); }
   std::span<const real_t> cellExternalHeat() const { return cell_external_heat_; }
