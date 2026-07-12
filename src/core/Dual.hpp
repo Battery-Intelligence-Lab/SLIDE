@@ -77,6 +77,15 @@ inline Dual sqrt(Dual value)
   return { result, value.derivative / (2.0 * result) };
 }
 
+/** Differentiate a variable base raised to a scalar exponent. */
+inline Dual pow(Dual value, real_t exponent)
+{
+  const real_t result = std::pow(value.value, exponent);
+  return { result,
+           exponent * std::pow(value.value, exponent - 1.0)
+             * value.derivative };
+}
+
 inline Dual asinh(Dual value)
 {
   return { std::asinh(value.value),

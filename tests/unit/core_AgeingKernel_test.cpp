@@ -9,15 +9,18 @@
  */
 
 #include "../support/RecordedBits.hpp"
+#include "../../src/core/Dual.hpp"
 #include "../../src/core/SpmFactory.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <span>
 #include <vector>
 
@@ -172,6 +175,56 @@ slide::test_support::RecordedBits recorded_ageing_trace()
   return recorded;
 }
 
+template <class Real>
+std::array<Real, 2> crack_diffusivity_at(Real crack_surface)
+{
+  constexpr int local_nch = 1;
+  core::BatchBuilder builder;
+  const auto layout = core::declareSpmState<local_nch>(builder);
+  const auto history = core::declareStressHistory(builder);
+  auto geometry = builder.build(1);
+  const core::BatchShape shape = core::BatchShape::from(geometry);
+  std::vector<Real> storage(shape.storage_size());
+  core::BasicBatchView<Real> mutable_state{ shape, storage };
+  mutable_state.at(layout.temperature, 0, 0) = Real{ 298.15 };
+  mutable_state.at(layout.sei_thickness, 0, 0) = Real{ 1e-9 };
+  mutable_state.at(layout.crack_surface, 0, 0) = crack_surface;
+  const auto neg = core::domain_index(core::Domain::neg);
+  mutable_state.at(layout.specific_surface_area[neg], 0, 0) = Real{ 4.0e4 };
+  mutable_state.at(layout.electrode_thickness[neg], 0, 0) = Real{ 75e-6 };
+  mutable_state.at(layout.diffusion_coefficient[neg], 0, 0) = Real{ 7e-14 };
+  mutable_state.at(history.interval, 0, 0) = Real{ 30.0 };
+  const core::BasicBatchView<const Real> state{ shape, storage };
+
+  core::SpmObservableScratch<local_nch, Real> observable_scratch{ 1 };
+  auto observables = observable_scratch.view();
+  core::SpmStressScratch<Real> stress_scratch{ 1 };
+  auto stress = stress_scratch.view();
+  core::SurfaceCrackScratch<Real> output_scratch{ 1 };
+  auto output = output_scratch.view();
+  const std::array<Real, 1> current_density{ Real{ 2.0 } };
+  const core::BasicStepCtx<Real> ctx{ .i_app = current_density };
+
+  core::SurfaceCrackParams params;
+  params.model_mask = core::surface_crack_model_bit(4);
+  params.reduce_negative_diffusivity = true;
+  params.electrode_area = 0.1;
+  params.negative_cs_max = 30'555.0;
+  params.model4_alpha = 4.0e-8;
+  params.model4_max_surface = 0.03;
+  params.diffusion_exponent = 2.3;
+  REQUIRE(core::computeSurfaceCrack(params,
+                                    state,
+                                    layout,
+                                    history,
+                                    ctx,
+                                    observables,
+                                    stress,
+                                    output)
+          == Status::Success);
+  return { output.crack_surface_rate[0], output.negative_diffusivity_rate[0] };
+}
+
 } // namespace
 
 TEST_CASE("9C-2 all-mask ageing trace retains its pre-refactor bits",
@@ -194,4 +247,31 @@ TEST_CASE("9C-2 all-mask ageing trace retains its pre-refactor bits",
   CHECK(recorded.fnv1a == expected_fnv);
   CHECK(recorded.mixed == expected_mixed);
 #endif
+}
+
+TEST_CASE("9C-2 surface-crack diffusivity is scalar-generic for Dual",
+          "[core][ageing][9C-2][dual]")
+{
+  constexpr double crack_surface = 0.01;
+  const auto dual = crack_diffusivity_at(core::Dual{ crack_surface, 1.0 });
+  const auto primal = crack_diffusivity_at(crack_surface);
+  CAPTURE(std::bit_cast<std::uint64_t>(dual[0].value),
+          std::bit_cast<std::uint64_t>(primal[0]),
+          std::bit_cast<std::uint64_t>(dual[1].value),
+          std::bit_cast<std::uint64_t>(primal[1]));
+  REQUIRE(dual[0].value == primal[0]);
+  REQUIRE(std::abs(dual[1].value - primal[1])
+          <= 2.0 * std::numeric_limits<double>::epsilon()
+               * std::max(std::abs(primal[1]), 1e-300));
+
+  constexpr double h = 1e-6;
+  const auto below = crack_diffusivity_at(crack_surface - h);
+  const auto above = crack_diffusivity_at(crack_surface + h);
+  const double crack_fd = (above[0] - below[0]) / (2.0 * h);
+  const double diffusion_fd = (above[1] - below[1]) / (2.0 * h);
+  CAPTURE(dual[0].derivative, crack_fd, dual[1].derivative, diffusion_fd);
+  REQUIRE(std::abs(dual[0].derivative - crack_fd)
+          <= 1e-8 * std::max(std::abs(crack_fd), 1e-30));
+  REQUIRE(std::abs(dual[1].derivative - diffusion_fd)
+          <= 1e-8 * std::max(std::abs(diffusion_fd), 1e-30));
 }

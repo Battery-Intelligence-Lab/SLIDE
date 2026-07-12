@@ -204,7 +204,7 @@ template <class Real>
       const Real maximum = std::max(p.model4_max_surface, primal_value(crack_surface));
       Real rate_fraction = p.diffusion_exponent
                            * pow(Real{ 1 } - crack_surface / maximum,
-                                 p.diffusion_exponent - Real{ 1 })
+                                 p.diffusion_exponent - real_t{ 1 })
                            / maximum * output.crack_surface_rate[i];
       if (primal_value(rate_fraction) > 2e-7)
         rate_fraction = Real{ 2e-7 };
