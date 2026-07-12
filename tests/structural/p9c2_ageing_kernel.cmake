@@ -73,7 +73,8 @@ require_tokens("SEI" sei
   "detail::clear_ageing_fields<Real,2>("
   "detail::for_each_enabled_ageing_model_lane<4>("
   "detail::for_each_ageing_lane_while_success("
-  "detail::for_each_ageing_lane(")
+  "detail::for_each_ageing_lane("
+  "return{storage_.field(0),storage_.field(1)}")
 
 require_tokens("surface crack" crack
   "ageing_model_bit<5>(model)"
@@ -82,7 +83,8 @@ require_tokens("surface crack" crack
   "detail::clear_ageing_fields<Real,3>("
   "detail::for_each_enabled_ageing_model_lane<5>("
   "detail::for_each_ageing_lane_while_success("
-  "detail::for_each_ageing_lane(")
+  "detail::for_each_ageing_lane("
+  "return{storage_.field(0),storage_.field(1),storage_.field(2)}")
 
 require_tokens("LAM" lam
   "ageing_model_bit<4>(model)"
@@ -91,11 +93,14 @@ require_tokens("LAM" lam
   "detail::clear_ageing_fields<Real,6>("
   "detail::for_each_enabled_ageing_model_lane<4>("
   "detail::for_each_ageing_lane_while_success("
-  "detail::for_each_ageing_lane(")
+  "detail::for_each_ageing_lane("
+  "(*field)[domain_index(domain)]=storage_.field(cursor)"
+  "++cursor")
 
 require_tokens("lithium plating" plating
   "BasicLithiumPlatingOutput"
   "detail::AgeingScratchStorage<Real,1>"
+  "return{storage_.field(0)}"
   "detail::for_each_ageing_lane_while_success("
   "detail::for_each_ageing_lane(")
 
