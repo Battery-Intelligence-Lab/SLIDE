@@ -86,10 +86,14 @@ TEST_CASE("Surface-crack mechanisms match legacy Cell_SPM", "[core][ageing][crac
     for (const bool reduce_diffusivity : { false, true }) {
       CrackReferenceCell cell;
       cell.setT(310.0);
+      if (model_id == 5)
+        cell.setC({ 0.5, 0.1 });
       REQUIRE(cell.setCurrent(-12.0, false, false) == Status::Success);
       const auto params = cell.params(model_id, reduce_diffusivity);
       REQUIRE(core::validateSurfaceCrackParams(params) == Status::Success);
       const auto expected = cell.evaluate(model_id, reduce_diffusivity, ocv_negative, eta_negative, current_stress, previous_stress, interval);
+      if (model_id == 5)
+        REQUIRE(expected[1] != 0.0);
 
       core::BatchBuilder builder;
       const auto layout = core::declareSpmState<NCH>(builder);
