@@ -9,7 +9,7 @@
 > Phase 9B systematic adversarial bug-hunt is active; its Experiment transaction/parser,
 > BPX parser/allocation, recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
-> P9-G2, the ThreadPool integration audit, M0.1 atomic reconfiguration, and M0.2 sanitizer lanes are complete. P9-G3 is also complete: the optional-off Linux Clang/LLVM 18 lane resolves all 336 active Status-failure arms (329 measured plus seven hash-pinned structural exceptions), with 30 inactive optional arms and zero uncovered/unmapped. The 52-test report requires fresh per-binary profiles; the hosted workflow is committed but has not run. M0.4/P9-G4 bug-ledger closure is next.
+> Phase 9B is complete through P9-G4: the live ledger closes P9-B01..B50 with short red evidence and fixes, retains 23 refuted candidates, and the refreshed optional-off Linux Clang/LLVM 18 gate resolves all 336 active Status-failure arms (329 measured plus seven hash-pinned exceptions) with zero failures. Native Debug/Release are 52/52; focused sanitizers and Linux Release PackSolver are green. Hosted workflows are committed but have not run. M0.5/9C-1 single-source modal/observable physics extraction is next.
 
 ---
 

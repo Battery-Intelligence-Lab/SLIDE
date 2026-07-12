@@ -150,12 +150,28 @@ remain recorded so a later pass does not revive them without new evidence.
   is committed and syntax-checked, but the hosted jobs cannot run before a
   push; no hosted-green claim is made.
 
+## P9-G4 closure evidence
+
+- Ledger census: 50 confirmed defects (`P9-B01` through `P9-B50`), all fixed;
+  23 investigated candidates retained as refuted.
+- Final native Clang Debug and fast-math Release suites pass 52/52. The Linux
+  Clang 18 Release PackSolver gate passes 1/1, including explicit FTZ.
+- Focused Linux Clang 18 ASan+UBSan+LSan passes PackSolver and
+  AsyncRecorderAllocation 2/2. TSan was not repeated because this final slice
+  changes no shared-state/concurrency production code; M0.3 passed 3/3.
+- Fresh optional-off exact coverage passes 52/52, then reports 329 measured,
+  seven hash-pinned exceptions, zero failures, and 30 inactive optional arms.
+  Artifact: `.claude/reports/p9g4-status-coverage-refresh-2026-07-12.{md,json}`.
+- Final mutation reds: source stepping 870/871 assertions, FTZ conductance
+  874/875, and bounded-reader amplification 57/60; every mutation was inverted
+  explicitly and the clean focused binaries were rebuilt green.
+
 ## Validation protocol
 
-- All scenarios are parser-only or at most one accepted model step; no long
-  trajectory was used.
+- Every discriminating bug regression is parser-only, a bounded public solve,
+  or at most one accepted model step; no long trajectory is used to classify a
+  defect. Mode C runs only as a post-fix whole-suite validation gate.
 - Debug and Release are separate binaries. Release uses the repository's
   fast-math flags, and NaN/Inf tests construct IEEE bit patterns directly.
-- P9-G2 is closed by the evidence above. Full-suite sanitizer/TSan evidence,
-  measured Status-branch coverage, and remaining subsystem audits are still
-  required before P9-G1, P9-G3, and P9-G4 can close.
+- P9-G1, P9-G2, P9-G3, and P9-G4 are closed by the evidence above. Hosted jobs
+  remain explicitly unclaimed until a push runs them.

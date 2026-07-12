@@ -104,3 +104,11 @@ This file records reusable findings from the v4 implementation and validation wo
 - An exception is a proof obligation, not an ignored line. Pin the exact site plus source/context hashes, allow only a named structural class and reason, and fail if the site becomes covered, inactive, unmapped, stale, or pushes the cap over budget.
 - Finite positive resistance does not guarantee a usable conductance: `1/R` can underflow or flush to zero. Validate the derived coefficient used by the algebra, in every solver mode.
 - Representable sizes are not allocation budgets. Bounded readers must account for simultaneously retained input, decoded payload, output, and scratch storage before allocation, and translate allocation or I/O failures without partially publishing state.
+
+## Fast-math validation must classify the coefficient that actually exists
+
+- A source-level `value > 0` is not a reliable guard under finite-math optimization. With FTZ enabled, `1 / DBL_MAX` materialises as +0, and Clang can delete the floating comparison; classify the derived coefficient through an opaque integer-bit barrier.
+- Floating-environment tests must be scoped transactions. Save MXCSR, enable FTZ only for the discriminating call, and restore it through RAII even when an assertion aborts the section.
+- Use exact power-of-two witnesses to isolate arithmetic order. `2^1023 * (step/8)` is representable for all eight source stages, while `(2^1023 * 2)/8` overflows at the intermediate; fast-math may reassociate the mutant safely, so a conforming Debug red result remains independent evidence.
+- Resource-amplification tests should measure the largest requested block and throw before `malloc`, not rely on an OOM or final `Status`. A 128-byte wire header was proven to request 96,000,047 bytes without allocating it.
+- A mutation that stays green is evidence against the claimed defect. Removing strict-FP from the already-separated PackSolver validation TU did not break the current Release test, so that policy remains defensive architecture rather than an extra ledger bug.
