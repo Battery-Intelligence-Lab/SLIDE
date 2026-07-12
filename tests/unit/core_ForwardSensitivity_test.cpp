@@ -22,10 +22,11 @@ namespace {
 std::vector<double> productionTrace(const core::SpmFactoryInput &input,
                                     double c_rate,
                                     double duration,
-                                    double sample_step)
+                                    double sample_step,
+                                    int nch = 12)
 {
   core::SpmModelOptions options;
-  options.nch = 12;
+  options.nch = nch;
   core::SpmBatch batch;
   REQUIRE(core::buildSpmBatch(input, options, 1, batch) == Status::Success);
   const double current = c_rate * batch.capacity_Ah();
@@ -106,6 +107,64 @@ double characteristicScale(core::SensitivityParameter parameter)
 }
 
 } // namespace
+
+TEST_CASE("Dual observation includes entropic OCV value and tangent away from reference temperature",
+          "[core][sensitivity][PC-10][entropic]")
+{
+  core::ParameterSet parameters;
+  REQUIRE(core::ParameterSet::chen2020(parameters) == Status::Success);
+  REQUIRE(parameters.set("Initial state-of-charge", 0.8, "PC-10 entropic")
+          == Status::Success);
+  core::SpmFactoryInput zero;
+  REQUIRE(parameters.toSpmInput(zero) == Status::Success);
+  zero.initial_temperature = zero.design.thermal.reference_temperature + 10.0;
+  core::SpmFactoryInput entropic = zero;
+  entropic.total_entropic_coefficient = {
+    .stoichiometry = { 0.0, 1.0 },
+    .value = { 1e-4, 1.1e-3 },
+  };
+
+  constexpr auto parameter =
+    core::SensitivityParameter::positive_minimum_stoichiometry;
+  constexpr std::array selected{ parameter };
+  core::ForwardSensitivitySolution zero_dual;
+  core::ForwardSensitivitySolution entropic_dual;
+  REQUIRE(core::solveCcForwardSensitivities(
+            zero, 5, 1.0, true, core::Direction::discharge, 0.0, 1.0, selected, zero_dual)
+          == Status::Success);
+  REQUIRE(core::solveCcForwardSensitivities(
+            entropic, 5, 1.0, true, core::Direction::discharge, 0.0, 1.0, selected, entropic_dual)
+          == Status::Success);
+
+  const double dual_primal_increment = entropic_dual.terminal_voltage[0]
+                                       - zero_dual.terminal_voltage[0];
+  const double production_primal_increment =
+    productionTrace(entropic, 1.0, 0.0, 1.0, 5)[0]
+    - productionTrace(zero, 1.0, 0.0, 1.0, 5)[0];
+  CAPTURE(dual_primal_increment, production_primal_increment);
+  CHECK(std::abs(dual_primal_increment - production_primal_increment) <= 2e-12);
+
+  constexpr double h = 1e-5;
+  auto lower_zero = zero;
+  auto upper_zero = zero;
+  auto lower_entropic = entropic;
+  auto upper_entropic = entropic;
+  const double value = core::sensitivityParameterValue(entropic, parameter);
+  setParameter(lower_zero, parameter, value - h);
+  setParameter(lower_entropic, parameter, value - h);
+  setParameter(upper_zero, parameter, value + h);
+  setParameter(upper_entropic, parameter, value + h);
+  const double lower_increment = productionTrace(lower_entropic, 1.0, 0.0, 1.0, 5)[0]
+                                 - productionTrace(lower_zero, 1.0, 0.0, 1.0, 5)[0];
+  const double upper_increment = productionTrace(upper_entropic, 1.0, 0.0, 1.0, 5)[0]
+                                 - productionTrace(upper_zero, 1.0, 0.0, 1.0, 5)[0];
+  const double finite_difference = (upper_increment - lower_increment) / (2.0 * h);
+  const double dual_tangent_increment = entropic_dual.derivative[0]
+                                        - zero_dual.derivative[0];
+  CAPTURE(finite_difference, dual_tangent_increment);
+  CHECK(std::abs(finite_difference - 0.008) <= 2e-9);
+  CHECK(std::abs(dual_tangent_increment - finite_difference) <= 2e-9);
+}
 
 TEST_CASE("P7-G2 ten dual sensitivities match centered-FD arbiters",
           "[core][sensitivity][P7-G2]")

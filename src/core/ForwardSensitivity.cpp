@@ -55,6 +55,17 @@ namespace {
         if (status_ != slide::Status::Success)
           return;
       }
+      const auto &entropic = input.total_entropic_coefficient;
+      if (entropic.stoichiometry.empty() && entropic.value.empty()) {
+        constexpr std::array x{ 0.0, 1.0 };
+        constexpr std::array zero{ 0.0, 0.0 };
+        status_ = total_entropic_.build(x, zero);
+      } else {
+        status_ = total_entropic_.build(entropic.stoichiometry,
+                                        entropic.value);
+      }
+      if (status_ != slide::Status::Success)
+        return;
       const Dual capacity = seed(input.design.capacity_Ah, active, SensitivityParameter::nominal_capacity);
       current_ = static_cast<real_t>(direction)
                  * (control_is_c_rate ? Dual{ control_magnitude } * capacity
@@ -117,12 +128,13 @@ namespace {
 
       const auto neg = domain_index(Domain::neg);
       const auto pos = domain_index(Domain::pos);
+      const Dual entropic = total_entropic_.eval(stoichiometry[pos]);
       const Dual open_circuit = spm_scalar::cellOpenCircuitVoltage(
         ocv_[neg].eval(stoichiometry[neg]),
         ocv_[pos].eval(stoichiometry[pos]),
         temperature_,
-        temperature_,
-        0.0);
+        input_.design.thermal.reference_temperature,
+        entropic);
       const auto &negative = input_.design.electrode[neg];
       const auto &positive = input_.design.electrode[pos];
       const real_t area_neg = spm_scalar::activeArea(
@@ -256,6 +268,7 @@ namespace {
     SensitivityParameter active_{};
     CompiledSpectralModel<NCH> spectral_{};
     PerDomain<IndexedPiecewiseLinear> ocv_{};
+    IndexedPiecewiseLinear total_entropic_{};
     PerDomain<std::array<Dual, NCH>> z_{};
     Dual current_{};
     Dual current_density_{};
