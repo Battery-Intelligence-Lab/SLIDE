@@ -8,6 +8,7 @@
 #include "Lam.hpp"
 #include "LithiumPlating.hpp"
 #include "Sei.hpp"
+#include "SpmScalarKernels.hpp"
 #include "SurfaceCrack.hpp"
 #include "ThermalLumped.hpp"
 
@@ -49,9 +50,12 @@ void addSpmDiffusionRhs(const SpmDiffusionRhsParams<NCH> &p,
       const Real B = p.B[d][static_cast<std::size_t>(mode)];
       for (int lane = 0; lane < lanes; ++lane) {
         const auto i = static_cast<std::size_t>(lane);
-        derivative.at(layout.z[d], mode, lane) += observables.effective_diffusivity[d][i] * A
-                                                    * state.at(layout.z[d], mode, lane)
-                                                  + B * observables.molar_flux[d][i];
+        derivative.at(layout.z[d], mode, lane) += spm_scalar::diffusionRate(
+          state.at(layout.z[d], mode, lane),
+          observables.effective_diffusivity[d][i],
+          A,
+          B,
+          observables.molar_flux[d][i]);
       }
     }
   }
@@ -346,7 +350,11 @@ public:
         for (int lane = 0; lane < evaluated_lanes; ++lane) {
           const auto i = static_cast<std::size_t>(lane);
           auto &z = state_row[i];
-          z += dt * (observable_view.effective_diffusivity[d][i] * A * z + B * observable_view.molar_flux[d][i]);
+          z += dt * spm_scalar::diffusionRate(z,
+                                               observable_view.effective_diffusivity[d][i],
+                                               A,
+                                               B,
+                                               observable_view.molar_flux[d][i]);
         }
         if (coalesced)
           for (int lane = period; lane < n_lanes_; ++lane)
@@ -407,11 +415,12 @@ public:
             const int mode = row - layout_.spm.z[d].row_begin;
             if (mode >= 0 && mode < NCH) {
               const auto i = static_cast<std::size_t>(lane);
-              rates[i] -= observable.effective_diffusivity[d][i]
-                            * params_.diffusion.A[d][static_cast<std::size_t>(mode)]
-                            * state.row(row)[i]
-                          + params_.diffusion.B[d][static_cast<std::size_t>(mode)]
-                              * observable.molar_flux[d][i];
+              rates[i] -= spm_scalar::diffusionRate(
+                state.row(row)[i],
+                observable.effective_diffusivity[d][i],
+                params_.diffusion.A[d][static_cast<std::size_t>(mode)],
+                params_.diffusion.B[d][static_cast<std::size_t>(mode)],
+                observable.molar_flux[d][i]);
             }
           }
         }
@@ -466,12 +475,12 @@ public:
         auto values = state.row(layout_.spm.z[d].row_begin + mode);
         for (int lane = 0; lane < n_lanes_; ++lane) {
           const auto i = static_cast<std::size_t>(lane);
-          const real_t x = observable.effective_diffusivity[d][i] * eigenvalue * dt;
-          const real_t phi1 = std::abs(x) < 1e-7
-                                ? 1.0 + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))
-                                : std::expm1(x) / x;
-          values[i] = std::exp(x) * values[i]
-                      + dt * phi1 * input * observable.molar_flux[d][i];
+          SLIDE_SPM_ADVANCE_MODAL_STD(values[i],
+                                      observable.effective_diffusivity[d][i],
+                                      eigenvalue,
+                                      dt,
+                                      input,
+                                      observable.molar_flux[d][i]);
         }
       }
     }

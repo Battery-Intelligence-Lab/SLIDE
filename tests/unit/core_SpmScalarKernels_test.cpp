@@ -10,7 +10,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
 
 using namespace slide;
 
@@ -101,6 +103,39 @@ TEST_CASE("PC-10 scalar modal kernel covers zero, Taylor, and expm1 branches",
   }
   REQUIRE(advanceModal(z, 1.0, 0.0, 1.0, input, flux)
           == z + input * flux);
+}
+
+TEST_CASE("PC-10 modal helper is bitwise identical to its extracted spelling",
+          "[core][PC-10][scalar][modal][bits]")
+{
+  auto pre_extraction = [](double state,
+                           double diffusivity,
+                           double eigenvalue,
+                           double dt,
+                           double input,
+                           double flux) {
+    const double x = diffusivity * eigenvalue * dt;
+    const double phi1 = std::abs(x) < 1e-7
+                          ? 1.0 + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))
+                          : std::expm1(x) / x;
+    return std::exp(x) * state + dt * phi1 * input * flux;
+  };
+  constexpr std::array states{ -2.5, -0.0, 0.725, 1.25e4 };
+  constexpr std::array diffusivities{ 1e-14, 1e-8, 0.03, 2.5 };
+  constexpr std::array eigenvalues{ 0.0, -1e-2, -2.0, -1e7 };
+  constexpr std::array steps{ 1e-5, 0.4, 7.25 };
+  for (const double state : states)
+    for (const double diffusivity : diffusivities)
+      for (const double eigenvalue : eigenvalues)
+        for (const double dt : steps) {
+          const double expected = pre_extraction(
+            state, diffusivity, eigenvalue, dt, 1.125, -0.0375);
+          const double actual = core::spm_scalar::advanceModal(
+            state, diffusivity, eigenvalue, dt, 1.125, -0.0375);
+          CAPTURE(state, diffusivity, eigenvalue, dt, expected, actual);
+          REQUIRE(std::bit_cast<std::uint64_t>(actual)
+                  == std::bit_cast<std::uint64_t>(expected));
+        }
 }
 
 TEST_CASE("PC-10 scalar kernels propagate Dual tangents through both modal branches",

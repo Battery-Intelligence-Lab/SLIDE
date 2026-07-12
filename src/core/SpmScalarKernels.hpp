@@ -11,6 +11,7 @@
 #pragma once
 
 #include <cmath>
+#include <type_traits>
 
 #if defined(__CUDACC__)
 #define SLIDE_SPM_HOST_DEVICE __host__ __device__
@@ -18,55 +19,85 @@
 #define SLIDE_SPM_HOST_DEVICE
 #endif
 
+#if defined(__CUDACC__)
+#define SLIDE_SPM_FORCE_INLINE __forceinline__
+#elif defined(_MSC_VER)
+#define SLIDE_SPM_FORCE_INLINE __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define SLIDE_SPM_FORCE_INLINE inline __attribute__((always_inline))
+#else
+#define SLIDE_SPM_FORCE_INLINE inline
+#endif
+
 namespace slide::core::spm_scalar {
 namespace detail {
 
-  template <class Scalar>
-  SLIDE_SPM_HOST_DEVICE inline Scalar exponential(Scalar value) noexcept
+  SLIDE_SPM_HOST_DEVICE SLIDE_SPM_FORCE_INLINE double exponential(double value) noexcept
   {
 #if defined(__CUDA_ARCH__)
     return ::exp(value);
 #else
-    using std::exp;
-    return exp(value); // ADL selects slide::core::exp for Dual.
+    return std::exp(value);
 #endif
   }
 
   template <class Scalar>
-  SLIDE_SPM_HOST_DEVICE inline Scalar exponentialMinusOne(Scalar value) noexcept
+  inline Scalar exponential(Scalar value) noexcept
+  {
+    using std::exp;
+    return exp(value); // ADL selects slide::core::exp for Dual.
+  }
+
+  SLIDE_SPM_HOST_DEVICE SLIDE_SPM_FORCE_INLINE double exponentialMinusOne(double value) noexcept
   {
 #if defined(__CUDA_ARCH__)
     return ::expm1(value);
 #else
-    using std::expm1;
-    return expm1(value); // ADL selects slide::core::expm1 for Dual.
+    return std::expm1(value);
 #endif
   }
 
   template <class Scalar>
-  SLIDE_SPM_HOST_DEVICE inline Scalar squareRoot(Scalar value) noexcept
+  inline Scalar exponentialMinusOne(Scalar value) noexcept
+  {
+    using std::expm1;
+    return expm1(value); // ADL selects slide::core::expm1 for Dual.
+  }
+
+  SLIDE_SPM_HOST_DEVICE SLIDE_SPM_FORCE_INLINE double squareRoot(double value) noexcept
   {
 #if defined(__CUDA_ARCH__)
     return ::sqrt(value);
 #else
-    using std::sqrt;
-    return sqrt(value); // ADL selects slide::core::sqrt for Dual.
+    return std::sqrt(value);
 #endif
   }
 
   template <class Scalar>
-  SLIDE_SPM_HOST_DEVICE inline Scalar inverseHyperbolicSine(Scalar value) noexcept
+  inline Scalar squareRoot(Scalar value) noexcept
+  {
+    using std::sqrt;
+    return sqrt(value); // ADL selects slide::core::sqrt for Dual.
+  }
+
+  SLIDE_SPM_HOST_DEVICE SLIDE_SPM_FORCE_INLINE double inverseHyperbolicSine(double value) noexcept
   {
 #if defined(__CUDA_ARCH__)
     return ::asinh(value);
 #else
-    using std::asinh;
-    return asinh(value); // ADL selects slide::core::asinh for Dual.
+    return std::asinh(value);
 #endif
   }
 
   template <class Scalar>
-  SLIDE_SPM_HOST_DEVICE inline double primalMagnitude(Scalar value) noexcept
+  inline Scalar inverseHyperbolicSine(Scalar value) noexcept
+  {
+    using std::asinh;
+    return asinh(value); // ADL selects slide::core::asinh for Dual.
+  }
+
+  template <class Scalar>
+  SLIDE_SPM_HOST_DEVICE SLIDE_SPM_FORCE_INLINE double primalMagnitude(Scalar value) noexcept
   {
     const double primal = static_cast<double>(value);
     return primal < 0.0 ? -primal : primal;
@@ -124,17 +155,47 @@ SLIDE_SPM_HOST_DEVICE inline auto diffusionRate(
   return diffusivity * eigenvalue * state + input * flux;
 }
 
-template <class Scalar>
-SLIDE_SPM_HOST_DEVICE inline Scalar modalPhi1(Scalar x) noexcept
-{
-  return detail::primalMagnitude(x) < 1e-7
-           ? Scalar{ 1.0 }
-               + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))
-           : detail::exponentialMinusOne(x) / x;
-}
+/**
+ * Exact modal update, expanded into the consumer's loop.
+ *
+ * Release builds intentionally permit reassociation and vectorisation.  A normal inline-call
+ * boundary changed those choices under Clang -Ofast even with always_inline, violating the
+ * recorded-bit contract.  This one hygienically-prefixed statement kernel keeps the expression
+ * tree in one source while preserving each backend's existing math entry points and loop IR.
+ * `destination` must be a side-effect-free lvalue; the remaining arguments must be values.
+ */
+#define SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                      \
+  destination, diffusivity, eigenvalue, dt, input, flux, abs_function, exp_function,           \
+  expm1_function)                                                                               \
+  do {                                                                                           \
+    const auto slide_spm_modal_x = (diffusivity) * (eigenvalue) * (dt);                          \
+    const auto slide_spm_modal_phi1 =                                                           \
+      abs_function(slide_spm_modal_x) < 1e-7                                                    \
+        ? decltype(slide_spm_modal_x){ 1.0 }                                                    \
+            + slide_spm_modal_x                                                                 \
+                * (0.5                                                                          \
+                   + slide_spm_modal_x                                                          \
+                       * (1.0 / 6.0 + slide_spm_modal_x / 24.0))                                \
+        : expm1_function(slide_spm_modal_x) / slide_spm_modal_x;                                \
+    (destination) = exp_function(slide_spm_modal_x) * (destination)                             \
+                    + (dt) * slide_spm_modal_phi1 * (input) * (flux);                           \
+  } while (false)
+
+#define SLIDE_SPM_ADVANCE_MODAL_STD(destination, diffusivity, eigenvalue, dt, input, flux)       \
+  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                              \
+    destination, diffusivity, eigenvalue, dt, input, flux, std::abs, std::exp, std::expm1)
+
+#define SLIDE_SPM_ADVANCE_MODAL_ADL(destination, diffusivity, eigenvalue, dt, input, flux)       \
+  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                              \
+    destination, diffusivity, eigenvalue, dt, input, flux,                                      \
+    ::slide::core::spm_scalar::detail::primalMagnitude, exp, expm1)
+
+#define SLIDE_SPM_ADVANCE_MODAL_CUDA(destination, diffusivity, eigenvalue, dt, input, flux)      \
+  SLIDE_SPM_ADVANCE_MODAL_IN_PLACE(                                                              \
+    destination, diffusivity, eigenvalue, dt, input, flux, ::fabs, ::exp, ::expm1)
 
 template <class State, class Diffusivity, class Eigenvalue, class Time, class InputCoefficient, class Flux>
-SLIDE_SPM_HOST_DEVICE inline auto advanceModal(
+SLIDE_SPM_HOST_DEVICE SLIDE_SPM_FORCE_INLINE auto advanceModal(
   State state,
   Diffusivity diffusivity,
   Eigenvalue eigenvalue,
@@ -142,9 +203,17 @@ SLIDE_SPM_HOST_DEVICE inline auto advanceModal(
   InputCoefficient input,
   Flux flux) noexcept
 {
-  const auto x = diffusivity * eigenvalue * dt;
-  const auto phi1 = modalPhi1(x);
-  return detail::exponential(x) * state + dt * phi1 * input * flux;
+  State result = state;
+#if defined(__CUDACC__)
+  SLIDE_SPM_ADVANCE_MODAL_CUDA(result, diffusivity, eigenvalue, dt, input, flux);
+#else
+  using Scalar = std::remove_cv_t<decltype(diffusivity * eigenvalue * dt)>;
+  if constexpr (std::is_same_v<Scalar, double>)
+    SLIDE_SPM_ADVANCE_MODAL_STD(result, diffusivity, eigenvalue, dt, input, flux);
+  else
+    SLIDE_SPM_ADVANCE_MODAL_ADL(result, diffusivity, eigenvalue, dt, input, flux);
+#endif
+  return result;
 }
 
 template <class State, class Coefficient, class Flux, class Diffusivity>
@@ -272,4 +341,5 @@ SLIDE_SPM_HOST_DEVICE inline auto terminalVoltage(
 
 } // namespace slide::core::spm_scalar
 
+#undef SLIDE_SPM_FORCE_INLINE
 #undef SLIDE_SPM_HOST_DEVICE
