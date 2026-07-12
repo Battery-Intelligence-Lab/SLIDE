@@ -39,6 +39,9 @@ thread_local std::size_t matching_allocation_cursor{};
 thread_local std::size_t failing_matching_allocation{};
 thread_local bool allocation_failure_triggered{};
 thread_local bool persist_allocation_failure{};
+thread_local bool fail_allocation_at_occurrence{};
+thread_local std::size_t allocation_cursor{};
+thread_local std::size_t failing_allocation{};
 
 void beforeAllocation(std::size_t bytes)
 {
@@ -55,6 +58,13 @@ void beforeAllocation(std::size_t bytes)
   if (fail_matching_allocation && allocation_failure_triggered
       && persist_allocation_failure)
     throw std::bad_alloc{};
+  if (fail_allocation_at_occurrence) {
+    const std::size_t current = allocation_cursor++;
+    if (current == failing_allocation) {
+      allocation_failure_triggered = true;
+      throw std::bad_alloc{};
+    }
+  }
   if (fail_matching_allocation && bytes == matching_allocation_size) {
     const std::size_t current = matching_allocation_cursor++;
     if (!allocation_failure_triggered
@@ -124,6 +134,22 @@ public:
   ~MeasureLargestAllocation() { measure_largest_allocation = false; }
 };
 
+class FailAllocationAtOccurrence
+{
+public:
+  explicit FailAllocationAtOccurrence(std::size_t occurrence)
+  {
+    allocation_cursor = 0;
+    failing_allocation = occurrence;
+    allocation_failure_triggered = false;
+    fail_allocation_at_occurrence = true;
+  }
+  ~FailAllocationAtOccurrence()
+  {
+    fail_allocation_at_occurrence = false;
+  }
+};
+
 constexpr std::string_view bpx_fixture = R"json({
   "Header": {"BPX": "1.0.0", "Model": "SPM"},
   "Parameterisation": {
@@ -177,6 +203,128 @@ struct AllocationAffineBatch
     return slide::Status::Success;
   }
 };
+
+slide::Status makeSpmInputSentinel(slide::core::SpmFactoryInput &sentinel)
+{
+  sentinel = {};
+  double marker = 101.0;
+  for (const slide::core::Domain domain : slide::core::domains) {
+    const auto d = slide::core::domain_index(domain);
+    auto &electrode = sentinel.design.electrode[d];
+    electrode.active_material.ocv = {
+      .stoichiometry = { 0.0, 1.0 },
+      .value = { marker, marker + 1.0 },
+    };
+    electrode.active_material.cs_max = marker + 2.0;
+    electrode.thickness = marker + 3.0;
+    electrode.aging.push_back(
+      { .kind = slide::core::AgingMechanismKind::semi_empirical,
+        .name = d == 0 ? "negative sentinel" : "positive sentinel",
+        .coefficients = { marker + 4.0 } });
+    marker += 10.0;
+  }
+  sentinel.design.separator.thickness = 201.0;
+  sentinel.design.electrolyte.concentration = 202.0;
+  sentinel.design.thermal.density = 203.0;
+  sentinel.design.capacity_Ah = 204.0;
+  sentinel.design.electrode_area = 205.0;
+  sentinel.total_entropic_coefficient = {
+    .stoichiometry = { 0.0, 1.0 }, .value = { 206.0, 207.0 }
+  };
+  sentinel.negative_entropic_coefficient = {
+    .stoichiometry = { 0.0, 1.0 }, .value = { 208.0, 209.0 }
+  };
+  sentinel.negative_laresgoiti_stress = {
+    .stoichiometry = { 0.0, 1.0 }, .value = { 210.0, 211.0 }
+  };
+  sentinel.initial_soc = 212.0;
+  sentinel.initial_temperature = 213.0;
+  sentinel.initial_sei_thickness = 214.0;
+  sentinel.initial_lost_lithium = 215.0;
+  sentinel.initial_crack_surface_fraction = 216.0;
+  sentinel.initial_plated_lithium_thickness = 217.0;
+  sentinel.initial_specific_resistance = { 218.0, 219.0 };
+  sentinel.initial_current_collector_resistance = 220.0;
+  sentinel.initial_stress_interval = 221.0;
+  sentinel.sei_resistivity_area = 222.0;
+  sentinel.sei.F = 223.0;
+  sentinel.surface_crack.F = 224.0;
+  sentinel.lam.F = 225.0;
+  sentinel.lithium_plating.F = 226.0;
+  constexpr std::array x{ 0.0, 1.0 };
+  constexpr std::array y{ 227.0, 228.0 };
+  return sentinel.lam.positive_ocv.build(x, y);
+}
+
+bool sameSpmInputSentinel(const slide::core::SpmFactoryInput &actual,
+                          const slide::core::SpmFactoryInput &expected)
+{
+  for (const slide::core::Domain domain : slide::core::domains) {
+    const auto d = slide::core::domain_index(domain);
+    const auto &a = actual.design.electrode[d];
+    const auto &e = expected.design.electrode[d];
+    if (a.active_material.ocv != e.active_material.ocv
+        || a.active_material.cs_max != e.active_material.cs_max
+        || a.thickness != e.thickness || a.aging.size() != 1
+        || e.aging.size() != 1 || a.aging[0].kind != e.aging[0].kind
+        || a.aging[0].name != e.aging[0].name
+        || a.aging[0].coefficients != e.aging[0].coefficients)
+      return false;
+  }
+  if (actual.design.separator.thickness
+        != expected.design.separator.thickness
+      || actual.design.electrolyte.concentration
+           != expected.design.electrolyte.concentration
+      || actual.design.thermal.density != expected.design.thermal.density
+      || actual.design.capacity_Ah != expected.design.capacity_Ah
+      || actual.design.electrode_area != expected.design.electrode_area
+      || actual.total_entropic_coefficient
+           != expected.total_entropic_coefficient
+      || actual.negative_entropic_coefficient
+           != expected.negative_entropic_coefficient
+      || actual.negative_laresgoiti_stress
+           != expected.negative_laresgoiti_stress
+      || actual.initial_soc != expected.initial_soc
+      || actual.initial_temperature != expected.initial_temperature
+      || actual.initial_sei_thickness != expected.initial_sei_thickness
+      || actual.initial_lost_lithium != expected.initial_lost_lithium
+      || actual.initial_crack_surface_fraction
+           != expected.initial_crack_surface_fraction
+      || actual.initial_plated_lithium_thickness
+           != expected.initial_plated_lithium_thickness
+      || actual.initial_specific_resistance
+           != expected.initial_specific_resistance
+      || actual.initial_current_collector_resistance
+           != expected.initial_current_collector_resistance
+      || actual.initial_stress_interval != expected.initial_stress_interval
+      || actual.sei_resistivity_area != expected.sei_resistivity_area
+      || actual.sei.F != expected.sei.F
+      || actual.surface_crack.F != expected.surface_crack.F
+      || actual.lam.F != expected.lam.F
+      || actual.lithium_plating.F != expected.lithium_plating.F
+      || actual.lam.positive_ocv.valid()
+           != expected.lam.positive_ocv.valid())
+    return false;
+  return !actual.lam.positive_ocv.valid()
+         || (actual.lam.positive_ocv.knots()
+               == expected.lam.positive_ocv.knots()
+             && actual.lam.positive_ocv.x_min()
+                  == expected.lam.positive_ocv.x_min()
+             && actual.lam.positive_ocv.x_max()
+                  == expected.lam.positive_ocv.x_max()
+             && actual.lam.positive_ocv.eval(0.37)
+                  == expected.lam.positive_ocv.eval(0.37));
+}
+
+bool sameParameterSentinel(const slide::core::ParameterSet &parameters)
+{
+  if (parameters.size() != 1)
+    return false;
+  const auto descriptions = parameters.describe();
+  return descriptions.size() == 1 && descriptions[0].name == "sentinel"
+         && descriptions[0].provenance == "allocation-test"
+         && std::get<double>(descriptions[0].value) == 7.0;
+}
 
 } // namespace
 
@@ -236,6 +384,114 @@ void operator delete[](void *pointer, std::size_t, std::align_val_t) noexcept
 }
 
 using namespace slide;
+
+TEST_CASE("Chen2020 translates representative allocation failures atomically",
+          "[core][parameters][Chen2020][allocation][9C-3]")
+{
+  core::ParameterSet warm;
+  REQUIRE(core::ParameterSet::chen2020(warm) == Status::Success);
+
+  core::ParameterSet measured;
+  Status measured_status{};
+  {
+    MeasureLargestAllocation measure;
+    measured_status = core::ParameterSet::chen2020(measured);
+  }
+  REQUIRE(measured_status == Status::Success);
+  const std::size_t large_allocation = largest_allocation_size;
+  const std::size_t large_occurrences = largest_allocation_count;
+  REQUIRE(large_allocation > 0);
+  REQUIRE(large_occurrences > 0);
+
+  core::ParameterSet sentinel;
+  REQUIRE(sentinel.set("sentinel", 7.0, "allocation-test")
+          == Status::Success);
+  const auto check_failure = [&](bool fail_by_size,
+                                 std::size_t occurrence) {
+    CAPTURE(fail_by_size, occurrence, large_allocation, large_occurrences);
+    core::ParameterSet output = sentinel;
+    Status status = Status::Unknown_problem;
+    bool escaped{};
+    try {
+      if (fail_by_size) {
+        FailAllocationOfSize injection{ large_allocation, occurrence };
+        status = core::ParameterSet::chen2020(output);
+      } else {
+        FailAllocationAtOccurrence injection{ occurrence };
+        status = core::ParameterSet::chen2020(output);
+      }
+    } catch (const std::bad_alloc &) {
+      escaped = true;
+    } catch (const std::length_error &) {
+      escaped = true;
+    }
+    REQUIRE(allocation_failure_triggered);
+    CHECK_FALSE(escaped);
+    CHECK(status == Status::Numerical_failure);
+    CHECK(sameParameterSentinel(output));
+  };
+
+  // The first allocation exercises caller-side construction before set() can
+  // translate it. The largest early/late allocations exercise adaptive curve
+  // storage without injecting into implementation-defined noexcept internals.
+  check_failure(false, 0);
+  check_failure(true, 0);
+  if (large_occurrences > 1)
+    check_failure(true, large_occurrences - 1);
+}
+
+TEST_CASE("SPM input compilation translates representative allocation failures atomically",
+          "[core][parameters][factory][allocation][9C-3]")
+{
+  core::ParameterSet parameters;
+  REQUIRE(core::ParameterSet::chen2020(parameters) == Status::Success);
+  core::SpmFactoryInput warm;
+  REQUIRE(parameters.toSpmInput(warm) == Status::Success);
+
+  core::SpmFactoryInput measured;
+  Status measured_status{};
+  {
+    MeasureLargestAllocation measure;
+    measured_status = parameters.toSpmInput(measured);
+  }
+  REQUIRE(measured_status == Status::Success);
+  const std::size_t large_allocation = largest_allocation_size;
+  const std::size_t large_occurrences = largest_allocation_count;
+  REQUIRE(large_allocation > 0);
+  REQUIRE(large_occurrences > 0);
+
+  core::SpmFactoryInput sentinel;
+  REQUIRE(makeSpmInputSentinel(sentinel) == Status::Success);
+  const auto check_failure = [&](bool fail_by_size,
+                                 std::size_t occurrence) {
+    CAPTURE(fail_by_size, occurrence, large_allocation, large_occurrences);
+    core::SpmFactoryInput output = sentinel;
+    Status status = Status::Unknown_problem;
+    bool escaped{};
+    try {
+      if (fail_by_size) {
+        FailAllocationOfSize injection{ large_allocation, occurrence };
+        status = parameters.toSpmInput(output);
+      } else {
+        FailAllocationAtOccurrence injection{ occurrence };
+        status = parameters.toSpmInput(output);
+      }
+    } catch (const std::bad_alloc &) {
+      escaped = true;
+    } catch (const std::length_error &) {
+      escaped = true;
+    }
+    REQUIRE(allocation_failure_triggered);
+    CHECK_FALSE(escaped);
+    CHECK(status == Status::Numerical_failure);
+    CHECK(sameSpmInputSentinel(output, sentinel));
+  };
+
+  check_failure(false, 0);
+  check_failure(true, 0);
+  if (large_occurrences > 1)
+    check_failure(true, large_occurrences - 1);
+}
 
 TEST_CASE("Cycler reconfiguration publishes allocation-heavy scratch atomically",
           "[core][experiment][allocation][coverage]")

@@ -18,6 +18,7 @@
 #include <queue>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 namespace slide::core {
@@ -236,7 +237,7 @@ std::vector<ParameterDescription> ParameterSet::describe() const
 }
 
 slide::Status ParameterSet::chen2020(ParameterSet &output)
-{
+try {
   // Exact scalar entries from PyBaMM 26.6.2.0's Chen2020.py. Function-valued
   // OCPs are canonicalised below to the D-16 4096-knot table form.
   static constexpr std::array scalars{
@@ -309,12 +310,17 @@ slide::Status ParameterSet::chen2020(ParameterSet &output)
                          "PyBaMM 26.6.2.0 Chen2020 function; adaptive D-16 table");
   if (status != slide::Status::Success)
     return status;
+  static_assert(std::is_nothrow_move_assignable_v<ParameterSet>);
   output = std::move(candidate);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  return slide::Status::Numerical_failure;
+} catch (const std::length_error &) {
+  return slide::Status::Numerical_failure;
 }
 
 slide::Status ParameterSet::toSpmInput(SpmFactoryInput &output) const
-{
+try {
   constexpr std::array required_names{
     "Nominal cell capacity [A.h]",
     "Electrode area [m2]",
@@ -434,8 +440,13 @@ slide::Status ParameterSet::toSpmInput(SpmFactoryInput &output) const
   candidate.total_entropic_coefficient = { std::vector<real_t>{ zero_x.begin(), zero_x.end() },
                                            std::vector<real_t>{ zero_y.begin(), zero_y.end() } };
   candidate.negative_entropic_coefficient = candidate.total_entropic_coefficient;
+  static_assert(std::is_nothrow_move_assignable_v<SpmFactoryInput>);
   output = std::move(candidate);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  return slide::Status::Numerical_failure;
+} catch (const std::length_error &) {
+  return slide::Status::Numerical_failure;
 }
 
 namespace {
