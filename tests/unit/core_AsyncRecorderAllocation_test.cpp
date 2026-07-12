@@ -10,16 +10,23 @@
 
 #include <array>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <new>
+#include <span>
 #include <string>
+#include <type_traits>
 
 static std::atomic<std::size_t> producer_allocations{};
 static thread_local bool count_producer_allocations{};
 static thread_local bool measure_allocation_size{};
 static thread_local std::size_t largest_measured_allocation{};
 static thread_local bool fail_matching_allocation{};
+static thread_local bool fail_matching_or_larger_allocation{};
 static thread_local std::size_t matching_allocation_size{};
 static thread_local bool matching_failure_triggered{};
 
@@ -27,8 +34,11 @@ static void before_allocation(std::size_t bytes)
 {
   if (measure_allocation_size && bytes > largest_measured_allocation)
     largest_measured_allocation = bytes;
+  const bool allocation_matches = fail_matching_or_larger_allocation
+                                    ? bytes >= matching_allocation_size
+                                    : bytes == matching_allocation_size;
   if (fail_matching_allocation && !matching_failure_triggered
-      && bytes == matching_allocation_size) {
+      && allocation_matches) {
     matching_failure_triggered = true;
     throw std::bad_alloc{};
   }
@@ -117,13 +127,75 @@ public:
   {
     matching_allocation_size = bytes;
     matching_failure_triggered = false;
+    fail_matching_or_larger_allocation = false;
     fail_matching_allocation = true;
   }
   ~FailAllocationOfSize()
   {
     fail_matching_allocation = false;
+    fail_matching_or_larger_allocation = false;
   }
 };
+
+class MeasureAndFailAllocationAtLeast
+{
+public:
+  explicit MeasureAndFailAllocationAtLeast(std::size_t bytes)
+  {
+    matching_allocation_size = bytes;
+    matching_failure_triggered = false;
+    largest_measured_allocation = 0;
+    measure_allocation_size = true;
+    fail_matching_or_larger_allocation = true;
+    fail_matching_allocation = true;
+  }
+
+  ~MeasureAndFailAllocationAtLeast()
+  {
+    fail_matching_allocation = false;
+    fail_matching_or_larger_allocation = false;
+    measure_allocation_size = false;
+  }
+};
+
+std::uint32_t testCrc32(std::span<const std::byte> bytes)
+{
+  std::uint32_t crc = 0xffffffffU;
+  for (const auto byte : bytes) {
+    crc ^= std::to_integer<std::uint8_t>(byte);
+    for (int bit = 0; bit < 8; ++bit)
+      crc = (crc >> 1U) ^ (0xedb88320U & (0U - (crc & 1U)));
+  }
+  return ~crc;
+}
+
+template <class T>
+void writeScalar(std::span<std::byte> bytes, std::size_t offset, T value)
+{
+  static_assert(std::is_trivially_copyable_v<T>);
+  REQUIRE(offset <= bytes.size());
+  REQUIRE(sizeof(T) <= bytes.size() - offset);
+  std::memcpy(bytes.data() + offset, &value, sizeof(value));
+}
+
+void sealFileHeader(std::span<std::byte> bytes)
+{
+  REQUIRE(bytes.size() >= 64);
+  const auto header = bytes.first(64);
+  writeScalar<std::uint32_t>(header, 20, 0U);
+  writeScalar<std::uint32_t>(header, 20, testCrc32(header));
+}
+
+void writeBytes(const std::filesystem::path &path,
+                std::span<const std::byte>
+                  bytes)
+{
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  REQUIRE(output.good());
+  output.write(reinterpret_cast<const char *>(bytes.data()),
+               static_cast<std::streamsize>(bytes.size()));
+  REQUIRE(output.good());
+}
 
 } // namespace
 
@@ -237,6 +309,49 @@ TEST_CASE("Compressed reader translates allocation failure",
   core::CompressedRecording valid;
   REQUIRE(valid.open(path) == Status::Success);
   CHECK(valid.valid());
+  std::filesystem::remove(path, ignored);
+}
+
+TEST_CASE("Compressed reader rejects amplified storage before allocation",
+          "[core][async-recorder][reader][allocation][budget][P9]")
+{
+  const auto path = std::filesystem::temp_directory_path()
+                    / "slide_async_reader_amplification.slcmp";
+  std::error_code ignored;
+  std::filesystem::remove(path, ignored);
+
+  std::array<std::byte, 128> bytes{};
+  constexpr std::array magic{ 'S', 'L', 'I', 'D', 'E', 'C', 'M', 'P' };
+  std::memcpy(bytes.data(), magic.data(), magic.size());
+  writeScalar<std::uint16_t>(bytes, 8, 1U);
+  writeScalar<std::uint16_t>(bytes, 10, 0U);
+  writeScalar<std::uint32_t>(bytes, 12, 0x01020304U);
+  writeScalar<std::uint32_t>(bytes, 16, 64U);
+  writeScalar<std::uint32_t>(bytes, 24, 1U);
+  writeScalar<std::uint32_t>(bytes, 28, 1U);
+  writeScalar<std::uint32_t>(bytes, 32, 12'000'000U);
+  writeScalar<std::uint32_t>(bytes, 36, 0U);
+  writeScalar<std::uint64_t>(bytes, 40, 1U);
+  writeScalar<std::uint64_t>(bytes, 48, bytes.size());
+  sealFileHeader(bytes);
+  writeBytes(path, bytes);
+
+  constexpr std::size_t candidate_state_bytes =
+    12'000'000U * sizeof(core::real_t);
+  REQUIRE(std::filesystem::file_size(path) == bytes.size());
+  REQUIRE(candidate_state_bytes == 96'000'000U);
+
+  core::CompressedRecording recording;
+  Status status = Status::Success;
+  {
+    MeasureAndFailAllocationAtLeast failure{ candidate_state_bytes };
+    status = recording.open(path);
+  }
+  CHECK(status == Status::Invalid_parameters);
+  CHECK_FALSE(matching_failure_triggered);
+  CHECK(largest_measured_allocation < candidate_state_bytes);
+  CHECK_FALSE(recording.valid());
+
   std::filesystem::remove(path, ignored);
 }
 
