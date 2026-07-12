@@ -13,11 +13,14 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <new>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -148,6 +151,46 @@ public:
   {
     fail_allocation_at_occurrence = false;
   }
+};
+
+class ScopedTemporaryDirectory
+{
+public:
+  ScopedTemporaryDirectory()
+  {
+    const auto nonce = static_cast<std::uint64_t>(
+      std::chrono::steady_clock::now().time_since_epoch().count());
+    const auto root = std::filesystem::temp_directory_path();
+    for (std::uint64_t attempt = 0; attempt < 1024; ++attempt) {
+      const auto candidate = root
+                             / ("slide_parser_allocation_"
+                                + std::to_string(nonce) + "_"
+                                + std::to_string(attempt));
+      std::error_code error;
+      if (std::filesystem::create_directory(candidate, error)) {
+        path_ = candidate;
+        return;
+      }
+      if (error)
+        throw std::runtime_error{ "cannot create parser test directory: "
+                                  + error.message() };
+    }
+    throw std::runtime_error{ "cannot reserve a parser test directory" };
+  }
+
+  ~ScopedTemporaryDirectory()
+  {
+    std::error_code ignored;
+    std::filesystem::remove_all(path_, ignored);
+  }
+
+  ScopedTemporaryDirectory(const ScopedTemporaryDirectory &) = delete;
+  ScopedTemporaryDirectory &operator=(const ScopedTemporaryDirectory &) = delete;
+
+  const std::filesystem::path &path() const noexcept { return path_; }
+
+private:
+  std::filesystem::path path_{};
 };
 
 constexpr std::string_view bpx_fixture = R"json({
@@ -326,6 +369,32 @@ bool sameParameterSentinel(const slide::core::ParameterSet &parameters)
          && std::get<double>(descriptions[0].value) == 7.0;
 }
 
+slide::core::ExperimentSolution makeExperimentSolutionSentinel()
+{
+  return {
+    .time = { 101.0, 102.0 },
+    .voltage = { 201.0, 202.0 },
+    .current = { 301.0, 302.0 },
+    .sample_segment = { 7, 9 },
+    .reason = slide::core::TerminationReason::error,
+    .status = slide::Status::Unknown_problem,
+    .segment = 11,
+    .termination_name = "allocation sentinel",
+  };
+}
+
+bool sameExperimentSolution(
+  const slide::core::ExperimentSolution &left,
+  const slide::core::ExperimentSolution &right)
+{
+  return left.time == right.time && left.voltage == right.voltage
+         && left.current == right.current
+         && left.sample_segment == right.sample_segment
+         && left.reason == right.reason && left.status == right.status
+         && left.segment == right.segment
+         && left.termination_name == right.termination_name;
+}
+
 } // namespace
 
 void *operator new(std::size_t bytes)
@@ -491,6 +560,240 @@ TEST_CASE("SPM input compilation translates representative allocation failures a
   check_failure(true, 0);
   if (large_occurrences > 1)
     check_failure(true, large_occurrences - 1);
+}
+
+TEST_CASE("drive-cycle registration owns its copy inside the Status transaction",
+          "[core][experiment][allocation][drive-cycle][9C-3]")
+{
+  core::DriveCycle candidate;
+  candidate.name.assign(1024, 'c');
+  candidate.time.resize(37);
+  candidate.current.resize(37);
+  for (std::size_t i = 0; i < candidate.time.size(); ++i) {
+    candidate.time[i] = static_cast<double>(i);
+    candidate.current[i] = 0.25 * static_cast<double>(i);
+  }
+
+  core::CyclerV2 name_probe;
+  Status name_probe_status{};
+  {
+    MeasureLargestAllocation measure;
+    name_probe_status = name_probe.registerDriveCycle(candidate);
+  }
+  REQUIRE(name_probe_status == Status::Success);
+  const std::size_t name_allocation = largest_allocation_size;
+  const std::size_t name_occurrences = largest_allocation_count;
+  REQUIRE(name_allocation > candidate.time.size() * sizeof(double));
+  REQUIRE(name_occurrences > 0);
+
+  const std::size_t table_allocation = candidate.time.size() * sizeof(double);
+  core::CyclerV2 table_probe;
+  Status table_probe_status{};
+  {
+    MeasureAllocationsOfSize measure{ table_allocation };
+    table_probe_status = table_probe.registerDriveCycle(candidate);
+  }
+  REQUIRE(table_probe_status == Status::Success);
+  const std::size_t table_occurrences = measured_matching_allocations;
+  REQUIRE(table_occurrences >= 2);
+
+  const core::DriveCycle retained{
+    .name = "retained", .time = { 0.0, 1.0 }, .current = { 0.0, 1.0 }
+  };
+  const auto exercise = [&](std::size_t bytes, std::size_t occurrence) {
+    CAPTURE(bytes, occurrence, name_occurrences, table_occurrences);
+    core::CyclerV2 cycler;
+    REQUIRE(cycler.registerDriveCycle(retained) == Status::Success);
+    Status status{};
+    {
+      FailAllocationOfSize failure{ bytes, occurrence };
+      status = cycler.registerDriveCycle(candidate);
+    }
+    REQUIRE(allocation_failure_triggered);
+    CHECK(status == Status::Numerical_failure);
+    CHECK(cycler.registerDriveCycle(retained)
+          == Status::Invalid_parameters);
+    CHECK(cycler.registerDriveCycle(candidate) == Status::Success);
+  };
+  for (std::size_t occurrence = 0; occurrence < name_occurrences;
+       ++occurrence)
+    exercise(name_allocation, occurrence);
+  for (std::size_t occurrence = 0; occurrence < table_occurrences;
+       ++occurrence)
+    exercise(table_allocation, occurrence);
+}
+
+TEST_CASE("Cycler run allocation failure restores both arenas and output",
+          "[core][experiment][allocation][run][9C-3]")
+{
+  const auto input = test_support::make_legacy_kokam_input(
+    0.55, settings::T_ENV, 298.0);
+  core::Experiment rest;
+  rest.segments.push_back(
+    { .mode = core::ControlMode::rest, .duration = 1.0 });
+
+  core::SpmBatch measured_batch;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, measured_batch)
+          == Status::Success);
+  core::CyclerV2 measured_cycler;
+  REQUIRE(measured_cycler.configure(measured_batch) == Status::Success);
+  core::ExperimentSolution warm_output;
+  REQUIRE(measured_cycler.run(rest, 1.0, warm_output) == Status::Success);
+  core::ExperimentSolution measured_output;
+  Status measured_status{};
+  constexpr std::size_t second_sample_bytes = 2 * sizeof(double);
+  {
+    MeasureAllocationsOfSize measure{ second_sample_bytes };
+    measured_status = measured_cycler.run(rest, 1.0, measured_output);
+  }
+  REQUIRE(measured_status == Status::Success);
+  const std::size_t sample_allocations = measured_matching_allocations;
+  REQUIRE(sample_allocations >= 4);
+  const std::size_t first_post_step_allocation = sample_allocations - 4;
+
+  // The final four matching allocations are the time/voltage/current/segment
+  // growth after advance(). Earlier 16-byte requests are Debug STL proxies.
+  for (std::size_t occurrence = first_post_step_allocation;
+       occurrence < sample_allocations;
+       ++occurrence) {
+    CAPTURE(occurrence, sample_allocations);
+    core::SpmBatch batch;
+    REQUIRE(core::buildSpmBatch(input, {}, 1, batch) == Status::Success);
+    core::CyclerV2 cycler;
+    REQUIRE(cycler.configure(batch) == Status::Success);
+    core::ExperimentSolution target_warm_output;
+    REQUIRE(cycler.run(rest, 1.0, target_warm_output) == Status::Success);
+    const std::vector<double> state_before(
+      batch.state().raw().begin(), batch.state().raw().end());
+    const std::vector<double> derivative_before(
+      batch.derivative().raw().begin(), batch.derivative().raw().end());
+    const auto sentinel = makeExperimentSolutionSentinel();
+    auto output = sentinel;
+    Status status{};
+    {
+      FailAllocationOfSize failure{
+        second_sample_bytes, occurrence, true
+      };
+      status = cycler.run(rest, 1.0, output);
+    }
+    REQUIRE(allocation_failure_triggered);
+    CHECK(status == Status::Numerical_failure);
+    CHECK(std::equal(state_before.begin(), state_before.end(), batch.state().raw().begin()));
+    CHECK(std::equal(derivative_before.begin(), derivative_before.end(), batch.derivative().raw().begin()));
+    CHECK(sameExperimentSolution(output, sentinel));
+  }
+}
+
+TEST_CASE("callback allocation failure restores the pre-run transaction",
+          "[core][experiment][allocation][callback][9C-3]")
+{
+  const auto input = test_support::make_legacy_kokam_input(
+    0.55, settings::T_ENV, 298.0);
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, batch) == Status::Success);
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  const std::vector<double> state_before(
+    batch.state().raw().begin(), batch.state().raw().end());
+  const std::vector<double> derivative_before(
+    batch.derivative().raw().begin(), batch.derivative().raw().end());
+
+  core::Experiment experiment;
+  experiment.segments = {
+    { .mode = core::ControlMode::rest, .duration = 1.0 },
+    { .mode = core::ControlMode::custom_explicit,
+      .duration = 1.0,
+      .custom_control = [](const core::ExperimentVariables &) {
+        return 0.0;
+      },
+      .custom_terminations = {
+        { .name = "post-advance allocation", .indicator = [](const core::ExperimentVariables &variables) {
+           if (variables.local_time > 0.0)
+             throw std::bad_alloc{};
+           return 1.0;
+         } },
+      } },
+  };
+  const auto sentinel = makeExperimentSolutionSentinel();
+  auto output = sentinel;
+  CHECK(cycler.run(experiment, 1.0, output)
+        == Status::Numerical_failure);
+  CHECK(std::equal(state_before.begin(), state_before.end(), batch.state().raw().begin()));
+  CHECK(std::equal(derivative_before.begin(), derivative_before.end(), batch.derivative().raw().begin()));
+  CHECK(sameExperimentSolution(output, sentinel));
+
+  core::Experiment retry;
+  retry.segments.push_back(
+    { .mode = core::ControlMode::rest, .duration = 1.0 });
+  core::ExperimentSolution retry_output;
+  CHECK(cycler.run(retry, 1.0, retry_output) == Status::Success);
+}
+
+TEST_CASE("missing drive cycles are rejected before any prior segment advances",
+          "[core][experiment][drive-cycle][transaction][9C-3]")
+{
+  const auto input = test_support::make_legacy_kokam_input(
+    0.55, settings::T_ENV, 298.0);
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, batch) == Status::Success);
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  const std::vector<double> state_before(
+    batch.state().raw().begin(), batch.state().raw().end());
+  const std::vector<double> derivative_before(
+    batch.derivative().raw().begin(), batch.derivative().raw().end());
+  core::Experiment experiment;
+  experiment.segments = {
+    { .mode = core::ControlMode::rest, .duration = 1.0 },
+    { .mode = core::ControlMode::drive_cycle,
+      .drive_cycle = "missing" },
+  };
+  const auto sentinel = makeExperimentSolutionSentinel();
+  auto output = sentinel;
+  CHECK(cycler.run(experiment, 1.0, output)
+        == Status::Invalid_parameters);
+  CHECK(std::equal(state_before.begin(), state_before.end(), batch.state().raw().begin()));
+  CHECK(std::equal(derivative_before.begin(), derivative_before.end(), batch.derivative().raw().begin()));
+  CHECK(sameExperimentSolution(output, sentinel));
+}
+
+TEST_CASE("active Cycler callbacks cannot invalidate their own transaction",
+          "[core][experiment][callback][reentrant][9C-3]")
+{
+  const auto input = test_support::make_legacy_kokam_input(
+    0.55, settings::T_ENV, 298.0);
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, batch) == Status::Success);
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  const core::DriveCycle candidate{
+    .name = "callback cycle",
+    .time = { 0.0, 1.0 },
+    .current = { 0.0, 1.0 },
+  };
+  Status register_status = Status::Unknown_problem;
+  Status configure_status = Status::Unknown_problem;
+  Status nested_status = Status::Unknown_problem;
+  core::Experiment experiment;
+  experiment.segments.push_back(
+    { .mode = core::ControlMode::custom_explicit,
+      .duration = 1.0,
+      .custom_control = [&](const core::ExperimentVariables &) {
+        register_status = cycler.registerDriveCycle(candidate);
+        configure_status = cycler.configure(batch);
+        core::Experiment nested;
+        nested.segments.push_back(
+          { .mode = core::ControlMode::rest, .duration = 1.0 });
+        core::ExperimentSolution nested_output;
+        nested_status = cycler.run(nested, 1.0, nested_output);
+        return 0.0;
+      } });
+  core::ExperimentSolution output;
+  REQUIRE(cycler.run(experiment, 1.0, output) == Status::Success);
+  CHECK(register_status == Status::Invalid_parameters);
+  CHECK(configure_status == Status::Invalid_parameters);
+  CHECK(nested_status == Status::Invalid_parameters);
+  CHECK(cycler.registerDriveCycle(candidate) == Status::Success);
 }
 
 TEST_CASE("Cycler reconfiguration publishes allocation-heavy scratch atomically",
@@ -714,9 +1017,9 @@ TEST_CASE("bounded parser files translate reader allocation failures atomically"
   }
   REQUIRE(reader_allocation >= reader_reserve);
 
-  const auto directory = std::filesystem::temp_directory_path();
-  const auto bpx_path = directory / "slide_bounded_alloc_bpx.json";
-  const auto csv_path = directory / "slide_bounded_alloc_netlist.csv";
+  const ScopedTemporaryDirectory temporary;
+  const auto bpx_path = temporary.path() / "fixture.json";
+  const auto csv_path = temporary.path() / "fixture.csv";
   std::error_code ignored;
   std::filesystem::remove(bpx_path, ignored);
   std::filesystem::remove(csv_path, ignored);

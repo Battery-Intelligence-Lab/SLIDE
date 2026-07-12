@@ -400,9 +400,12 @@ TEST_CASE("Cycler rolls back a step when post-advance event evaluation fails",
 {
   auto batch = makeBatch();
   core::CyclerV2 cycler;
-  REQUIRE(cycler.configure(batch) == Status::Success);
+  REQUIRE(cycler.configure(batch, core::CyclerIntegrator::euler_legacy)
+          == Status::Success);
   const std::vector<double> initial(batch.state().raw().begin(),
                                     batch.state().raw().end());
+  const std::vector<double> initial_derivative(
+    batch.derivative().raw().begin(), batch.derivative().raw().end());
 
   core::Experiment experiment;
   experiment.segments.push_back(
@@ -412,9 +415,11 @@ TEST_CASE("Cycler rolls back a step when post-advance event evaluation fails",
       .custom_control = [](const core::ExperimentVariables &) { return 1.0; },
       .custom_terminations = {
         { .name = "injected callback failure",
-          .indicator = [](const core::ExperimentVariables &variables) {
-            if (variables.local_time > 0.0)
+          .indicator = [&batch](const core::ExperimentVariables &variables) {
+            if (variables.local_time > 0.0) {
+              std::ranges::fill(batch.derivative().raw(), 123.0);
               throw std::runtime_error("injected post-advance failure");
+            }
             return 1.0;
           } } } });
   core::ExperimentSolution output;
@@ -423,6 +428,9 @@ TEST_CASE("Cycler rolls back a step when post-advance event evaluation fails",
   REQUIRE(batch.state().raw().size() == initial.size());
   CHECK(std::memcmp(batch.state().raw().data(), initial.data(), initial.size() * sizeof(double))
         == 0);
+  CHECK(std::equal(initial_derivative.begin(),
+                   initial_derivative.end(),
+                   batch.derivative().raw().begin()));
 }
 
 TEST_CASE("event bisection selects the first of two roots and exact breakpoints",

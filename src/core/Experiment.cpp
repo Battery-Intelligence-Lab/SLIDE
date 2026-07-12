@@ -38,7 +38,7 @@ namespace {
     return slide::Status::Numerical_failure;
   }
 
-  std::string normalized(std::string text)
+  std::string normalized(std::string_view text)
   {
     std::string result;
     result.reserve(text.size());
@@ -56,6 +56,86 @@ namespace {
     if (!result.empty() && result.back() == ' ')
       result.pop_back();
     return result;
+  }
+
+  bool normalizedEqual(std::string_view left, std::string_view right)
+  {
+    struct Cursor
+    {
+      std::string_view text;
+      std::size_t position{};
+      bool emitted{};
+      bool pending_space{};
+
+      bool next(char &output)
+      {
+        while (position < text.size()) {
+          const auto value = static_cast<unsigned char>(text[position++]);
+          if (std::isspace(value)) {
+            pending_space = emitted;
+            continue;
+          }
+          if (pending_space) {
+            pending_space = false;
+            --position;
+            output = ' ';
+            return true;
+          }
+          output = static_cast<char>(std::tolower(value));
+          emitted = true;
+          return true;
+        }
+        return false;
+      }
+    } left_cursor{ left }, right_cursor{ right };
+
+    while (true) {
+      char left_value{}, right_value{};
+      const bool has_left = left_cursor.next(left_value);
+      const bool has_right = right_cursor.next(right_value);
+      if (has_left != has_right)
+        return false;
+      if (!has_left)
+        return true;
+      if (left_value != right_value)
+        return false;
+    }
+  }
+
+  class RunActivity
+  {
+  public:
+    explicit RunActivity(bool &active) noexcept : active_{ active }
+    {
+      assert(!active_);
+      active_ = true;
+    }
+    ~RunActivity() noexcept { active_ = false; }
+
+    RunActivity(const RunActivity &) = delete;
+    RunActivity &operator=(const RunActivity &) = delete;
+
+  private:
+    bool &active_;
+  };
+
+  void restoreBatchSnapshot(SpmBatch &batch,
+                            std::span<const real_t>
+                              state_backup,
+                            std::span<const real_t>
+                              derivative_backup) noexcept
+  {
+    const auto state = batch.state().raw();
+    const auto derivative = batch.derivative().raw();
+    assert(state_backup.size() == state.size());
+    assert(derivative_backup.size() == derivative.size());
+    if (state_backup.size() != state.size()
+        || derivative_backup.size() != derivative.size())
+      return;
+    std::memcpy(state.data(), state_backup.data(), state.size_bytes());
+    std::memcpy(derivative.data(),
+                derivative_backup.data(),
+                derivative.size_bytes());
   }
 
   bool parseNumber(std::string_view text, real_t &value)
@@ -431,12 +511,14 @@ try {
 slide::Status CyclerV2::configure(SpmBatch &batch,
                                   CyclerIntegrator integrator)
 {
-  if (!batch.valid() || batch.n_lanes() != 1
+  if (in_run_ || !batch.valid() || batch.n_lanes() != 1
       || !(integrator == CyclerIntegrator::euler_legacy
            || integrator == CyclerIntegrator::exponential))
     return slide::Status::Invalid_parameters;
   static_assert(std::is_nothrow_move_assignable_v<EulerLegacy>);
   static_assert(std::is_nothrow_move_assignable_v<ExponentialModal>);
+  static_assert(
+    std::is_nothrow_move_assignable_v<std::vector<real_t>>);
   try {
     EulerLegacy candidate_euler;
     ExponentialModal candidate_exponential;
@@ -448,21 +530,33 @@ slide::Status CyclerV2::configure(SpmBatch &batch,
       return status;
     std::vector<real_t> candidate_density(1, 0.0);
     std::vector<real_t> candidate_event_backup(batch.state().size(), 0.0);
+    std::vector<real_t> candidate_event_derivative_backup(
+      batch.derivative().size(), 0.0);
+    std::vector<real_t> candidate_run_state_backup(batch.state().size(), 0.0);
+    std::vector<real_t> candidate_run_derivative_backup(
+      batch.derivative().size(), 0.0);
 
     euler_ = std::move(candidate_euler);
     exponential_ = std::move(candidate_exponential);
     density_ = std::move(candidate_density);
     event_backup_ = std::move(candidate_event_backup);
+    event_derivative_backup_ = std::move(candidate_event_derivative_backup);
+    run_state_backup_ = std::move(candidate_run_state_backup);
+    run_derivative_backup_ = std::move(candidate_run_derivative_backup);
     integrator_ = integrator;
     batch_ = &batch;
     return slide::Status::Success;
   } catch (const std::bad_alloc &) {
     return slide::Status::Numerical_failure;
+  } catch (const std::length_error &) {
+    return slide::Status::Numerical_failure;
   }
 }
 
-slide::Status CyclerV2::registerDriveCycle(DriveCycle cycle)
-{
+slide::Status CyclerV2::registerDriveCycle(const DriveCycle &cycle)
+try {
+  if (in_run_)
+    return slide::Status::Invalid_parameters;
   if (cycle.name.empty() || cycle.time.size() != cycle.current.size()
       || cycle.time.size() < 2 || cycle.time.front() != 0.0)
     return slide::Status::Invalid_parameters;
@@ -472,8 +566,13 @@ slide::Status CyclerV2::registerDriveCycle(DriveCycle cycle)
       return slide::Status::Invalid_parameters;
   if (findDriveCycle(cycle.name) != nullptr)
     return slide::Status::Invalid_parameters;
-  drive_cycles_.push_back(std::move(cycle));
+  static_assert(std::is_nothrow_move_constructible_v<DriveCycle>);
+  drive_cycles_.push_back(cycle);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  return slide::Status::Numerical_failure;
+} catch (const std::length_error &) {
+  return slide::Status::Numerical_failure;
 }
 
 slide::Status CyclerV2::voltageAt(real_t current, real_t &voltage)
@@ -549,6 +648,10 @@ slide::Status CyclerV2::evaluateFunction(const ExperimentFunction &function,
                        .voltage = voltage,
                        .current = current,
                        .power = voltage * current });
+  } catch (const std::bad_alloc &) {
+    throw;
+  } catch (const std::length_error &) {
+    throw;
   } catch (...) {
     return slide::Status::Invalid_parameters;
   }
@@ -637,7 +740,10 @@ slide::Status CyclerV2::advance(real_t current, real_t time, real_t dt)
 
 const DriveCycle *CyclerV2::findDriveCycle(const std::string &name) const
 {
-  const auto found = std::find_if(drive_cycles_.begin(), drive_cycles_.end(), [&](const auto &cycle) { return normalized(cycle.name) == normalized(name); });
+  const auto found = std::find_if(
+    drive_cycles_.begin(), drive_cycles_.end(), [&](const auto &cycle) {
+      return normalizedEqual(cycle.name, name);
+    });
   return found == drive_cycles_.end() ? nullptr : &*found;
 }
 
@@ -657,10 +763,12 @@ real_t CyclerV2::driveCurrent(const DriveCycle &cycle, real_t local_time) const
 slide::Status CyclerV2::run(const Experiment &experiment,
                             real_t sample_step,
                             ExperimentSolution &output)
-{
-  if (batch_ == nullptr || experiment.segments.empty()
+try {
+  if (in_run_ || batch_ == nullptr || experiment.segments.empty()
       || !is_finite(sample_step) || !(sample_step > 0.0))
     return slide::Status::Invalid_parameters;
+  RunActivity active_run{ in_run_ };
+  run_snapshot_ready_ = false;
   const bool has_schedule = std::any_of(
     experiment.segments.begin(), experiment.segments.end(), [](const auto &segment) {
       return is_finite(segment.scheduled_start) && segment.scheduled_start >= 0.0;
@@ -674,6 +782,9 @@ slide::Status CyclerV2::run(const Experiment &experiment,
   for (const auto &segment : experiment.segments) {
     if (!validSegment(segment))
       return slide::Status::Invalid_parameters;
+    if (segment.mode == ControlMode::drive_cycle
+        && findDriveCycle(segment.drive_cycle) == nullptr)
+      return slide::Status::Invalid_parameters;
     if (is_finite(segment.scheduled_start) && segment.scheduled_start >= 0.0) {
       if (segment.scheduled_start < previous_scheduled_start)
         return slide::Status::Invalid_parameters;
@@ -681,6 +792,17 @@ slide::Status CyclerV2::run(const Experiment &experiment,
     }
   }
 
+  const auto state = batch_->state().raw();
+  const auto derivative = batch_->derivative().raw();
+  if (run_state_backup_.size() != state.size()
+      || run_derivative_backup_.size() != derivative.size())
+    return slide::Status::Numerical_failure;
+  std::memcpy(run_state_backup_.data(), state.data(), state.size_bytes());
+  std::memcpy(run_derivative_backup_.data(),
+              derivative.data(),
+              derivative.size_bytes());
+  run_snapshot_ready_ = true;
+  static_assert(std::is_nothrow_move_assignable_v<ExperimentSolution>);
   ExperimentSolution solution;
   real_t time = batch_->state().at(batch_->layout().elapsed_time, 0, 0);
   const real_t schedule_origin = time;
@@ -735,8 +857,10 @@ slide::Status CyclerV2::run(const Experiment &experiment,
     const auto *cycle = segment.mode == ControlMode::drive_cycle
                           ? findDriveCycle(segment.drive_cycle)
                           : nullptr;
-    if (segment.mode == ControlMode::drive_cycle && cycle == nullptr)
-      return slide::Status::Invalid_parameters;
+    if (segment.mode == ControlMode::drive_cycle && cycle == nullptr) {
+      status = slide::Status::Invalid_parameters;
+      break;
+    }
     const real_t duration = segment.mode == ControlMode::drive_cycle
                               ? cycle->time.back()
                               : segment.duration;
@@ -873,9 +997,23 @@ slide::Status CyclerV2::run(const Experiment &experiment,
         solution.segment = segment_index;
         break;
       }
-      std::memcpy(event_backup_.data(), batch_->state().raw().data(), batch_->state().raw().size_bytes());
-      const auto restore_event_state = [&] {
-        std::memcpy(batch_->state().raw().data(), event_backup_.data(), batch_->state().raw().size_bytes());
+      const auto event_state = batch_->state().raw();
+      const auto event_derivative = batch_->derivative().raw();
+      assert(event_backup_.size() == event_state.size());
+      assert(event_derivative_backup_.size() == event_derivative.size());
+      std::memcpy(event_backup_.data(),
+                  event_state.data(),
+                  event_state.size_bytes());
+      std::memcpy(event_derivative_backup_.data(),
+                  event_derivative.data(),
+                  event_derivative.size_bytes());
+      const auto restore_event_state = [&]() noexcept {
+        std::memcpy(event_state.data(),
+                    event_backup_.data(),
+                    event_state.size_bytes());
+        std::memcpy(event_derivative.data(),
+                    event_derivative_backup_.data(),
+                    event_derivative.size_bytes());
       };
       status = advance(current, time, dt);
       if (status != slide::Status::Success) {
@@ -927,7 +1065,7 @@ slide::Status CyclerV2::run(const Experiment &experiment,
         real_t low{}, high = dt;
         for (int iteration = 0; iteration < 45; ++iteration) {
           const real_t middle = 0.5 * (low + high);
-          std::memcpy(batch_->state().raw().data(), event_backup_.data(), batch_->state().raw().size_bytes());
+          restore_event_state();
           status = advance(current, time, middle);
           if (status != slide::Status::Success)
             break;
@@ -977,7 +1115,7 @@ slide::Status CyclerV2::run(const Experiment &experiment,
           restore_event_state();
           break;
         }
-        std::memcpy(batch_->state().raw().data(), event_backup_.data(), batch_->state().raw().size_bytes());
+        restore_event_state();
         status = advance(current, time, high);
         if (status != slide::Status::Success) {
           restore_event_state();
@@ -1058,6 +1196,16 @@ slide::Status CyclerV2::run(const Experiment &experiment,
   solution.status = slide::Status::Success;
   output = std::move(solution);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  if (run_snapshot_ready_ && batch_ != nullptr)
+    restoreBatchSnapshot(
+      *batch_, run_state_backup_, run_derivative_backup_);
+  return slide::Status::Numerical_failure;
+} catch (const std::length_error &) {
+  if (run_snapshot_ready_ && batch_ != nullptr)
+    restoreBatchSnapshot(
+      *batch_, run_state_backup_, run_derivative_backup_);
+  return slide::Status::Numerical_failure;
 }
 
 } // namespace slide::core

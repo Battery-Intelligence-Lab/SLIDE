@@ -116,7 +116,7 @@ public:
   [[nodiscard]] slide::Status configure(
     SpmBatch &batch,
     CyclerIntegrator integrator = CyclerIntegrator::exponential);
-  [[nodiscard]] slide::Status registerDriveCycle(DriveCycle cycle);
+  [[nodiscard]] slide::Status registerDriveCycle(const DriveCycle &cycle);
   [[nodiscard]] slide::Status run(const Experiment &experiment,
                                   real_t sample_step,
                                   ExperimentSolution &output);
@@ -149,7 +149,12 @@ private:
   ExponentialModal exponential_{};
   std::vector<real_t> density_{};
   std::vector<real_t> event_backup_{};
+  std::vector<real_t> event_derivative_backup_{};
+  std::vector<real_t> run_state_backup_{};
+  std::vector<real_t> run_derivative_backup_{};
   std::vector<DriveCycle> drive_cycles_{};
+  bool in_run_{};
+  bool run_snapshot_ready_{};
 };
 
 } // namespace slide::core
