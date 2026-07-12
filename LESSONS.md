@@ -2,6 +2,16 @@
 
 This file records reusable findings from the v4 implementation and validation work. Detailed design decisions remain in `PLAN.md`; session chronology remains in `.claude/discussions.md` and `.claude/summaries/`.
 
+## Shared hot-path scaffolding has a numerical contract
+
+- Factoring loops is not merely syntactic. Ageing accumulation is model-major then lane-major, both ascending; changing that traversal changes fast-math rounding, so freeze whole traces before extraction and pin the order structurally as well as numerically.
+- Inlining can be a correctness boundary under finite-math optimization. A merely-inline Status traversal let Clang optimize away a surface-crack overflow failure; the shared traversal is forcibly inlined and Release regressions must exercise the failing public pipeline, not only the helper in isolation.
+- The LLVM source-region/exact-Status reporter needs unambiguous return regions. Do not directly return an inline traversal whose lambda also contains literal `return Status::...` arms; bind the traversal Status to a named local, then return it, so LLVM regions and the lexical failure sites cannot overlap ambiguously.
+- Automatic differentiation must retain the selected operand, not only its primal. `max(limit, primal_value(x))` computes the right value but the wrong tangent when `x` wins; spell piecewise branches with scalar-generic operands and test every smooth side against finite differences.
+- Power derivatives need exact boundary identities. For a Dual base, exponent zero is the constant `(1, 0)` and exponent one is the original Dual; evaluating the generic derivative formula at `pow(0, 0)` otherwise creates a spurious NaN.
+- Validate signed extents before conversion, padding, multiplication, or allocation. Assertions after a vector initializer are too late; public scratch/cache constructors need explicit zero, negative, padded-overflow, element-overflow, and byte-overflow contracts.
+- A parity fixture can be green while exercising zero physics. When a branch is intended to validate nonzero physics, assert a nonzero witness explicitly; then pair batch traces with isolated-lane equality, A/B/A scratch-reset checks, and an end-to-end failed-stage no-publication test.
+
 ## Single-source numerical kernels still need code-generation provenance
 
 - An algebraically identical inline helper can change fast-math loop IR, vector-loop/code-generation shape, and final bits. Freeze whole traces before refactoring, inspect optimized code, and use a narrowly documented shared statement/expression kernel when an ordinary function boundary breaks a required operation-order contract.

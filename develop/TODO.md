@@ -9,7 +9,7 @@
 > Phase 9B systematic adversarial bug-hunt is complete; its Experiment transaction/parser,
 > BPX parser/allocation, recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
-> M0.5/9C-1 is complete: CPU, CUDA, Dual, observable, curve, and spectral-diffusion production math now shares one scalar-generic source; three audit defects are fixed. Native Debug/Release/CUDA and full Clang 18 ASan+UBSan are 54/54. Exact optional-off Status coverage resolves all 339 active arms (332 measured plus seven structural exceptions) with zero uncovered/unmapped. Hosted workflows are committed but have not run. M0.6/9C-2 ageing-kernel scaffolding unification is next.
+> M0.6/9C-2 is complete: SEI, surface cracking, LAM, and plating retain named physics bodies behind one force-inlined scaffold with zero accepted-step allocations; saturated Dual branches, zero-exponent powers, and every adjacent SPM scratch extent found by the audit are hardened. Native Debug/Release/CUDA and full Clang 18 ASan+UBSan are 56/56. Exact optional-off Status coverage resolves all 339 active arms (332 measured plus seven structural exceptions) with zero uncovered/unmapped; core-only and nested consumers pass 1/1. Hosted workflows are committed but have not run. M0.7/9C-3 cold-file splitting is next.
 
 ---
 
@@ -35,7 +35,7 @@
 ## Short-Term (This Quarter)
 
 ### Code Quality
-- [ ] Resolve M0.3 MC-1 debt during M0.7/M0.8: split the 1,281-line coverage reporter and oversized recorder/solver/factory translation units; factor repeated fixtures out of the >700-line PackSolver, AsyncRecorder, and Experiment tests without reducing assertion or exact-site coverage.
+- [ ] Resolve remaining M0.3 MC-1 debt during M0.8/M0.10: factor repeated fixtures out of the >700-line PackSolver, AsyncRecorder, and Experiment tests in M0.8; review/split the 1,281-line coverage reporter, oversized recorder/solver/factory translation units, and `SpmPipeline.hpp` under M0.10's line-reduction gate without reducing assertion or exact-site coverage.
 - [ ] Replace `assert()` with Catch2 `REQUIRE()` in tests
 - [ ] Convert `#define DATASTORE_BATT` to constexpr (settings.hpp)
 - [ ] `StorageUnit::copy()` should return `unique_ptr` not raw pointer
