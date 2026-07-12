@@ -8,6 +8,7 @@
 #include "../../src/core/PackSolver.hpp"
 #include "../../src/core/ParameterSet.hpp"
 #include "../../src/core/SpectralModel.hpp"
+#include "../support/RecordedBits.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -97,6 +98,39 @@ void requireStateBand(std::span<const double> cpu,
 }
 
 } // namespace
+
+TEST_CASE("PC-10 CUDA batch retains its backend-local pre-refactor scalar-kernel bits",
+          "[core][cuda][PC-10][recorded]")
+{
+  REQUIRE(core::CudaSpmBatch::available());
+  constexpr int lanes = 4;
+  auto input = chen2020();
+  core::CudaSpmBatch gpu;
+  REQUIRE(gpu.build(input, { .nch = 12 }, lanes) == Status::Success);
+  applySpread(gpu.hostBatch(), input, 0.31, 0.79);
+
+  test_support::RecordedBits recorded;
+  recorded.append(std::span<const double>{ gpu.hostBatch().state().raw() });
+  REQUIRE(gpu.uploadState() == Status::Success);
+  const double one_c_density = input.design.capacity_Ah
+                               / input.design.electrode_area;
+  const std::array density{ -0.45 * one_c_density,
+                            0.0,
+                            0.35 * one_c_density,
+                            0.85 * one_c_density };
+  double time{};
+  for (const double dt : { 1e-5, 7.25, 19.0 }) {
+    REQUIRE(gpu.step(density, time, dt) == Status::Success);
+    time += dt;
+    REQUIRE(gpu.downloadState() == Status::Success);
+    recorded.append(std::span<const double>{ gpu.hostBatch().state().raw() });
+    recorded.append(gpu.terminalVoltage());
+  }
+  CAPTURE(recorded.values, recorded.fnv1a, recorded.mixed);
+  REQUIRE(recorded.values == 1388);
+  CHECK(recorded.fnv1a == UINT64_C(0xa59c34d1685ddb19));
+  CHECK(recorded.mixed == UINT64_C(0x2e88cc95b54eb713));
+}
 
 TEST_CASE("P8-G2 CUDA matches CPU for 10003 heterogeneous lanes and rolls back",
           "[core][cuda][P8-G2]")

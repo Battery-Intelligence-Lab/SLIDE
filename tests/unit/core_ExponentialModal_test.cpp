@@ -5,8 +5,10 @@
 
 #include "../../src/core/ExponentialModal.hpp"
 #include "../../src/core/EulerLegacy.hpp"
+#include "../../src/core/ParameterSet.hpp"
 #include "../../src/core/SpectralModel.hpp"
 #include "../support/KokamSpmFixture.hpp"
+#include "../support/RecordedBits.hpp"
 
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -97,7 +99,99 @@ core::SpmFactoryInput thermalInput()
   return input;
 }
 
+template <int NCH>
+test_support::RecordedBits recordedCpuKernelTrace()
+{
+  core::ParameterSet parameters;
+  REQUIRE(core::ParameterSet::chen2020(parameters) == Status::Success);
+  core::SpmFactoryInput input;
+  REQUIRE(parameters.toSpmInput(input) == Status::Success);
+  input.initial_soc = 0.55;
+
+  constexpr int lanes = 4;
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, { .nch = NCH }, lanes, batch)
+          == Status::Success);
+  auto &state = batch.state();
+  const auto &layout = batch.layout().spm;
+  constexpr std::array target_soc{ 0.31, 0.47, 0.66, 0.79 };
+  constexpr std::array temperature{ 291.25, 298.15, 304.75, 313.5 };
+  constexpr std::array diffusion_scale{ 0.91, 1.03, 0.97, 1.08 };
+  constexpr std::array resistance_scale{ 1.07, 0.94, 1.02, 0.89 };
+  for (int lane = 0; lane < lanes; ++lane) {
+    state.at(layout.temperature, 0, lane) = temperature[static_cast<std::size_t>(lane)];
+    state.at(layout.current_collector_resistance, 0, lane) *=
+      resistance_scale[static_cast<std::size_t>(lane)];
+    for (const core::Domain domain : core::domains) {
+      const auto d = core::domain_index(domain);
+      const auto &material = input.design.electrode[d].active_material;
+      const double base = material.x_0
+                          + input.initial_soc * (material.x_100 - material.x_0);
+      const double varied = material.x_0
+                            + target_soc[static_cast<std::size_t>(lane)]
+                                * (material.x_100 - material.x_0);
+      for (int mode = 0; mode < NCH; ++mode)
+        state.at(layout.z[d], mode, lane) *= varied / base;
+      state.at(layout.diffusion_coefficient[d], 0, lane) *=
+        diffusion_scale[static_cast<std::size_t>(lane)];
+    }
+  }
+
+  const double one_c_density = input.design.capacity_Ah
+                               / input.design.electrode_area;
+  const std::array density{ -0.45 * one_c_density,
+                            0.0,
+                            0.35 * one_c_density,
+                            0.85 * one_c_density };
+  std::array<double, lanes> voltage{};
+  const core::StepCtx initial{ .time = 0.0, .dt = 0.0, .i_app = density };
+  REQUIRE(batch.terminalVoltage(initial, voltage) == Status::Success);
+
+  test_support::RecordedBits bits;
+  bits.append(std::span<const double>{ state.raw() });
+  bits.append(voltage);
+
+  core::ExponentialModal stepper{ batch };
+  double time{};
+  for (const double dt : { 1e-5, 7.25, 19.0 }) {
+    REQUIRE(stepper.step(batch, density, time, dt) == Status::Success);
+    time += dt;
+    bits.append(std::span<const double>{ state.raw() });
+    bits.append(stepper.terminalVoltage());
+  }
+  return bits;
+}
+
 } // namespace
+
+TEST_CASE("PC-10 CPU batches retain their pre-refactor scalar-kernel bits",
+          "[core][integrator][PC-10][recorded]")
+{
+#if defined(__FAST_MATH__)
+  constexpr std::array expected_fnv{ UINT64_C(0xcd87b2262663a983),
+                                     UINT64_C(0x5c766159af330d3e),
+                                     UINT64_C(0x21b0119f4f1ec474) };
+  constexpr std::array expected_mixed{ UINT64_C(0x7966eedf67f341b5),
+                                       UINT64_C(0xad91f8f42bf550ce),
+                                       UINT64_C(0x1feb3cf7a32e5b35) };
+#else
+  constexpr std::array expected_fnv{ UINT64_C(0xf461aa18b8f29e9d),
+                                     UINT64_C(0x81d095bfc708d897),
+                                     UINT64_C(0x983fa84ba68fc867) };
+  constexpr std::array expected_mixed{ UINT64_C(0xe99152e8e9b27262),
+                                       UINT64_C(0xde4eb9a14a355bc4),
+                                       UINT64_C(0xdfc61b3e371e80f1) };
+#endif
+  const std::array traces{ recordedCpuKernelTrace<5>(),
+                           recordedCpuKernelTrace<8>(),
+                           recordedCpuKernelTrace<12>() };
+  constexpr std::array nch{ 5, 8, 12 };
+  for (std::size_t i = 0; i < traces.size(); ++i) {
+    CAPTURE(nch[i], traces[i].values, traces[i].fnv1a, traces[i].mixed);
+    CHECK(traces[i].fnv1a == expected_fnv[i]);
+    CHECK(traces[i].mixed == expected_mixed[i]);
+  }
+}
 
 TEST_CASE("P3-G1 exponential modal update matches its independent closed form",
           "[core][integrator][exponential][P3-G1]")

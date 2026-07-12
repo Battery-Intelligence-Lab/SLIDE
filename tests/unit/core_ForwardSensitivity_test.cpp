@@ -5,6 +5,7 @@
 
 #include "../../src/core/ForwardSensitivity.hpp"
 #include "../../src/core/ParameterSet.hpp"
+#include "../support/RecordedBits.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -125,6 +126,22 @@ TEST_CASE("P7-G2 ten dual sensitivities match centered-FD arbiters",
   REQUIRE(core::solveCcForwardSensitivities(
             input, 12, c_rate, true, core::Direction::discharge, duration, sample_step, core::supported_sensitivity_parameters, sensitivity)
           == Status::Success);
+
+  test_support::RecordedBits recorded;
+  recorded.append(sensitivity.time);
+  recorded.append(sensitivity.terminal_voltage);
+  recorded.append(sensitivity.derivative);
+  CAPTURE(recorded.values, recorded.fnv1a, recorded.mixed);
+  REQUIRE(recorded.values == 732);
+#if defined(__FAST_MATH__)
+  constexpr auto expected_fnv = UINT64_C(0x06dc78ab74d5e7a4);
+  constexpr auto expected_mixed = UINT64_C(0xd10596df0d2c2c5a);
+#else
+  constexpr auto expected_fnv = UINT64_C(0x6dd17b952b7e315a);
+  constexpr auto expected_mixed = UINT64_C(0xc286fa543130b91b);
+#endif
+  REQUIRE(recorded.fnv1a == expected_fnv);
+  CHECK(recorded.mixed == expected_mixed);
 
   const auto production = productionTrace(input, c_rate, duration, sample_step);
   REQUIRE(production.size() == sensitivity.time.size());
