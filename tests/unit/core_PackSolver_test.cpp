@@ -804,17 +804,53 @@ TEST_CASE("solver kernels reject an unrepresentable resistor drop before publica
 
   SECTION("sparse candidate")
   {
-    CHECK(solveAffineOnce(
-            core::series(2,
-                         core::cell({ .archetype = "affine" }),
-                         { .resistance = 3.0 }),
-            { maximum, maximum },
-            { 1.0, 1.0 },
-            maximum / 2.0,
-            core::PackSolveMode::sparse_newton,
-            maximum,
-            1)
-          == Status::Invalid_states);
+    auto topology = compile(core::parallel(
+      4, core::cell({ .archetype = "affine" })));
+    topology.electrical = {
+      .node_count = 3,
+      .terminal_positive = 0,
+      .terminal_negative = 1,
+      .branches = {
+        { .node_positive = 2, .node_negative = 1, .kind = core::ElectricalBranchKind::resistor, .resistance = 0.125 },
+        { .node_positive = 0, .node_negative = 1, .kind = core::ElectricalBranchKind::cell, .cell = 0 },
+        { .node_positive = 0, .node_negative = 2, .kind = core::ElectricalBranchKind::cell, .cell = 1 },
+        { .node_positive = 0, .node_negative = 1, .kind = core::ElectricalBranchKind::cell, .cell = 2 },
+        { .node_positive = 0, .node_negative = 2, .kind = core::ElectricalBranchKind::cell, .cell = 3 },
+      },
+      .nodal_sparsity = { { 0, 0 }, { 0, 1 }, { 0, 2 }, { 1, 1 }, { 1, 2 }, { 2, 2 } },
+      .connected = true,
+      .index1_candidate = true,
+      .series_parallel_ladder = false,
+    };
+    AffineBatch batch{ .ocv = std::vector<double>(4),
+                       .resistance = std::vector<double>(4, 0.25) };
+    const std::array views{ core::TheveninBatchView::bind(batch, 4) };
+    core::PackSolver solver;
+    REQUIRE(solver.configure(topology, views) == Status::Success);
+    for (const double scale : { 0.25, 0.5, 0.75 }) {
+      batch.ocv = { -maximum * (scale / 8.0),
+                    maximum * (scale / 4.0),
+                    -maximum * (scale / 8.0),
+                    maximum * (scale / 4.0) };
+      REQUIRE(solver.solve(0.0,
+                           core::PackSolveMode::sparse_newton,
+                           maximum,
+                           1)
+              == Status::Success);
+    }
+    const auto expected = solver.solution();
+    batch.ocv = { -maximum * (5.0 / 32.0),
+                  maximum * (5.0 / 16.0),
+                  -maximum * (5.0 / 32.0),
+                  maximum * (5.0 / 16.0) };
+    REQUIRE(solver.solve(0.0,
+                         core::PackSolveMode::sparse_newton,
+                         maximum,
+                         1)
+            == Status::Invalid_states);
+    CHECK(solver.solution().cell_current == expected.cell_current);
+    CHECK(solver.solution().node_voltage == expected.node_voltage);
+    CHECK(solver.solution().terminal_voltage == expected.terminal_voltage);
   }
 
   SECTION("relaxation candidate")
