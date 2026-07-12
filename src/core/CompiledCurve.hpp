@@ -7,6 +7,7 @@
 
 #include "../types/Status.hpp"
 #include "Numeric.hpp"
+#include "SpmScalarKernels.hpp"
 #include "StateArena.hpp"
 
 #include <algorithm>
@@ -146,10 +147,11 @@ public:
     else if (xp < x_[i] && i > 0)
       --i;
 
-    return static_cast<Real>(y_[i])
-           + static_cast<Real>(y_[i + 1] - y_[i])
-               * (x - static_cast<Real>(x_[i]))
-               / static_cast<Real>(x_[i + 1] - x_[i]);
+    return spm_scalar::linearInterpolate(x,
+                                         static_cast<Real>(x_[i]),
+                                         static_cast<Real>(x_[i + 1]),
+                                         static_cast<Real>(y_[i]),
+                                         static_cast<Real>(y_[i + 1]));
   }
 
   /** Piecewise-constant slope using the same O(1) segment lookup as eval(). */
