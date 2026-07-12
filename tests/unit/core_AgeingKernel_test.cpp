@@ -125,7 +125,7 @@ void make_lanes_heterogeneous(core::SpmBatch &batch)
     for (const core::Domain domain : core::domains) {
       const auto d = core::domain_index(domain);
       const double scale = domain == core::Domain::neg ? negative_scales[i]
-                                                        : positive_scales[i];
+                                                       : positive_scales[i];
       for (int mode = 0; mode < nch; ++mode)
         state.at(layout.spm.z[d], mode, lane) *= scale;
       state.at(layout.spm.specific_surface_area[d], 0, lane) *= 0.94 + 0.02 * lane;
@@ -143,8 +143,7 @@ slide::test_support::RecordedBits recorded_ageing_trace()
 
   constexpr std::array current_b{ 1.6, -0.8, 0.25, -1.45, 0.9, -2.2, 0.55 };
   const std::array<std::span<const double>, 3> currents{
-    std::span<const double>{ ageing_current_a }, std::span<const double>{ current_b },
-    std::span<const double>{ ageing_current_a }
+    std::span<const double>{ ageing_current_a }, std::span<const double>{ current_b }, std::span<const double>{ ageing_current_a }
   };
 
   slide::test_support::RecordedBits recorded;
@@ -507,8 +506,7 @@ TEST_CASE("9C-2 common ageing scaffold fixes mask, scratch, and traversal order"
   REQUIRE(scratch.n_lanes() == 4);
   for (std::size_t field = 0; field < scratch.field_count; ++field) {
     REQUIRE(scratch.field(field).size() == 4);
-    std::fill(scratch.field(field).begin(), scratch.field(field).end(),
-              static_cast<double>(field + 1));
+    std::fill(scratch.field(field).begin(), scratch.field(field).end(), static_cast<double>(field + 1));
   }
   core::detail::clear_ageing_fields<double, 3>(
     4, { scratch.field(0), scratch.field(1), scratch.field(2) });
