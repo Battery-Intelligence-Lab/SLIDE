@@ -4,6 +4,7 @@
  */
 
 #include "../../src/core/EulerLegacy.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -100,10 +101,8 @@ TEST_CASE("P1-G4 arena-only restart is bitwise identical", "[core][P1-G4]")
   const auto options = restart_options();
   const std::array current_density{ 1.0, 1.5, 2.0 };
 
-  core::SpmBatch continuous;
-  core::SpmBatch split;
-  REQUIRE(core::buildSpmBatch(input, options, lanes, continuous) == Status::Success);
-  REQUIRE(core::buildSpmBatch(input, options, lanes, split) == Status::Success);
+  auto continuous = test_support::requireSpmBatch(input, options, lanes);
+  auto split = test_support::requireSpmBatch(input, options, lanes);
   core::EulerLegacy continuous_stepper{ continuous };
   core::EulerLegacy split_stepper{ split };
 
@@ -115,8 +114,7 @@ TEST_CASE("P1-G4 arena-only restart is bitwise identical", "[core][P1-G4]")
   split.state().snapshot(whole_arena, checkpoint.data());
 
   // Rebuild every non-state object, then restore only the arena bytes.
-  core::SpmBatch restarted;
-  REQUIRE(core::buildSpmBatch(input, options, lanes, restarted) == Status::Success);
+  auto restarted = test_support::requireSpmBatch(input, options, lanes);
   restarted.state().restore(whole_arena, checkpoint.data());
   core::EulerLegacy restarted_stepper{ restarted };
   advance(restarted,

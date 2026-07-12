@@ -7,6 +7,7 @@
 #include "../../src/core/EulerLegacy.hpp"
 #include "../../src/core/ParameterSet.hpp"
 #include "../../src/core/SpectralModel.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 #include "../support/KokamSpmFixture.hpp"
 #include "../support/RecordedBits.hpp"
 
@@ -268,11 +269,10 @@ TEST_CASE("P3-G3 nch12 exponential stepping survives an Euler-unstable step",
 {
   constexpr int nch = 12;
   auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
-  core::SpmBatch exponential_batch, euler_batch;
-  REQUIRE(core::buildSpmBatch(input, { .nch = nch }, 1, exponential_batch)
-          == Status::Success);
-  REQUIRE(core::buildSpmBatch(input, { .nch = nch }, 1, euler_batch)
-          == Status::Success);
+  const core::SpmModelOptions options{ .nch = nch };
+  auto exponential_batch =
+    test_support::requireSpmBatch(input, options, 1);
+  auto euler_batch = test_support::requireSpmBatch(input, options, 1);
   for (const auto domain : core::domains) {
     const auto d = core::domain_index(domain);
     exponential_batch.state().at(exponential_batch.layout().spm.z[d], nch - 1, 0) += 1.0;
@@ -306,10 +306,9 @@ TEST_CASE("Strang slow split is second order and adaptive steps align to events"
 {
   const auto input = thermalInput();
   const core::SpmModelOptions options{ .nch = 5, .thermal = true };
-  core::SpmBatch coarse, fine, adaptive;
-  REQUIRE(core::buildSpmBatch(input, options, 1, coarse) == Status::Success);
-  REQUIRE(core::buildSpmBatch(input, options, 1, fine) == Status::Success);
-  REQUIRE(core::buildSpmBatch(input, options, 1, adaptive) == Status::Success);
+  auto coarse = test_support::requireSpmBatch(input, options, 1);
+  auto fine = test_support::requireSpmBatch(input, options, 1);
+  auto adaptive = test_support::requireSpmBatch(input, options, 1);
   const std::array density{ 0.0 };
   core::ExponentialModal coarse_stepper{ coarse };
   core::ExponentialModal fine_stepper{ fine };
