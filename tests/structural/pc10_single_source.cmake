@@ -1,0 +1,137 @@
+# PC-10 is an architectural invariant: production adapters may own indexing,
+# validation, and status publication, but not private copies of SPM algebra.
+
+if(NOT DEFINED SLIDE_SOURCE_DIR)
+  message(FATAL_ERROR "SLIDE_SOURCE_DIR is required")
+endif()
+
+function(load_compact relative_path output)
+  set(path "${SLIDE_SOURCE_DIR}/${relative_path}")
+  if(NOT EXISTS "${path}")
+    message(FATAL_ERROR "PC-10 source is missing: ${relative_path}")
+  endif()
+  file(READ "${path}" content)
+  string(REGEX REPLACE "//[^\r\n]*" "" content "${content}")
+  string(REGEX REPLACE "/\\*([^*]|\\*+[^*/])*\\*+/" "" content "${content}")
+  string(REGEX REPLACE "[ \t\r\n]" "" content "${content}")
+  set(${output} "${content}" PARENT_SCOPE)
+endfunction()
+
+function(require_tokens label content_variable)
+  foreach(token IN ITEMS ${ARGN})
+    string(FIND "${${content_variable}}" "${token}" position)
+    if(position EQUAL -1)
+      message(FATAL_ERROR "PC-10 ${label}: required token is absent: ${token}")
+    endif()
+  endforeach()
+endfunction()
+
+function(forbid_tokens label content_variable)
+  foreach(token IN ITEMS ${ARGN})
+    string(FIND "${${content_variable}}" "${token}" position)
+    if(NOT position EQUAL -1)
+      message(FATAL_ERROR "PC-10 ${label}: private physics copy remains: ${token}")
+    endif()
+  endforeach()
+endfunction()
+
+function(slice_between label content_variable begin_marker end_marker output)
+  string(FIND "${${content_variable}}" "${begin_marker}" begin)
+  if(begin EQUAL -1)
+    message(FATAL_ERROR "PC-10 ${label}: begin marker is absent: ${begin_marker}")
+  endif()
+  string(SUBSTRING "${${content_variable}}" ${begin} -1 tail)
+  string(FIND "${tail}" "${end_marker}" length)
+  if(length EQUAL -1)
+    message(FATAL_ERROR "PC-10 ${label}: end marker is absent: ${end_marker}")
+  endif()
+  string(SUBSTRING "${tail}" 0 ${length} result)
+  set(${output} "${result}" PARENT_SCOPE)
+endfunction()
+
+load_compact("src/core/SpmPipeline.hpp" pipeline)
+load_compact("src/core/SpmObservables.hpp" observables)
+load_compact("src/core/ForwardSensitivity.cpp" dual)
+load_compact("src/core/CudaSpmRuntime.cu" cuda)
+load_compact("src/core/CompiledCurve.hpp" curves)
+
+foreach(consumer IN ITEMS pipeline observables dual cuda curves)
+  require_tokens("${consumer}" ${consumer} "#include\"SpmScalarKernels.hpp\"")
+endforeach()
+
+slice_between(
+  "CPU modal slice"
+  pipeline
+  "[[nodiscard]]slide::StatusadvanceExponential("
+  "[[nodiscard]]slide::StatusobserveTerminalVoltage("
+  pipeline_modal)
+require_tokens("CPU modal" pipeline_modal "SLIDE_SPM_ADVANCE_MODAL_STD(")
+forbid_tokens("CPU modal" pipeline_modal
+  "std::expm1(" "std::exp(x)" "1.0/6.0" "/24.0")
+
+require_tokens("CPU observables" observables
+  "spm_scalar::arrheniusFactor("
+  "spm_scalar::activatedValue("
+  "spm_scalar::fluxDenominator("
+  "spm_scalar::molarFlux("
+  "spm_scalar::concentrationOutput("
+  "spm_scalar::surfaceStoichiometry("
+  "spm_scalar::exchangeCurrent("
+  "spm_scalar::activationArgument("
+  "spm_scalar::activationOverpotential("
+  "spm_scalar::activeArea("
+  "spm_scalar::seriesResistance("
+  "spm_scalar::cellOpenCircuitVoltage("
+  "spm_scalar::terminalVoltage(")
+forbid_tokens("CPU observables" observables
+  "std::exp(" "std::sqrt(" "std::asinh(")
+
+require_tokens("Dual" dual
+  "SLIDE_SPM_ADVANCE_MODAL_ADL("
+  "spm_scalar::arrheniusFactor("
+  "spm_scalar::activatedValue("
+  "spm_scalar::fluxDenominator("
+  "spm_scalar::molarFlux("
+  "spm_scalar::concentrationOutput("
+  "spm_scalar::surfaceStoichiometry("
+  "spm_scalar::exchangeCurrent("
+  "spm_scalar::activationArgument("
+  "spm_scalar::activationOverpotential("
+  "spm_scalar::activeArea("
+  "spm_scalar::seriesResistance("
+  "spm_scalar::cellOpenCircuitVoltage("
+  "spm_scalar::terminalVoltage(")
+forbid_tokens("Dual" dual
+  "std::exp(" "std::expm1(" "std::sqrt(" "std::asinh("
+  "1.0/6.0" "/24.0")
+
+require_tokens("CUDA" cuda
+  "SLIDE_SPM_ADVANCE_MODAL_CUDA("
+  "spm_scalar::linearInterpolate("
+  "spm_scalar::arrheniusFactor("
+  "spm_scalar::activatedValue("
+  "spm_scalar::fluxDenominator("
+  "spm_scalar::molarFlux("
+  "spm_scalar::concentrationOutput("
+  "spm_scalar::surfaceStoichiometry("
+  "spm_scalar::exchangeCurrent("
+  "spm_scalar::activationArgument("
+  "spm_scalar::activationOverpotential("
+  "spm_scalar::activeArea("
+  "spm_scalar::seriesResistance("
+  "spm_scalar::cellOpenCircuitVoltage("
+  "spm_scalar::terminalVoltage(")
+forbid_tokens("CUDA" cuda
+  "expm1(" "sqrt(" "asinh(" "1.0/6.0" "/24.0")
+
+slice_between(
+  "indexed curve slice"
+  curves
+  "template<classReal>Realeval(constReal&x)const"
+  "real_tderivative(constreal_t&query)const"
+  indexed_curve)
+require_tokens("indexed curve" indexed_curve "spm_scalar::linearInterpolate(")
+forbid_tokens("indexed curve" indexed_curve
+  "y_[i+1]-y_[i]" "x_[i+1]-x_[i]")
+
+message(STATUS "PC-10 single-source structural gate passed")
