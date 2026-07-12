@@ -101,6 +101,11 @@ target_link_libraries(unit_test_core_Lam PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_LithiumPlating core_LithiumPlating_test.cpp)
 target_link_libraries(unit_test_core_LithiumPlating PRIVATE slide_core)
 
+# Phase 9C-2: heterogeneous all-mask ageing trace frozen before scaffolding changes
+add_executable_with_coverage_and_test(unit_test_core_AgeingKernel core_AgeingKernel_test.cpp)
+target_link_libraries(unit_test_core_AgeingKernel PRIVATE slide_core)
+slide_configure_recorded_scalar_fixture(unit_test_core_AgeingKernel)
+
 # Phase 1: compile-time fixed SPM RHS pipeline, mandatory zeroing, and rebind-safe evaluation
 add_executable_with_coverage_and_test(unit_test_core_SpmPipeline core_SpmPipeline_test.cpp)
 target_link_libraries(unit_test_core_SpmPipeline PRIVATE slide_core)
