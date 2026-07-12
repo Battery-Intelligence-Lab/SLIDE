@@ -123,6 +123,10 @@ target_link_libraries(unit_test_core_SpectralModel PRIVATE slide_core)
 add_executable_with_coverage_and_test(unit_test_core_SpmFactory core_SpmFactory_test.cpp)
 target_link_libraries(unit_test_core_SpmFactory PRIVATE slide_core)
 
+# Phase 9C-4: shared caller-owned SPM test mechanics and independent self-test
+add_executable_with_coverage_and_test(unit_test_core_CoreSpmTestHarness core_CoreSpmTestHarness_test.cpp)
+target_link_libraries(unit_test_core_CoreSpmTestHarness PRIVATE slide_core)
+
 # Phase 1: allocation-free EulerLegacy stepping and minimal single-batch Simulation façade
 add_executable_with_coverage_and_test(unit_test_core_Simulation core_Simulation_test.cpp)
 target_link_libraries(unit_test_core_Simulation PRIVATE slide_core)
