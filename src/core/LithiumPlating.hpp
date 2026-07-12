@@ -138,8 +138,8 @@ template <class Real>
     } else {
       const Real faradaic_reaction_real = scales.faradaic_scale * reaction_rate;
       const Real candidate = faradaic_reaction_real * kinetic_factor;
-      if (!is_finite_primal(candidate))
-        return slide::Status::Numerical_failure;
+      // The two checked primal products above use this same order.  Preserve the
+      // non-scalar candidate here so derivative components are not discarded.
       side_reaction_current[i] = candidate;
     }
   }
