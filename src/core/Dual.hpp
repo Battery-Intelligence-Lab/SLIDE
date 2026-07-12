@@ -80,6 +80,10 @@ inline Dual sqrt(Dual value)
 /** Differentiate a variable base raised to a scalar exponent. */
 inline Dual pow(Dual value, real_t exponent)
 {
+  if (exponent == 0.0)
+    return { 1.0, 0.0 };
+  if (exponent == 1.0)
+    return value;
   const real_t result = std::pow(value.value, exponent);
   return { result,
            exponent * std::pow(value.value, exponent - 1.0)

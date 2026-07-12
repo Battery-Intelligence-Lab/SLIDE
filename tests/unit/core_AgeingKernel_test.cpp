@@ -176,7 +176,8 @@ slide::test_support::RecordedBits recorded_ageing_trace()
 }
 
 template <class Real>
-std::array<Real, 2> crack_diffusivity_at(Real crack_surface)
+std::array<Real, 2> crack_diffusivity_at(Real crack_surface,
+                                         double diffusion_exponent = 2.3)
 {
   constexpr int local_nch = 1;
   core::BatchBuilder builder;
@@ -212,7 +213,7 @@ std::array<Real, 2> crack_diffusivity_at(Real crack_surface)
   params.negative_cs_max = 30'555.0;
   params.model4_alpha = 4.0e-8;
   params.model4_max_surface = 0.03;
-  params.diffusion_exponent = 2.3;
+  params.diffusion_exponent = diffusion_exponent;
   REQUIRE(core::computeSurfaceCrack(params,
                                     state,
                                     layout,
@@ -413,6 +414,22 @@ TEST_CASE("9C-2 surface-crack diffusivity is scalar-generic for Dual",
       (saturated_above[field] - saturated_below[field]) / (2.0 * h);
     CAPTURE(field, saturated_dual[field].derivative, finite_difference);
     REQUIRE(std::abs(saturated_dual[field].derivative - finite_difference)
+            <= 1e-8 * std::max(std::abs(finite_difference), 1e-30));
+  }
+
+  // exponent == 1 makes the diffusivity power exponent zero.  At the saturated
+  // branch its base is exactly zero, so Dual pow(0, 0) must return the constant
+  // one with a zero tangent instead of evaluating 0 * pow(0, -1) * 0.
+  const auto linear_dual = crack_diffusivity_at(
+    core::Dual{ saturated_surface, 1.0 }, 1.0);
+  const auto linear_below = crack_diffusivity_at(saturated_surface - h, 1.0);
+  const auto linear_above = crack_diffusivity_at(saturated_surface + h, 1.0);
+  for (std::size_t field = 0; field < linear_dual.size(); ++field) {
+    const double finite_difference =
+      (linear_above[field] - linear_below[field]) / (2.0 * h);
+    CAPTURE(field, linear_dual[field].derivative, finite_difference);
+    REQUIRE(core::is_finite(linear_dual[field].derivative));
+    REQUIRE(std::abs(linear_dual[field].derivative - finite_difference)
             <= 1e-8 * std::max(std::abs(finite_difference), 1e-30));
   }
 }
