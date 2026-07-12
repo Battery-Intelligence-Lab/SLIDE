@@ -128,6 +128,15 @@ TEST_CASE("Spectral validation rejects each malformed eigen-spectrum class",
   spectrum << 0.0, -1.0, -4.0, -9.0, -16.0;
   REQUIRE(core::detail::validateSpectrum<5>(spectrum, 1.0, zero_mode)
           == Status::Numerical_failure);
+
+  const double first_root = core::detail::sphericalEigenRoot(1);
+  spectrum << 0.0,
+    -first_root * first_root,
+    -first_root * first_root,
+    -100.0,
+    -200.0;
+  REQUIRE(core::detail::validateSpectrum<5>(spectrum, 1.0, zero_mode)
+          == Status::Numerical_failure);
 }
 
 TEST_CASE("Spectral compiler rejects unrepresentable radius scales atomically",

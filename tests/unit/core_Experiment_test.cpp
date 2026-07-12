@@ -14,6 +14,7 @@
 #include <bit>
 #include <cmath>
 #include <cstring>
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -624,6 +625,9 @@ TEST_CASE("Cycler failure solvers are reached through validated public segments"
   decreasing_schedule.segments = {
     { .mode = core::ControlMode::rest,
       .duration = 1.0,
+      .scheduled_start = 0.0 },
+    { .mode = core::ControlMode::rest,
+      .duration = 1.0,
       .scheduled_start = 2.0 },
     { .mode = core::ControlMode::rest,
       .duration = 1.0,
@@ -647,6 +651,82 @@ TEST_CASE("Cycler failure solvers are reached through validated public segments"
       .duration = 1.0 });
   CHECK(cycler.run(invalid_voltage_iteration, 1.0, output)
         == Status::Invalid_states);
+
+  auto cycling_power_batch = makeBatch(0.001);
+  core::CyclerV2 cycling_power_cycler;
+  REQUIRE(cycling_power_cycler.configure(cycling_power_batch)
+          == Status::Success);
+  core::Experiment cycling_power;
+  cycling_power.segments.push_back(
+    { .mode = core::ControlMode::power,
+      .direction = core::Direction::discharge,
+      .value = std::exp2(17.0 / 4.0),
+      .duration = 1.0 });
+  CHECK(cycling_power_cycler.run(cycling_power, 1.0, output)
+        == Status::Numerical_failure);
+
+  auto cycling_voltage_batch = makeBatch(0.1);
+  core::CyclerV2 cycling_voltage_cycler;
+  REQUIRE(cycling_voltage_cycler.configure(cycling_voltage_batch)
+          == Status::Success);
+  core::Experiment cycling_voltage;
+  cycling_voltage.segments = {
+    { .mode = core::ControlMode::current,
+      .direction = core::Direction::discharge,
+      .value = std::exp2(23.0 / 4.0),
+      .duration = 1e-12 },
+    { .mode = core::ControlMode::voltage,
+      .value = 3.5,
+      .duration = 1.0 },
+  };
+  CHECK(cycling_voltage_cycler.run(cycling_voltage, 1e-12, output)
+        == Status::Numerical_failure);
+
+  auto singular_input = test_support::make_legacy_kokam_input(
+    0.55, settings::T_ENV, 298.0);
+  // Make the passive ohmic term dominant so the physical maximum-power
+  // tangent lies comfortably inside the model's valid concentration range.
+  singular_input.initial_current_collector_resistance =
+    singular_input.design.electrode_area;
+  core::SpmBatch singular_power_batch;
+  REQUIRE(core::buildSpmBatch(singular_input, {}, 1, singular_power_batch)
+          == Status::Success);
+  const auto power_derivative = [&](double target_power) {
+    const double current = target_power / 3.7;
+    std::array<double, 1> input{ current }, intercept{}, resistance{};
+    REQUIRE(singular_power_batch.linearizeThevenin(
+              input, intercept, resistance)
+            == Status::Success);
+    return intercept[0] - 2.0 * resistance[0] * current;
+  };
+  double lower_power = 0.0;
+  double upper_power = 8.0;
+  REQUIRE(power_derivative(lower_power) > 0.0);
+  REQUIRE(power_derivative(upper_power) < 0.0);
+  for (int iteration = 0; iteration < 80; ++iteration) {
+    const double middle = std::midpoint(lower_power, upper_power);
+    if (power_derivative(middle) > 0.0)
+      lower_power = middle;
+    else
+      upper_power = middle;
+  }
+  const double singular_power =
+    std::abs(power_derivative(lower_power))
+        < std::abs(power_derivative(upper_power))
+      ? lower_power
+      : upper_power;
+  REQUIRE(std::abs(power_derivative(singular_power)) <= 1e-12);
+  core::CyclerV2 singular_power_cycler;
+  REQUIRE(singular_power_cycler.configure(singular_power_batch)
+          == Status::Success);
+  core::Experiment singular_power_experiment;
+  singular_power_experiment.segments.push_back(
+    { .mode = core::ControlMode::power,
+      .direction = core::Direction::discharge,
+      .value = singular_power,
+      .duration = 1.0 });
+  CHECK(singular_power_cycler.run(singular_power_experiment, 1.0, output)
+        == Status::Numerical_failure);
 
   const double nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
   core::Experiment nonfinite_custom;
@@ -756,6 +836,25 @@ TEST_CASE("Cycler revalidates callback-mutable segment controls",
         .value = 1.0,
         .duration = 1.0,
         .voltage_limit = 3.0 });
+    CHECK(cycler.run(experiment, 1.0, output)
+          == Status::Invalid_parameters);
+  }
+
+  SECTION("an active controller removed between samples is rejected")
+  {
+    core::Experiment experiment;
+    experiment.segments.push_back(
+      { .mode = core::ControlMode::custom_explicit,
+        .duration = 2.0,
+        .custom_control = [](const core::ExperimentVariables &) {
+          return 0.0;
+        },
+        .custom_terminations = {
+          { .name = "mutate after control evaluation",
+            .indicator = [&experiment](const core::ExperimentVariables &) {
+              experiment.segments.front().custom_control = {};
+              return 1.0;
+            } } } });
     CHECK(cycler.run(experiment, 1.0, output)
           == Status::Invalid_parameters);
   }

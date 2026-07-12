@@ -179,6 +179,9 @@ try {
 } catch (const std::bad_alloc &) {
   return slide::Status::Numerical_failure;
 } catch (const std::length_error &) {
+  // Preserve the Status contract if a standard-library implementation reports
+  // an exhausted string/container representability limit distinctly from
+  // allocation failure.
   return slide::Status::Numerical_failure;
 }
 

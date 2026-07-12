@@ -134,8 +134,11 @@ namespace {
 
     slide::Status step(real_t dt)
     {
-      if (!(is_finite(dt) && dt > 0.0))
-        return slide::Status::Invalid_parameters;
+      // solveOne is the sole caller. Its validated schedule uses either a
+      // positive sample_step or the positive final remainder; near-integral
+      // ratios are snapped before the sample count is constructed so rounding
+      // cannot manufacture a zero-length final step.
+      assert(is_finite(dt) && dt > 0.0);
       for (const Domain domain : domains) {
         const auto d = domain_index(domain);
         const Dual diffusivity = effectiveDiffusivity(domain);

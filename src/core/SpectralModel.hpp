@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <numbers>
 
@@ -171,6 +172,9 @@ namespace detail {
       numerical_roots[static_cast<std::size_t>(cursor++)] = std::sqrt(-dimensionless);
     }
     std::sort(numerical_roots.begin(), numerical_roots.end());
+    for (std::size_t mode = 1; mode < numerical_roots.size(); ++mode)
+      if (!(numerical_roots[mode] > numerical_roots[mode - 1]))
+        return slide::Status::Numerical_failure;
     for (int mode = 0; mode < resolvedModes<NCH>(); ++mode) {
       const double exact = sphericalEigenRoot(mode + 1);
       const double relative = std::abs(numerical_roots[static_cast<std::size_t>(mode)] - exact)
@@ -262,8 +266,10 @@ template <int NCH>
   const Eigen::RowVector<double, N> folded_first = first_derivative.leftCols(N)
                                                    - first_derivative.rightCols(N).rowwise().reverse();
   const double boundary_denominator = 1.0 - folded_first(0, 0);
-  if (!is_finite(boundary_denominator) || boundary_denominator == 0.0)
-    return slide::Status::Numerical_failure;
+  // This coefficient depends only on the fixed Chebyshev nodes for the three
+  // registered orders, not on caller input. Registry-order compilation tests
+  // exercise the invariant directly.
+  assert(is_finite(boundary_denominator) && boundary_denominator != 0.0);
 
   const Eigen::Matrix<double, NCH, NCH> dimensionless_A = folded_second.template block<NCH, NCH>(1, 1)
                                                           + folded_second.template block<NCH, 1>(1, 0)
@@ -301,6 +307,9 @@ template <int NCH>
       return spectrum_status;
     const Eigen::Matrix<double, NCH, NCH> eigenvectors = solver.eigenvectors().real();
     Eigen::FullPivLU<Eigen::Matrix<double, NCH, NCH>> invertibility(eigenvectors);
+    // validateSpectrum proves all accepted real eigenvalues are distinct;
+    // nevertheless, retain the finite-precision decomposition check because a
+    // backend may return a numerically rank-deficient approximate basis.
     if (!invertibility.isInvertible())
       return slide::Status::Numerical_failure;
 

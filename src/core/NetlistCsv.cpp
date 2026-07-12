@@ -26,6 +26,9 @@ namespace {
   constexpr std::size_t max_csv_columns = 32;
   constexpr std::size_t max_csv_field_bytes = 65'536;
   constexpr std::size_t max_descriptor_bytes = 127;
+  static_assert(max_csv_rows
+                <= std::numeric_limits<std::uint32_t>::max() / 2U,
+                "two node labels per bounded CSV row must fit uint32_t");
 
   void assignDiagnosticNoThrow(std::string &target,
                                std::string_view message) noexcept
@@ -417,10 +420,9 @@ try {
     roots.push_back(sets.find(node));
   std::sort(roots.begin(), roots.end());
   roots.erase(std::unique(roots.begin(), roots.end()), roots.end());
-  if (roots.size() > std::numeric_limits<std::uint32_t>::max()) {
-    diagnostic.message = "liionpack CSV has too many nodes";
-    return slide::Status::Invalid_parameters;
-  }
+  // Every accepted data row contributes exactly two labels. The 100000-row
+  // parser limit and the static assertion above therefore prove that every
+  // dense node index is representable.
   std::vector<std::uint32_t> root_to_dense(
     labels.size(), std::numeric_limits<std::uint32_t>::max());
   for (std::size_t dense = 0; dense < roots.size(); ++dense)

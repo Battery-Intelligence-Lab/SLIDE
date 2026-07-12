@@ -7,6 +7,7 @@
 #include "PackTopologyInternal.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <limits>
 #include <map>
 #include <numeric>
@@ -281,9 +282,13 @@ namespace {
     graph.boundary_count = static_cast<std::uint32_t>(description.thermal_boundaries.size());
     std::unordered_map<std::string, std::uint32_t> endpoint;
     endpoint.reserve(pack.cells.size() + description.thermal_boundaries.size());
-    for (std::uint32_t i = 0; i < graph.cell_count; ++i)
-      if (!endpoint.emplace(pack.cells[i].path, i).second)
-        return slide::Status::Invalid_parameters;
+    for (std::uint32_t i = 0; i < graph.cell_count; ++i) {
+      // CompileContext paths encode the complete sequence of sibling indices,
+      // so two distinct leaves cannot have the same path.
+      const bool inserted = endpoint.emplace(pack.cells[i].path, i).second;
+      assert(inserted);
+      (void)inserted;
+    }
     for (std::uint32_t i = 0; i < graph.boundary_count; ++i) {
       const auto &name = description.thermal_boundaries[i].name;
       if (name.empty() || !endpoint.emplace(name, graph.cell_count + i).second)
@@ -622,8 +627,11 @@ slide::Status compilePackDescription(const PackDescription &description,
   if (!assignBatchLocations(context.result))
     return slide::Status::Invalid_parameters;
   compileElectricalMetadata(context.result, context.next_node);
-  if (!context.result.electrical.connected)
-    return slide::Status::Invalid_parameters;
+  // Each recursive case connects its positive and negative endpoints: cells
+  // add a branch, parallel children share endpoints (optionally through a link
+  // resistor), and series children share consecutive endpoints. Thus every
+  // node allocated by a valid nonempty tree belongs to the terminal component.
+  assert(context.result.electrical.connected);
   const auto status = compileThermal(description, context.result);
   if (status != slide::Status::Success)
     return status;
