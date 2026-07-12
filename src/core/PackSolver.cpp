@@ -563,7 +563,7 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
       // before entering the numeric kernel.
       assert(is_finite(resistance) && resistance > 0.0);
       const real_t conductance = 1.0 / resistance;
-      if (!(is_finite(conductance) && conductance > 0.0)
+      if (!is_strictly_positive_finite(conductance)
           || !stamp(branch.node_positive, branch.node_negative, conductance))
         return slide::Status::Invalid_states;
     }
@@ -687,7 +687,7 @@ slide::Status PackSolver::solveLadder(real_t applied_current)
       const auto cell = netlist.ladder_cells[i];
       const real_t conductance = 1.0 / resistance_[cell];
       const real_t source = ocv_[cell] * conductance;
-      if (!(is_finite(conductance) && conductance > 0.0)
+      if (!is_strictly_positive_finite(conductance)
           || !is_finite(source)
           || !addFinite(conductance_sum, conductance)
           || !addFinite(source_sum, source))
@@ -743,7 +743,7 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
             0.0);
   auto stamp = [&](const CompiledElectricalBranch &branch, real_t resistance, real_t source) {
     const real_t conductance = 1.0 / resistance;
-    if (!(is_finite(conductance) && conductance > 0.0)
+    if (!is_strictly_positive_finite(conductance)
         || !is_finite(source))
       return false;
     const auto p = branch.node_positive;
@@ -791,8 +791,7 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
       relaxation_target_[node] = 0.0;
       continue;
     }
-    if (!(is_finite(relaxation_diagonal_[node])
-          && relaxation_diagonal_[node] > 0.0
+    if (!(is_strictly_positive_finite(relaxation_diagonal_[node])
           && is_finite(relaxation_rhs_[node])))
       return slide::Status::Numerical_failure;
     relaxation_target_[node] = relaxation_rhs_[node]

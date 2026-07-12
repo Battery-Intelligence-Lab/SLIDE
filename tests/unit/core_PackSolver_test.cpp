@@ -26,6 +26,12 @@
 #include <utility>
 #include <vector>
 
+#if defined(__SSE2__) || defined(_M_X64) \
+  || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#include <xmmintrin.h>
+#define SLIDE_TEST_HAS_X86_FTZ 1
+#endif
+
 using namespace slide;
 
 static_assert(std::is_same_v<
@@ -130,6 +136,25 @@ struct AffineFailureCase
   double applied_current;
   core::PackSolveMode mode;
 };
+
+#if defined(SLIDE_TEST_HAS_X86_FTZ)
+class ScopedFlushToZero
+{
+public:
+  ScopedFlushToZero() noexcept : previous_{ _mm_getcsr() }
+  {
+    _mm_setcsr(previous_ | _MM_FLUSH_ZERO_MASK);
+  }
+
+  ~ScopedFlushToZero() { _mm_setcsr(previous_); }
+
+  ScopedFlushToZero(const ScopedFlushToZero &) = delete;
+  ScopedFlushToZero &operator=(const ScopedFlushToZero &) = delete;
+
+private:
+  unsigned int previous_;
+};
+#endif
 
 core::CompiledPackTopology compile(const core::PackNode &root)
 {
@@ -603,6 +628,51 @@ TEST_CASE("all solver modes reject a flushed or subnormal conductance",
             != Status::Success);
     }
   }
+}
+
+TEST_CASE("relaxation rejects a flushed reciprocal before diagonal fallback",
+          "[core][pack][solver][relaxation][fast-math][mutation]")
+{
+#if defined(SLIDE_TEST_HAS_X86_FTZ)
+  const ScopedFlushToZero flush_subnormal_results;
+  CHECK(solveAffineOnce(core::cell({ .archetype = "affine" }),
+                        { 0.0 },
+                        { std::numeric_limits<double>::max() },
+                        1.0,
+                        core::PackSolveMode::relaxation,
+                        1e-12,
+                        1)
+        == Status::Invalid_states);
+#else
+  SUCCEED("x86 flush-to-zero control is unavailable on this platform");
+#endif
+}
+
+TEST_CASE("source stepping scales before multiplying an extreme finite current",
+          "[core][pack][solver][source-stepping][finite][P9]")
+{
+  const auto applied_current = std::ldexp(1.0, 1023);
+  const auto branch_current = applied_current / 2.0;
+  const auto topology = compile(core::parallel(
+    2, core::cell({ .archetype = "affine" })));
+  AffineBatch batch{ .ocv = { 0.0, 0.0 },
+                     .resistance = { 1.0, 1.0 } };
+  const std::array views{ core::TheveninBatchView::bind(batch, 2) };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, views) == Status::Success);
+
+  REQUIRE(solver.solve(applied_current,
+                       core::PackSolveMode::ladder,
+                       applied_current / 4.0,
+                       1)
+          == Status::Success);
+  REQUIRE(solver.solution().cell_current.size() == 2);
+  CHECK(solver.solution().cell_current[0] == branch_current);
+  CHECK(solver.solution().cell_current[1] == branch_current);
+  CHECK(solver.solution().terminal_voltage == -branch_current);
+  CHECK(solver.diagnostics().source_steps == 8);
+  CHECK(solver.diagnostics().iterations == 1);
+  CHECK(batch.calls == 10);
 }
 
 TEST_CASE("finite trial currents with an unrepresentable delta are rejected atomically",
