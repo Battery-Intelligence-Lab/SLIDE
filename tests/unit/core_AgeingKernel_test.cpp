@@ -226,6 +226,130 @@ std::array<Real, 2> crack_diffusivity_at(Real crack_surface)
   return { output.crack_surface_rate[0], output.negative_diffusivity_rate[0] };
 }
 
+template <class Real>
+Real sei_current_at(Real overpotential)
+{
+  constexpr int local_nch = 1;
+  core::BatchBuilder builder;
+  const auto layout = core::declareSpmState<local_nch>(builder);
+  auto geometry = builder.build(1);
+  const core::BatchShape shape = core::BatchShape::from(geometry);
+  std::vector<Real> storage(shape.storage_size());
+  core::BasicBatchView<Real> mutable_state{ shape, storage };
+  mutable_state.at(layout.temperature, 0, 0) = Real{ 310.0 };
+  mutable_state.at(layout.sei_thickness, 0, 0) = Real{ 1.5e-9 };
+  const core::BasicBatchView<const Real> state{ shape, storage };
+
+  core::SpmObservableScratch<local_nch, Real> observable_scratch{ 1 };
+  auto observables = observable_scratch.view();
+  const auto neg = core::domain_index(core::Domain::neg);
+  observables.electrode_ocv[neg][0] = Real{ 0.12 };
+  observables.negative_entropic_coefficient[0] = Real{ 1.2e-4 };
+  observables.overpotential[neg][0] = overpotential;
+  const std::array<Real, 1> current_density{ Real{ -1.3 } };
+  const core::BasicStepCtx<Real> ctx{ .i_app = current_density };
+
+  core::SeiParams params;
+  params.model_mask = core::sei_model_bit(1);
+  params.electrode_area = 0.1;
+  params.negative_particle_radius = 12.5e-6;
+  params.sei_resistivity_area = 2037.4;
+  core::SeiScratch<Real> scratch{ 1 };
+  auto output = scratch.view();
+  REQUIRE(core::computeSei(params, state, layout, ctx, observables, output)
+          == Status::Success);
+  return output.side_reaction_current[0];
+}
+
+template <class Real>
+Real lam_rate_at(Real current_density_value)
+{
+  constexpr int local_nch = 1;
+  core::BatchBuilder builder;
+  const auto layout = core::declareSpmState<local_nch>(builder);
+  const auto history = core::declareStressHistory(builder);
+  auto geometry = builder.build(1);
+  const core::BatchShape shape = core::BatchShape::from(geometry);
+  std::vector<Real> storage(shape.storage_size());
+  core::BasicBatchView<Real> mutable_state{ shape, storage };
+  mutable_state.at(layout.temperature, 0, 0) = Real{ 307.0 };
+  mutable_state.at(history.interval, 0, 0) = Real{ 20.0 };
+  for (const core::Domain domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    mutable_state.at(layout.specific_surface_area[d], 0, 0) =
+      Real{ domain == core::Domain::neg ? 4.0e4 : 5.0e4 };
+    mutable_state.at(layout.electrode_thickness[d], 0, 0) =
+      Real{ domain == core::Domain::neg ? 75e-6 : 87e-6 };
+  }
+  const core::BasicBatchView<const Real> state{ shape, storage };
+
+  core::SpmObservableScratch<local_nch, Real> observable_scratch{ 1 };
+  auto observables = observable_scratch.view();
+  core::SpmStressScratch<Real> stress_scratch{ 1 };
+  auto stress = stress_scratch.view();
+  const std::array<Real, 1> current_density{ current_density_value };
+  const core::BasicStepCtx<Real> ctx{ .i_app = current_density };
+
+  core::LamParams params;
+  params.model_mask = core::lam_model_bit(2);
+  params.model2_activation = 9000.0;
+  constexpr std::array curve_x{ 0.0, 1.0 };
+  constexpr std::array curve_y{ 3.2, 4.2 };
+  REQUIRE(params.positive_ocv.build(curve_x, curve_y) == Status::Success);
+  for (const core::Domain domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    params.particle_radius[d] = domain == core::Domain::neg ? 12.5e-6 : 8.5e-6;
+    params.model2_linear_flux[d] = domain == core::Domain::neg ? -2e-7 : -1.5e-7;
+    params.model2_sqrt_flux[d] = domain == core::Domain::neg ? -3e-11 : -2e-11;
+  }
+  core::LamScratch<Real> scratch{ 1 };
+  auto output = scratch.view();
+  REQUIRE(core::computeLam(params,
+                           state,
+                           layout,
+                           history,
+                           ctx,
+                           observables,
+                           stress,
+                           output)
+          == Status::Success);
+  return output.active_fraction_rate[core::domain_index(core::Domain::neg)][0];
+}
+
+template <class Real>
+Real plating_current_at(Real overpotential)
+{
+  constexpr int local_nch = 1;
+  core::BatchBuilder builder;
+  const auto layout = core::declareSpmState<local_nch>(builder);
+  auto geometry = builder.build(1);
+  const core::BatchShape shape = core::BatchShape::from(geometry);
+  std::vector<Real> storage(shape.storage_size());
+  core::BasicBatchView<Real> mutable_state{ shape, storage };
+  mutable_state.at(layout.temperature, 0, 0) = Real{ 311.0 };
+  mutable_state.at(layout.sei_thickness, 0, 0) = Real{ 1.5e-9 };
+  const core::BasicBatchView<const Real> state{ shape, storage };
+
+  core::SpmObservableScratch<local_nch, Real> observable_scratch{ 1 };
+  auto observables = observable_scratch.view();
+  const auto neg = core::domain_index(core::Domain::neg);
+  observables.electrode_ocv[neg][0] = Real{ 0.12 };
+  observables.negative_entropic_coefficient[0] = Real{ 1.2e-4 };
+  observables.overpotential[neg][0] = overpotential;
+  const std::array<Real, 1> current_density{ Real{ -1.3 } };
+  const core::BasicStepCtx<Real> ctx{ .i_app = current_density };
+
+  core::LithiumPlatingParams params;
+  params.electrode_area = 0.1;
+  params.sei_resistivity_area = 2037.4;
+  core::LithiumPlatingScratch<Real> scratch{ 1 };
+  auto output = scratch.view();
+  REQUIRE(core::computeLithiumPlating(
+            params, state, layout, ctx, observables, output)
+          == Status::Success);
+  return output.side_reaction_current[0];
+}
+
 } // namespace
 
 TEST_CASE("9C-2 all-mask ageing trace retains its pre-refactor bits",
@@ -275,6 +399,35 @@ TEST_CASE("9C-2 surface-crack diffusivity is scalar-generic for Dual",
           <= 1e-8 * std::max(std::abs(crack_fd), 1e-30));
   REQUIRE(std::abs(dual[1].derivative - diffusion_fd)
           <= 1e-8 * std::max(std::abs(diffusion_fd), 1e-30));
+}
+
+TEST_CASE("9C-2 every ageing body propagates a Dual tangent",
+          "[core][ageing][9C-2][dual]")
+{
+  constexpr double h = 1e-6;
+
+  const auto sei = sei_current_at(core::Dual{ -0.035, 1.0 });
+  const double sei_fd = (sei_current_at(-0.035 + h)
+                         - sei_current_at(-0.035 - h))
+                        / (2.0 * h);
+  CAPTURE(sei.derivative, sei_fd);
+  REQUIRE(std::abs(sei.derivative - sei_fd)
+          <= 1e-7 * std::max(std::abs(sei_fd), 1e-30));
+
+  const auto lam = lam_rate_at(core::Dual{ 1.2, 1.0 });
+  const double lam_fd = (lam_rate_at(1.2 + h) - lam_rate_at(1.2 - h))
+                        / (2.0 * h);
+  CAPTURE(lam.derivative, lam_fd);
+  REQUIRE(std::abs(lam.derivative - lam_fd)
+          <= 1e-7 * std::max(std::abs(lam_fd), 1e-30));
+
+  const auto plating = plating_current_at(core::Dual{ -0.045, 1.0 });
+  const double plating_fd = (plating_current_at(-0.045 + h)
+                             - plating_current_at(-0.045 - h))
+                            / (2.0 * h);
+  CAPTURE(plating.derivative, plating_fd);
+  REQUIRE(std::abs(plating.derivative - plating_fd)
+          <= 1e-7 * std::max(std::abs(plating_fd), 1e-30));
 }
 
 TEST_CASE("9C-2 heterogeneous ageing lanes equal isolated evaluations",
