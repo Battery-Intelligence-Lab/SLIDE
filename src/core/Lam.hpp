@@ -5,23 +5,20 @@
 
 #pragma once
 
+#include "AgeingKernel.hpp"
 #include "SpmStress.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <span>
-#include <vector>
 
 namespace slide::core {
 
 constexpr std::uint8_t lam_model_bit(unsigned model)
 {
-  return model >= 1 && model <= 4
-           ? static_cast<std::uint8_t>(std::uint8_t{ 1 } << (model - 1))
-           : std::uint8_t{};
+  return ageing_model_bit<4>(model);
 }
 
 struct LamParams
@@ -46,8 +43,7 @@ struct LamParams
 
 [[nodiscard]] inline slide::Status validateLamParams(const LamParams &p)
 {
-  if (p.model_mask == 0 || (p.model_mask & std::uint8_t{ 0xf0 }) != 0
-      || !p.positive_ocv.valid())
+  if (!valid_ageing_model_mask<4>(p.model_mask) || !p.positive_ocv.valid())
     return slide::Status::Invalid_parameters;
   const std::array scalars{ p.F,
                             p.Rg,
@@ -92,30 +88,25 @@ class LamScratch
 {
 public:
   explicit LamScratch(int n_lanes)
-    : storage_(static_cast<std::size_t>(6 * n_lanes)), n_lanes_(n_lanes)
-  {
-    assert(n_lanes > 0);
-  }
+    : storage_{ n_lanes }
+  {}
 
   BasicLamOutput<Real> view()
   {
-    const auto L = static_cast<std::size_t>(n_lanes_);
-    auto storage = std::span<Real>{ storage_ };
     BasicLamOutput<Real> output;
     std::size_t cursor = 0;
     for (auto *field : { &output.thickness_rate,
                          &output.active_fraction_rate,
                          &output.direct_area_rate })
       for (const Domain domain : domains) {
-        (*field)[domain_index(domain)] = storage.subspan(cursor, L);
-        cursor += L;
+        (*field)[domain_index(domain)] = storage_.field(cursor);
+        ++cursor;
       }
     return output;
   }
 
 private:
-  std::vector<Real> storage_{};
-  int n_lanes_{};
+  detail::AgeingScratchStorage<Real, 6> storage_;
 };
 
 template <class Real>
@@ -130,25 +121,21 @@ template <class Real>
                                          output)
 {
   const int lanes = state.n_lanes();
-  [[maybe_unused]] const auto L = static_cast<std::size_t>(lanes);
   ctx.assert_valid_for(lanes);
-  for (auto *field : { &output.thickness_rate,
-                       &output.active_fraction_rate,
-                       &output.direct_area_rate })
-    for (const Domain domain : domains) {
-      assert((*field)[domain_index(domain)].size() == L);
-      std::fill((*field)[domain_index(domain)].begin(),
-                (*field)[domain_index(domain)].end(),
-                Real{});
-    }
+  detail::clear_ageing_fields<Real, 6>(
+    lanes,
+    { output.thickness_rate[domain_index(Domain::neg)],
+      output.thickness_rate[domain_index(Domain::pos)],
+      output.active_fraction_rate[domain_index(Domain::neg)],
+      output.active_fraction_rate[domain_index(Domain::pos)],
+      output.direct_area_rate[domain_index(Domain::neg)],
+      output.direct_area_rate[domain_index(Domain::pos)] });
   using std::abs;
   using std::exp;
   using std::sqrt;
 
-  for (unsigned model = 1; model <= 4; ++model) {
-    if ((p.model_mask & lam_model_bit(model)) == 0)
-      continue;
-    for (int lane = 0; lane < lanes; ++lane) {
+  const auto model_status = detail::for_each_enabled_ageing_model_lane<4>(
+    p.model_mask, lanes, [&](unsigned model, int lane) {
       const auto i = static_cast<std::size_t>(lane);
       const Real T = state.at(layout.temperature, 0, lane);
       const Real arrhenius = (Real{ 1 } / p.reference_temperature - Real{ 1 } / T) / p.Rg;
@@ -194,18 +181,24 @@ template <class Real>
                                            * state.at(layout.specific_surface_area[d], 0, lane);
         }
       }
-    }
-  }
+      return slide::Status::Success;
+    });
+  if (model_status != slide::Status::Success)
+    return model_status;
 
   for (const Domain domain : domains) {
     const auto d = domain_index(domain);
-    for (int lane = 0; lane < lanes; ++lane) {
-      const auto i = static_cast<std::size_t>(lane);
-      if (!(is_finite_primal(output.thickness_rate[d][i])
-            && is_finite_primal(output.active_fraction_rate[d][i])
-            && is_finite_primal(output.direct_area_rate[d][i])))
-        return slide::Status::Numerical_failure;
-    }
+    const auto status = detail::for_each_ageing_lane_while_success(
+      lanes, [&](int lane) {
+        const auto i = static_cast<std::size_t>(lane);
+        if (!(is_finite_primal(output.thickness_rate[d][i])
+              && is_finite_primal(output.active_fraction_rate[d][i])
+              && is_finite_primal(output.direct_area_rate[d][i])))
+          return slide::Status::Numerical_failure;
+        return slide::Status::Success;
+      });
+    if (status != slide::Status::Success)
+      return status;
   }
   return slide::Status::Success;
 }
@@ -220,13 +213,13 @@ void addLamRhs(const LamParams &p,
   const int lanes = derivative.n_lanes();
   for (const Domain domain : domains) {
     const auto d = domain_index(domain);
-    for (int lane = 0; lane < lanes; ++lane) {
+    detail::for_each_ageing_lane(lanes, [&](int lane) {
       const auto i = static_cast<std::size_t>(lane);
       derivative.at(layout.electrode_thickness[d], 0, lane) += output.thickness_rate[d][i];
       derivative.at(layout.active_fraction[d], 0, lane) += output.active_fraction_rate[d][i];
       derivative.at(layout.specific_surface_area[d], 0, lane) += output.direct_area_rate[d][i]
                                                                  + Real{ 3 } / p.particle_radius[d] * output.active_fraction_rate[d][i];
-    }
+    });
   }
 }
 
