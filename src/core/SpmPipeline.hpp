@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "AgeingKernel.hpp"
 #include "Lam.hpp"
 #include "LithiumPlating.hpp"
 #include "Sei.hpp"

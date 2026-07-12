@@ -64,7 +64,7 @@ jobs:
             | grep -F -- '-fcoverage-mapping'
           ctest --test-dir build-coverage -N -V \
             > build-coverage/coverage/ctest-discovery.txt
-          test "$(grep -c 'Test command:' build-coverage/coverage/ctest-discovery.txt)" -eq 55
+          test "$(grep -c 'Test command:' build-coverage/coverage/ctest-discovery.txt)" -eq 56
           test "$(grep -c '^test[[:space:]]' build-coverage/coverage/targets.tsv)" -eq 54
           test "$(grep -c '^anchor[[:space:]]' build-coverage/coverage/targets.tsv)" -eq 1
           grep -F "$PWD/build-coverage/bin/Debug" \
