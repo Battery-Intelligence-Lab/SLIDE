@@ -519,6 +519,19 @@ TEST_CASE("9C-2 common ageing scaffold fixes mask, scratch, and traversal order"
   REQUIRE_THROWS_AS(core::SpmStressScratch<>{ -1 }, std::invalid_argument);
   REQUIRE_THROWS_AS((core::SpmObservableScratch<1>{ 0 }), std::invalid_argument);
   REQUIRE_THROWS_AS((core::SpmObservableScratch<1>{ -1 }), std::invalid_argument);
+  REQUIRE_THROWS_AS(core::SpmTransportCache(0), std::invalid_argument);
+  REQUIRE_THROWS_AS(core::SpmTransportCache(-1), std::invalid_argument);
+  REQUIRE_THROWS_AS(core::SpmTransportCache(std::numeric_limits<int>::max()),
+                    std::length_error);
+  using MinimalPipeline = core::SpmPipeline<1, false, false, false, false, false>;
+  REQUIRE_THROWS_AS(
+    MinimalPipeline(core::SpmPipelineParams<1>{}, core::SpmPipelineLayout{}, 0),
+    std::invalid_argument);
+  REQUIRE_THROWS_AS(
+    MinimalPipeline(core::SpmPipelineParams<1>{},
+                    core::SpmPipelineLayout{},
+                    std::numeric_limits<int>::max()),
+    std::length_error);
   core::detail::AgeingScratchStorage<double, 3> scratch{ 4 };
   REQUIRE(scratch.n_lanes() == 4);
   for (std::size_t field = 0; field < scratch.field_count; ++field) {

@@ -16,7 +16,9 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <limits>
 #include <span>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -136,18 +138,15 @@ public:
   SpmPipeline(SpmPipelineParams<NCH> params,
               SpmPipelineLayout layout,
               int n_lanes)
-    : params_{ std::move(params) }, layout_{ layout }, n_lanes_{ n_lanes },
-      observables_{ n_lanes }, stress_{ n_lanes }, sei_{ n_lanes },
-      surface_crack_{ n_lanes }, lam_{ n_lanes },
-      transport_cache_{ n_lanes },
+    : params_{ std::move(params) }, layout_{ layout },
+      n_lanes_{ checkedLaneCount(n_lanes) },
+      observables_{ n_lanes_ }, stress_{ n_lanes_ }, sei_{ n_lanes_ },
+      surface_crack_{ n_lanes_ }, lam_{ n_lanes_ },
+      transport_cache_{ n_lanes_ },
       single_observables_{ 1 }, single_transport_cache_{ 1 },
-      thevenin_current_density_(static_cast<std::size_t>(n_lanes)),
-      slow_rate_scratch_(needs_full_rhs_observables
-                           ? static_cast<std::size_t>(layout.elapsed_time.row_begin
-                                                      + layout.elapsed_time.rows + 2)
-                               * static_cast<std::size_t>(((n_lanes + 7) / 8) * 8)
-                           : 0),
-      plating_{ n_lanes }
+      thevenin_current_density_(static_cast<std::size_t>(n_lanes_)),
+      slow_rate_scratch_(slowRateScratchSize(layout_, n_lanes_)),
+      plating_{ n_lanes_ }
   {
     assert(n_lanes > 0);
   }
@@ -688,6 +687,47 @@ public:
   }
 
 private:
+  static int checkedLaneCount(int lanes)
+  {
+    if (lanes <= 0)
+      throw std::invalid_argument{ "SPM pipeline requires at least one lane" };
+    constexpr int padding = 7;
+    if (lanes > std::numeric_limits<int>::max() - padding)
+      throw std::length_error{ "SPM pipeline padded lane count is not representable" };
+    return lanes;
+  }
+
+  static std::size_t slowRateScratchSize(const SpmPipelineLayout &layout,
+                                         int lanes)
+  {
+    if constexpr (!needs_full_rhs_observables)
+      return 0;
+
+    const int row_begin = layout.elapsed_time.row_begin;
+    const int rows = layout.elapsed_time.rows;
+    if (row_begin < 0 || rows <= 0)
+      throw std::invalid_argument{ "SPM pipeline elapsed-time layout is invalid" };
+
+    constexpr std::size_t extra_rows = 2;
+    constexpr std::size_t maximum = std::numeric_limits<std::size_t>::max();
+    const auto begin = static_cast<std::size_t>(row_begin);
+    const auto count = static_cast<std::size_t>(rows);
+    if (count > maximum - extra_rows
+        || begin > maximum - count - extra_rows)
+      throw std::length_error{ "SPM pipeline scratch row count is not representable" };
+    const std::size_t row_count = begin + count + extra_rows;
+
+    constexpr std::size_t block = 8;
+    const auto lane_count = static_cast<std::size_t>(lanes);
+    const std::size_t padded_lanes = ((lane_count + block - 1) / block) * block;
+    if (row_count > maximum / padded_lanes)
+      throw std::length_error{ "SPM pipeline scratch extent is not representable" };
+    const std::size_t elements = row_count * padded_lanes;
+    if (elements > maximum / sizeof(real_t))
+      throw std::length_error{ "SPM pipeline scratch byte count is not representable" };
+    return elements;
+  }
+
   int lanePeriod(const ConstBatchView &state,
                  std::span<const real_t>
                    current) const

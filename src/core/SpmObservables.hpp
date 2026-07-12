@@ -67,13 +67,7 @@ struct SpmConcentrationParams
 struct SpmTransportCache
 {
   explicit SpmTransportCache(int lanes)
-    : lanes_{ lanes }, valid_(static_cast<std::size_t>(2 * lanes)),
-      temperature_(static_cast<std::size_t>(2 * lanes)),
-      diffusion_reference_(static_cast<std::size_t>(2 * lanes)),
-      specific_area_(static_cast<std::size_t>(2 * lanes)),
-      thickness_(static_cast<std::size_t>(2 * lanes)),
-      effective_diffusivity_(static_cast<std::size_t>(2 * lanes)),
-      flux_denominator_(static_cast<std::size_t>(2 * lanes))
+    : SpmTransportCache{ checkedShape(lanes) }
   {}
 
   int lanes() const { return lanes_; }
@@ -92,6 +86,32 @@ struct SpmTransportCache
   std::vector<real_t> thickness_{};
   std::vector<real_t> effective_diffusivity_{};
   std::vector<real_t> flux_denominator_{};
+
+private:
+  struct CheckedShape
+  {
+    int lanes{};
+    std::size_t values{};
+  };
+
+  explicit SpmTransportCache(CheckedShape shape)
+    : lanes_{ shape.lanes }, valid_(shape.values),
+      temperature_(shape.values), diffusion_reference_(shape.values),
+      specific_area_(shape.values), thickness_(shape.values),
+      effective_diffusivity_(shape.values), flux_denominator_(shape.values)
+  {}
+
+  static CheckedShape checkedShape(int lanes)
+  {
+    if (lanes <= 0)
+      throw std::invalid_argument{ "SPM transport cache requires at least one lane" };
+    if (lanes > std::numeric_limits<int>::max() / 2)
+      throw std::length_error{ "SPM transport cache extent is not representable" };
+    const auto values = static_cast<std::size_t>(lanes) * 2;
+    if (values > std::numeric_limits<std::size_t>::max() / sizeof(real_t))
+      throw std::length_error{ "SPM transport cache byte count is not representable" };
+    return { lanes, values };
+  }
 };
 
 template <int NCH, class Real>
