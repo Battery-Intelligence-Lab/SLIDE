@@ -5,6 +5,7 @@
 
 #include "../../src/core/ForwardSensitivity.hpp"
 #include "../../src/core/ParameterSet.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 #include "../support/RecordedBits.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -13,6 +14,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <span>
 #include <vector>
 
 using namespace slide;
@@ -27,24 +29,26 @@ std::vector<double> productionTrace(const core::SpmFactoryInput &input,
 {
   core::SpmModelOptions options;
   options.nch = nch;
-  core::SpmBatch batch;
-  REQUIRE(core::buildSpmBatch(input, options, 1, batch) == Status::Success);
+  auto batch = test_support::requireSpmBatch(input, options, 1);
   const double current = c_rate * batch.capacity_Ah();
   const std::array density{ current / batch.electrode_area() };
   const auto samples = static_cast<std::size_t>(std::ceil(duration / sample_step)) + 1;
-  std::vector<double> voltage(samples);
-  const core::StepCtx initial{ .time = 0.0, .dt = 0.0, .i_app = density };
-  REQUIRE(batch.terminalVoltage(initial, std::span<double>{ voltage }.first(1))
-          == Status::Success);
-  core::ExponentialModal stepper;
-  REQUIRE(stepper.configure(batch) == Status::Success);
+  std::vector<double> sample_time(samples);
   double time{};
   for (std::size_t sample = 1; sample < samples; ++sample) {
     const double dt = std::min(sample_step, duration - time);
-    REQUIRE(stepper.step(batch, density, time, dt) == Status::Success);
     time += dt;
-    voltage[sample] = stepper.terminalVoltage()[0];
+    sample_time[sample] = time;
   }
+  std::vector<double> voltage(samples);
+  core::ExponentialModal stepper;
+  test_support::requireConstantCurrentTrace(
+    batch,
+    stepper,
+    test_support::CurrentDensityApm2{
+      std::span<const double>{ density } },
+    sample_time,
+    voltage);
   return voltage;
 }
 

@@ -5,14 +5,14 @@
 
 #include "../../src/core/ExponentialModal.hpp"
 #include "../../src/core/ParameterSet.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <algorithm>
 #include <array>
-#include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <span>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -61,34 +61,24 @@ std::pair<double, double> compareTrace(const ReferenceTrace &reference,
   REQUIRE(parameters.toSpmInput(input) == Status::Success);
   core::SpmModelOptions options;
   options.nch = 12;
-  core::SpmBatch batch;
-  REQUIRE(core::buildSpmBatch(input, options, 1, batch) == Status::Success);
+  auto batch = test_support::requireSpmBatch(input, options, 1);
 
   const double current = c_rate * batch.capacity_Ah();
   const std::array current_density{ current / batch.electrode_area() };
-  std::array<double, 1> voltage{};
-  const core::StepCtx initial{ .time = 0.0,
-                               .dt = 0.0,
-                               .i_app = current_density };
-  REQUIRE(batch.terminalVoltage(initial, voltage) == Status::Success);
-  double maximum_error = std::abs(voltage[0] - reference.voltage[0]);
-  double square_error = maximum_error * maximum_error;
-
+  std::vector<double> actual_voltage(reference.time.size());
   core::ExponentialModal stepper;
-  REQUIRE(stepper.configure(batch) == Status::Success);
-  for (std::size_t sample = 1; sample < reference.time.size(); ++sample) {
-    const double dt = reference.time[sample] - reference.time[sample - 1];
-    REQUIRE(dt > 0.0);
-    REQUIRE(stepper.step(batch, current_density, reference.time[sample - 1], dt)
-            == Status::Success);
-    const double error = std::abs(stepper.terminalVoltage()[0]
-                                  - reference.voltage[sample]);
-    maximum_error = std::max(maximum_error, error);
-    square_error += error * error;
-  }
-  return { maximum_error,
-           std::sqrt(square_error
-                     / static_cast<double>(reference.time.size())) };
+  test_support::requireConstantCurrentTrace(
+    batch,
+    stepper,
+    test_support::CurrentDensityApm2{
+      std::span<const double>{ current_density } },
+    reference.time,
+    actual_voltage);
+
+  test_support::VoltageError error{};
+  REQUIRE(test_support::computeVoltageError(
+    actual_voltage, reference.voltage, error));
+  return { error.maximum_absolute_V, error.rms_V };
 }
 
 } // namespace
