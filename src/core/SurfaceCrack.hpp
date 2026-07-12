@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "AgeingKernel.hpp"
 #include "Sei.hpp"
 #include "SpmStress.hpp"
 
@@ -14,15 +15,12 @@
 #include <cmath>
 #include <cstdint>
 #include <span>
-#include <vector>
 
 namespace slide::core {
 
 constexpr std::uint8_t surface_crack_model_bit(unsigned model)
 {
-  return model >= 1 && model <= 5
-           ? static_cast<std::uint8_t>(std::uint8_t{ 1 } << (model - 1))
-           : std::uint8_t{};
+  return ageing_model_bit<5>(model);
 }
 
 struct SurfaceCrackParams
@@ -50,7 +48,7 @@ struct SurfaceCrackParams
 
 [[nodiscard]] inline slide::Status validateSurfaceCrackParams(const SurfaceCrackParams &p)
 {
-  if (p.model_mask == 0 || (p.model_mask & std::uint8_t{ 0xe0 }) != 0)
+  if (!valid_ageing_model_mask<5>(p.model_mask))
     return slide::Status::Invalid_parameters;
   const std::array values{ p.F,
                            p.Rg,
@@ -93,21 +91,16 @@ class SurfaceCrackScratch
 {
 public:
   explicit SurfaceCrackScratch(int n_lanes)
-    : storage_(static_cast<std::size_t>(3 * n_lanes)), n_lanes_(n_lanes)
-  {
-    assert(n_lanes > 0);
-  }
+    : storage_{ n_lanes }
+  {}
 
   BasicSurfaceCrackOutput<Real> view()
   {
-    const auto L = static_cast<std::size_t>(n_lanes_);
-    auto storage = std::span<Real>{ storage_ };
-    return { storage.first(L), storage.subspan(L, L), storage.subspan(2 * L, L) };
+    return { storage_.field(0), storage_.field(1), storage_.field(2) };
   }
 
 private:
-  std::vector<Real> storage_{};
-  int n_lanes_{};
+  detail::AgeingScratchStorage<Real, 3> storage_;
 };
 
 template <class Real>
@@ -127,19 +120,19 @@ template <class Real>
   assert(output.sei_multiplier.size() == L && output.crack_surface_rate.size() == L
          && output.negative_diffusivity_rate.size() == L);
   ctx.assert_valid_for(lanes);
-  std::fill(output.sei_multiplier.begin(), output.sei_multiplier.end(), Real{});
-  std::fill(output.crack_surface_rate.begin(), output.crack_surface_rate.end(), Real{});
-  std::fill(output.negative_diffusivity_rate.begin(), output.negative_diffusivity_rate.end(), Real{});
+  detail::clear_ageing_fields<Real, 3>(
+    lanes,
+    { output.sei_multiplier,
+      output.crack_surface_rate,
+      output.negative_diffusivity_rate });
   const auto neg = domain_index(Domain::neg);
   using std::abs;
   using std::exp;
   using std::pow;
   using std::sqrt;
 
-  for (unsigned model = 1; model <= 5; ++model) {
-    if ((p.model_mask & surface_crack_model_bit(model)) == 0)
-      continue;
-    for (int lane = 0; lane < lanes; ++lane) {
+  const auto model_status = detail::for_each_enabled_ageing_model_lane<5>(
+    p.model_mask, lanes, [&](unsigned model, int lane) {
       const auto i = static_cast<std::size_t>(lane);
       const Real area = state.at(layout.specific_surface_area[neg], 0, lane);
       const Real thickness = state.at(layout.electrode_thickness[neg], 0, lane);
@@ -194,10 +187,12 @@ template <class Real>
         output.crack_surface_rate[i] += p.n_sei * p.F * reaction_rate
                                         * exp(-p.alpha_sei * p.n_sei * p.F / (p.Rg * T) * eta_sei);
       }
-    }
-  }
+      return slide::Status::Success;
+    });
+  if (model_status != slide::Status::Success)
+    return model_status;
 
-  for (int lane = 0; lane < lanes; ++lane) {
+  return detail::for_each_ageing_lane_while_success(lanes, [&](int lane) {
     const auto i = static_cast<std::size_t>(lane);
     if (p.reduce_negative_diffusivity) {
       const Real crack_surface = state.at(layout.crack_surface, 0, lane);
@@ -214,8 +209,8 @@ template <class Real>
           && is_finite_primal(output.crack_surface_rate[i])
           && is_finite_primal(output.negative_diffusivity_rate[i])))
       return slide::Status::Numerical_failure;
-  }
-  return slide::Status::Success;
+    return slide::Status::Success;
+  });
 }
 
 template <int NCH>
@@ -236,7 +231,7 @@ void addSurfaceCrackRhs(const SurfaceCrackRhsParams<NCH> &p,
 {
   const int lanes = state.n_lanes();
   const auto neg = domain_index(Domain::neg);
-  for (int lane = 0; lane < lanes; ++lane) {
+  detail::for_each_ageing_lane(lanes, [&](int lane) {
     const auto i = static_cast<std::size_t>(lane);
     const Real extra_side_current = sei.side_reaction_current[i] * crack.sei_multiplier[i];
     for (int mode = 0; mode < NCH; ++mode)
@@ -247,7 +242,7 @@ void addSurfaceCrackRhs(const SurfaceCrackRhsParams<NCH> &p,
                                                    * state.at(layout.specific_surface_area[neg], 0, lane);
     derivative.at(layout.crack_surface, 0, lane) += crack.crack_surface_rate[i];
     derivative.at(layout.diffusion_coefficient[neg], 0, lane) += crack.negative_diffusivity_rate[i];
-  }
+  });
 }
 
 } // namespace slide::core

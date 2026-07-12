@@ -23,6 +23,17 @@
 #include <stdexcept>
 #include <vector>
 
+// Besides removing hot-path call overhead, forced inlining preserves the caller's
+// opaque-reference finite checks under Clang fast-math. A merely-inline traversal
+// caused the surface-crack overflow regression to return Success in Release.
+#if defined(_MSC_VER) && !defined(__clang__)
+#define SLIDE_AGEING_FORCE_INLINE __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define SLIDE_AGEING_FORCE_INLINE inline __attribute__((always_inline))
+#else
+#define SLIDE_AGEING_FORCE_INLINE inline
+#endif
+
 namespace slide::core {
 
 template <unsigned ModelCount>
@@ -100,7 +111,7 @@ private:
 };
 
 template <class Real, std::size_t FieldCount>
-inline void clear_ageing_fields(
+SLIDE_AGEING_FORCE_INLINE void clear_ageing_fields(
   int n_lanes,
   const std::array<std::span<Real>, FieldCount> &fields)
 {
@@ -113,7 +124,7 @@ inline void clear_ageing_fields(
 }
 
 template <class Body>
-inline void for_each_ageing_lane(int n_lanes, Body &&body)
+SLIDE_AGEING_FORCE_INLINE void for_each_ageing_lane(int n_lanes, Body &&body)
 {
   assert(n_lanes > 0);
   for (int lane = 0; lane < n_lanes; ++lane)
@@ -121,7 +132,7 @@ inline void for_each_ageing_lane(int n_lanes, Body &&body)
 }
 
 template <class Body>
-[[nodiscard]] inline slide::Status for_each_ageing_lane_while_success(
+[[nodiscard]] SLIDE_AGEING_FORCE_INLINE slide::Status for_each_ageing_lane_while_success(
   int n_lanes,
   Body &&body)
 {
@@ -135,7 +146,7 @@ template <class Body>
 }
 
 template <unsigned ModelCount, class Body>
-[[nodiscard]] inline slide::Status for_each_enabled_ageing_model_lane(
+[[nodiscard]] SLIDE_AGEING_FORCE_INLINE slide::Status for_each_enabled_ageing_model_lane(
   std::uint8_t mask,
   int n_lanes,
   Body &&body)
@@ -155,3 +166,5 @@ template <unsigned ModelCount, class Body>
 
 } // namespace detail
 } // namespace slide::core
+
+#undef SLIDE_AGEING_FORCE_INLINE
