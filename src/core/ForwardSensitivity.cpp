@@ -5,9 +5,10 @@
 
 #include "ForwardSensitivity.hpp"
 
-#include "CompiledCurve.hpp"
 #include "Dual.hpp"
+#include "CompiledCurve.hpp"
 #include "ParameterSet.hpp"
+#include "SpmScalarKernels.hpp"
 #include "SpectralModel.hpp"
 
 #include <algorithm>
@@ -78,8 +79,10 @@ namespace {
         for (int mode = 0; mode < NCH; ++mode)
           surface += spectral_.C[d][0][static_cast<std::size_t>(mode)]
                      * z_[d][static_cast<std::size_t>(mode)];
-        surface += spectral_.D[d][0] * flux / diffusivity;
-        stoichiometry[d] = surface / material.cs_max;
+        surface = spm_scalar::concentrationOutput(
+          surface, spectral_.D[d][0], flux, diffusivity);
+        stoichiometry[d] = spm_scalar::surfaceStoichiometry(
+          surface, material.cs_max);
         if (!(stoichiometry[d].value > 0.0 && stoichiometry[d].value < 1.0))
           return { std::numeric_limits<real_t>::quiet_NaN(), 0.0 };
 
@@ -89,47 +92,67 @@ namespace {
             : SensitivityParameter::positive_reaction_rate;
         const Dual reaction_ref = seed(material.k_ct.reference_value, active_, reaction_parameter);
         const real_t temperature = temperature_;
-        const real_t arrhenius = (1.0 / material.k_ct.reference_temperature
-                                  - 1.0 / temperature)
-                                 / 8.314;
-        const Dual reaction_rate = reaction_ref
-                                   * std::exp(material.k_ct.activation_energy
-                                              * arrhenius);
-        const Dual exchange_current = reaction_rate * 96487.0
-                                      * sqrt(input_.design.electrolyte.concentration
-                                             * surface
-                                             * (material.cs_max - surface));
+        const real_t arrhenius = spm_scalar::arrheniusFactor(
+          material.k_ct.reference_temperature, temperature, 8.314);
+        const Dual reaction_rate = spm_scalar::activatedValue(
+          reaction_ref, material.k_ct.activation_energy, arrhenius);
+        const Dual exchange_current = spm_scalar::exchangeCurrent(
+          reaction_rate,
+          1.0,
+          96487.0,
+          input_.design.electrolyte.concentration,
+          surface,
+          material.cs_max);
         const real_t specific_area = 3.0 * electrode.active_fraction
                                      / electrode.particle_radius;
-        const Dual argument = 0.5 * molar_flux_sign(domain) * current_density_
-                              / (specific_area * electrode.thickness
-                                 * exchange_current);
-        overpotential[d] = 2.0 * 8.314 * temperature / 96487.0
-                           * asinh(argument);
+        const Dual argument = spm_scalar::activationArgument(
+          molar_flux_sign(domain),
+          current_density_,
+          specific_area,
+          electrode.thickness,
+          exchange_current);
+        overpotential[d] = spm_scalar::activationOverpotential(
+          temperature, 8.314, 1.0, 96487.0, argument);
       }
 
       const auto neg = domain_index(Domain::neg);
       const auto pos = domain_index(Domain::pos);
-      const Dual open_circuit = ocv_[pos].eval(stoichiometry[pos])
-                                - ocv_[neg].eval(stoichiometry[neg]);
+      const Dual open_circuit = spm_scalar::cellOpenCircuitVoltage(
+        ocv_[neg].eval(stoichiometry[neg]),
+        ocv_[pos].eval(stoichiometry[pos]),
+        temperature_,
+        temperature_,
+        0.0);
       const auto &negative = input_.design.electrode[neg];
       const auto &positive = input_.design.electrode[pos];
-      const real_t area_neg = 3.0 * negative.active_fraction
-                              / negative.particle_radius
-                              * input_.design.electrode_area * negative.thickness;
-      const real_t area_pos = 3.0 * positive.active_fraction
-                              / positive.particle_radius
-                              * input_.design.electrode_area * positive.thickness;
-      const real_t fixed_resistance =
-        input_.initial_sei_thickness * input_.sei_resistivity_area / area_neg
-        + input_.initial_specific_resistance[neg] / area_neg
-        + input_.initial_specific_resistance[pos] / area_pos;
-      const real_t contact = input_.initial_current_collector_resistance
-                             / input_.design.electrode_area;
-      const Dual resistance = fixed_resistance
-                              + seed(contact, active_, SensitivityParameter::contact_resistance);
-      return open_circuit + overpotential[pos] - overpotential[neg]
-             - resistance * current_;
+      const real_t area_neg = spm_scalar::activeArea(
+        3.0 * negative.active_fraction / negative.particle_radius,
+        input_.design.electrode_area,
+        negative.thickness);
+      const real_t area_pos = spm_scalar::activeArea(
+        3.0 * positive.active_fraction / positive.particle_radius,
+        input_.design.electrode_area,
+        positive.thickness);
+      const Dual collector_resistance_area{
+        input_.initial_current_collector_resistance,
+        active_ == SensitivityParameter::contact_resistance
+          ? input_.design.electrode_area
+          : 0.0
+      };
+      const Dual resistance = spm_scalar::seriesResistance(
+        input_.initial_sei_thickness,
+        input_.sei_resistivity_area,
+        input_.initial_specific_resistance[neg],
+        input_.initial_specific_resistance[pos],
+        collector_resistance_area,
+        area_neg,
+        area_pos,
+        input_.design.electrode_area);
+      return spm_scalar::terminalVoltage(open_circuit,
+                                         overpotential[neg],
+                                         overpotential[pos],
+                                         resistance,
+                                         current_);
     }
 
     slide::Status step(real_t dt)
@@ -144,15 +167,14 @@ namespace {
         const Dual diffusivity = effectiveDiffusivity(domain);
         const Dual flux = molarFlux(domain);
         for (int mode = 0; mode < NCH; ++mode) {
-          const Dual x = diffusivity
-                         * spectral_.A[d][static_cast<std::size_t>(mode)] * dt;
-          const Dual phi1 = std::abs(x.value) < 1e-7
-                              ? Dual{ 1.0 } + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))
-                              : expm1(x) / x;
           auto &value = z_[d][static_cast<std::size_t>(mode)];
-          value = exp(x) * value
-                  + dt * phi1
-                      * spectral_.B[d][static_cast<std::size_t>(mode)] * flux;
+          SLIDE_SPM_ADVANCE_MODAL_ADL(
+            value,
+            diffusivity,
+            spectral_.A[d][static_cast<std::size_t>(mode)],
+            dt,
+            spectral_.B[d][static_cast<std::size_t>(mode)],
+            flux);
         }
       }
       const Dual voltage = observe();
@@ -213,10 +235,10 @@ namespace {
                                ? SensitivityParameter::negative_diffusivity
                                : SensitivityParameter::positive_diffusivity;
       const Dual reference = seed(material.D_s.reference_value, active_, parameter);
-      const real_t arrhenius = (1.0 / material.D_s.reference_temperature
-                                - 1.0 / temperature_)
-                               / 8.314;
-      return reference * std::exp(material.D_s.activation_energy * arrhenius);
+      const real_t arrhenius = spm_scalar::arrheniusFactor(
+        material.D_s.reference_temperature, temperature_, 8.314);
+      return spm_scalar::activatedValue(
+        reference, material.D_s.activation_energy, arrhenius);
     }
 
     Dual molarFlux(Domain domain) const
@@ -224,8 +246,10 @@ namespace {
       const auto &electrode = input_.design.electrode[domain_index(domain)];
       const real_t specific_area = 3.0 * electrode.active_fraction
                                    / electrode.particle_radius;
-      return molar_flux_sign(domain) * current_density_
-             / (specific_area * 96487.0 * electrode.thickness);
+      const real_t denominator = spm_scalar::fluxDenominator(
+        specific_area, 1.0, 96487.0, electrode.thickness);
+      return spm_scalar::molarFlux(
+        molar_flux_sign(domain), current_density_, denominator);
     }
 
     const SpmFactoryInput &input_;
