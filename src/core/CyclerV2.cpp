@@ -25,6 +25,11 @@
 namespace slide::core {
 namespace {
 
+  [[nodiscard]] slide::Status allocationFailureStatus() noexcept
+  {
+    return slide::Status::Numerical_failure;
+  }
+
   class RunActivity
   {
   public:
@@ -102,9 +107,9 @@ slide::Status CyclerV2::configure(SpmBatch &batch,
     batch_ = &batch;
     return slide::Status::Success;
   } catch (const std::bad_alloc &) {
-    return slide::Status::Numerical_failure;
+    return allocationFailureStatus();
   } catch (const std::length_error &) {
-    return slide::Status::Numerical_failure;
+    return allocationFailureStatus();
   }
 }
 
@@ -125,9 +130,9 @@ try {
   drive_cycles_.push_back(cycle);
   return slide::Status::Success;
 } catch (const std::bad_alloc &) {
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 } catch (const std::length_error &) {
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 }
 
 slide::Status CyclerV2::voltageAt(real_t current, real_t &voltage)
@@ -755,12 +760,12 @@ try {
   if (run_snapshot_ready_ && batch_ != nullptr)
     restoreBatchSnapshot(
       *batch_, run_state_backup_, run_derivative_backup_);
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 } catch (const std::length_error &) {
   if (run_snapshot_ready_ && batch_ != nullptr)
     restoreBatchSnapshot(
       *batch_, run_state_backup_, run_derivative_backup_);
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 }
 
 } // namespace slide::core

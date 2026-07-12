@@ -20,6 +20,11 @@
 namespace slide::core {
 namespace {
 
+  [[nodiscard]] slide::Status allocationFailureStatus() noexcept
+  {
+    return slide::Status::Numerical_failure;
+  }
+
   real_t graphiteOcp(real_t x)
   {
     return 1.9793 * std::exp(-39.3631 * x) + 0.2482
@@ -78,12 +83,12 @@ try {
                            Entry{ std::move(value), std::move(provenance) });
   return slide::Status::Success;
 } catch (const std::bad_alloc &) {
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 } catch (const std::length_error &) {
   // Preserve the Status contract if a standard-library implementation reports
   // an exhausted string/container representability limit distinctly from
   // allocation failure.
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 }
 
 slide::Status ParameterSet::update(
@@ -99,7 +104,7 @@ slide::Status ParameterSet::update(
     }
     *this = std::move(candidate);
   } catch (const std::bad_alloc &) {
-    return slide::Status::Numerical_failure;
+    return allocationFailureStatus();
   }
   return slide::Status::Success;
 }
@@ -218,9 +223,9 @@ try {
   output = std::move(candidate);
   return slide::Status::Success;
 } catch (const std::bad_alloc &) {
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 } catch (const std::length_error &) {
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 }
 
 slide::Status ParameterSet::toSpmInput(SpmFactoryInput &output) const
@@ -369,9 +374,9 @@ try {
   output = std::move(candidate);
   return slide::Status::Success;
 } catch (const std::bad_alloc &) {
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 } catch (const std::length_error &) {
-  return slide::Status::Numerical_failure;
+  return allocationFailureStatus();
 }
 
 } // namespace slide::core

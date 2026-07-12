@@ -36,13 +36,6 @@
       "source_sha256": "af3d26fd57d0715c2191290b23a94003c745dc832d7273dfcaa66388a6f29472"
     },
     {
-      "class": "defensive-only",
-      "context_sha256": "a0f7374e6150edbd43f81c78294418d2f6089e9c6bb18a88c7bea468dda831e9",
-      "reason": "ParameterSet::set receives already-constructed strings and value containers and requests no derived length beyond their representable sizes. The catch preserves Status atomicity if a conforming string or map implementation nevertheless reports its resource limit with length_error.",
-      "site_id": "src/core/ParameterSet.cpp:185:25:Numerical_failure",
-      "source_sha256": "f347cdc59f4298bba2636f54a711f513c4d56eee66b0e958a87f3f6c00fbeb21"
-    },
-    {
       "class": "platform-specific",
       "context_sha256": "0eaa6d606b31329409eab58d719eb32ecc1738a70071dbc217b26fe1141313d1",
       "reason": "The registered fixed-order matrices have a validated distinct real spectrum, which implies an independent exact eigenbasis. This guard preserves atomic output if a finite-precision Eigen backend nevertheless returns a numerically rank-deficient approximate basis.",

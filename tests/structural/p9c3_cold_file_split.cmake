@@ -90,6 +90,7 @@ p9c3_load_compact("src/core/ParameterSet.hpp" parameter_set_public)
 p9c3_load_compact("src/core/Experiment.hpp" experiment_public)
 p9c3_load_compact("cmake/SlideCoreTarget.cmake" core_target)
 p9c3_load_compact("tests/unit/CMakeLists.txt" unit_cmake)
+p9c3_load_compact("tests/unit/core_Experiment_test.cpp" experiment_test)
 
 # The centralized list feeds production, fuzz, coverage, core-only, and nested
 # consumers. Each moved implementation must occur exactly once there.
@@ -128,6 +129,20 @@ p9c3_require_token_count(
 p9c3_require_token_count(
   "ParameterSet excludes BPX files" parameter_set
   "ParameterSet::fromBpxFile(" 0)
+p9c3_require_tokens("ParameterSet allocation Status boundary" parameter_set
+  "[[nodiscard]]slide::StatusallocationFailureStatus()noexcept{returnslide::Status::Numerical_failure;}")
+p9c3_require_token_count(
+  "ParameterSet allocation mapper ownership"
+  parameter_set "allocationFailureStatus()" 8)
+p9c3_require_token_count(
+  "ParameterSet bad_alloc boundary"
+  parameter_set "catch(conststd::bad_alloc&)" 4)
+p9c3_require_token_count(
+  "ParameterSet length_error boundary"
+  parameter_set "catch(conststd::length_error&)" 3)
+p9c3_require_token_count(
+  "ParameterSet allocation delegation"
+  parameter_set "returnallocationFailureStatus();" 7)
 p9c3_forbid_tokens("ParameterSet dependency boundary" parameter_set
   "BoundedFileReader.hpp"
   "BpxExpression.hpp"
@@ -291,11 +306,42 @@ foreach(method IN ITEMS
 endforeach()
 p9c3_require_token_count(
   "CyclerV2 exact method count" experiment_runner "CyclerV2::" 11)
+p9c3_require_tokens("Cycler allocation Status boundary" experiment_runner
+  "[[nodiscard]]slide::StatusallocationFailureStatus()noexcept{returnslide::Status::Numerical_failure;}")
+p9c3_require_token_count(
+  "Cycler allocation mapper ownership"
+  experiment_runner "allocationFailureStatus()" 7)
+p9c3_require_token_count(
+  "Cycler bad_alloc boundaries"
+  experiment_runner "catch(conststd::bad_alloc&)" 4)
+p9c3_require_token_count(
+  "Cycler length_error boundaries"
+  experiment_runner "catch(conststd::length_error&)" 4)
+p9c3_require_token_count(
+  "Cycler allocation delegation"
+  experiment_runner "returnallocationFailureStatus();" 6)
+p9c3_require_token_count(
+  "Cycler callback allocation rethrows"
+  experiment_runner "throw;" 2)
+p9c3_require_token_count(
+  "Cycler snapshot restore ownership"
+  experiment_runner "restoreBatchSnapshot(" 3)
+p9c3_require_token_count(
+  "Cycler run rollback guards"
+  experiment_runner "run_snapshot_ready_&&batch_!=nullptr" 2)
 p9c3_forbid_tokens("Cycler runner has no private semantic copy"
   experiment_runner
   "std::stringnormalized("
   "boolvalidDirection("
   "boolvalidSegment(")
+
+p9c3_require_tokens("Cycler stale-scratch coverage witness" experiment_test
+  "[core][experiment][configuration][coverage]"
+  "core::SpmModelOptions{.nch=8}"
+  "replacement.state().raw().size()!=batch.state().raw().size()"
+  "cycler.run(experiment,1.0,output)==Status::Numerical_failure"
+  "std::ranges::equal(batch.state().raw(),state_before)"
+  "std::ranges::equal(batch.derivative().raw(),derivative_before)")
 
 # Internal sharing must not leak into the two public description headers or
 # any other top-level core header.

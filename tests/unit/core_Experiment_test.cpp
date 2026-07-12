@@ -395,6 +395,59 @@ TEST_CASE("Cycler validates direct segment metadata before stepping",
   }
 }
 
+TEST_CASE("Cycler rejects a valid batch replacement until reconfigured",
+          "[core][experiment][configuration][coverage]")
+{
+  auto batch = makeBatch();
+  core::CyclerV2 cycler;
+  REQUIRE(cycler.configure(batch) == Status::Success);
+
+  const auto input = test_support::make_legacy_kokam_input(
+    0.55, settings::T_ENV, 298.0);
+  core::SpmBatch replacement;
+  REQUIRE(core::buildSpmBatch(
+            input, core::SpmModelOptions{ .nch = 8 }, 1, replacement)
+          == Status::Success);
+  REQUIRE(replacement.state().raw().size() != batch.state().raw().size());
+  batch = std::move(replacement);
+  REQUIRE(batch.valid());
+
+  const std::vector<double> state_before(batch.state().raw().begin(),
+                                         batch.state().raw().end());
+  const std::vector<double> derivative_before(
+    batch.derivative().raw().begin(), batch.derivative().raw().end());
+  core::Experiment experiment;
+  experiment.segments.push_back(
+    { .mode = core::ControlMode::rest, .duration = 1.0 });
+  core::ExperimentSolution output{
+    .time = { 17.0 },
+    .voltage = { 3.7 },
+    .current = { -2.0 },
+    .sample_segment = { 9 },
+    .reason = core::TerminationReason::error,
+    .status = Status::Invalid_parameters,
+    .segment = 4,
+    .termination_name = "sentinel",
+  };
+  const auto output_before = output;
+
+  CHECK(cycler.run(experiment, 1.0, output) == Status::Numerical_failure);
+  CHECK(output.time == output_before.time);
+  CHECK(output.voltage == output_before.voltage);
+  CHECK(output.current == output_before.current);
+  CHECK(output.sample_segment == output_before.sample_segment);
+  CHECK(output.reason == output_before.reason);
+  CHECK(output.status == output_before.status);
+  CHECK(output.segment == output_before.segment);
+  CHECK(output.termination_name == output_before.termination_name);
+  CHECK(std::ranges::equal(batch.state().raw(), state_before));
+  CHECK(std::ranges::equal(batch.derivative().raw(), derivative_before));
+
+  REQUIRE(cycler.configure(batch) == Status::Success);
+  core::ExperimentSolution recovered;
+  CHECK(cycler.run(experiment, 1.0, recovered) == Status::Success);
+}
+
 TEST_CASE("Cycler rolls back a step when post-advance event evaluation fails",
           "[core][experiment][rollback][P9]")
 {
