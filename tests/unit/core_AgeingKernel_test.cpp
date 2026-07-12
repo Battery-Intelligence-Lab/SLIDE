@@ -490,6 +490,41 @@ TEST_CASE("9C-2 heterogeneous ageing lanes equal isolated evaluations",
   }
 }
 
+TEST_CASE("9C-2 failed ageing stage is not published by the full pipeline",
+          "[core][ageing][9C-2][failure]")
+{
+  const auto input = make_ageing_input();
+  const core::SpmModelOptions options{
+    .nch = nch,
+    .sei_model_mask = core::sei_model_bit(1),
+    .sei_porosity = true,
+  };
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, options, 2, batch) == Status::Success);
+  const auto neg = core::domain_index(core::Domain::neg);
+  for (int lane = 0; lane < 2; ++lane)
+    batch.state().at(batch.layout().spm.specific_surface_area[neg], 0, lane) *= -1.0;
+  std::fill(batch.derivative().raw().begin(),
+            batch.derivative().raw().end(),
+            19.0);
+  const std::array<double, 2> current_density{ -1.0, 0.75 };
+  const core::StepCtx ctx{ .time = 4.0, .dt = 0.25, .i_app = current_density };
+  REQUIRE(batch.evaluate(ctx) == Status::Invalid_states);
+
+  const auto &layout = batch.layout();
+  for (const core::StateSlice slice : {
+         layout.spm.sei_thickness,
+         layout.spm.lost_lithium,
+         layout.spm.active_fraction[neg],
+         layout.spm.specific_surface_area[neg],
+         layout.elapsed_time,
+         layout.charge_throughput,
+         layout.energy_throughput,
+       })
+    for (int lane = 0; lane < 2; ++lane)
+      CHECK(batch.derivative().at(slice, 0, lane) == 0.0);
+}
+
 TEST_CASE("9C-2 common ageing scaffold fixes mask, scratch, and traversal order",
           "[core][ageing][9C-2][scaffold]")
 {
