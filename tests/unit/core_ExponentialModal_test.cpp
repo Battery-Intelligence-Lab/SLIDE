@@ -167,7 +167,7 @@ test_support::RecordedBits recordedCpuKernelTrace()
 TEST_CASE("PC-10 CPU batches retain their pre-refactor scalar-kernel bits",
           "[core][integrator][PC-10][recorded]")
 {
-#if defined(SLIDE_TEST_IPO)
+#if defined(SLIDE_TEST_IPO) && defined(__FAST_MATH__)
   constexpr std::array expected_fnv{ UINT64_C(0x00a78a61e6bd84d6),
                                      UINT64_C(0xf4d3b8eb337172a6),
                                      UINT64_C(0x8dca38c943fc058a) };

@@ -1,8 +1,4 @@
 # Add executables and tests with coverage flags applied
-if(CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-  add_compile_definitions(SLIDE_TEST_IPO=1)
-endif()
-
 add_executable_with_coverage_and_test(unit_test_Cell_Bucket Cell_Bucket_test.cpp)
 add_executable_with_coverage_and_test(unit_test_Cell_ECM Cell_ECM_test.cpp)
 add_executable_with_coverage_and_test(unit_test_Cell_SPM Cell_SPM_test.cpp)
@@ -135,6 +131,9 @@ target_link_libraries(unit_test_core_P2G1_allocation PRIVATE slide_core)
 # Phase 3: exact modal propagator, conservation, and nch=12 stability gates
 add_executable_with_coverage_and_test(unit_test_core_ExponentialModal core_ExponentialModal_test.cpp)
 target_link_libraries(unit_test_core_ExponentialModal PRIVATE slide_core)
+target_compile_definitions(
+  unit_test_core_ExponentialModal PRIVATE
+  "$<$<AND:$<CONFIG:Release>,$<BOOL:$<TARGET_PROPERTY:INTERPROCEDURAL_OPTIMIZATION>>>:SLIDE_TEST_IPO=1>")
 
 # Phase 4: waveform-relaxation/Baumgarte and 100k-cell scale gates
 add_executable_with_coverage_and_test(unit_test_core_ModeC core_ModeC_test.cpp)
@@ -169,6 +168,9 @@ target_compile_definitions(unit_test_core_P7G3_PyBaMM PRIVATE SLIDE_SOURCE_DIR="
 # Phase 7 P7-G2: true forward sensitivities against centered finite differences
 add_executable_with_coverage_and_test(unit_test_core_ForwardSensitivity core_ForwardSensitivity_test.cpp)
 target_link_libraries(unit_test_core_ForwardSensitivity PRIVATE slide_core)
+target_compile_definitions(
+  unit_test_core_ForwardSensitivity PRIVATE
+  "$<$<AND:$<CONFIG:Release>,$<BOOL:$<TARGET_PROPERTY:INTERPROCEDURAL_OPTIMIZATION>>>:SLIDE_TEST_IPO=1>")
 
 # Phase 8 P8-G4: persistent dependency-free pool and measured diagnostic
 add_executable_with_coverage_and_test(unit_test_core_ThreadPool core_ThreadPool_test.cpp)
