@@ -111,6 +111,9 @@ core::SpmFactoryInput make_input()
     electrode.porosity = 0.3;
     electrode.active_fraction = 0.5;
     electrode.particle_radius = domain == core::Domain::neg ? 12.5e-6 : 8.5e-6;
+    electrode.stress = { .youngs_modulus = domain == core::Domain::neg ? 15e9 : 10e9,
+                         .poisson_ratio = 0.3,
+                         .partial_molar_volume = 1e-6 };
     auto &material = electrode.active_material;
     material.ocv.stoichiometry = { 0.0, 1.0 };
     material.ocv.value = domain == core::Domain::neg
@@ -126,6 +129,9 @@ core::SpmFactoryInput make_input()
                       .activation_energy = 0.0,
                       .reference_temperature = 298.15 };
   }
+  input.negative_laresgoiti_stress = {
+    .stoichiometry = { 0.0, 1.0 }, .value = { 0.0, 1e6 }
+  };
   return input;
 }
 
@@ -162,6 +168,36 @@ TEST_CASE("P1-G2 10000-lane Euler step allocates nothing", "[core][P1-G2]")
   const Status status = stepper.step(batch, current_density, 1.0, 1.0);
   const std::size_t after = allocation_count.load(std::memory_order_relaxed);
 
+  REQUIRE(status == Status::Success);
+  REQUIRE(after == before);
+}
+
+TEST_CASE("9C-2 warmed all-mask ageing RHS allocates nothing",
+          "[core][ageing][9C-2][allocation]")
+{
+  constexpr int lanes = 257;
+  const core::SpmModelOptions options{
+    .nch = 5,
+    .sei_model_mask = 0x0f,
+    .sei_porosity = true,
+    .surface_crack_model_mask = 0x1f,
+    .surface_crack_diffusivity = true,
+    .lam_model_mask = 0x0f,
+    .lithium_plating = true,
+  };
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(make_input(), options, lanes, batch)
+          == Status::Success);
+  std::vector<double> current_density(static_cast<std::size_t>(lanes));
+  for (int lane = 0; lane < lanes; ++lane)
+    current_density[static_cast<std::size_t>(lane)] =
+      static_cast<double>((lane % 11) - 5) * 0.1;
+  const core::StepCtx ctx{ .time = 10.0, .dt = 0.5, .i_app = current_density };
+
+  REQUIRE(batch.evaluate(ctx) == Status::Success);
+  const std::size_t before = allocation_count.load(std::memory_order_relaxed);
+  const Status status = batch.evaluate(ctx);
+  const std::size_t after = allocation_count.load(std::memory_order_relaxed);
   REQUIRE(status == Status::Success);
   REQUIRE(after == before);
 }
