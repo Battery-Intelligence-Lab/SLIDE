@@ -116,7 +116,7 @@ namespace detail {
     const std::array<std::span<Real>, FieldCount> &fields)
   {
     assert(n_lanes > 0);
-    const auto lanes = static_cast<std::size_t>(n_lanes);
+    [[maybe_unused]] const auto lanes = static_cast<std::size_t>(n_lanes);
     for (const auto field : fields) {
       assert(field.size() == lanes);
       std::fill(field.begin(), field.end(), Real{});
