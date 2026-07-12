@@ -26,6 +26,7 @@
 #include "BatchView.hpp"
 #include "CellDesign.hpp"
 #include "CompiledCurve.hpp"
+#include "SpmScalarKernels.hpp"
 #include "SpmState.hpp"
 
 #include <array>
@@ -116,16 +117,20 @@ void computeSpmTransportLane(const SpmConcentrationParams<NCH> &p,
           && cache->specific_area_[i] == specific_area
           && cache->thickness_[i] == thickness) {
         effective_diffusivity = cache->effective_diffusivity_[i];
-        molar_flux = static_cast<Real>(molar_flux_sign(domain)) * ctx.i_app[lane]
-                     / cache->flux_denominator_[i];
+        molar_flux = spm_scalar::molarFlux(
+          static_cast<Real>(molar_flux_sign(domain)),
+          ctx.i_app[lane],
+          cache->flux_denominator_[i]);
         return;
       }
-      using std::exp;
-      const Real arrhenius = (Real{ 1 } / p.T_ref - Real{ 1 } / temperature) / p.Rg;
-      effective_diffusivity = diffusion_reference * exp(p.D_T[d] * arrhenius);
-      const Real denominator = specific_area * p.n * p.F * thickness;
-      molar_flux = static_cast<Real>(molar_flux_sign(domain)) * ctx.i_app[lane]
-                   / denominator;
+      const Real arrhenius = spm_scalar::arrheniusFactor(
+        static_cast<Real>(p.T_ref), temperature, static_cast<Real>(p.Rg));
+      effective_diffusivity = spm_scalar::activatedValue(
+        diffusion_reference, p.D_T[d], arrhenius);
+      const Real denominator = spm_scalar::fluxDenominator(
+        specific_area, p.n, p.F, thickness);
+      molar_flux = spm_scalar::molarFlux(
+        static_cast<Real>(molar_flux_sign(domain)), ctx.i_app[lane], denominator);
       cache->temperature_[i] = temperature;
       cache->diffusion_reference_[i] = diffusion_reference;
       cache->specific_area_[i] = specific_area;
@@ -136,12 +141,14 @@ void computeSpmTransportLane(const SpmConcentrationParams<NCH> &p,
       return;
     }
   }
-  using std::exp;
-  const Real arrhenius = (Real{ 1 } / p.T_ref - Real{ 1 } / temperature) / p.Rg;
-  effective_diffusivity = diffusion_reference * exp(p.D_T[d] * arrhenius);
-  const Real denominator = specific_area * p.n * p.F * thickness;
-  molar_flux = static_cast<Real>(molar_flux_sign(domain)) * ctx.i_app[lane]
-               / denominator;
+  const Real arrhenius = spm_scalar::arrheniusFactor(
+    static_cast<Real>(p.T_ref), temperature, static_cast<Real>(p.Rg));
+  effective_diffusivity = spm_scalar::activatedValue(
+    diffusion_reference, p.D_T[d], arrhenius);
+  const Real denominator = spm_scalar::fluxDenominator(
+    specific_area, p.n, p.F, thickness);
+  molar_flux = spm_scalar::molarFlux(
+    static_cast<Real>(molar_flux_sign(domain)), ctx.i_app[lane], denominator);
 }
 
 /** Compute only the transport terms required by the diffusion RHS. */
@@ -193,10 +200,15 @@ void computeSpmSurfaceConcentrations(const SpmConcentrationParams<NCH> &p,
       computeSpmTransportLane(p, state, layout, ctx, domain, lane, diffusivity, flux, cache);
       effective_diffusivity[d][lane] = diffusivity;
       molar_flux[d][lane] = flux;
-      Real surface{};
+      Real modal_sum{};
       for (int mode = 0; mode < NCH; ++mode)
-        surface += p.C[d][0][mode] * state.at(layout.z[d], mode, lane);
-      concentration[d][lane] = surface + p.Dout[d][0] * flux / diffusivity;
+        modal_sum += p.C[d][0][mode]
+                     * state.at(layout.z[d], mode, lane);
+      concentration[d][lane] = spm_scalar::concentrationOutput(
+        modal_sum,
+        p.Dout[d][0],
+        flux,
+        diffusivity);
     }
   }
 }
@@ -241,30 +253,40 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
              && static_cast<int>(molar_flux[1].size()) == L));
 
   const std::span<const Real> T = state.row(layout.temperature.row_begin);
-  using std::exp;
-
   for (const Domain domain : domains) {
     const auto d = domain_index(domain);
     const Real D_Td = p.D_T[d];
     const Real sgnd = static_cast<Real>(molar_flux_sign(domain));
 
     for (int c = 0; c < L; ++c) {
-      const Real Arr = (Real{ 1 } / p.T_ref - Real{ 1 } / T[c]) / p.Rg;
-      const Real Dt = state.at(layout.diffusion_coefficient[d], 0, c) * exp(D_Td * Arr);
-      const Real flux_den = state.at(layout.specific_surface_area[d], 0, c) * p.n * p.F
-                            * state.at(layout.electrode_thickness[d], 0, c);
-      const Real molarFlux = sgnd * ctx.i_app[c] / flux_den;
+      const Real Arr = spm_scalar::arrheniusFactor(
+        static_cast<Real>(p.T_ref), T[c], static_cast<Real>(p.Rg));
+      const Real Dt = spm_scalar::activatedValue(
+        state.at(layout.diffusion_coefficient[d], 0, c), D_Td, Arr);
+      const Real flux_den = spm_scalar::fluxDenominator(
+        state.at(layout.specific_surface_area[d], 0, c),
+        p.n,
+        p.F,
+        state.at(layout.electrode_thickness[d], 0, c));
+      const Real molarFlux = spm_scalar::molarFlux(sgnd, ctx.i_app[c], flux_den);
       if (!effective_diffusivity[d].empty())
         effective_diffusivity[d][c] = Dt;
       if (!molar_flux[d].empty())
         molar_flux[d][c] = molarFlux;
 
-      for (int node = 0; node < NCH + 1; ++node) {
-        Real acc{};
-        for (int j = 0; j < NCH; ++j)
-          acc += p.C[d][node][j] * state.at(layout.z[d], j, c);
-        concentration[d][static_cast<std::size_t>(node) * L + c] = acc + p.Dout[d][node] * molarFlux / Dt;
-      }
+      const auto *first_mode = state.raw().data()
+                               + static_cast<std::size_t>(layout.z[d].row_begin)
+                                   * state.stride()
+                               + static_cast<std::size_t>(c);
+      for (int node = 0; node < NCH + 1; ++node)
+        concentration[d][static_cast<std::size_t>(node) * L + c] =
+          spm_scalar::concentrationOutput(NCH,
+                                          first_mode,
+                                          state.stride(),
+                                          p.C[d][node].data(),
+                                          p.Dout[d][node],
+                                          molarFlux,
+                                          Dt);
 
       Real centre_acc{};
       for (int node = 0; node < NCH + 1; ++node)
@@ -395,35 +417,42 @@ template <int NCH, class Real>
                                   cache);
 
   const std::span<const Real> temperature = state.row(layout.temperature.row_begin);
-  using std::asinh;
-  using std::exp;
-  using std::sqrt;
-
   for (int lane = 0; lane < L; ++lane) {
     const Real T = temperature[lane];
-    const Real arrhenius = (Real{ 1 } / p.reference_temperature - Real{ 1 } / T) / p.Rg;
+    const Real arrhenius = spm_scalar::arrheniusFactor(
+      static_cast<Real>(p.reference_temperature), T, static_cast<Real>(p.Rg));
 
     for (const Domain domain : domains) {
       const auto d = domain_index(domain);
       const auto &electrode = p.electrode[d];
       const Real cs = output.concentration[d][lane];
-      const Real z_surface = cs / electrode.cs_max;
+      const Real z_surface = spm_scalar::surfaceStoichiometry(
+        cs, electrode.cs_max);
       if (!(primal_value(z_surface) > 0.0 && primal_value(z_surface) < 1.0))
         return slide::Status::Invalid_states;
 
-      const Real reaction_rate = electrode.reaction_rate_ref
-                                 * exp(electrode.reaction_activation * arrhenius);
-      const Real exchange_current = reaction_rate * p.n * p.F
-                                    * sqrt(p.electrolyte_concentration * cs
-                                           * (electrode.cs_max - cs));
+      const Real reaction_rate = spm_scalar::activatedValue(
+        electrode.reaction_rate_ref, electrode.reaction_activation, arrhenius);
+      const Real exchange_current = spm_scalar::exchangeCurrent(
+        reaction_rate,
+        p.n,
+        p.F,
+        p.electrolyte_concentration,
+        cs,
+        electrode.cs_max);
       const Real area = state.at(layout.specific_surface_area[d], 0, lane);
       const Real thickness = state.at(layout.electrode_thickness[d], 0, lane);
-      const Real argument = Real{ 0.5 * molar_flux_sign(domain) } * ctx.i_app[lane]
-                            / (area * thickness * exchange_current);
+      const Real argument = spm_scalar::activationArgument(
+        static_cast<Real>(molar_flux_sign(domain)),
+        ctx.i_app[lane],
+        area,
+        thickness,
+        exchange_current);
 
       output.surface_stoichiometry[d][lane] = z_surface;
       output.exchange_current_density[d][lane] = exchange_current;
-      output.overpotential[d][lane] = Real{ 2 } * p.Rg * T / (p.n * p.F) * asinh(argument);
+      output.overpotential[d][lane] = spm_scalar::activationOverpotential(
+        T, p.Rg, p.n, p.F, argument);
       output.electrode_ocv[d][lane] = p.electrode_ocv[d].eval(z_surface);
     }
 
@@ -432,19 +461,30 @@ template <int NCH, class Real>
     const Real z_pos = output.surface_stoichiometry[pos][lane];
     const Real d_ocv = p.total_entropic_coefficient.eval(z_pos);
     const Real d_ocv_neg = p.negative_entropic_coefficient.eval(z_pos);
-    const Real ocv = output.electrode_ocv[pos][lane] - output.electrode_ocv[neg][lane]
-                     + (T - p.reference_temperature) * d_ocv;
+    const Real ocv = spm_scalar::cellOpenCircuitVoltage(
+      output.electrode_ocv[neg][lane],
+      output.electrode_ocv[pos][lane],
+      T,
+      p.reference_temperature,
+      d_ocv);
 
-    const Real area_neg = state.at(layout.specific_surface_area[neg], 0, lane)
-                          * p.electrode_area
-                          * state.at(layout.electrode_thickness[neg], 0, lane);
-    const Real area_pos = state.at(layout.specific_surface_area[pos], 0, lane)
-                          * p.electrode_area
-                          * state.at(layout.electrode_thickness[pos], 0, lane);
-    const Real resistance = state.at(layout.sei_thickness, 0, lane) * p.sei_resistivity_area / area_neg
-                            + state.at(layout.specific_resistance[neg], 0, lane) / area_neg
-                            + state.at(layout.specific_resistance[pos], 0, lane) / area_pos
-                            + state.at(layout.current_collector_resistance, 0, lane) / p.electrode_area;
+    const Real area_neg = spm_scalar::activeArea(
+      state.at(layout.specific_surface_area[neg], 0, lane),
+      p.electrode_area,
+      state.at(layout.electrode_thickness[neg], 0, lane));
+    const Real area_pos = spm_scalar::activeArea(
+      state.at(layout.specific_surface_area[pos], 0, lane),
+      p.electrode_area,
+      state.at(layout.electrode_thickness[pos], 0, lane));
+    const Real resistance = spm_scalar::seriesResistance(
+      state.at(layout.sei_thickness, 0, lane),
+      p.sei_resistivity_area,
+      state.at(layout.specific_resistance[neg], 0, lane),
+      state.at(layout.specific_resistance[pos], 0, lane),
+      state.at(layout.current_collector_resistance, 0, lane),
+      area_neg,
+      area_pos,
+      p.electrode_area);
     const Real current = ctx.i_app[lane] * p.electrode_area;
     const Real reaction_heat = current
                                * (output.overpotential[neg][lane] - output.overpotential[pos][lane]);
@@ -455,8 +495,12 @@ template <int NCH, class Real>
     output.negative_entropic_coefficient[lane] = d_ocv_neg;
     output.open_circuit_voltage[lane] = ocv;
     output.resistance[lane] = resistance;
-    output.terminal_voltage[lane] = ocv + output.overpotential[pos][lane]
-                                    - output.overpotential[neg][lane] - resistance * current;
+    output.terminal_voltage[lane] = spm_scalar::terminalVoltage(
+      ocv,
+      output.overpotential[neg][lane],
+      output.overpotential[pos][lane],
+      resistance,
+      current);
     output.reversible_heat[lane] = reversible_heat;
     output.reaction_heat[lane] = reaction_heat;
     output.ohmic_heat[lane] = ohmic_heat;

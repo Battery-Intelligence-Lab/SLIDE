@@ -216,6 +216,16 @@ SLIDE_SPM_HOST_DEVICE SLIDE_SPM_FORCE_INLINE auto advanceModal(
   return result;
 }
 
+template <class ModalSum, class Coefficient, class Flux, class Diffusivity>
+SLIDE_SPM_HOST_DEVICE inline auto concentrationOutput(
+  ModalSum modal_sum,
+  Coefficient feedthrough,
+  Flux flux,
+  Diffusivity diffusivity) noexcept
+{
+  return modal_sum + feedthrough * flux / diffusivity;
+}
+
 template <class State, class Coefficient, class Flux, class Diffusivity>
 SLIDE_SPM_HOST_DEVICE inline State concentrationOutput(
   int modes,
@@ -229,7 +239,7 @@ SLIDE_SPM_HOST_DEVICE inline State concentrationOutput(
   State result{};
   for (int mode = 0; mode < modes; ++mode)
     result += coefficients[mode] * first_mode[mode * mode_stride];
-  return result + feedthrough * flux / diffusivity;
+  return concentrationOutput(result, feedthrough, flux, diffusivity);
 }
 
 template <class Concentration, class Maximum>
