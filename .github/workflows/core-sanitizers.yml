@@ -63,7 +63,7 @@ jobs:
           grep -q '__ubsan_' build-sanitized/legacy-src.symbols
           grep -q '__asan_init' build-sanitized/thread-pool-test.symbols
           ctest --test-dir build-sanitized -N -V > build-sanitized/ctest-discovery.txt
-          test "$(grep -c 'Test command:' build-sanitized/ctest-discovery.txt)" -eq 52
+          test "$(grep -c 'Test command:' build-sanitized/ctest-discovery.txt)" -eq 54
           grep -F "$PWD/build-sanitized/bin/Debug" build-sanitized/ctest-discovery.txt
           ! grep -F "$PWD/bin/Debug" build-sanitized/ctest-discovery.txt
       - name: Run full instrumented suite
