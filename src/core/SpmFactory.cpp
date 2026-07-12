@@ -300,9 +300,9 @@ namespace {
 
   bool validOptions(const SpmModelOptions &options)
   {
-    return (options.sei_model_mask & std::uint8_t{ 0xf0 }) == 0
-           && (options.surface_crack_model_mask & std::uint8_t{ 0xe0 }) == 0
-           && (options.lam_model_mask & std::uint8_t{ 0xf0 }) == 0
+    return valid_optional_ageing_model_mask<4>(options.sei_model_mask)
+           && valid_optional_ageing_model_mask<5>(options.surface_crack_model_mask)
+           && valid_optional_ageing_model_mask<4>(options.lam_model_mask)
            && (!options.sei_porosity || options.sei_model_mask != 0)
            && (!options.surface_crack_diffusivity
                || options.surface_crack_model_mask != 0);
