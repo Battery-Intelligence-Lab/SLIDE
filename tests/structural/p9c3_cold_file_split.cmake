@@ -377,7 +377,7 @@ p9c3_require_max_lines("src/core/BpxParameterReader.cpp" 500)
 p9c3_require_max_lines("src/core/BpxExpression.cpp" 400)
 p9c3_require_max_lines("src/core/StrictJson.cpp" 400)
 p9c3_require_max_lines("src/core/Experiment.cpp" 450)
-# Reviewed MC-1 exception: the 766-line runner is one transaction boundary.
+# Reviewed MC-1 exception: the 771-line runner is one transaction boundary.
 # A further TU split would change same-TU non-IPO inlining and could perturb the
 # frozen Release trace; revisit only with a stable runner transaction seam.
 p9c3_require_max_lines("src/core/CyclerV2.cpp" 800)
