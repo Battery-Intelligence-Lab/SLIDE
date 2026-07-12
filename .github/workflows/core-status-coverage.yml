@@ -1,0 +1,93 @@
+name: Core Status failure coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, develop]
+    paths:
+      - '.github/workflows/core-status-coverage.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'scripts/status_failure_coverage.py'
+      - 'src/core/**'
+      - 'tests/coverage/**'
+      - 'tests/unit/**'
+      - 'tests/parity/**'
+  pull_request:
+    branches: ['**']
+    paths:
+      - '.github/workflows/core-status-coverage.yml'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'scripts/status_failure_coverage.py'
+      - 'src/core/**'
+      - 'tests/coverage/**'
+      - 'tests/unit/**'
+      - 'tests/parity/**'
+
+permissions:
+  contents: read
+
+jobs:
+  status-failures:
+    name: Exact Status failure arms
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v5
+      - uses: lukka/get-cmake@80ed063af494e28dd56b85fb7a630f2f8f55ceed
+      - name: Configure isolated coverage lane
+        run: >-
+          cmake -S . -B build-coverage -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DENABLE_IPO=OFF
+          -DSLIDE_ENABLE_COVERAGE=ON
+      - name: Build registered evidence binaries
+        run: cmake --build build-coverage --parallel 2 --target slide_coverage_binaries
+      - name: Prove scanner, activity, instrumentation, and discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/status_failure_coverage.py self-test
+          python3 scripts/status_failure_coverage.py census \
+            --source-root . --build-dir build-coverage
+          ninja -C build-coverage -t commands slide_core \
+            | grep 'src/core/ThreadPool.cpp' \
+            | grep -F -- '-fcoverage-mapping'
+          ninja -C build-coverage -t commands unit_test_core_ThreadPool \
+            | grep 'tests/unit/core_ThreadPool_test.cpp' \
+            | grep -F -- '-fcoverage-mapping'
+          ctest --test-dir build-coverage -N -V \
+            > build-coverage/coverage/ctest-discovery.txt
+          test "$(grep -c 'Test command:' build-coverage/coverage/ctest-discovery.txt)" -eq 52
+          grep -F "$PWD/build-coverage/bin/Debug" \
+            build-coverage/coverage/ctest-discovery.txt
+          ! grep -F "$PWD/bin/Debug" \
+            build-coverage/coverage/ctest-discovery.txt
+      - name: Start fresh profile session
+        run: >-
+          python3 scripts/status_failure_coverage.py prepare
+          --build-dir build-coverage
+      - name: Run complete measured suite
+        run: >-
+          ctest --test-dir build-coverage
+          --output-on-failure --no-tests=error -j2
+      - name: Enforce exact failure-arm gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          llvm_cov="$(sed -n 's/^SLIDE_LLVM_COV_EXECUTABLE:FILEPATH=//p' build-coverage/CMakeCache.txt)"
+          llvm_profdata="$(sed -n 's/^SLIDE_LLVM_PROFDATA_EXECUTABLE:FILEPATH=//p' build-coverage/CMakeCache.txt)"
+          test -x "$llvm_cov"
+          test -x "$llvm_profdata"
+          python3 scripts/status_failure_coverage.py report \
+            --source-root . \
+            --build-dir build-coverage \
+            --exceptions tests/coverage/status_failure_exceptions.json \
+            --json-output build-coverage/coverage/status-failure-coverage.json \
+            --markdown-output build-coverage/coverage/status-failure-coverage.md \
+            --llvm-cov "$llvm_cov" \
+            --llvm-profdata "$llvm_profdata"

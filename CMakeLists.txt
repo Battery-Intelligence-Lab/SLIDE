@@ -43,11 +43,18 @@ target_compile_features(project_options INTERFACE cxx_std_20)
 include(cmake/Sanitizers.cmake)
 enable_sanitizers()
 
+# Source-based coverage configures one matching Clang/LLVM policy before target
+# creation. It is attached to slide_core and all test TUs; the late finalizer
+# writes the target-to-binary manifest after every test executable is known.
+include(cmake/Coverage.cmake)
+slide_enable_coverage()
+
 if(SLIDE_CORE_ONLY)
   add_subdirectory(src/core bin/core)
 else()
   enable_testing()
   add_subdirectory(src bin)
+  slide_instrument_coverage_target(slide_core)
 endif()
 
 if(SLIDE_BUILD_CORE_TESTS)
@@ -70,8 +77,8 @@ if(SLIDE_WITH_MATLAB)
 endif()
 
 if(NOT SLIDE_CORE_ONLY)
-  include(cmake/Coverage.cmake)
   add_subdirectory(tests)
+  slide_finalize_coverage(slide_core)
   add_subdirectory(benchmark)
 
   target_link_libraries(src PUBLIC Eigen3::Eigen range-v3 fmt Boost::boost) # Link dependencies to the src library.
