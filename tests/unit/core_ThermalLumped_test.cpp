@@ -16,6 +16,7 @@
 #include <bit>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <span>
 
 using namespace slide;
@@ -108,6 +109,15 @@ TEST_CASE("ThermalLumped validates cold parameters and hot state", "[core][therm
 
   design.h_conv = 1.0;
   REQUIRE(core::compileThermalLumped(design, params) == Status::Success);
+
+  design.density = std::numeric_limits<double>::max();
+  design.heat_capacity = 2.0;
+  REQUIRE(core::compileThermalLumped(design, params)
+          == Status::Invalid_parameters);
+  REQUIRE(params.thermal_capacity == 0.0);
+  design.density = 1.0;
+  design.heat_capacity = 1.0;
+
   core::BatchBuilder builder;
   const auto temperature = builder.declare({ "T", 1, core::Unit::K });
   const auto layout = core::declareThermalLumped(builder, temperature);

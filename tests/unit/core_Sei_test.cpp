@@ -13,7 +13,10 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <span>
 
 using namespace slide;
@@ -120,6 +123,27 @@ TEST_CASE("SEI mechanisms and porosity coupling match legacy Cell_SPM", "[core][
               <= 1e-13);
       REQUIRE(std::abs(output.active_fraction_rate[0] - expected.second) / fraction_scale
               <= 1e-13);
+
+      if (model == 1 && porosity) {
+        auto invalid_state = params;
+        arena.at(layout.specific_surface_area[neg], 0, 0) = 0.0;
+        REQUIRE(core::computeSei(invalid_state, state, layout, ctx, observables, output)
+                == Status::Invalid_states);
+        copy_required_state(cell, layout, arena);
+
+        auto explosive_current = params;
+        explosive_current.model1_k = std::numeric_limits<double>::max();
+        REQUIRE(core::computeSei(explosive_current, state, layout, ctx, observables, output)
+                == Status::Numerical_failure);
+
+        auto explosive_fraction = params;
+        explosive_fraction.porosity_coefficient =
+          std::numeric_limits<double>::max();
+        explosive_fraction.side_molar_volume =
+          std::numeric_limits<double>::max();
+        REQUIRE(core::computeSei(explosive_fraction, state, layout, ctx, observables, output)
+                == Status::Numerical_failure);
+      }
     }
   }
 }
@@ -178,4 +202,14 @@ TEST_CASE("SEI rejects invalid model masks", "[core][ageing][SEI]")
   REQUIRE(core::validateSeiParams(params) == Status::Invalid_parameters);
   params.model_mask = 0x80;
   REQUIRE(core::validateSeiParams(params) == Status::Invalid_parameters);
+
+  SeiReferenceCell cell;
+  const auto valid = cell.params(1, false);
+  const double quiet_nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  auto invalid = valid;
+  invalid.F = quiet_nan;
+  REQUIRE(core::validateSeiParams(invalid) == Status::Invalid_parameters);
+  invalid = valid;
+  invalid.F = 0.0;
+  REQUIRE(core::validateSeiParams(invalid) == Status::Invalid_parameters);
 }

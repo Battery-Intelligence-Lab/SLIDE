@@ -13,7 +13,9 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
 #include <vector>
 
 using namespace slide;
@@ -240,4 +242,44 @@ TEST_CASE("Strang slow split is second order and adaptive steps align to events"
           <= 1e-6);
   REQUIRE(core::ExponentialModal::alignToEvent(3.0, 5.0, 4.25) == 1.25);
   REQUIRE(core::ExponentialModal::alignToEvent(3.0, 0.5, 4.25) == 0.5);
+}
+
+TEST_CASE("ExponentialModal validates inputs and restores state after rejected trials",
+          "[core][integrator][exponential][validation]")
+{
+  core::ExponentialModal stepper;
+  const core::SpmBatch empty;
+  REQUIRE(stepper.configure(empty) == Status::Invalid_parameters);
+
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(test_support::make_legacy_kokam_input(0.55, 298.0, 298.0),
+                              {},
+                              1,
+                              batch)
+          == Status::Success);
+  REQUIRE(stepper.configure(batch) == Status::Success);
+  constexpr std::array zero_current{ 0.0 };
+  REQUIRE(stepper.step(batch, zero_current, 0.0, 0.0)
+          == Status::Invalid_parameters);
+
+  const double quiet_nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  const std::array invalid_current{ quiet_nan };
+  REQUIRE(stepper.step(batch, invalid_current, 0.0, 1.0)
+          == Status::Invalid_parameters);
+
+  double accepted = 7.0;
+  double next = 11.0;
+  REQUIRE(stepper.stepAdaptive(batch, zero_current, 0.0, 1.0, 0.0, 1e-6, accepted, next)
+          == Status::Invalid_parameters);
+  REQUIRE(accepted == 7.0);
+  REQUIRE(next == 11.0);
+
+  const std::vector<double> before(batch.state().raw().begin(),
+                                   batch.state().raw().end());
+  constexpr std::array extreme_current{ 1e200 };
+  REQUIRE(stepper.stepAdaptive(batch, extreme_current, 0.0, 1.0, 1e-12, 1e-12, accepted, next)
+          == Status::Numerical_failure);
+  REQUIRE(std::equal(before.begin(), before.end(), batch.state().raw().begin()));
+  REQUIRE(accepted == 7.0);
+  REQUIRE(next == 11.0);
 }

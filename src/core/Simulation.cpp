@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <new>
 #include <utility>
 
 namespace slide::core {
@@ -29,7 +30,7 @@ slide::Status Simulation::build(const SpmFactoryInput &input,
 
 slide::Status Simulation::solve(const ConstantCurrentExperiment &experiment,
                                 SimulationSolution &output)
-{
+try {
   if (!valid() || !is_finite(experiment.current_A)
       || !is_finite(experiment.duration) || experiment.duration < 0.0
       || !is_finite(experiment.step) || !(experiment.step > 0.0))
@@ -39,22 +40,31 @@ slide::Status Simulation::solve(const ConstantCurrentExperiment &experiment,
   const double nearest_ratio = std::round(step_ratio);
   const double snap_tolerance = 16.0 * std::numeric_limits<double>::epsilon()
                                 * std::max(1.0, std::abs(step_ratio));
-  if (std::abs(step_ratio - nearest_ratio) <= snap_tolerance)
+  // A positive duration shorter than one step must still produce one step;
+  // only positive integral ratios are eligible for roundoff snapping.
+  if (nearest_ratio >= 1.0
+      && std::abs(step_ratio - nearest_ratio) <= snap_tolerance)
     step_ratio = nearest_ratio;
-  const double raw_steps = experiment.duration == 0.0 ? 0.0
-                                                      : std::ceil(step_ratio);
+  const double raw_steps =
+    experiment.duration == 0.0
+      ? 0.0
+      : std::max(1.0, std::ceil(step_ratio));
   if (!is_finite(raw_steps)
-      || raw_steps > static_cast<double>(std::numeric_limits<std::size_t>::max() - 1))
+      || raw_steps
+           >= static_cast<double>(std::numeric_limits<std::size_t>::max()))
     return slide::Status::Invalid_parameters;
   const auto steps = static_cast<std::size_t>(raw_steps);
+  const auto samples = steps + 1;
   const auto lanes = static_cast<std::size_t>(batch_.n_lanes());
-  if (lanes != 0 && steps + 1 > std::numeric_limits<std::size_t>::max() / lanes)
+  const auto vector_limit = std::vector<real_t>{}.max_size();
+  if (samples > vector_limit || lanes > vector_limit
+      || (lanes != 0 && samples > vector_limit / lanes))
     return slide::Status::Invalid_parameters;
 
   SimulationSolution solution;
   solution.n_lanes = batch_.n_lanes();
-  solution.time.resize(steps + 1);
-  solution.terminal_voltage.resize((steps + 1) * lanes);
+  solution.time.resize(samples);
+  solution.terminal_voltage.resize(samples * lanes);
   std::vector<real_t> current_density(lanes,
                                       experiment.current_A / batch_.electrode_area());
   const auto &layout = batch_.layout();
@@ -70,7 +80,7 @@ slide::Status Simulation::solve(const ConstantCurrentExperiment &experiment,
   while (completed < steps) {
     const real_t remaining = experiment.duration
                              - static_cast<real_t>(completed) * experiment.step;
-    const real_t dt = std::min(experiment.step, remaining);
+    const real_t dt = completed + 1 == steps ? remaining : experiment.step;
     status = stepper_.step(batch_, current_density, time, dt);
     if (status != slide::Status::Success) {
       solution.termination = status;
@@ -91,6 +101,8 @@ slide::Status Simulation::solve(const ConstantCurrentExperiment &experiment,
   solution.termination = slide::Status::Success;
   output = std::move(solution);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  return slide::Status::Numerical_failure;
 }
 
 } // namespace slide::core

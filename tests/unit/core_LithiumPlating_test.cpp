@@ -13,7 +13,10 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 
 using namespace slide;
 
@@ -84,7 +87,33 @@ TEST_CASE("Lithium plating matches legacy Cell_SPM", "[core][ageing][plating]")
     REQUIRE(std::abs(actual[0] - expected)
               / std::max(std::abs(expected), 1e-30)
             <= 1e-13);
+
+    if (current < 0.0) {
+      auto explosive = params;
+      explosive.reaction_rate_ref = std::numeric_limits<double>::max();
+      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, std::span<double>{ actual })
+              == Status::Numerical_failure);
+    }
   }
+}
+
+TEST_CASE("Lithium-plating parameters reject non-finite and non-physical values",
+          "[core][ageing][plating][validation]")
+{
+  PlatingReferenceCell cell;
+  const auto valid = cell.params();
+  REQUIRE(core::validateLithiumPlatingParams(valid) == Status::Success);
+
+  const double quiet_nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  auto invalid = valid;
+  invalid.F = quiet_nan;
+  REQUIRE(core::validateLithiumPlatingParams(invalid)
+          == Status::Invalid_parameters);
+
+  invalid = valid;
+  invalid.F = 0.0;
+  REQUIRE(core::validateLithiumPlatingParams(invalid)
+          == Status::Invalid_parameters);
 }
 
 TEST_CASE("Lithium-plating RHS maps current into all affected states",

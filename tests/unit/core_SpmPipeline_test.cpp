@@ -9,7 +9,9 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
 #include <span>
 #include <utility>
 #include <vector>
@@ -100,4 +102,24 @@ TEST_CASE("SPM pipeline zeroes and evaluates the rebound trial vector", "[core][
   REQUIRE(std::abs(derivative.at(layout.spm.z[neg], 0, 0) - (-1.4)) <= 1e-13);
   REQUIRE(derivative.at(layout.spm.temperature, 0, 0) == 0.0);
   REQUIRE(std::count(derivative.raw().begin(), derivative.raw().end(), -7.0) == 0);
+
+  core::BatchView mutable_state{ core::BatchShape::from(arena), arena.raw() };
+  core::BatchView mutable_derivative{ core::BatchShape::from(derivative),
+                                      derivative.raw() };
+  const core::ConstBatchView const_state{ core::BatchShape::from(arena),
+                                          arena.raw() };
+  std::array<double, 1> resistance{}, intercept{};
+  REQUIRE(pipeline.advanceExponential(mutable_state, mutable_derivative, ctx, 1.0, {})
+          == Status::Invalid_parameters);
+  REQUIRE(pipeline.observeTerminalVoltage(const_state, ctx, {})
+          == Status::Invalid_parameters);
+  REQUIRE(pipeline.linearizeThevenin(const_state, current_density, {}, resistance)
+          == Status::Invalid_parameters);
+
+  const double quiet_nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  const std::array invalid_current{ quiet_nan };
+  REQUIRE(pipeline.linearizeThevenin(const_state, invalid_current, intercept, resistance)
+          == Status::Invalid_parameters);
+  REQUIRE(pipeline.setTrustedLanePeriod(const_state, 0)
+          == Status::Invalid_parameters);
 }

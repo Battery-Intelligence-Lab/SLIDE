@@ -8,7 +8,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <vector>
 
 using namespace slide;
@@ -173,6 +176,27 @@ TEST_CASE("EulerLegacy rolls back a failed fused accepted-state observation",
   REQUIRE(std::equal(before.begin(), before.end(), batch.state().raw().begin()));
 }
 
+TEST_CASE("EulerLegacy rejects invalid configuration and step inputs",
+          "[core][stepper][validation]")
+{
+  core::EulerLegacy stepper;
+  const core::SpmBatch empty;
+  REQUIRE(stepper.configure(empty) == Status::Invalid_parameters);
+
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(make_simulation_input(), {}, 1, batch)
+          == Status::Success);
+  REQUIRE(stepper.configure(batch) == Status::Success);
+  constexpr std::array zero_current{ 0.0 };
+  REQUIRE(stepper.step(batch, zero_current, 0.0, 0.0)
+          == Status::Invalid_parameters);
+
+  const double quiet_nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  const std::array invalid_current{ quiet_nan };
+  REQUIRE(stepper.step(batch, invalid_current, 0.0, 1.0)
+          == Status::Invalid_parameters);
+}
+
 TEST_CASE("Simulation façade solves a partial final CC step", "[core][simulation]")
 {
   core::Simulation simulation;
@@ -208,4 +232,76 @@ TEST_CASE("Simulation façade solves a partial final CC step", "[core][simulatio
           == Status::Success);
   REQUIRE(decimal_solution.time.size() == 4);
   REQUIRE(std::abs(decimal_solution.time.back() - 0.3) <= 1e-15);
+
+  core::Simulation short_steps;
+  REQUIRE(short_steps.build(make_simulation_input(), {}, 1)
+          == Status::Success);
+  core::SimulationSolution short_solution;
+  REQUIRE(short_steps.solve({ .current_A = 0.0,
+                              .duration = 1e-16,
+                              .step = 1.0 },
+                            short_solution)
+          == Status::Success);
+  REQUIRE(short_solution.time.size() == 2);
+  REQUIRE(short_solution.time.back() == 1e-16);
+
+  core::Simulation underflowed_steps;
+  REQUIRE(underflowed_steps.build(make_simulation_input(), {}, 1)
+          == Status::Success);
+  core::SimulationSolution underflowed_solution;
+  REQUIRE(underflowed_steps.solve(
+            { .current_A = 0.0,
+              .duration = std::numeric_limits<double>::min(),
+              .step = std::numeric_limits<double>::max() },
+            underflowed_solution)
+          == Status::Success);
+  REQUIRE(underflowed_solution.time.size() == 2);
+  REQUIRE(underflowed_solution.time.back()
+          == std::numeric_limits<double>::min());
+
+  for (const double rounded_duration : {
+         std::nextafter(3.0, 0.0),
+         std::nextafter(3.0, 4.0) }) {
+    core::Simulation rounded_steps;
+    REQUIRE(rounded_steps.build(make_simulation_input(), {}, 1)
+            == Status::Success);
+    core::SimulationSolution rounded_solution;
+    REQUIRE(rounded_steps.solve({ .current_A = 0.0,
+                                  .duration = rounded_duration,
+                                  .step = 1.0 },
+                                rounded_solution)
+            == Status::Success);
+    REQUIRE(rounded_solution.time.size() == 4);
+    REQUIRE(rounded_solution.time.back() == rounded_duration);
+  }
+}
+
+TEST_CASE("Simulation rejects unrepresentable solution extents atomically",
+          "[core][simulation][validation]")
+{
+  core::Simulation simulation;
+  REQUIRE(simulation.build(make_simulation_input(), {}, 2) == Status::Success);
+  core::SimulationSolution unchanged;
+  unchanged.time = { 42.0 };
+
+  REQUIRE(simulation.solve({ .current_A = 0.0,
+                             .duration = std::numeric_limits<double>::max(),
+                             .step = 1.0 },
+                           unchanged)
+          == Status::Invalid_parameters);
+  REQUIRE(unchanged.time == std::vector<double>{ 42.0 });
+
+  REQUIRE(simulation.solve({ .current_A = 0.0,
+                             .duration = std::ldexp(1.0, 64),
+                             .step = 1.0 },
+                           unchanged)
+          == Status::Invalid_parameters);
+  REQUIRE(unchanged.time == std::vector<double>{ 42.0 });
+
+  REQUIRE(simulation.solve({ .current_A = 0.0,
+                             .duration = std::ldexp(1.0, 63),
+                             .step = 1.0 },
+                           unchanged)
+          == Status::Invalid_parameters);
+  REQUIRE(unchanged.time == std::vector<double>{ 42.0 });
 }

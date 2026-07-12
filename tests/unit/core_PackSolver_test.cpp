@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
+#include <cstdint>
 #include <cstring>
 #include <limits>
 #include <mutex>
@@ -95,6 +96,134 @@ core::CompiledPackTopology compile(const core::PackNode &root)
 }
 
 } // namespace
+
+TEST_CASE("Thevenin adapters reject every malformed public shape",
+          "[core][pack][thevenin][validation][coverage]")
+{
+  AffineBatch first{ .ocv = { 4.0, 4.1 }, .resistance = { 0.1, 0.2 } };
+  AffineBatch second{ .ocv = { 3.9 }, .resistance = { 0.3 } };
+  const auto two_lane = core::TheveninBatchView::bind(first, 2);
+  const auto one_lane = core::TheveninBatchView::bind(second, 1);
+  std::array<double, 2> current{};
+  std::array<double, 2> ocv{};
+  std::array<double, 2> resistance{};
+  core::TheveninBatchView empty_view;
+  CHECK(empty_view.linearize(current, ocv, resistance)
+        == Status::Invalid_parameters);
+  CHECK(two_lane.linearize(std::span<const double>{ current }.first(1),
+                           std::span<double>{ ocv }.first(1),
+                           std::span<double>{ resistance }.first(1))
+        == Status::Invalid_parameters);
+
+  const auto topology = compile(core::parallel(
+    2, core::cell({ .archetype = "a" })));
+  const std::array one_view{ two_lane };
+  core::PackTheveninSystem system;
+  CHECK(system.configure(topology.cells, topology.batch_archetypes, {})
+        == Status::Invalid_parameters);
+  CHECK(system.configure({}, topology.batch_archetypes, one_view)
+        == Status::Invalid_parameters);
+
+  auto archetypes = topology.batch_archetypes;
+  archetypes[0].clear();
+  CHECK(system.configure(topology.cells, archetypes, one_view)
+        == Status::Invalid_parameters);
+
+  auto cells = topology.cells;
+  cells[0].location.batch = 1;
+  CHECK(system.configure(cells, topology.batch_archetypes, one_view)
+        == Status::Invalid_parameters);
+  cells = topology.cells;
+  cells[0].archetype = "wrong";
+  CHECK(system.configure(cells, topology.batch_archetypes, one_view)
+        == Status::Invalid_parameters);
+  cells = topology.cells;
+  cells[1].location.lane = 0;
+  CHECK(system.configure(cells, topology.batch_archetypes, one_view)
+        == Status::Invalid_parameters);
+  cells = topology.cells;
+  cells[1].location.lane = 2;
+  CHECK(system.configure(cells, topology.batch_archetypes, one_view)
+        == Status::Invalid_parameters);
+
+  const std::array invalid_view{ empty_view };
+  CHECK(system.configure(topology.cells, topology.batch_archetypes, invalid_view)
+        == Status::Invalid_parameters);
+  const std::array wrong_lanes{ one_lane };
+  CHECK(system.configure(topology.cells, topology.batch_archetypes, wrong_lanes)
+        == Status::Invalid_parameters);
+
+  auto two_archetypes = compile(core::series(std::vector{
+    core::cell({ .archetype = "a" }), core::cell({ .archetype = "b" }) }));
+  two_archetypes.batch_archetypes[1] = two_archetypes.batch_archetypes[0];
+  const std::array two_views{ one_lane, two_lane };
+  CHECK(system.configure(two_archetypes.cells,
+                         two_archetypes.batch_archetypes,
+                         two_views)
+        == Status::Invalid_parameters);
+
+  REQUIRE(system.configure(topology.cells, topology.batch_archetypes, one_view)
+          == Status::Success);
+  core::BatchExecutor executor;
+  REQUIRE(executor.configure(1, 1) == Status::Success);
+  CHECK(system.linearize(std::span<const double>{ current }.first(1),
+                         ocv,
+                         resistance,
+                         executor)
+        == Status::Invalid_parameters);
+
+  first.ocv[0] = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  CHECK(system.linearize(current, ocv, resistance, executor)
+        == Status::Invalid_states);
+}
+
+TEST_CASE("pack solver rejects invalid scalar controls and incompatible modes",
+          "[core][pack][solver][validation][coverage]")
+{
+  core::PackSolver solver;
+  CHECK(solver.setRelaxationGain(0.5) == Status::Invalid_parameters);
+  CHECK(solver.solve(1.0) == Status::Invalid_parameters);
+
+  auto topology = compile(core::cell({ .archetype = "affine" }));
+  AffineBatch batch{ .ocv = { 4.0 }, .resistance = { 0.1 } };
+  const std::array batches{ core::TheveninBatchView::bind(batch, 1) };
+  REQUIRE(solver.configure(topology, batches) == Status::Success);
+  for (const double gain : { 0.0,
+                             1.1,
+                             std::bit_cast<double>(
+                               UINT64_C(0x7ff8000000000000)) }) {
+    CAPTURE(gain);
+    CHECK(solver.setRelaxationGain(gain) == Status::Invalid_parameters);
+  }
+  const double positive_infinity =
+    std::bit_cast<double>(UINT64_C(0x7ff0000000000000));
+  CHECK(solver.solve(positive_infinity)
+        == Status::Invalid_parameters);
+  batch.resistance[0] = 2.0;
+  CHECK(solver.solve(std::numeric_limits<double>::max())
+        == Status::Invalid_states);
+  batch.resistance[0] = 0.1;
+  CHECK(solver.solve(1.0, core::PackSolveMode::sparse_newton, 0.0)
+        == Status::Invalid_parameters);
+  CHECK(solver.solve(1.0, core::PackSolveMode::sparse_newton, 1e-10, 0)
+        == Status::Invalid_parameters);
+
+  auto linked = compile(core::series(
+    2, core::cell({ .archetype = "affine" }), { .resistance = 0.01 }));
+  AffineBatch linked_batch{ .ocv = { 4.0, 4.0 },
+                            .resistance = { 0.1, 0.1 } };
+  const std::array linked_batches{
+    core::TheveninBatchView::bind(linked_batch, 2)
+  };
+  REQUIRE(solver.configure(linked, linked_batches) == Status::Success);
+  CHECK(solver.solve(1.0, core::PackSolveMode::ladder)
+        == Status::Invalid_parameters);
+
+  topology.electrical.index1_candidate = false;
+  REQUIRE(solver.configure(topology, batches) == Status::Success);
+  CHECK(solver.solve(1.0, core::PackSolveMode::relaxation)
+        == Status::Invalid_parameters);
+}
 
 TEST_CASE("Mode A solves heterogeneous affine parallel cells and reuses factorization",
           "[core][pack][mode-a][workspace]")

@@ -12,11 +12,16 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <limits>
+#include <new>
 
 namespace slide::core {
 namespace {
+
+  static_assert(registered_spm_nch == std::array{ 5, 8, 12 },
+                "forward-sensitivity dispatch must match the SPM registry");
 
   Dual seed(real_t value, SensitivityParameter active,
             SensitivityParameter candidate)
@@ -260,11 +265,13 @@ namespace {
     derivative[0] = observation.derivative;
     real_t simulation_time{};
     for (std::size_t sample = 1; sample < time.size(); ++sample) {
-      const real_t dt = std::min(sample_step, duration - simulation_time);
+      const bool final_sample = sample + 1 == time.size();
+      const real_t dt = final_sample ? duration - simulation_time
+                                     : sample_step;
       const auto status = model.step(dt);
       if (status != slide::Status::Success)
         return status;
-      simulation_time += dt;
+      simulation_time = final_sample ? duration : simulation_time + dt;
       observation = model.observe();
       if (write_primal) {
         time[sample] = simulation_time;
@@ -358,11 +365,13 @@ slide::Status solveCcForwardSensitivities(
   std::span<const SensitivityParameter>
     parameters,
   ForwardSensitivitySolution &output)
-{
+try {
   if (parameters.empty() || !(direction == Direction::charge || direction == Direction::discharge)
       || !(is_finite(control_magnitude) && control_magnitude > 0.0)
       || !(is_finite(duration) && duration >= 0.0)
-      || !(is_finite(sample_step) && sample_step > 0.0))
+      || !(is_finite(sample_step) && sample_step > 0.0)
+      || std::find(registered_spm_nch.begin(), registered_spm_nch.end(), nch)
+           == registered_spm_nch.end())
     return slide::Status::Invalid_parameters;
   for (std::size_t i = 0; i < parameters.size(); ++i)
     if (std::find(supported_sensitivity_parameters.begin(),
@@ -378,14 +387,29 @@ slide::Status solveCcForwardSensitivities(
   SpmBatch validation;
   if (buildSpmBatch(input, options, 1, validation) != slide::Status::Success)
     return slide::Status::Invalid_parameters;
-  const real_t raw_steps = duration == 0.0 ? 0.0
-                                           : std::ceil(duration / sample_step);
+  real_t step_ratio = duration / sample_step;
+  const real_t nearest_ratio = std::round(step_ratio);
+  const real_t snap_tolerance =
+    16.0 * std::numeric_limits<real_t>::epsilon()
+    * std::max(real_t{ 1.0 }, std::abs(step_ratio));
+  // Never snap a positive sub-step duration down to zero. For positive
+  // integral ratios, snapping prevents quotient rounding from manufacturing a
+  // final zero-length step (for example, a rounded duration/7 interval).
+  if (nearest_ratio >= 1.0
+      && std::abs(step_ratio - nearest_ratio) <= snap_tolerance)
+    step_ratio = nearest_ratio;
+  const real_t raw_steps = duration == 0.0
+                             ? 0.0
+                             : std::max(real_t{ 1.0 }, std::ceil(step_ratio));
   if (!is_finite(raw_steps)
       || raw_steps
-           > static_cast<real_t>(std::numeric_limits<std::size_t>::max() - 1))
+           >= static_cast<real_t>(std::numeric_limits<std::size_t>::max()))
     return slide::Status::Invalid_parameters;
   const auto sample_count = static_cast<std::size_t>(raw_steps) + 1;
-  if (sample_count > std::numeric_limits<std::size_t>::max() / parameters.size())
+  const auto real_vector_limit = std::vector<real_t>{}.max_size();
+  if (sample_count > real_vector_limit
+      || parameters.size() > std::vector<SensitivityParameter>{}.max_size()
+      || sample_count > real_vector_limit / parameters.size())
     return slide::Status::Invalid_parameters;
   ForwardSensitivitySolution candidate;
   candidate.time.resize(sample_count);
@@ -400,10 +424,10 @@ slide::Status solveCcForwardSensitivities(
       status = solveOne<5>(input, control_magnitude, control_is_c_rate, direction, duration, sample_step, parameters[p], candidate.time, candidate.terminal_voltage, one_derivative, p == 0);
     else if (nch == 8)
       status = solveOne<8>(input, control_magnitude, control_is_c_rate, direction, duration, sample_step, parameters[p], candidate.time, candidate.terminal_voltage, one_derivative, p == 0);
-    else if (nch == 12)
+    else {
+      assert(nch == 12); // validated against registered_spm_nch above
       status = solveOne<12>(input, control_magnitude, control_is_c_rate, direction, duration, sample_step, parameters[p], candidate.time, candidate.terminal_voltage, one_derivative, p == 0);
-    else
-      return slide::Status::Invalid_parameters;
+    }
     if (status != slide::Status::Success)
       return status;
     for (std::size_t sample = 0; sample < sample_count; ++sample)
@@ -412,6 +436,8 @@ slide::Status solveCcForwardSensitivities(
   }
   output = std::move(candidate);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  return slide::Status::Numerical_failure;
 }
 
 } // namespace slide::core

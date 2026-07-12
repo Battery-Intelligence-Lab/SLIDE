@@ -158,3 +158,80 @@ TEST_CASE("SPM batch validates its generic RHS boundary", "[core][factory][rhs]"
           == Status::Invalid_parameters);
   REQUIRE(batch.storeStressHistory(0.0) == Status::Invalid_parameters);
 }
+
+TEST_CASE("SPM batch validates every public dispatch boundary",
+          "[core][factory][validation]")
+{
+  const auto input = make_input();
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
+  constexpr std::array current{ 0.0, 0.0 };
+  const core::StepCtx ctx{ .dt = 1.0, .i_app = current };
+  std::array<double, 2> voltage{};
+
+  REQUIRE(batch.fusedEuler(ctx, 0.0, voltage) == Status::Invalid_parameters);
+  REQUIRE(batch.exponentialStep(ctx, 0.0, voltage)
+          == Status::Invalid_parameters);
+  REQUIRE(batch.terminalVoltage(ctx, std::span<double>{ voltage }.first(1))
+          == Status::Invalid_parameters);
+  REQUIRE(batch.terminalVoltageAt(std::span<const double>{ batch.state().raw() }.first(
+                                    batch.state().size() - 1),
+                                  current,
+                                  voltage)
+          == Status::Invalid_parameters);
+  REQUIRE(batch.linearizeThevenin(current, std::span<double>{ voltage }.first(1), voltage)
+          == Status::Invalid_parameters);
+  REQUIRE(batch.setTrustedLanePeriod(0) == Status::Invalid_parameters);
+}
+
+TEST_CASE("SPM factory classifies each cold-input validation layer",
+          "[core][factory][validation]")
+{
+  core::SpmBatch output;
+
+  auto input = make_input();
+  input.design.capacity_Ah = 0.0;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, output)
+          == Status::Invalid_parameters);
+
+  input = make_input();
+  input.design.electrode[core::domain_index(core::Domain::neg)].thickness = 0.0;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, output)
+          == Status::Invalid_parameters);
+
+  input = make_input();
+  input.design.electrode[core::domain_index(core::Domain::neg)]
+    .stress.poisson_ratio = 1.0;
+  core::SpmModelOptions stress_options;
+  stress_options.lam_model_mask = core::lam_model_bit(1);
+  REQUIRE(core::buildSpmBatch(input, stress_options, 1, output)
+          == Status::Invalid_parameters);
+
+  input = make_input();
+  core::SpmModelOptions unregistered;
+  unregistered.nch = 7;
+  REQUIRE(core::buildSpmBatch(input, unregistered, 1, output)
+          == Status::Invalid_parameters);
+}
+
+TEST_CASE("SPM batch rejects false lane periods and non-passive linearizations",
+          "[core][factory][validation]")
+{
+  auto input = make_input();
+  core::SpmBatch periodic;
+  REQUIRE(core::buildSpmBatch(input, {}, 4, periodic) == Status::Success);
+  periodic.state().at(periodic.layout().spm.temperature, 0, 2) += 1.0;
+  REQUIRE(periodic.setTrustedLanePeriod(2) == Status::Invalid_states);
+
+  for (const core::Domain domain : core::domains) {
+    auto &curve = input.design.electrode[core::domain_index(domain)]
+                    .active_material.ocv;
+    curve.value = { 0.0, 1e100 };
+  }
+  core::SpmBatch non_passive;
+  REQUIRE(core::buildSpmBatch(input, {}, 1, non_passive) == Status::Success);
+  constexpr std::array current{ 0.0 };
+  std::array<double, 1> intercept{}, resistance{};
+  REQUIRE(non_passive.linearizeThevenin(current, intercept, resistance)
+          == Status::Invalid_states);
+}

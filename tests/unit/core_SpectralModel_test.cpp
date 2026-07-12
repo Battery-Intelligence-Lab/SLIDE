@@ -10,7 +10,10 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 
 using namespace slide;
 
@@ -106,4 +109,96 @@ TEST_CASE("Spectral compiler scales geometry and fails atomically", "[core][fact
   REQUIRE(core::compileSpectralModel<5>(invalid_radius, scaled)
           == Status::Invalid_parameters);
   REQUIRE(scaled.A[0][0] == 0.0);
+}
+
+TEST_CASE("Spectral validation rejects each malformed eigen-spectrum class",
+          "[core][factory][spectral][validation]")
+{
+  int zero_mode = -1;
+  Eigen::Vector<double, 5> spectrum;
+
+  spectrum << 1e-7, -1.0, -4.0, -9.0, -16.0;
+  REQUIRE(core::detail::validateSpectrum<5>(spectrum, 1.0, zero_mode)
+          == Status::Numerical_failure);
+
+  spectrum << 0.0, 1.0, -4.0, -9.0, -16.0;
+  REQUIRE(core::detail::validateSpectrum<5>(spectrum, 1.0, zero_mode)
+          == Status::Numerical_failure);
+
+  spectrum << 0.0, -1.0, -4.0, -9.0, -16.0;
+  REQUIRE(core::detail::validateSpectrum<5>(spectrum, 1.0, zero_mode)
+          == Status::Numerical_failure);
+}
+
+TEST_CASE("Spectral compiler rejects unrepresentable radius scales atomically",
+          "[core][factory][spectral][validation]")
+{
+  core::CompiledSpectralModel<5> output;
+  output.A[0][0] = 42.0;
+  const double maximum = std::numeric_limits<double>::max();
+  REQUIRE(core::compileSpectralModel<5>({ maximum, maximum }, output)
+          == Status::Numerical_failure);
+  REQUIRE(output.A[0][0] == 0.0);
+
+  output.A[0][0] = 42.0;
+  const double minimum = std::numeric_limits<double>::min();
+  REQUIRE(core::compileSpectralModel<5>({ minimum, minimum }, output)
+          == Status::Numerical_failure);
+  REQUIRE(output.A[0][0] == 0.0);
+}
+
+TEST_CASE("Compiled spectral finiteness validation covers every coefficient family",
+          "[core][factory][spectral][validation]")
+{
+  core::CompiledSpectralModel<5> valid;
+  REQUIRE(core::compileSpectralModel<5>({ 12.5e-6, 8.5e-6 }, valid)
+          == Status::Success);
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(valid)
+          == Status::Success);
+  const double quiet_nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+
+  auto corrupt = valid;
+  corrupt.A[0][0] = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
+
+  corrupt = valid;
+  corrupt.B[0][0] = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
+
+  corrupt = valid;
+  corrupt.D[0][0] = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
+
+  corrupt = valid;
+  corrupt.C[0][0][0] = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
+
+  corrupt = valid;
+  corrupt.state_transform[0][0][0] = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
+
+  corrupt = valid;
+  corrupt.x_inner[0] = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
+
+  corrupt = valid;
+  corrupt.Cc[0] = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
+
+  corrupt = valid;
+  corrupt.cc_coeff = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
+
+  corrupt = valid;
+  corrupt.integration[0][0] = quiet_nan;
+  REQUIRE(core::detail::validateCompiledSpectralModelFiniteness(corrupt)
+          == Status::Numerical_failure);
 }

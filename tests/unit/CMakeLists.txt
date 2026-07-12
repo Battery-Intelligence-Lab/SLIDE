@@ -107,6 +107,9 @@ target_link_libraries(unit_test_core_NetlistCsv PRIVATE slide_core)
 
 # Phase 2: batch Thevenin boundary, persistent sparse workspace, and ladder Mode B
 add_executable_with_coverage_and_test(unit_test_core_PackSolver core_PackSolver_test.cpp)
+# The boundary test deliberately passes non-finite scalars by value; its
+# producer must retain IEEE semantics while the hot solver remains fast-math.
+slide_use_strict_fp(core_PackSolver_test.cpp)
 target_link_libraries(unit_test_core_PackSolver PRIVATE slide_core)
 
 # Phase 2: transactional electrical/thermal pack stepping and restore invalidation
@@ -131,6 +134,9 @@ target_link_libraries(unit_test_core_ModeC PRIVATE slide_core)
 
 # Phase 5: PyBaMM-style grammar, controls, exact events, and legacy Cycler parity
 add_executable_with_coverage_and_test(unit_test_core_Experiment core_Experiment_test.cpp)
+# The callback oracle deliberately returns an IEEE NaN. A fast-math producer
+# would make that return undefined before Experiment can validate it.
+slide_use_strict_fp(core_Experiment_test.cpp)
 target_link_libraries(unit_test_core_Experiment PRIVATE slide_core)
 
 # Phase 6: lazy snapshot recording, CSV, and hardened mmap binary I/O

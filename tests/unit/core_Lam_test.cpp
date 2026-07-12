@@ -13,7 +13,10 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 
 using namespace slide;
 
@@ -129,7 +132,53 @@ TEST_CASE("LAM mechanisms match legacy Cell_SPM", "[core][ageing][LAM]")
       CAPTURE(model_id, quantity, expected[q], actual[q]);
       REQUIRE(std::abs(actual[q] - expected[q]) / scale <= 1e-12);
     }
+
+    if (model_id == 1) {
+      arena.at(history_layout.interval, 0, 0) = 0.0;
+      REQUIRE(core::computeLam(params, state, layout, history_layout, ctx, observables, stress, output)
+              == Status::Invalid_states);
+    } else if (model_id == 2) {
+      arena.at(layout.specific_surface_area[neg_index], 0, 0) = 0.0;
+      REQUIRE(core::computeLam(params, state, layout, history_layout, ctx, observables, stress, output)
+              == Status::Invalid_states);
+    } else if (model_id == 4) {
+      params.model4_area_coefficient[pos_index] =
+        std::numeric_limits<double>::max();
+      arena.at(layout.specific_surface_area[pos_index], 0, 0) = 2.0;
+      REQUIRE(core::computeLam(params, state, layout, history_layout, ctx, observables, stress, output)
+              == Status::Numerical_failure);
+    }
   }
+}
+
+TEST_CASE("LAM parameters classify masks, non-finite values, and physical bounds",
+          "[core][ageing][LAM][validation]")
+{
+  LamReferenceCell cell;
+  auto valid = cell.params();
+  valid.model_mask = core::lam_model_bit(1);
+  REQUIRE(core::validateLamParams(valid) == Status::Success);
+
+  auto invalid = valid;
+  invalid.model_mask = 0;
+  REQUIRE(core::validateLamParams(invalid) == Status::Invalid_parameters);
+
+  const double quiet_nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  invalid = valid;
+  invalid.F = quiet_nan;
+  REQUIRE(core::validateLamParams(invalid) == Status::Invalid_parameters);
+
+  invalid = valid;
+  invalid.particle_radius[core::domain_index(core::Domain::neg)] = quiet_nan;
+  REQUIRE(core::validateLamParams(invalid) == Status::Invalid_parameters);
+
+  invalid = valid;
+  invalid.particle_radius[core::domain_index(core::Domain::neg)] = 0.0;
+  REQUIRE(core::validateLamParams(invalid) == Status::Invalid_parameters);
+
+  invalid = valid;
+  invalid.F = 0.0;
+  REQUIRE(core::validateLamParams(invalid) == Status::Invalid_parameters);
 }
 
 TEST_CASE("LAM RHS composes active-fraction and direct-area loss", "[core][ageing][LAM]")

@@ -167,3 +167,102 @@ TEST_CASE("P7-G2 ten dual sensitivities match centered-FD arbiters",
     CHECK(worst_excess <= 0.0);
   }
 }
+
+TEST_CASE("Forward sensitivities reject malformed requests before publication",
+          "[core][sensitivity][validation]")
+{
+  core::ParameterSet parameters;
+  REQUIRE(core::ParameterSet::chen2020(parameters) == Status::Success);
+  core::SpmFactoryInput input;
+  REQUIRE(parameters.toSpmInput(input) == Status::Success);
+
+  core::SensitivityParameter parsed{};
+  REQUIRE(core::parseSensitivityParameter("not a parameter", parsed)
+          == Status::Invalid_parameters);
+
+  core::ForwardSensitivitySolution unchanged;
+  unchanged.time = { 42.0 };
+  REQUIRE(core::solveCcForwardSensitivities(input, 5, 1.0, true, core::Direction::discharge, 0.0, 1.0, {}, unchanged)
+          == Status::Invalid_parameters);
+  REQUIRE(unchanged.time == std::vector<double>{ 42.0 });
+
+  constexpr std::array duplicate{
+    core::SensitivityParameter::nominal_capacity,
+    core::SensitivityParameter::nominal_capacity,
+  };
+  REQUIRE(core::solveCcForwardSensitivities(input, 5, 1.0, true, core::Direction::discharge, 0.0, 1.0, duplicate, unchanged)
+          == Status::Invalid_parameters);
+
+  auto invalid_input = input;
+  invalid_input.design.capacity_Ah = 0.0;
+  constexpr std::array one_parameter{
+    core::SensitivityParameter::nominal_capacity,
+  };
+  REQUIRE(core::solveCcForwardSensitivities(invalid_input, 5, 1.0, true, core::Direction::discharge, 0.0, 1.0, one_parameter, unchanged)
+          == Status::Invalid_parameters);
+
+  REQUIRE(core::solveCcForwardSensitivities(
+            input, 5, 1.0, true, core::Direction::discharge, std::numeric_limits<double>::max(), 1.0, one_parameter, unchanged)
+          == Status::Invalid_parameters);
+  REQUIRE(core::solveCcForwardSensitivities(
+            input, 5, 1.0, true, core::Direction::discharge, std::ldexp(1.0, 64), 1.0, one_parameter, unchanged)
+          == Status::Invalid_parameters);
+  REQUIRE(core::solveCcForwardSensitivities(
+            input, 5, 1.0, true, core::Direction::discharge, std::ldexp(1.0, 61), 1.0, core::supported_sensitivity_parameters, unchanged)
+          == Status::Invalid_parameters);
+  REQUIRE(core::solveCcForwardSensitivities(input, 7, 1.0, true, core::Direction::discharge, 0.0, 1.0, one_parameter, unchanged)
+          == Status::Invalid_parameters);
+  REQUIRE(unchanged.time == std::vector<double>{ 42.0 });
+
+  const double tiny_duration = 1e-301;
+  const double rounded_seventh = 1.4285714285714284e-302;
+  core::ForwardSensitivitySolution rounded_schedule;
+  REQUIRE(core::solveCcForwardSensitivities(
+            input, 5, 1.0, false, core::Direction::discharge, tiny_duration, rounded_seventh, one_parameter, rounded_schedule)
+          == Status::Success);
+  REQUIRE(rounded_schedule.time.size() == 8);
+  REQUIRE(rounded_schedule.time.back() == tiny_duration);
+
+  core::ForwardSensitivitySolution underflowed_ratio;
+  REQUIRE(core::solveCcForwardSensitivities(
+            input, 5, 1.0, false, core::Direction::discharge, std::numeric_limits<double>::min(), std::numeric_limits<double>::max(), one_parameter, underflowed_ratio)
+          == Status::Success);
+  REQUIRE(underflowed_ratio.time.size() == 2);
+  REQUIRE(underflowed_ratio.time.back()
+          == std::numeric_limits<double>::min());
+
+  for (const double rounded_duration : {
+         std::nextafter(3.0, 0.0),
+         std::nextafter(3.0, 4.0) }) {
+    core::ForwardSensitivitySolution snapped_horizon;
+    REQUIRE(core::solveCcForwardSensitivities(
+              input, 5, 1.0, false, core::Direction::discharge, rounded_duration, 1.0, one_parameter, snapped_horizon)
+            == Status::Success);
+    REQUIRE(snapped_horizon.time.size() == 4);
+    REQUIRE(snapped_horizon.time.back() == rounded_duration);
+  }
+}
+
+TEST_CASE("Forward sensitivities propagate invalid electrochemical states",
+          "[core][sensitivity][validation]")
+{
+  core::ParameterSet parameters;
+  REQUIRE(core::ParameterSet::chen2020(parameters) == Status::Success);
+  REQUIRE(parameters.set("Initial state-of-charge", 0.8, "coverage")
+          == Status::Success);
+  core::SpmFactoryInput input;
+  REQUIRE(parameters.toSpmInput(input) == Status::Success);
+  constexpr std::array selected{
+    core::SensitivityParameter::nominal_capacity,
+  };
+  core::ForwardSensitivitySolution solution;
+
+  REQUIRE(core::solveCcForwardSensitivities(input, 5, 1e100, true, core::Direction::discharge, 0.0, 1.0, selected, solution)
+          == Status::Invalid_states);
+
+  core::ForwardSensitivitySolution initial;
+  REQUIRE(core::solveCcForwardSensitivities(input, 5, 1.0, true, core::Direction::discharge, 0.0, 3600.0, selected, initial)
+          == Status::Success);
+  REQUIRE(core::solveCcForwardSensitivities(input, 5, 1.0, true, core::Direction::discharge, 3600.0, 3600.0, selected, solution)
+          == Status::Invalid_states);
+}

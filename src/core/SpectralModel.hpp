@@ -40,6 +40,34 @@ struct CompiledSpectralModel
 
 namespace detail {
 
+  template <int NCH>
+  slide::Status validateCompiledSpectralModelFiniteness(
+    const CompiledSpectralModel<NCH> &model)
+  {
+    // Pass by reference so fast-math cannot attach a finite-value assumption to
+    // the predicate parameter before this explicit cold-path validation.
+    const auto finite = [](const double &value) { return is_finite(value); };
+    bool valid = true;
+    for (const Domain domain : domains) {
+      const auto d = domain_index(domain);
+      valid = valid
+              && std::all_of(model.A[d].begin(), model.A[d].end(), finite)
+              && std::all_of(model.B[d].begin(), model.B[d].end(), finite)
+              && std::all_of(model.D[d].begin(), model.D[d].end(), finite);
+      for (const auto &row : model.C[d])
+        valid = valid && std::all_of(row.begin(), row.end(), finite);
+      for (const auto &row : model.state_transform[d])
+        valid = valid && std::all_of(row.begin(), row.end(), finite);
+    }
+    valid = valid
+            && std::all_of(model.x_inner.begin(), model.x_inner.end(), finite)
+            && std::all_of(model.Cc.begin(), model.Cc.end(), finite)
+            && is_finite(model.cc_coeff);
+    for (const auto &row : model.integration)
+      valid = valid && std::all_of(row.begin(), row.end(), finite);
+    return valid ? slide::Status::Success : slide::Status::Numerical_failure;
+  }
+
   template <int N>
   Eigen::Matrix<double, N + 1, N + 1> cumulativeIntegrationMatrix()
   {
@@ -306,27 +334,10 @@ template <int NCH>
       candidate.integration[static_cast<std::size_t>(row)]
                            [static_cast<std::size_t>(column)] = integration(row, column);
 
-  const auto finite = [](double value) { return is_finite(value); };
-  for (const Domain domain : domains) {
-    const auto d = domain_index(domain);
-    if (!(std::all_of(candidate.A[d].begin(), candidate.A[d].end(), finite)
-          && std::all_of(candidate.B[d].begin(), candidate.B[d].end(), finite)
-          && std::all_of(candidate.D[d].begin(), candidate.D[d].end(), finite)))
-      return slide::Status::Numerical_failure;
-    for (const auto &row : candidate.C[d])
-      if (!std::all_of(row.begin(), row.end(), finite))
-        return slide::Status::Numerical_failure;
-    for (const auto &row : candidate.state_transform[d])
-      if (!std::all_of(row.begin(), row.end(), finite))
-        return slide::Status::Numerical_failure;
-  }
-  if (!(std::all_of(candidate.x_inner.begin(), candidate.x_inner.end(), finite)
-        && std::all_of(candidate.Cc.begin(), candidate.Cc.end(), finite)
-        && is_finite(candidate.cc_coeff)))
-    return slide::Status::Numerical_failure;
-  for (const auto &row : candidate.integration)
-    if (!std::all_of(row.begin(), row.end(), finite))
-      return slide::Status::Numerical_failure;
+  const auto finite_status =
+    detail::validateCompiledSpectralModelFiniteness(candidate);
+  if (finite_status != slide::Status::Success)
+    return finite_status;
 
   output = candidate;
   return slide::Status::Success;

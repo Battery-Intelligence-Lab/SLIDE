@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 
 using namespace slide;
 
@@ -98,6 +99,30 @@ TEST_CASE("SPM stress observables match legacy Cell_SPM", "[core][ageing][stress
   REQUIRE(std::abs(output.laresgoiti_negative[0] - lares_negative)
             / std::max(std::abs(lares_negative), 1e-30)
           <= 1e-12);
+
+  auto explosive = params;
+  explosive.partial_molar_volume[core::domain_index(core::Domain::neg)] =
+    std::numeric_limits<double>::max();
+  explosive.youngs_modulus[core::domain_index(core::Domain::neg)] =
+    std::numeric_limits<double>::max();
+  REQUIRE(core::computeSpmStress(explosive, observables, 1, output)
+          == Status::Numerical_failure);
+}
+
+TEST_CASE("SPM stress parameters reject missing curves and invalid mechanics",
+          "[core][ageing][stress][validation]")
+{
+  constexpr int NCH = static_cast<int>(settings::nch);
+  core::SpmStressParams<NCH> invalid;
+  REQUIRE(core::validateSpmStressParams(invalid)
+          == Status::Invalid_parameters);
+
+  StressReferenceCell cell;
+  auto *model = Model_SPM<>::makeModel();
+  auto params = cell.params(*model);
+  params.youngs_modulus[core::domain_index(core::Domain::neg)] = 0.0;
+  REQUIRE(core::validateSpmStressParams(params)
+          == Status::Invalid_parameters);
 }
 
 TEST_CASE("Stress history is explicit checkpointed state", "[core][ageing][stress]")

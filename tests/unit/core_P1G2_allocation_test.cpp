@@ -4,6 +4,8 @@
  */
 
 #include "../../src/core/EulerLegacy.hpp"
+#include "../../src/core/ForwardSensitivity.hpp"
+#include "../../src/core/Simulation.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -13,6 +15,19 @@
 #include <vector>
 
 static std::atomic<std::size_t> allocation_count{ 0 };
+static thread_local bool fail_matching_allocation{};
+static thread_local bool matching_failure_triggered{};
+static thread_local std::size_t matching_allocation_size{};
+
+static void before_allocation(std::size_t bytes)
+{
+  ++allocation_count;
+  if (fail_matching_allocation && !matching_failure_triggered
+      && bytes == matching_allocation_size) {
+    matching_failure_triggered = true;
+    throw std::bad_alloc{};
+  }
+}
 
 #if defined(_WIN32)
 #include <malloc.h>
@@ -32,21 +47,21 @@ static void aligned_release(void *pointer) { std::free(pointer); }
 
 void *operator new(std::size_t bytes)
 {
-  ++allocation_count;
+  before_allocation(bytes);
   if (void *pointer = std::malloc(bytes != 0 ? bytes : 1))
     return pointer;
   throw std::bad_alloc{};
 }
 void *operator new[](std::size_t bytes)
 {
-  ++allocation_count;
+  before_allocation(bytes);
   if (void *pointer = std::malloc(bytes != 0 ? bytes : 1))
     return pointer;
   throw std::bad_alloc{};
 }
 void *operator new(std::size_t bytes, std::align_val_t alignment)
 {
-  ++allocation_count;
+  before_allocation(bytes);
   if (void *pointer = aligned_allocate(bytes != 0 ? bytes : 1,
                                        static_cast<std::size_t>(alignment)))
     return pointer;
@@ -54,7 +69,7 @@ void *operator new(std::size_t bytes, std::align_val_t alignment)
 }
 void *operator new[](std::size_t bytes, std::align_val_t alignment)
 {
-  ++allocation_count;
+  before_allocation(bytes);
   if (void *pointer = aligned_allocate(bytes != 0 ? bytes : 1,
                                        static_cast<std::size_t>(alignment)))
     return pointer;
@@ -114,6 +129,19 @@ core::SpmFactoryInput make_input()
   return input;
 }
 
+class FailAllocationOfSize
+{
+public:
+  explicit FailAllocationOfSize(std::size_t bytes)
+  {
+    matching_allocation_size = bytes;
+    matching_failure_triggered = false;
+    fail_matching_allocation = true;
+  }
+
+  ~FailAllocationOfSize() { fail_matching_allocation = false; }
+};
+
 } // namespace
 
 TEST_CASE("P1-G2 10000-lane Euler step allocates nothing", "[core][P1-G2]")
@@ -136,4 +164,44 @@ TEST_CASE("P1-G2 10000-lane Euler step allocates nothing", "[core][P1-G2]")
 
   REQUIRE(status == Status::Success);
   REQUIRE(after == before);
+}
+
+TEST_CASE("solution builders translate late allocation failures atomically",
+          "[core][allocation][simulation][sensitivity][coverage]")
+{
+  const auto input = make_input();
+  constexpr std::size_t samples = 17;
+
+  core::Simulation simulation;
+  REQUIRE(simulation.build(input, {}, 1) == Status::Success);
+  core::SimulationSolution simulation_output;
+  simulation_output.time = { 42.0 };
+  Status simulation_status{};
+  {
+    FailAllocationOfSize failure{ samples * sizeof(double) };
+    simulation_status = simulation.solve(
+      { .current_A = 0.0, .duration = 16.0, .step = 1.0 },
+      simulation_output);
+  }
+  REQUIRE(matching_failure_triggered);
+  CHECK(simulation_status == Status::Numerical_failure);
+  CHECK(simulation_output.time == std::vector<double>{ 42.0 });
+
+  constexpr std::array sensitivity_parameters{
+    core::SensitivityParameter::nominal_capacity,
+    core::SensitivityParameter::contact_resistance,
+  };
+  core::ForwardSensitivitySolution sensitivity_output;
+  sensitivity_output.time = { 42.0 };
+  Status sensitivity_status{};
+  {
+    FailAllocationOfSize failure{
+      samples * sensitivity_parameters.size() * sizeof(double)
+    };
+    sensitivity_status = core::solveCcForwardSensitivities(
+      input, 5, 1.0, false, core::Direction::discharge, 16.0, 1.0, sensitivity_parameters, sensitivity_output);
+  }
+  REQUIRE(matching_failure_triggered);
+  CHECK(sensitivity_status == Status::Numerical_failure);
+  CHECK(sensitivity_output.time == std::vector<double>{ 42.0 });
 }

@@ -13,7 +13,10 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 
 using namespace slide;
 
@@ -139,8 +142,48 @@ TEST_CASE("Surface-crack mechanisms match legacy Cell_SPM", "[core][ageing][crac
         CAPTURE(model_id, reduce_diffusivity, quantity, expected[q], actual[q]);
         REQUIRE(std::abs(actual[q] - expected[q]) / scale <= 1e-12);
       }
+
+      if (model_id == 1 && !reduce_diffusivity) {
+        arena.at(layout.specific_surface_area[neg_index], 0, 0) = 0.0;
+        REQUIRE(core::computeSurfaceCrack(params, state, layout, history_layout, ctx, observables, stress, output)
+                == Status::Invalid_states);
+        arena.at(layout.specific_surface_area[neg_index], 0, 0) = legacy.an();
+        arena.at(history_layout.interval, 0, 0) = 0.0;
+        REQUIRE(core::computeSurfaceCrack(params, state, layout, history_layout, ctx, observables, stress, output)
+                == Status::Invalid_states);
+      } else if (model_id == 5 && !reduce_diffusivity) {
+        auto explosive = params;
+        explosive.model5_k = std::numeric_limits<double>::max();
+        observables.surface_stoichiometry[neg_index][0] = 0.8;
+        REQUIRE(core::computeSurfaceCrack(explosive, state, layout, history_layout, ctx, observables, stress, output)
+                == Status::Numerical_failure);
+      }
     }
   }
+}
+
+TEST_CASE("Surface-crack parameters classify masks and numeric bounds",
+          "[core][ageing][crack][validation]")
+{
+  CrackReferenceCell cell;
+  const auto valid = cell.params(1, false);
+  REQUIRE(core::validateSurfaceCrackParams(valid) == Status::Success);
+
+  auto invalid = valid;
+  invalid.model_mask = 0;
+  REQUIRE(core::validateSurfaceCrackParams(invalid)
+          == Status::Invalid_parameters);
+
+  const double quiet_nan = std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  invalid = valid;
+  invalid.F = quiet_nan;
+  REQUIRE(core::validateSurfaceCrackParams(invalid)
+          == Status::Invalid_parameters);
+
+  invalid = valid;
+  invalid.F = 0.0;
+  REQUIRE(core::validateSurfaceCrackParams(invalid)
+          == Status::Invalid_parameters);
 }
 
 TEST_CASE("Surface-crack RHS adds crack SEI and state rates", "[core][ageing][crack]")

@@ -300,9 +300,7 @@ namespace {
 
   bool validOptions(const SpmModelOptions &options)
   {
-    const bool registered_order = std::find(registered_spm_nch.begin(), registered_spm_nch.end(), options.nch)
-                                  != registered_spm_nch.end();
-    return registered_order && (options.sei_model_mask & std::uint8_t{ 0xf0 }) == 0
+    return (options.sei_model_mask & std::uint8_t{ 0xf0 }) == 0
            && (options.surface_crack_model_mask & std::uint8_t{ 0xe0 }) == 0
            && (options.lam_model_mask & std::uint8_t{ 0xf0 }) == 0
            && (!options.sei_porosity || options.sei_model_mask != 0)

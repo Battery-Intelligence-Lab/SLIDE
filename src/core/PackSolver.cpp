@@ -327,22 +327,10 @@ slide::Status PackSolver::configure(const CompiledPackTopology &topology,
   }
 }
 
-slide::Status PackSolver::solve(real_t applied_current, PackSolveMode mode,
-                                real_t current_tolerance, int max_iterations)
-{
-  return solveImpl(applied_current, mode, current_tolerance, max_iterations, true);
-}
-
-slide::Status PackSolver::setRelaxationGain(real_t alpha)
-{
-  if (!configured_ || !is_finite(alpha) || !(alpha > 0.0 && alpha <= 1.0))
-    return slide::Status::Invalid_parameters;
-  relaxation_alpha_ = alpha;
-  return slide::Status::Success;
-}
-
-slide::Status PackSolver::solveImpl(real_t applied_current, PackSolveMode mode,
-                                    real_t current_tolerance, int max_iterations,
+slide::Status PackSolver::solveImpl(real_t applied_current,
+                                    PackSolveMode mode,
+                                    real_t current_tolerance,
+                                    int max_iterations,
                                     bool allow_source_stepping)
 {
   if (!configured_ || !is_finite(applied_current) || !(current_tolerance > 0.0)
@@ -448,8 +436,9 @@ slide::Status PackSolver::solveImpl(real_t applied_current, PackSolveMode mode,
     constexpr int source_steps = 8;
     auto status = solveImpl(0.0, mode, current_tolerance, max_iterations, false);
     for (int step = 1; status == slide::Status::Success && step <= source_steps; ++step)
-      status = solveImpl(applied_current * static_cast<real_t>(step)
-                           / static_cast<real_t>(source_steps),
+      status = solveImpl(applied_current
+                           * (static_cast<real_t>(step)
+                              / static_cast<real_t>(source_steps)),
                          mode,
                          current_tolerance,
                          max_iterations,
