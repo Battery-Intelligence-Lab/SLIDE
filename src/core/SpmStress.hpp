@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "AgeingKernel.hpp"
 #include "CompiledCurve.hpp"
 #include "SpmObservables.hpp"
 
@@ -13,7 +14,6 @@
 #include <cassert>
 #include <cmath>
 #include <span>
-#include <vector>
 
 namespace slide::core {
 
@@ -74,25 +74,20 @@ class SpmStressScratch
 {
 public:
   explicit SpmStressScratch(int n_lanes)
-    : storage_(static_cast<std::size_t>(3 * n_lanes)), n_lanes_(n_lanes)
-  {
-    assert(n_lanes > 0);
-  }
+    : storage_{ n_lanes }
+  {}
 
   BasicSpmStress<Real> view()
   {
-    const auto L = static_cast<std::size_t>(n_lanes_);
-    auto storage = std::span<Real>{ storage_ };
     BasicSpmStress<Real> result;
-    result.dai_maximum_hydrostatic[domain_index(Domain::neg)] = storage.first(L);
-    result.dai_maximum_hydrostatic[domain_index(Domain::pos)] = storage.subspan(L, L);
-    result.laresgoiti_negative = storage.subspan(2 * L, L);
+    result.dai_maximum_hydrostatic[domain_index(Domain::neg)] = storage_.field(0);
+    result.dai_maximum_hydrostatic[domain_index(Domain::pos)] = storage_.field(1);
+    result.laresgoiti_negative = storage_.field(2);
     return result;
   }
 
 private:
-  std::vector<Real> storage_{};
-  int n_lanes_{};
+  detail::AgeingScratchStorage<Real, 3> storage_;
 };
 
 /** Reconstruct maximum Dai hydrostatic stress and Laresgoiti graphite stress per lane. */
