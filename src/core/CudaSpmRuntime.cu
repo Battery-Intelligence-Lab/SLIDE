@@ -4,6 +4,7 @@
  */
 
 #include "CudaSpmData.hpp"
+#include "SpmScalarKernels.hpp"
 
 #include <cuda_runtime.h>
 
@@ -41,8 +42,8 @@ __device__ double curveEval(const double *storage, CurveRef curve, double query)
     else
       right = middle;
   }
-  return y[left] + (y[left + 1] - y[left])
-                     * (query - x[left]) / (x[left + 1] - x[left]);
+  return spm_scalar::linearInterpolate(
+    query, x[left], x[left + 1], y[left], y[left + 1]);
 }
 
 __device__ double &at(double *state, int stride, int row, int lane)
@@ -71,44 +72,50 @@ __global__ void exactModalKernel(KernelParams params,
   double effective_diffusivity[2]{};
   double molar_flux[2]{};
   for (int domain = 0; domain < 2; ++domain) {
-    const double arrhenius = (1.0 / params.reference_temperature - 1.0 / temperature)
-                             / params.Rg;
-    effective_diffusivity[domain] =
-      get(state, params.stride, params.diffusion_row[domain], lane)
-      * exp(params.diffusion_activation[domain] * arrhenius);
-    const double denominator =
-      get(state, params.stride, params.specific_area_row[domain], lane)
-      * params.n * params.F
-      * get(state, params.stride, params.thickness_row[domain], lane);
+    const double arrhenius = spm_scalar::arrheniusFactor(
+      params.reference_temperature, temperature, params.Rg);
+    effective_diffusivity[domain] = spm_scalar::activatedValue(
+      get(state, params.stride, params.diffusion_row[domain], lane),
+      params.diffusion_activation[domain],
+      arrhenius);
+    const double denominator = spm_scalar::fluxDenominator(
+      get(state, params.stride, params.specific_area_row[domain], lane),
+      params.n,
+      params.F,
+      get(state, params.stride, params.thickness_row[domain], lane));
     const double sign = domain == 0 ? 1.0 : -1.0;
-    molar_flux[domain] = sign * current_density[lane] / denominator;
+    molar_flux[domain] = spm_scalar::molarFlux(
+      sign, current_density[lane], denominator);
 
     for (int mode = 0; mode < params.nch; ++mode) {
       double &z = at(state, params.stride, params.z_row[domain] + mode, lane);
-      const double x = effective_diffusivity[domain] * params.A[domain][mode] * dt;
-      const double phi1 = fabs(x) < 1e-7
-                            ? 1.0 + x * (0.5 + x * (1.0 / 6.0 + x / 24.0))
-                            : expm1(x) / x;
-      z = exp(x) * z + dt * phi1 * params.B[domain][mode]
-                         * molar_flux[domain];
+      SLIDE_SPM_ADVANCE_MODAL_CUDA(z,
+                                   effective_diffusivity[domain],
+                                   params.A[domain][mode],
+                                   dt,
+                                   params.B[domain][mode],
+                                   molar_flux[domain]);
     }
   }
 
   double surface_stoichiometry[2]{};
   double overpotential[2]{};
   double electrode_ocv[2]{};
-  const double arrhenius = (1.0 / params.reference_temperature - 1.0 / temperature)
-                           / params.Rg;
+  const double arrhenius = spm_scalar::arrheniusFactor(
+    params.reference_temperature, temperature, params.Rg);
   for (int domain = 0; domain < 2; ++domain) {
     double concentration{};
     for (int mode = 0; mode < params.nch; ++mode)
       concentration += params.surface_C[domain][mode]
                        * get(state, params.stride,
                              params.z_row[domain] + mode, lane);
-    concentration += params.surface_D[domain] * molar_flux[domain]
-                     / effective_diffusivity[domain];
-    surface_stoichiometry[domain] = concentration
-                                    / params.electrode[domain].cs_max;
+    concentration = spm_scalar::concentrationOutput(
+      concentration,
+      params.surface_D[domain],
+      molar_flux[domain],
+      effective_diffusivity[domain]);
+    surface_stoichiometry[domain] = spm_scalar::surfaceStoichiometry(
+      concentration, params.electrode[domain].cs_max);
     if (!(surface_stoichiometry[domain] > 0.0
           && surface_stoichiometry[domain] < 1.0)
         || !isfinite(surface_stoichiometry[domain])) {
@@ -116,21 +123,26 @@ __global__ void exactModalKernel(KernelParams params,
       terminal_voltage[lane] = nan("");
       return;
     }
-    const double reaction_rate = params.electrode[domain].reaction_rate_ref
-                                 * exp(params.electrode[domain].reaction_activation
-                                       * arrhenius);
-    const double exchange = reaction_rate * params.n * params.F
-                            * sqrt(params.electrolyte_concentration * concentration
-                                   * (params.electrode[domain].cs_max - concentration));
+    const double reaction_rate = spm_scalar::activatedValue(
+      params.electrode[domain].reaction_rate_ref,
+      params.electrode[domain].reaction_activation,
+      arrhenius);
+    const double exchange = spm_scalar::exchangeCurrent(
+      reaction_rate,
+      params.n,
+      params.F,
+      params.electrolyte_concentration,
+      concentration,
+      params.electrode[domain].cs_max);
     const double area = get(state, params.stride,
                             params.specific_area_row[domain], lane);
     const double thickness = get(state, params.stride,
                                  params.thickness_row[domain], lane);
     const double sign = domain == 0 ? 1.0 : -1.0;
-    const double argument = 0.5 * sign * current_density[lane]
-                            / (area * thickness * exchange);
-    overpotential[domain] = 2.0 * params.Rg * temperature
-                            / (params.n * params.F) * asinh(argument);
+    const double argument = spm_scalar::activationArgument(
+      sign, current_density[lane], area, thickness, exchange);
+    overpotential[domain] = spm_scalar::activationOverpotential(
+      temperature, params.Rg, params.n, params.F, argument);
     electrode_ocv[domain] = curveEval(curves,
                                       params.electrode_ocv[domain],
                                       surface_stoichiometry[domain]);
@@ -141,30 +153,32 @@ __global__ void exactModalKernel(KernelParams params,
   const double entropic = curveEval(curves,
                                     params.total_entropic,
                                     surface_stoichiometry[pos]);
-  const double ocv = electrode_ocv[pos] - electrode_ocv[neg]
-                     + (temperature - params.reference_temperature) * entropic;
-  const double area_neg = get(state, params.stride,
-                              params.specific_area_row[neg], lane)
-                          * params.electrode_area
-                          * get(state, params.stride,
-                                params.thickness_row[neg], lane);
-  const double area_pos = get(state, params.stride,
-                              params.specific_area_row[pos], lane)
-                          * params.electrode_area
-                          * get(state, params.stride,
-                                params.thickness_row[pos], lane);
-  const double resistance =
-    get(state, params.stride, params.sei_thickness_row, lane)
-        * params.sei_resistivity_area / area_neg
-    + get(state, params.stride, params.specific_resistance_row[neg], lane)
-        / area_neg
-    + get(state, params.stride, params.specific_resistance_row[pos], lane)
-        / area_pos
-    + get(state, params.stride, params.collector_resistance_row, lane)
-        / params.electrode_area;
+  const double ocv = spm_scalar::cellOpenCircuitVoltage(
+    electrode_ocv[neg],
+    electrode_ocv[pos],
+    temperature,
+    params.reference_temperature,
+    entropic);
+  const double area_neg = spm_scalar::activeArea(
+    get(state, params.stride, params.specific_area_row[neg], lane),
+    params.electrode_area,
+    get(state, params.stride, params.thickness_row[neg], lane));
+  const double area_pos = spm_scalar::activeArea(
+    get(state, params.stride, params.specific_area_row[pos], lane),
+    params.electrode_area,
+    get(state, params.stride, params.thickness_row[pos], lane));
+  const double resistance = spm_scalar::seriesResistance(
+    get(state, params.stride, params.sei_thickness_row, lane),
+    params.sei_resistivity_area,
+    get(state, params.stride, params.specific_resistance_row[neg], lane),
+    get(state, params.stride, params.specific_resistance_row[pos], lane),
+    get(state, params.stride, params.collector_resistance_row, lane),
+    area_neg,
+    area_pos,
+    params.electrode_area);
   const double current = current_density[lane] * params.electrode_area;
-  const double voltage = ocv + overpotential[pos] - overpotential[neg]
-                         - resistance * current;
+  const double voltage = spm_scalar::terminalVoltage(
+    ocv, overpotential[neg], overpotential[pos], resistance, current);
   if (!isfinite(voltage)) {
     atomicExch(status, 1);
     terminal_voltage[lane] = nan("");
