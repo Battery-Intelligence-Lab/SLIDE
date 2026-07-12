@@ -13,6 +13,9 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <new>
+#include <stdexcept>
+#include <type_traits>
 
 namespace slide::core {
 namespace {
@@ -245,51 +248,83 @@ slide::Status PackSolver::configure(const CompiledPackTopology &topology,
                                       batches,
                                     unsigned workers)
 {
-  PackTheveninSystem thevenin;
-  auto status = thevenin.configure(
-    topology.cells, topology.batch_archetypes, batches);
-  if (status != slide::Status::Success)
-    return status;
-  SolverWorkspace workspace;
-  status = workspace.configure(topology.electrical, topology.cells.size());
-  if (status != slide::Status::Success)
-    return status;
-  BatchExecutor batch_executor;
-  status = batch_executor.configure(batches.size(), workers);
-  if (status != slide::Status::Success)
-    return status;
+  try {
+    PackTheveninSystem thevenin;
+    auto status = thevenin.configure(
+      topology.cells, topology.batch_archetypes, batches);
+    if (status != slide::Status::Success)
+      return status;
+    SolverWorkspace workspace;
+    status = workspace.configure(topology.electrical, topology.cells.size());
+    if (status != slide::Status::Success)
+      return status;
+    BatchExecutor batch_executor;
+    status = batch_executor.configure(batches.size(), workers);
+    if (status != slide::Status::Success)
+      return status;
 
-  topology_ = topology;
-  thevenin_ = std::move(thevenin);
-  batch_executor_ = std::move(batch_executor);
-  workspace_ = std::move(workspace);
-  const auto cells = topology.cells.size();
-  const auto nodes = topology.electrical.node_count;
-  solution_.cell_current.assign(cells, 0.0);
-  solution_.node_voltage.assign(nodes, 0.0);
-  solution_.terminal_voltage = 0.0;
-  current_guess_.assign(cells, 0.0);
-  candidate_current_.assign(cells, 0.0);
-  ocv_.assign(cells, 0.0);
-  resistance_.assign(cells, 0.0);
-  candidate_node_voltage_.assign(nodes, 0.0);
-  rollback_cell_current_.assign(cells, 0.0);
-  rollback_node_voltage_.assign(nodes, 0.0);
-  relaxation_diagonal_.assign(nodes, 0.0);
-  relaxation_rhs_.assign(nodes, 0.0);
-  relaxation_target_.assign(nodes, 0.0);
-  relaxation_compensation_.assign(nodes, 0.0);
-  layer_voltage_.assign(topology.electrical.ladder_offsets.empty()
-                          ? 0
-                          : topology.electrical.ladder_offsets.size() - 1,
-                        0.0);
-  candidate_terminal_voltage_ = 0.0;
-  residual_norm_ = 0.0;
-  configured_ = true;
-  relaxation_alpha_ = topology.electrical.series_parallel_ladder ? 1.0 : 2.0 / 3.0;
-  has_solution_ = false;
-  diagnostics_ = {};
-  return slide::Status::Success;
+    const auto cells = topology.cells.size();
+    const auto nodes = static_cast<std::size_t>(topology.electrical.node_count);
+    const auto layers = topology.electrical.ladder_offsets.empty()
+                          ? std::size_t{}
+                          : topology.electrical.ladder_offsets.size() - 1;
+    CompiledPackTopology candidate_topology = topology;
+    PackSolution solution{ .cell_current = std::vector<real_t>(cells, 0.0),
+                           .node_voltage = std::vector<real_t>(nodes, 0.0),
+                           .terminal_voltage = 0.0 };
+    std::vector<real_t> current_guess(cells, 0.0);
+    std::vector<real_t> candidate_current(cells, 0.0);
+    std::vector<real_t> ocv(cells, 0.0);
+    std::vector<real_t> resistance(cells, 0.0);
+    std::vector<real_t> candidate_node_voltage(nodes, 0.0);
+    std::vector<real_t> layer_voltage(layers, 0.0);
+    std::vector<real_t> rollback_cell_current(cells, 0.0);
+    std::vector<real_t> rollback_node_voltage(nodes, 0.0);
+    std::vector<real_t> relaxation_diagonal(nodes, 0.0);
+    std::vector<real_t> relaxation_rhs(nodes, 0.0);
+    std::vector<real_t> relaxation_target(nodes, 0.0);
+    std::vector<real_t> relaxation_compensation(nodes, 0.0);
+
+    static_assert(std::is_nothrow_move_assignable_v<CompiledPackTopology>);
+    static_assert(std::is_nothrow_move_assignable_v<PackTheveninSystem>);
+    static_assert(std::is_nothrow_move_assignable_v<BatchExecutor>);
+    static_assert(std::is_nothrow_move_assignable_v<SolverWorkspace>);
+    static_assert(std::is_nothrow_move_assignable_v<PackSolution>);
+    static_assert(std::is_nothrow_move_assignable_v<std::vector<real_t>>);
+
+    // Every fallible operation is complete. Publish the candidate state only
+    // through no-throw moves so failed reconfiguration preserves the old solver.
+    topology_ = std::move(candidate_topology);
+    thevenin_ = std::move(thevenin);
+    batch_executor_ = std::move(batch_executor);
+    workspace_ = std::move(workspace);
+    solution_ = std::move(solution);
+    current_guess_ = std::move(current_guess);
+    candidate_current_ = std::move(candidate_current);
+    ocv_ = std::move(ocv);
+    resistance_ = std::move(resistance);
+    candidate_node_voltage_ = std::move(candidate_node_voltage);
+    layer_voltage_ = std::move(layer_voltage);
+    rollback_cell_current_ = std::move(rollback_cell_current);
+    rollback_node_voltage_ = std::move(rollback_node_voltage);
+    relaxation_diagonal_ = std::move(relaxation_diagonal);
+    relaxation_rhs_ = std::move(relaxation_rhs);
+    relaxation_target_ = std::move(relaxation_target);
+    relaxation_compensation_ = std::move(relaxation_compensation);
+    candidate_terminal_voltage_ = 0.0;
+    residual_norm_ = 0.0;
+    configured_ = true;
+    relaxation_alpha_ = topology.electrical.series_parallel_ladder
+                          ? 1.0
+                          : 2.0 / 3.0;
+    has_solution_ = false;
+    diagnostics_ = {};
+    return slide::Status::Success;
+  } catch (const std::bad_alloc &) {
+    return slide::Status::Numerical_failure;
+  } catch (const std::length_error &) {
+    return slide::Status::Invalid_parameters;
+  }
 }
 
 slide::Status PackSolver::solve(real_t applied_current, PackSolveMode mode,

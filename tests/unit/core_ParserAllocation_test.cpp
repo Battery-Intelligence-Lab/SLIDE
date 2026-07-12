@@ -1,18 +1,22 @@
 /**
  * @file core_ParserAllocation_test.cpp
- * @brief Deterministic allocation-failure atomicity for Phase-9 parser gates.
+ * @brief Deterministic allocation-failure atomicity for Phase-9 cold transactions.
  */
 
 #include "../../src/core/Experiment.hpp"
 #include "../../src/core/NetlistCsv.hpp"
+#include "../../src/core/PackSolver.hpp"
 #include "../../src/core/ParameterSet.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <new>
+#include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #if defined(_WIN32)
@@ -151,6 +155,25 @@ constexpr std::string_view bpx_fixture = R"json({
   },
   "State": {"Initial conditions": {"Initial state-of-charge": 0.75}}
 })json";
+
+struct AllocationAffineBatch
+{
+  std::vector<double> ocv{};
+  std::vector<double> resistance{};
+
+  slide::Status linearizeThevenin(std::span<const double> current,
+                                  std::span<double>
+                                    output_ocv,
+                                  std::span<double>
+                                    output_resistance)
+  {
+    if (current.size() != ocv.size())
+      return slide::Status::Invalid_parameters;
+    std::copy(ocv.begin(), ocv.end(), output_ocv.begin());
+    std::copy(resistance.begin(), resistance.end(), output_resistance.begin());
+    return slide::Status::Success;
+  }
+};
 
 } // namespace
 
@@ -368,4 +391,121 @@ TEST_CASE("netlist CSV maps a late cell-vector allocation failure atomically",
   CHECK(output.cells[0].path == "c00");
   CHECK(output.cells[0].archetype == "sentinel");
   CHECK(output.electrical.branches.size() == 1);
+}
+
+TEST_CASE("PackSolver late allocation failure preserves the prior configuration",
+          "[core][pack][solver][allocation][P9-B37]")
+{
+  core::CompiledPackTopology sentinel_topology;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::cell({ .archetype = "sentinel" }) },
+            sentinel_topology)
+          == Status::Success);
+  AllocationAffineBatch sentinel_batch{ .ocv = { 4.0 },
+                                        .resistance = { 0.1 } };
+  const std::array<core::TheveninBatchView, 1> sentinel_view{
+    core::TheveninBatchView::bind(sentinel_batch, 1)
+  };
+
+  constexpr std::size_t lanes_per_batch = 37;
+  std::vector<core::PackNode> cells;
+  cells.reserve(2 * lanes_per_batch);
+  for (std::size_t index = 0; index < 2 * lanes_per_batch; ++index)
+    cells.push_back(core::cell(
+      { .archetype = index % 2 == 0 ? "a" : "b" }));
+  core::CompiledPackTopology target_topology;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::parallel(std::move(cells)) }, target_topology)
+          == Status::Success);
+  AllocationAffineBatch a{
+    .ocv = std::vector<double>(lanes_per_batch, 4.0),
+    .resistance = std::vector<double>(lanes_per_batch, 0.1)
+  };
+  AllocationAffineBatch b = a;
+  const std::array<core::TheveninBatchView, 2> target_views{
+    core::TheveninBatchView::bind(a, static_cast<int>(lanes_per_batch)),
+    core::TheveninBatchView::bind(b, static_cast<int>(lanes_per_batch))
+  };
+
+  constexpr std::size_t target_cell_bytes =
+    2 * lanes_per_batch * sizeof(double);
+  // The first cell-sized allocation builds the candidate solution. The second
+  // reaches later candidate scratch, after the old implementation had already
+  // published topology, executor, and workspace members.
+  constexpr std::size_t late_cell_allocation = 1;
+  core::PackSolver measured;
+  REQUIRE(measured.configure(sentinel_topology, sentinel_view, 1)
+          == Status::Success);
+  Status measured_status{};
+  {
+    MeasureAllocationsOfSize measure{ target_cell_bytes };
+    measured_status = measured.configure(target_topology, target_views, 2);
+  }
+  REQUIRE(measured_status == Status::Success);
+  REQUIRE(measured_matching_allocations > 1);
+
+  core::PackSolver solver;
+  REQUIRE(solver.configure(sentinel_topology, sentinel_view, 1)
+          == Status::Success);
+  REQUIRE(solver.solve(1.0, core::PackSolveMode::ladder)
+          == Status::Success);
+  const auto expected_solution = solver.solution();
+  const auto expected_diagnostics = solver.diagnostics();
+  const auto expected_workspace_valid = solver.workspace().valid();
+  const auto expected_workspace_age = solver.workspace().age();
+  const auto expected_numeric_factorizations =
+    solver.workspace().numericFactorizations();
+  const auto expected_symbolic_factorizations =
+    solver.workspace().symbolicFactorizations();
+  bool threw{};
+  Status status = Status::Unknown_problem;
+  {
+    FailAllocationOfSize failure{ target_cell_bytes, late_cell_allocation };
+    try {
+      status = solver.configure(target_topology, target_views, 2);
+    } catch (const std::bad_alloc &) {
+      threw = true;
+    }
+  }
+  REQUIRE(allocation_failure_triggered);
+  CHECK_FALSE(threw);
+  CHECK(status == Status::Numerical_failure);
+  CHECK(solver.batchWorkerCount() == 1);
+  CHECK(solver.solution().cell_current == expected_solution.cell_current);
+  CHECK(solver.solution().node_voltage == expected_solution.node_voltage);
+  CHECK(solver.solution().terminal_voltage == expected_solution.terminal_voltage);
+  CHECK(solver.diagnostics().iterations == expected_diagnostics.iterations);
+  CHECK(solver.diagnostics().numeric_factorizations
+        == expected_diagnostics.numeric_factorizations);
+  CHECK(solver.diagnostics().symbolic_factorizations
+        == expected_diagnostics.symbolic_factorizations);
+  CHECK(solver.diagnostics().jacobian_refreshes
+        == expected_diagnostics.jacobian_refreshes);
+  CHECK(solver.diagnostics().source_steps
+        == expected_diagnostics.source_steps);
+  CHECK(solver.diagnostics().residual_norm
+        == expected_diagnostics.residual_norm);
+  CHECK(solver.diagnostics().constraint_drift
+        == expected_diagnostics.constraint_drift);
+  CHECK(solver.diagnostics().constraint_bound
+        == expected_diagnostics.constraint_bound);
+  CHECK(solver.diagnostics().relaxation_gain
+        == expected_diagnostics.relaxation_gain);
+  CHECK(solver.workspace().valid() == expected_workspace_valid);
+  CHECK(solver.workspace().age() == expected_workspace_age);
+  CHECK(solver.workspace().numericFactorizations()
+        == expected_numeric_factorizations);
+  CHECK(solver.workspace().symbolicFactorizations()
+        == expected_symbolic_factorizations);
+
+  REQUIRE(solver.solve(1.0, core::PackSolveMode::ladder)
+          == Status::Success);
+  CHECK(solver.solution().cell_current == expected_solution.cell_current);
+  CHECK(solver.solution().node_voltage == expected_solution.node_voltage);
+  CHECK(solver.solution().terminal_voltage == expected_solution.terminal_voltage);
+
+  REQUIRE(solver.configure(sentinel_topology, sentinel_view, 1)
+          == Status::Success);
+  REQUIRE(solver.solve(1.0, core::PackSolveMode::ladder)
+          == Status::Success);
 }
