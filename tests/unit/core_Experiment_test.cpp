@@ -4,6 +4,7 @@
  */
 
 #include "../../src/core/Experiment.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 #include "../support/KokamSpmFixture.hpp"
 #include "../support/RecordedBits.hpp"
 
@@ -17,6 +18,7 @@
 #include <cstring>
 #include <iterator>
 #include <numeric>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -24,23 +26,6 @@
 using namespace slide;
 
 namespace {
-
-core::SpmBatch makeBatch(double soc = 0.55)
-{
-  core::SpmBatch batch;
-  const auto input = test_support::make_legacy_kokam_input(
-    soc, settings::T_ENV, 298.0);
-  REQUIRE(core::buildSpmBatch(input, {}, 1, batch) == Status::Success);
-  return batch;
-}
-
-double terminalVoltage(core::SpmBatch &batch, double current)
-{
-  const std::array density{ current / batch.electrode_area() };
-  std::array<double, 1> voltage{};
-  REQUIRE(batch.terminalVoltage({ .i_app = density }, voltage) == Status::Success);
-  return voltage[0];
-}
 
 void recordParsedSegment(test_support::RecordedBits &recorded,
                          const core::ExperimentSegment &segment)
@@ -262,7 +247,10 @@ TEST_CASE("9C-3 manually constructed cycler trace retains its pre-split bits",
   // nonuniform drive samples distinguish interpolation and exact breakpoint
   // ownership; the final current segment crosses a dyadic quarter-second root
   // inside a half-second step, forcing event rollback and bisection.
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch) == Status::Success);
   REQUIRE(cycler.registerDriveCycle(
@@ -349,10 +337,16 @@ TEST_CASE("9C-3 manually constructed cycler trace retains its pre-split bits",
 TEST_CASE("Cycler validates direct segment metadata before stepping",
           "[core][experiment][validation][P9]")
 {
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch) == Status::Success);
-  auto invalid_integrator_batch = makeBatch();
+  auto invalid_integrator_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 invalid_integrator_cycler;
   CHECK(invalid_integrator_cycler.configure(
           invalid_integrator_batch,
@@ -398,7 +392,10 @@ TEST_CASE("Cycler validates direct segment metadata before stepping",
 TEST_CASE("Cycler rejects a valid batch replacement until reconfigured",
           "[core][experiment][configuration][coverage]")
 {
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch) == Status::Success);
 
@@ -451,7 +448,10 @@ TEST_CASE("Cycler rejects a valid batch replacement until reconfigured",
 TEST_CASE("Cycler rolls back a step when post-advance event evaluation fails",
           "[core][experiment][rollback][P9]")
 {
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch, core::CyclerIntegrator::euler_legacy)
           == Status::Success);
@@ -489,7 +489,10 @@ TEST_CASE("Cycler rolls back a step when post-advance event evaluation fails",
 TEST_CASE("event bisection selects the first of two roots and exact breakpoints",
           "[core][experiment][event][P9]")
 {
-  auto first_batch = makeBatch();
+  auto first_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 first_cycler;
   REQUIRE(first_cycler.configure(first_batch) == Status::Success);
   core::Experiment first;
@@ -511,7 +514,10 @@ TEST_CASE("event bisection selects the first of two roots and exact breakpoints"
   CHECK(first_solution.termination_name == "quarter");
   CHECK(first_solution.time.back() == Catch::Approx(0.25).margin(1e-12));
 
-  auto breakpoint_batch = makeBatch();
+  auto breakpoint_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 breakpoint_cycler;
   REQUIRE(breakpoint_cycler.configure(breakpoint_batch) == Status::Success);
   core::Experiment breakpoint;
@@ -535,7 +541,10 @@ TEST_CASE("event bisection selects the first of two roots and exact breakpoints"
 TEST_CASE("P5-G1 cycler executes power rest and drive-cycle controls",
           "[core][experiment][cycler][P5-G1]")
 {
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch) == Status::Success);
   REQUIRE(cycler.registerDriveCycle({ .name = "US06",
@@ -575,17 +584,38 @@ TEST_CASE("P5-G1 cycler executes power rest and drive-cycle controls",
 TEST_CASE("P5-G1 voltage termination is located on the event root",
           "[core][experiment][event][P5-G1]")
 {
-  auto probe = makeBatch();
+  auto probe = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   constexpr double current = 8.0;
-  const double before = terminalVoltage(probe, current);
+  constexpr std::array current_A{ current };
+  std::array<double, 1> density_scratch_Apm2{};
+  std::array<double, 1> observed_voltage_V{};
+  test_support::requireTerminalVoltage(
+    probe,
+    test_support::CurrentA{ std::span<const core::real_t>{ current_A } },
+    0.0,
+    density_scratch_Apm2,
+    observed_voltage_V);
+  const double before = observed_voltage_V[0];
   core::EulerLegacy stepper{ probe };
   const std::array density{ current / probe.electrode_area() };
   REQUIRE(stepper.step(probe, density, 0.0, 1.0) == Status::Success);
-  const double after = terminalVoltage(probe, current);
+  test_support::requireTerminalVoltage(
+    probe,
+    test_support::CurrentA{ std::span<const core::real_t>{ current_A } },
+    0.0,
+    density_scratch_Apm2,
+    observed_voltage_V);
+  const double after = observed_voltage_V[0];
   REQUIRE(after < before);
   const double limit = 0.5 * (before + after);
 
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch, core::CyclerIntegrator::euler_legacy)
           == Status::Success);
@@ -601,7 +631,10 @@ TEST_CASE("P5-G1 voltage termination is located on the event root",
   REQUIRE(solution.time.back() < 1.0);
   CHECK(solution.voltage.back() == Catch::Approx(limit).margin(2e-12));
 
-  auto immediate_batch = makeBatch();
+  auto immediate_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 immediate_cycler;
   REQUIRE(immediate_cycler.configure(
             immediate_batch, core::CyclerIntegrator::euler_legacy)
@@ -652,7 +685,10 @@ TEST_CASE("P5-G1 Euler CC-CV sequence remains in the legacy Cycler parity band",
   REQUIRE(legacy_cycler.CV(target_voltage, 0.0, cv_duration, dt, 0, cv_throughput)
           == Status::ReachedTimeLimit);
 
-  auto batch = makeBatch(0.5);
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.5, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch, core::CyclerIntegrator::euler_legacy)
           == Status::Success);
@@ -672,7 +708,17 @@ TEST_CASE("P5-G1 Euler CC-CV sequence remains in the legacy Cycler parity band",
 
   REQUIRE(solution.current.size() >= 2);
   const double applied_current = solution.current[solution.current.size() - 2];
-  const double applied_voltage = terminalVoltage(batch, applied_current);
+  const std::array applied_current_A{ applied_current };
+  std::array<double, 1> applied_density_scratch_Apm2{};
+  std::array<double, 1> applied_voltage_V{};
+  test_support::requireTerminalVoltage(
+    batch,
+    test_support::CurrentA{
+      std::span<const core::real_t>{ applied_current_A } },
+    0.0,
+    applied_density_scratch_Apm2,
+    applied_voltage_V);
+  const double applied_voltage = applied_voltage_V[0];
   const double voltage_error = std::abs(applied_voltage - legacy.V());
   const double current_error = std::abs(applied_current - legacy.I());
   const double charge_error = std::abs(
@@ -689,7 +735,10 @@ TEST_CASE("P5-G1 Euler CC-CV sequence remains in the legacy Cycler parity band",
 TEST_CASE("custom explicit implicit differential controls and terminations execute",
           "[core][experiment][custom]")
 {
-  auto explicit_batch = makeBatch();
+  auto explicit_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 explicit_cycler;
   REQUIRE(explicit_cycler.configure(explicit_batch) == Status::Success);
   core::Experiment custom;
@@ -702,7 +751,10 @@ TEST_CASE("custom explicit implicit differential controls and terminations execu
   REQUIRE(explicit_cycler.run(custom, 10.0, custom_solution)
           == Status::Success);
 
-  auto standard_batch = makeBatch();
+  auto standard_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 standard_cycler;
   REQUIRE(standard_cycler.configure(standard_batch) == Status::Success);
   core::Experiment standard;
@@ -717,7 +769,10 @@ TEST_CASE("custom explicit implicit differential controls and terminations execu
   CHECK(custom_solution.current == standard_solution.current);
   CHECK(custom_solution.voltage == standard_solution.voltage);
 
-  auto implicit_batch = makeBatch();
+  auto implicit_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 implicit_cycler;
   REQUIRE(implicit_cycler.configure(implicit_batch) == Status::Success);
   core::Experiment implicit;
@@ -735,7 +790,10 @@ TEST_CASE("custom explicit implicit differential controls and terminations execu
         == Catch::Approx(3.8).margin(2e-10));
   CHECK(implicit_solution.current.front() < 0.0);
 
-  auto differential_batch = makeBatch();
+  auto differential_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 differential_cycler;
   REQUIRE(differential_cycler.configure(differential_batch) == Status::Success);
   core::Experiment differential;
@@ -751,7 +809,10 @@ TEST_CASE("custom explicit implicit differential controls and terminations execu
   CHECK(differential_solution.current.front() == 1.0);
   CHECK(differential_solution.current.back() == 2.0);
 
-  auto event_batch = makeBatch();
+  auto event_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 event_cycler;
   REQUIRE(event_cycler.configure(event_batch) == Status::Success);
   core::Experiment event;
@@ -774,7 +835,10 @@ TEST_CASE("custom explicit implicit differential controls and terminations execu
 TEST_CASE("scheduled starts cut steps and insert exact rest gaps",
           "[core][experiment][start-time]")
 {
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch) == Status::Success);
   core::Experiment experiment;
@@ -826,7 +890,10 @@ TEST_CASE("Experiment public limits and drive-cycle tables reject exact boundari
         == Status::Invalid_parameters);
   CHECK(sentinel.segments.size() == 1);
 
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch) == Status::Success);
   CHECK(cycler.registerDriveCycle({}) == Status::Invalid_parameters);
@@ -847,7 +914,10 @@ TEST_CASE("Cycler failure solvers are reached through validated public segments"
   core::ExperimentSolution output;
   CHECK(unconfigured.run(rest, 1.0, output) == Status::Invalid_parameters);
 
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch) == Status::Success);
 
@@ -882,7 +952,10 @@ TEST_CASE("Cycler failure solvers are reached through validated public segments"
   CHECK(cycler.run(invalid_voltage_iteration, 1.0, output)
         == Status::Invalid_states);
 
-  auto cycling_power_batch = makeBatch(0.001);
+  auto cycling_power_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.001, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycling_power_cycler;
   REQUIRE(cycling_power_cycler.configure(cycling_power_batch)
           == Status::Success);
@@ -895,7 +968,10 @@ TEST_CASE("Cycler failure solvers are reached through validated public segments"
   CHECK(cycling_power_cycler.run(cycling_power, 1.0, output)
         == Status::Numerical_failure);
 
-  auto cycling_voltage_batch = makeBatch(0.1);
+  auto cycling_voltage_batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.1, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycling_voltage_cycler;
   REQUIRE(cycling_voltage_cycler.configure(cycling_voltage_batch)
           == Status::Success);
@@ -1006,7 +1082,10 @@ TEST_CASE("Cycler failure solvers are reached through validated public segments"
 TEST_CASE("Cycler revalidates callback-mutable segment controls",
           "[core][experiment][callback][validation][coverage]")
 {
-  auto batch = makeBatch();
+  auto batch = test_support::requireSpmBatch(
+    test_support::make_legacy_kokam_input(0.55, settings::T_ENV, 298.0),
+    core::SpmModelOptions{},
+    1);
   core::CyclerV2 cycler;
   REQUIRE(cycler.configure(batch) == Status::Success);
   core::ExperimentSolution output;
@@ -1079,12 +1158,10 @@ TEST_CASE("Cycler revalidates callback-mutable segment controls",
         .custom_control = [](const core::ExperimentVariables &) {
           return 0.0;
         },
-        .custom_terminations = {
-          { .name = "mutate after control evaluation",
-            .indicator = [&experiment](const core::ExperimentVariables &) {
-              experiment.segments.front().custom_control = {};
-              return 1.0;
-            } } } });
+        .custom_terminations = { { .name = "mutate after control evaluation", .indicator = [&experiment](const core::ExperimentVariables &) {
+                                    experiment.segments.front().custom_control = {};
+                                    return 1.0;
+                                  } } } });
     CHECK(cycler.run(experiment, 1.0, output)
           == Status::Invalid_parameters);
   }
