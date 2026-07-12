@@ -179,6 +179,10 @@ if(SLIDE_WITH_CUDA)
   # Phase 8 P8-G2: non-block-multiple device parity, host coupling, and rollback
   add_executable_with_coverage_and_test(unit_test_core_CudaSpmBatch core_CudaSpmBatch_test.cpp)
   target_link_libraries(unit_test_core_CudaSpmBatch PRIVATE slide_core)
+else()
+  # P9-G3: every optional-off CUDA facade failure must remain observable.
+  add_executable_with_coverage_and_test(unit_test_core_CudaDisabled core_CudaDisabled_test.cpp)
+  target_link_libraries(unit_test_core_CudaDisabled PRIVATE slide_core)
 endif()
 
 # add_executable_with_coverage_and_test(unit_test_Module_s Module_s_test.cpp)

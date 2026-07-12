@@ -24,6 +24,8 @@
 namespace slide::core {
 namespace {
 
+#if defined(SLIDE_WITH_CUDA)
+
 slide::Status mapResult(cuda_detail::RuntimeResult result)
 {
   switch (result) {
@@ -38,6 +40,8 @@ slide::Status mapResult(cuda_detail::RuntimeResult result)
     return slide::Status::Numerical_failure;
   }
 }
+
+#endif
 
 #if defined(SLIDE_WITH_CUDA)
 
