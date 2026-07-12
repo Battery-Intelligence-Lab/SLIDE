@@ -12,8 +12,8 @@ add_test(
   NAME structural_test_core_9C2AgeingKernel
   COMMAND "${CMAKE_COMMAND}"
     "-DSLIDE_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/p9c2_ageing_kernel.cmake")
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/p9c_architecture.cmake")
 set_tests_properties(structural_test_core_9C2AgeingKernel
   PROPERTIES
-    LABELS "structural;9c2"
+    LABELS "structural;9c2;9c3"
     TIMEOUT 10)
