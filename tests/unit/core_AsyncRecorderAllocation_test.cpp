@@ -222,6 +222,8 @@ TEST_CASE("Compressed reader translates allocation failure",
   REQUIRE(raw_bytes > 0);
 
   core::CompressedRecording allocation_failure;
+  REQUIRE(allocation_failure.open(path) == Status::Success);
+  const auto prior_size = allocation_failure.size();
   Status status{};
   {
     FailAllocationOfSize failure{ raw_bytes };
@@ -229,7 +231,8 @@ TEST_CASE("Compressed reader translates allocation failure",
   }
   REQUIRE(matching_failure_triggered);
   CHECK(status == Status::Numerical_failure);
-  CHECK_FALSE(allocation_failure.valid());
+  CHECK(allocation_failure.valid());
+  CHECK(allocation_failure.size() == prior_size);
 
   core::CompressedRecording valid;
   REQUIRE(valid.open(path) == Status::Success);

@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <limits>
 #include <new>
+#include <stdexcept>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -93,6 +94,11 @@ namespace {
     return true;
   }
 
+  slide::Status allocationFailureStatus() noexcept
+  {
+    return slide::Status::Numerical_failure;
+  }
+
   bool align64(std::uint64_t value, std::uint64_t &result)
   {
     std::uint64_t enlarged{};
@@ -117,6 +123,41 @@ namespace {
   }
 
 } // namespace
+
+slide::Status detail::binaryRecordingLayout(
+  std::uint64_t lanes,
+  std::uint64_t state_values,
+  std::uint64_t snapshots,
+  BinaryRecordingLayout &output)
+{
+  std::uint64_t current_bytes{}, state_bytes{}, record_bytes{};
+  std::uint64_t table_entries{}, table_bytes{};
+  if (!checkedMultiply(lanes, std::uint64_t{ sizeof(real_t) }, current_bytes)
+      || !checkedMultiply(
+        state_values, std::uint64_t{ sizeof(real_t) }, state_bytes)
+      || !checkedAdd(std::uint64_t{ 16 }, current_bytes, record_bytes)
+      || !checkedAdd(record_bytes, state_bytes, record_bytes)
+      || !checkedAdd(snapshots, std::uint64_t{ 1 }, table_entries)
+      || !checkedMultiply(
+        table_entries, std::uint64_t{ sizeof(std::uint64_t) }, table_bytes))
+    return slide::Status::Invalid_parameters;
+
+  std::uint64_t table_end{}, data_offset{}, records_bytes{}, file_size{};
+  if (!checkedAdd(std::uint64_t{ header_bytes }, table_bytes, table_end)
+      || !align64(table_end, data_offset)
+      || !checkedMultiply(snapshots, record_bytes, records_bytes)
+      || !checkedAdd(data_offset, records_bytes, file_size)
+      || file_size > std::numeric_limits<std::size_t>::max())
+    return slide::Status::Invalid_parameters;
+
+  output = { .current_bytes = current_bytes,
+             .state_bytes = state_bytes,
+             .record_bytes = record_bytes,
+             .table_bytes = table_bytes,
+             .data_offset = data_offset,
+             .file_size = file_size };
+  return slide::Status::Success;
+}
 
 struct BinaryRecording::Mapping
 {
@@ -166,6 +207,12 @@ struct BinaryRecording::Mapping
 #endif
   }
 };
+
+bool Recorder::flushMapping(void *mapping)
+{
+  assert(mapping != nullptr);
+  return static_cast<BinaryRecording::Mapping *>(mapping)->flush();
+}
 
 namespace {
 
@@ -294,7 +341,9 @@ slide::Status Recorder::configure(SpmBatch &batch, RecorderConfig config)
     current_density_ = std::move(currents);
     states_ = std::move(states);
   } catch (const std::bad_alloc &) {
-    return slide::Status::Numerical_failure;
+    return allocationFailureStatus();
+  } catch (const std::length_error &) {
+    return allocationFailureStatus();
   }
   return slide::Status::Success;
 }
@@ -370,12 +419,21 @@ slide::Status Recorder::terminalVoltage(std::size_t index,
 }
 
 slide::Status Recorder::writeCsv(const std::filesystem::path &path)
-{
+try {
   if (!configured())
     return slide::Status::Invalid_parameters;
   std::ofstream output(path, std::ios::binary | std::ios::trunc);
   if (!output)
     return slide::Status::Invalid_parameters;
+  return writeCsvStream(output);
+} catch (const std::bad_alloc &) {
+  return allocationFailureStatus();
+} catch (const std::length_error &) {
+  return allocationFailureStatus();
+}
+
+slide::Status Recorder::writeCsvStream(std::ostream &output)
+{
   output << "accepted_step,time_s";
   for (int lane = 0; lane < lanes_; ++lane)
     output << ",current_density_lane" << lane << "_A_m2";
@@ -411,40 +469,31 @@ slide::Status Recorder::writeBinary(const std::filesystem::path &path) const
 {
   if (!configured() || count_ > std::numeric_limits<std::uint32_t>::max())
     return slide::Status::Invalid_parameters;
-  std::uint64_t current_bytes{}, state_bytes{}, record_bytes{}, table_entries{}, table_bytes{};
-  if (!checkedMultiply(static_cast<std::uint64_t>(lanes_),
-                       std::uint64_t{ sizeof(real_t) },
-                       current_bytes)
-      || !checkedMultiply(static_cast<std::uint64_t>(state_values_),
-                          std::uint64_t{ sizeof(real_t) },
-                          state_bytes)
-      || !checkedAdd(std::uint64_t{ 16 }, current_bytes, record_bytes)
-      || !checkedAdd(record_bytes, state_bytes, record_bytes)
-      || !checkedAdd(static_cast<std::uint64_t>(count_), std::uint64_t{ 1 }, table_entries)
-      || !checkedMultiply(table_entries, std::uint64_t{ sizeof(std::uint64_t) }, table_bytes))
-    return slide::Status::Invalid_parameters;
-  std::uint64_t table_end{}, data_offset{}, records_bytes{}, file_size{};
-  if (!checkedAdd(std::uint64_t{ header_bytes }, table_bytes, table_end)
-      || !align64(table_end, data_offset)
-      || !checkedMultiply(static_cast<std::uint64_t>(count_), record_bytes, records_bytes)
-      || !checkedAdd(data_offset, records_bytes, file_size)
-      || file_size > std::numeric_limits<std::size_t>::max())
-    return slide::Status::Invalid_parameters;
+  detail::BinaryRecordingLayout layout;
+  const auto layout_status = detail::binaryRecordingLayout(
+    static_cast<std::uint64_t>(lanes_),
+    static_cast<std::uint64_t>(state_values_),
+    static_cast<std::uint64_t>(count_),
+    layout);
+  if (layout_status != slide::Status::Success)
+    return layout_status;
 
   BinaryRecording::Mapping mapping;
-  if (!mapWritable(path, static_cast<std::size_t>(file_size), mapping))
+  if (!mapWritable(path, static_cast<std::size_t>(layout.file_size), mapping))
     return slide::Status::Invalid_parameters;
   std::memset(mapping.data, 0, mapping.size);
   auto *table = mapping.data + header_bytes;
   for (std::size_t index = 0; index <= count_; ++index) {
-    const std::uint64_t offset = data_offset
-                                 + static_cast<std::uint64_t>(index) * record_bytes;
+    const std::uint64_t offset = layout.data_offset
+                                 + static_cast<std::uint64_t>(index)
+                                     * layout.record_bytes;
     store(table + index * sizeof(offset), offset);
   }
   for (std::size_t index = 0; index < count_; ++index) {
     const auto recorded = snapshot(index);
-    std::byte *cursor = mapping.data + data_offset
-                        + static_cast<std::uint64_t>(index) * record_bytes;
+    std::byte *cursor = mapping.data + layout.data_offset
+                        + static_cast<std::uint64_t>(index)
+                            * layout.record_bytes;
     store(cursor, recorded.accepted_step);
     cursor += sizeof(recorded.accepted_step);
     store(cursor, recorded.time);
@@ -465,12 +514,12 @@ slide::Status Recorder::writeBinary(const std::filesystem::path &path) const
                           .stride = static_cast<std::uint32_t>(stride_),
                           .snapshots = static_cast<std::uint32_t>(count_),
                           .offset_table = header_bytes,
-                          .data_offset = data_offset,
-                          .file_size = file_size };
+                          .data_offset = layout.data_offset,
+                          .file_size = layout.file_size };
   header.header_crc32 = crc32(std::as_bytes(std::span{ &header, 1 }));
   store(mapping.data, header);
-  return mapping.flush() ? slide::Status::Success
-                         : slide::Status::Numerical_failure;
+  return mapping_flush_(&mapping) ? slide::Status::Success
+                                  : slide::Status::Numerical_failure;
 }
 
 slide::Status Recorder::writeParquet(const std::filesystem::path &path)
@@ -479,80 +528,86 @@ slide::Status Recorder::writeParquet(const std::filesystem::path &path)
   (void)path;
   return slide::Status::NotImplementedYet;
 #else
-  if (!configured())
-    return slide::Status::Invalid_parameters;
-  std::vector<std::shared_ptr<arrow::Field>> fields;
-  std::vector<std::shared_ptr<arrow::Array>> columns;
-  auto append_uint64 = [&](const std::string &name, auto value) {
-    arrow::UInt64Builder builder;
-    for (std::size_t index = 0; index < count_; ++index)
-      if (!builder.Append(value(index)).ok())
+  try {
+    if (!configured())
+      return slide::Status::Invalid_parameters;
+    std::vector<std::shared_ptr<arrow::Field>> fields;
+    std::vector<std::shared_ptr<arrow::Array>> columns;
+    auto append_uint64 = [&](const std::string &name, auto value) {
+      arrow::UInt64Builder builder;
+      for (std::size_t index = 0; index < count_; ++index)
+        if (!builder.Append(value(index)).ok())
+          return false;
+      std::shared_ptr<arrow::Array> array;
+      if (!builder.Finish(&array).ok())
         return false;
-    std::shared_ptr<arrow::Array> array;
-    if (!builder.Finish(&array).ok())
-      return false;
-    fields.push_back(arrow::field(name, arrow::uint64()));
-    columns.push_back(std::move(array));
-    return true;
-  };
-  auto append_double = [&](const std::string &name, auto value) {
-    arrow::DoubleBuilder builder;
-    for (std::size_t index = 0; index < count_; ++index)
-      if (!builder.Append(value(index)).ok())
+      fields.push_back(arrow::field(name, arrow::uint64()));
+      columns.push_back(std::move(array));
+      return true;
+    };
+    auto append_double = [&](const std::string &name, auto value) {
+      arrow::DoubleBuilder builder;
+      for (std::size_t index = 0; index < count_; ++index)
+        if (!builder.Append(value(index)).ok())
+          return false;
+      std::shared_ptr<arrow::Array> array;
+      if (!builder.Finish(&array).ok())
         return false;
-    std::shared_ptr<arrow::Array> array;
-    if (!builder.Finish(&array).ok())
-      return false;
-    fields.push_back(arrow::field(name, arrow::float64()));
-    columns.push_back(std::move(array));
-    return true;
-  };
-  if (!append_uint64("accepted_step", [&](std::size_t i) { return accepted_steps_[i]; })
-      || !append_double("time_s", [&](std::size_t i) { return times_[i]; }))
-    return slide::Status::Numerical_failure;
-  for (int lane = 0; lane < lanes_; ++lane) {
-    if (!append_double("current_density_lane" + std::to_string(lane) + "_A_m2",
-                       [&](std::size_t i) {
-                         return snapshot(i).current_density[static_cast<std::size_t>(lane)];
-                       }))
+      fields.push_back(arrow::field(name, arrow::float64()));
+      columns.push_back(std::move(array));
+      return true;
+    };
+    if (!append_uint64("accepted_step", [&](std::size_t i) { return accepted_steps_[i]; })
+        || !append_double("time_s", [&](std::size_t i) { return times_[i]; }))
       return slide::Status::Numerical_failure;
-  }
-  for (int row = 0; row < rows_; ++row)
-    for (int lane = 0; lane < lanes_; ++lane)
-      if (!append_double("state_r" + std::to_string(row) + "_lane"
-                           + std::to_string(lane),
+    for (int lane = 0; lane < lanes_; ++lane) {
+      if (!append_double("current_density_lane" + std::to_string(lane) + "_A_m2",
                          [&](std::size_t i) {
-                           return snapshot(i).state[static_cast<std::size_t>(
-                             row * stride_ + lane)];
+                           return snapshot(i).current_density[static_cast<std::size_t>(lane)];
                          }))
         return slide::Status::Numerical_failure;
-  std::vector<std::vector<real_t>> voltage(
-    static_cast<std::size_t>(lanes_), std::vector<real_t>(count_));
-  std::vector<real_t> one_voltage(static_cast<std::size_t>(lanes_));
-  for (std::size_t index = 0; index < count_; ++index) {
-    if (terminalVoltage(index, one_voltage) != slide::Status::Success)
-      return slide::Status::Numerical_failure;
+    }
+    for (int row = 0; row < rows_; ++row)
+      for (int lane = 0; lane < lanes_; ++lane)
+        if (!append_double("state_r" + std::to_string(row) + "_lane"
+                             + std::to_string(lane),
+                           [&](std::size_t i) {
+                             return snapshot(i).state[static_cast<std::size_t>(
+                               row * stride_ + lane)];
+                           }))
+          return slide::Status::Numerical_failure;
+    std::vector<std::vector<real_t>> voltage(
+      static_cast<std::size_t>(lanes_), std::vector<real_t>(count_));
+    std::vector<real_t> one_voltage(static_cast<std::size_t>(lanes_));
+    for (std::size_t index = 0; index < count_; ++index) {
+      if (terminalVoltage(index, one_voltage) != slide::Status::Success)
+        return slide::Status::Numerical_failure;
+      for (int lane = 0; lane < lanes_; ++lane)
+        voltage[static_cast<std::size_t>(lane)][index] = one_voltage[static_cast<std::size_t>(lane)];
+    }
     for (int lane = 0; lane < lanes_; ++lane)
-      voltage[static_cast<std::size_t>(lane)][index] = one_voltage[static_cast<std::size_t>(lane)];
-  }
-  for (int lane = 0; lane < lanes_; ++lane)
-    if (!append_double("terminal_voltage_lane" + std::to_string(lane) + "_V",
-                       [&](std::size_t i) {
-                         return voltage[static_cast<std::size_t>(lane)][i];
-                       }))
-      return slide::Status::Numerical_failure;
+      if (!append_double("terminal_voltage_lane" + std::to_string(lane) + "_V",
+                         [&](std::size_t i) {
+                           return voltage[static_cast<std::size_t>(lane)][i];
+                         }))
+        return slide::Status::Numerical_failure;
 
-  const auto table = arrow::Table::Make(arrow::schema(std::move(fields)),
-                                        std::move(columns));
-  auto output_result = arrow::io::FileOutputStream::Open(path.string());
-  if (!output_result.ok())
-    return slide::Status::Invalid_parameters;
-  auto output = *output_result;
-  const auto status = parquet::arrow::WriteTable(
-    *table, arrow::default_memory_pool(), output, std::max<std::int64_t>(1, static_cast<std::int64_t>(count_)));
-  if (!status.ok() || !output->Close().ok())
-    return slide::Status::Numerical_failure;
-  return slide::Status::Success;
+    const auto table = arrow::Table::Make(arrow::schema(std::move(fields)),
+                                          std::move(columns));
+    auto output_result = arrow::io::FileOutputStream::Open(path.string());
+    if (!output_result.ok())
+      return slide::Status::Invalid_parameters;
+    auto output = *output_result;
+    const auto status = parquet::arrow::WriteTable(
+      *table, arrow::default_memory_pool(), output, std::max<std::int64_t>(1, static_cast<std::int64_t>(count_)));
+    if (!status.ok() || !output->Close().ok())
+      return slide::Status::Numerical_failure;
+    return slide::Status::Success;
+  } catch (const std::bad_alloc &) {
+    return allocationFailureStatus();
+  } catch (const std::length_error &) {
+    return allocationFailureStatus();
+  }
 #endif
 }
 
@@ -576,7 +631,7 @@ bool BinaryRecording::valid() const
 }
 
 slide::Status BinaryRecording::open(const std::filesystem::path &path)
-{
+try {
   auto candidate = std::make_unique<Mapping>();
   if (!mapReadOnly(path, *candidate) || candidate->size < header_bytes)
     return slide::Status::Invalid_parameters;
@@ -637,6 +692,10 @@ slide::Status BinaryRecording::open(const std::filesystem::path &path)
   table_offset_ = header.offset_table;
   state_values_ = static_cast<std::size_t>(state_values);
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  return allocationFailureStatus();
+} catch (const std::length_error &) {
+  return allocationFailureStatus();
 }
 
 SnapshotView BinaryRecording::snapshot(std::size_t index) const

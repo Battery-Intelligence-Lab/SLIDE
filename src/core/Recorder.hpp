@@ -9,11 +9,35 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <iosfwd>
 #include <memory>
 #include <span>
 #include <vector>
 
 namespace slide::core {
+
+namespace detail {
+
+  struct RecorderTestAccess;
+
+  struct BinaryRecordingLayout
+  {
+    std::uint64_t current_bytes{};
+    std::uint64_t state_bytes{};
+    std::uint64_t record_bytes{};
+    std::uint64_t table_bytes{};
+    std::uint64_t data_offset{};
+    std::uint64_t file_size{};
+  };
+
+  /** Pure checked layout used by the mmap writer and boundary tests. */
+  [[nodiscard]] slide::Status binaryRecordingLayout(
+    std::uint64_t lanes,
+    std::uint64_t state_values,
+    std::uint64_t snapshots,
+    BinaryRecordingLayout &output);
+
+} // namespace detail
 
 enum class BackpressurePolicy : unsigned char {
   stop, //!< return a failure when the preallocated ring is full
@@ -73,6 +97,11 @@ public:
     const std::filesystem::path &path);
 
 private:
+  using MappingFlush = bool (*)(void *mapping);
+
+  slide::Status writeCsvStream(std::ostream &output);
+  static bool flushMapping(void *mapping);
+
   SpmBatch *batch_{};
   RecorderConfig config_{};
   int rows_{};
@@ -87,6 +116,9 @@ private:
   std::vector<real_t> times_{};
   std::vector<real_t> current_density_{};
   std::vector<real_t> states_{};
+  MappingFlush mapping_flush_{ &Recorder::flushMapping };
+
+  friend struct detail::RecorderTestAccess;
 };
 
 /** Read-only hardened view over a SLIDE recording mapped directly from disk. */

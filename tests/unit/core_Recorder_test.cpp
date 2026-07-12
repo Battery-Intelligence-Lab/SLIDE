@@ -13,14 +13,34 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <span>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 using namespace slide;
+
+namespace slide::core::detail {
+
+struct RecorderTestAccess
+{
+  static Status writeCsvStream(Recorder &recorder, std::ostream &output)
+  {
+    return recorder.writeCsvStream(output);
+  }
+
+  static void failMappingFlush(Recorder &recorder)
+  {
+    recorder.mapping_flush_ = [](void *) { return false; };
+  }
+};
+
+} // namespace slide::core::detail
 
 namespace {
 
@@ -62,6 +82,58 @@ void flipByte(const std::filesystem::path &path, std::uint64_t offset)
   stream.seekp(static_cast<std::streamoff>(offset));
   stream.write(&value, 1);
   REQUIRE(stream.good());
+}
+
+std::uint32_t testCrc32(std::span<const std::byte> bytes)
+{
+  std::uint32_t crc = 0xffffffffU;
+  for (const auto byte : bytes) {
+    crc ^= std::to_integer<std::uint8_t>(byte);
+    for (int bit = 0; bit < 8; ++bit)
+      crc = (crc >> 1U) ^ (0xedb88320U & (0U - (crc & 1U)));
+  }
+  return ~crc;
+}
+
+template <class T>
+void writeScalar(std::span<std::byte> bytes, std::size_t offset, T value)
+{
+  static_assert(std::is_trivially_copyable_v<T>);
+  REQUIRE(offset <= bytes.size());
+  REQUIRE(sizeof(T) <= bytes.size() - offset);
+  std::memcpy(bytes.data() + offset, &value, sizeof(value));
+}
+
+void sealHeader(std::span<std::byte> bytes)
+{
+  REQUIRE(bytes.size() >= 64);
+  auto header = bytes.first(64);
+  writeScalar<std::uint32_t>(header, 20, 0U);
+  writeScalar<std::uint32_t>(header, 20, testCrc32(header));
+}
+
+std::vector<std::byte> readBytes(const std::filesystem::path &path)
+{
+  std::ifstream input(path, std::ios::binary | std::ios::ate);
+  REQUIRE(input.good());
+  const auto length = input.tellg();
+  REQUIRE(length >= 0);
+  std::vector<std::byte> bytes(static_cast<std::size_t>(length));
+  input.seekg(0);
+  input.read(reinterpret_cast<char *>(bytes.data()), length);
+  REQUIRE(input.good());
+  return bytes;
+}
+
+void writeBytes(const std::filesystem::path &path,
+                std::span<const std::byte>
+                  bytes)
+{
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  REQUIRE(output.good());
+  output.write(reinterpret_cast<const char *>(bytes.data()),
+               static_cast<std::streamsize>(bytes.size()));
+  REQUIRE(output.good());
 }
 
 } // namespace
@@ -159,6 +231,71 @@ TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering
     const std::array current{ 1e300, -1e300 };
     CHECK(recorder.record(0, current) == Status::Invalid_parameters);
     CHECK(recorder.size() == 0);
+  }
+}
+
+TEST_CASE("Recorder checks binary layouts and propagates deterministic sink faults",
+          "[core][recorder][fault-injection][coverage]")
+{
+  SECTION("the pure mmap layout rejects each overflow phase atomically")
+  {
+    core::detail::BinaryRecordingLayout layout{
+      .current_bytes = 1,
+      .state_bytes = 2,
+      .record_bytes = 3,
+      .table_bytes = 4,
+      .data_offset = 5,
+      .file_size = 6,
+    };
+    CHECK(core::detail::binaryRecordingLayout(
+            1,
+            std::numeric_limits<std::uint64_t>::max(),
+            1,
+            layout)
+          == Status::Invalid_parameters);
+    CHECK(layout.file_size == 6);
+
+    CHECK(core::detail::binaryRecordingLayout(
+            1,
+            std::numeric_limits<std::uint64_t>::max() / 16,
+            3,
+            layout)
+          == Status::Invalid_parameters);
+    CHECK(layout.file_size == 6);
+
+    REQUIRE(core::detail::binaryRecordingLayout(2, 10, 1, layout)
+            == Status::Success);
+    CHECK(layout.current_bytes == 2 * sizeof(double));
+    CHECK(layout.state_bytes == 10 * sizeof(double));
+    CHECK(layout.record_bytes == 16 + 12 * sizeof(double));
+    CHECK(layout.data_offset % 64 == 0);
+  }
+
+  SECTION("a failed CSV stream reports the write failure")
+  {
+    auto batch = makeBatch();
+    core::Recorder recorder;
+    REQUIRE(recorder.configure(batch, { .capacity = 1 })
+            == Status::Success);
+    std::ostream failed{ nullptr };
+    CHECK(core::detail::RecorderTestAccess::writeCsvStream(recorder, failed)
+          == Status::Numerical_failure);
+  }
+
+  SECTION("an mmap synchronization failure is not reported as success")
+  {
+    const auto path = temporary("flush_failure.slrec");
+    std::error_code ignored;
+    std::filesystem::remove(path, ignored);
+    auto batch = makeBatch();
+    core::Recorder recorder;
+    REQUIRE(recorder.configure(batch, { .capacity = 1 })
+            == Status::Success);
+    const std::array current{ 1.0, -1.0 };
+    REQUIRE(recorder.record(0, current) == Status::Success);
+    core::detail::RecorderTestAccess::failMappingFlush(recorder);
+    CHECK(recorder.writeBinary(path) == Status::Numerical_failure);
+    std::filesystem::remove(path, ignored);
   }
 }
 
@@ -336,4 +473,48 @@ TEST_CASE("Binary recording rejects absent and header-short files",
   CHECK(recording.open(short_file) == Status::Invalid_parameters);
   CHECK_FALSE(recording.valid());
   std::filesystem::remove(short_file, ignored);
+}
+
+TEST_CASE("Binary recording rejects overflowing layouts and trailing bytes",
+          "[core][recorder][mmap][coverage]")
+{
+  const auto valid = temporary("layout_valid.slrec");
+  const auto overflow = temporary("layout_overflow.slrec");
+  const auto trailing = temporary("layout_trailing.slrec");
+  std::error_code ignored;
+  for (const auto &path : { valid, overflow, trailing })
+    std::filesystem::remove(path, ignored);
+
+  auto batch = makeBatch();
+  core::Recorder writer;
+  REQUIRE(writer.configure(batch, { .capacity = 1 }) == Status::Success);
+  const std::array current{ 1.0, -1.0 };
+  REQUIRE(writer.record(0, current) == Status::Success);
+  REQUIRE(writer.writeBinary(valid) == Status::Success);
+  const auto original = readBytes(valid);
+  REQUIRE(original.size() > 72);
+
+  auto overflow_bytes = original;
+  constexpr auto maximum_dimension =
+    static_cast<std::uint32_t>(std::numeric_limits<int>::max());
+  writeScalar<std::uint32_t>(overflow_bytes, 24, maximum_dimension);
+  writeScalar<std::uint32_t>(overflow_bytes, 32, maximum_dimension);
+  sealHeader(overflow_bytes);
+  writeBytes(overflow, overflow_bytes);
+
+  auto trailing_bytes = original;
+  trailing_bytes.push_back(std::byte{});
+  writeScalar<std::uint64_t>(trailing_bytes, 56, trailing_bytes.size());
+  sealHeader(trailing_bytes);
+  writeBytes(trailing, trailing_bytes);
+
+  core::BinaryRecording recording;
+  REQUIRE(recording.open(valid) == Status::Success);
+  CHECK(recording.open(overflow) == Status::Invalid_parameters);
+  CHECK(recording.valid());
+  CHECK(recording.open(trailing) == Status::Invalid_parameters);
+  CHECK(recording.valid());
+
+  for (const auto &path : { valid, overflow, trailing })
+    std::filesystem::remove(path, ignored);
 }

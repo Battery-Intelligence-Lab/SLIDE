@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <iosfwd>
 #include <memory>
 #include <mutex>
 #include <span>
@@ -50,11 +51,32 @@ bool compressionCodecAvailable(CompressionCodec codec);
 
 namespace detail {
 
+  struct AsyncRecorderTestAccess;
+
+  /**
+   * Maximum combined resident vector-data bytes during an atomic eager open:
+   * retained aggregate arrays from the current recording plus all candidate
+   * arrays and decode scratch. Larger recordings require a future
+   * streaming/mapped reader; increasing this cap would reintroduce
+   * hostile-header allocation amplification.
+   */
+  inline constexpr std::size_t max_eager_recording_bytes = 256U * 1024U * 1024U;
+
   struct AsyncBufferLayout
   {
+    std::size_t state_values{};
     std::size_t values{};
     std::size_t raw_bytes{};
     std::size_t compressed_bound{};
+  };
+
+  struct CompressedRecordingStorageLayout
+  {
+    std::size_t state_values{};
+    std::size_t current_values{};
+    std::size_t payload_bytes{};
+    std::size_t workspace_bytes{};
+    std::size_t resident_bytes{};
   };
 
   /** Pure checked layout seam shared by configure() and boundary tests. */
@@ -63,6 +85,39 @@ namespace detail {
     std::size_t state_values,
     CompressionCodec codec,
     AsyncBufferLayout &output);
+
+  /** Checked row/stride multiplication followed by asyncBufferLayout(). */
+  [[nodiscard]] slide::Status compressedRecordingBufferLayout(
+    std::size_t rows,
+    std::size_t lanes,
+    std::size_t stride,
+    CompressionCodec codec,
+    AsyncBufferLayout &output);
+
+  /** Pure checked aggregate-vector layout for the eager reader. */
+  [[nodiscard]] slide::Status compressedRecordingStorageLayout(
+    std::size_t snapshots,
+    std::size_t state_values,
+    std::size_t lanes,
+    std::size_t raw_bytes,
+    std::size_t compressed_bound,
+    CompressionCodec codec,
+    std::size_t retained_bytes,
+    CompressedRecordingStorageLayout &output);
+
+  /** Checked byte total for retained aggregate vector capacities. */
+  [[nodiscard]] slide::Status compressedRecordingRetainedBytes(
+    std::size_t step_capacity,
+    std::size_t time_capacity,
+    std::size_t current_capacity,
+    std::size_t state_capacity,
+    std::size_t &output);
+
+  /** Validate a block payload before payload.resize() or file reads. */
+  [[nodiscard]] slide::Status validateCompressedPayloadSize(
+    CompressionCodec codec,
+    std::uint64_t payload_bytes,
+    const AsyncBufferLayout &layout);
 
 } // namespace detail
 
@@ -121,6 +176,9 @@ public:
   void setDrainHook(std::function<void()> hook) { drain_hook_ = std::move(hook); }
 
 private:
+  using DrainThreadFactory = std::thread (*)(AsyncRecorder &);
+  using OutputHook = void (*)(std::ofstream &);
+
   enum class SlotState : unsigned char { empty,
                                          filling,
                                          ready,
@@ -146,6 +204,8 @@ private:
   slide::Status drainSlot(Slot &slot);
   slide::Status finalizeFile();
   void setWorkerFailure(slide::Status status);
+  static std::thread makeDrainThread(AsyncRecorder &recorder);
+  static void noOutputHook(std::ofstream &) noexcept;
 
   SpmBatch *batch_{};
   AsyncRecorderConfig config_{};
@@ -172,6 +232,13 @@ private:
   std::atomic<int> worker_status_{ static_cast<int>(slide::Status::Success) };
   std::function<void()> drain_hook_{};
   void *codec_context_{};
+  DrainThreadFactory drain_thread_factory_{ &AsyncRecorder::makeDrainThread };
+  OutputHook before_placeholder_write_{ &AsyncRecorder::noOutputHook };
+  OutputHook before_block_write_{ &AsyncRecorder::noOutputHook };
+  OutputHook before_finalize_tell_{ &AsyncRecorder::noOutputHook };
+  OutputHook before_finalize_write_{ &AsyncRecorder::noOutputHook };
+
+  friend struct detail::AsyncRecorderTestAccess;
 };
 
 /** Hardened eager reader for the async shuffled/compressed block format. */
@@ -188,6 +255,11 @@ public:
   SnapshotView snapshot(std::size_t index) const;
 
 private:
+  static slide::Status readExact(std::istream &input,
+                                 std::span<std::byte>
+                                   destination,
+                                 std::uint64_t &remaining);
+
   bool valid_{};
   int rows_{};
   int lanes_{};
@@ -197,6 +269,8 @@ private:
   std::vector<real_t> times_{};
   std::vector<real_t> currents_{};
   std::vector<real_t> states_{};
+
+  friend struct detail::AsyncRecorderTestAccess;
 };
 
 } // namespace slide::core

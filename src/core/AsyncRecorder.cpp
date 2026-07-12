@@ -89,12 +89,26 @@ namespace {
   }
 
   template <class T>
+  bool checkedAdd(T left, T right, T &result)
+  {
+    if (left > std::numeric_limits<T>::max() - right)
+      return false;
+    result = left + right;
+    return true;
+  }
+
+  template <class T>
   bool checkedMultiply(T left, T right, T &result)
   {
     if (left != 0 && right > std::numeric_limits<T>::max() / left)
       return false;
     result = left * right;
     return true;
+  }
+
+  slide::Status allocationFailureStatus() noexcept
+  {
+    return slide::Status::Numerical_failure;
   }
 
   std::size_t compressionBound(CompressionCodec codec, std::size_t raw_bytes)
@@ -139,10 +153,112 @@ slide::Status detail::asyncBufferLayout(std::size_t lanes,
       || raw_bytes > std::vector<std::byte>{}.max_size()
       || bound > std::vector<std::byte>{}.max_size())
     return slide::Status::Invalid_parameters;
-  output = { .values = raw_values,
+  output = { .state_values = state_values,
+             .values = raw_values,
              .raw_bytes = raw_bytes,
              .compressed_bound = bound };
   return slide::Status::Success;
+}
+
+slide::Status detail::compressedRecordingBufferLayout(
+  std::size_t rows,
+  std::size_t lanes,
+  std::size_t stride,
+  CompressionCodec codec,
+  AsyncBufferLayout &output)
+{
+  std::size_t state_values{};
+  if (!checkedMultiply(rows, stride, state_values))
+    return slide::Status::Invalid_parameters;
+  return asyncBufferLayout(lanes, state_values, codec, output);
+}
+
+slide::Status detail::compressedRecordingStorageLayout(
+  std::size_t snapshots,
+  std::size_t state_values,
+  std::size_t lanes,
+  std::size_t raw_bytes,
+  std::size_t compressed_bound,
+  CompressionCodec codec,
+  std::size_t retained_bytes,
+  CompressedRecordingStorageLayout &output)
+{
+  std::size_t state_storage{}, current_storage{};
+  std::size_t step_bytes{}, time_bytes{}, state_bytes{}, current_bytes{};
+  std::size_t raw_scratch_bytes{}, scratch_bytes{}, resident_bytes{};
+  const auto real_vector_limit = std::vector<real_t>{}.max_size();
+  const bool valid_codec = codec == CompressionCodec::none
+                           || codec == CompressionCodec::zstd;
+  const std::size_t workspace_bytes = snapshots == 0 ? 0 : raw_bytes;
+  const std::size_t payload_bytes = snapshots == 0
+                                      ? 0
+                                    : codec == CompressionCodec::none
+                                      ? raw_bytes
+                                      : compressed_bound;
+  if (!valid_codec
+      || !checkedMultiply(snapshots, state_values, state_storage)
+      || !checkedMultiply(snapshots, lanes, current_storage)
+      || !checkedMultiply(
+        snapshots, sizeof(std::uint64_t), step_bytes)
+      || !checkedMultiply(snapshots, sizeof(real_t), time_bytes)
+      || !checkedMultiply(state_storage, sizeof(real_t), state_bytes)
+      || !checkedMultiply(current_storage, sizeof(real_t), current_bytes)
+      || !checkedMultiply(
+        workspace_bytes, std::size_t{ 2 }, raw_scratch_bytes)
+      || payload_bytes
+           > static_cast<std::size_t>(
+             std::numeric_limits<std::streamsize>::max())
+      || !checkedAdd(raw_scratch_bytes, payload_bytes, scratch_bytes)
+      || !checkedAdd(retained_bytes, step_bytes, resident_bytes)
+      || !checkedAdd(resident_bytes, time_bytes, resident_bytes)
+      || !checkedAdd(resident_bytes, state_bytes, resident_bytes)
+      || !checkedAdd(resident_bytes, current_bytes, resident_bytes)
+      || !checkedAdd(resident_bytes, scratch_bytes, resident_bytes)
+      || snapshots > std::vector<std::uint64_t>{}.max_size()
+      || snapshots > real_vector_limit || state_storage > real_vector_limit
+      || current_storage > real_vector_limit
+      || resident_bytes > max_eager_recording_bytes)
+    return slide::Status::Invalid_parameters;
+  output = { .state_values = state_storage,
+             .current_values = current_storage,
+             .payload_bytes = payload_bytes,
+             .workspace_bytes = workspace_bytes,
+             .resident_bytes = resident_bytes };
+  return slide::Status::Success;
+}
+
+slide::Status detail::compressedRecordingRetainedBytes(
+  std::size_t step_capacity,
+  std::size_t time_capacity,
+  std::size_t current_capacity,
+  std::size_t state_capacity,
+  std::size_t &output)
+{
+  std::size_t step_bytes{}, time_bytes{}, current_bytes{}, state_bytes{};
+  std::size_t total{};
+  if (!checkedMultiply(step_capacity, sizeof(std::uint64_t), step_bytes)
+      || !checkedMultiply(time_capacity, sizeof(real_t), time_bytes)
+      || !checkedMultiply(current_capacity, sizeof(real_t), current_bytes)
+      || !checkedMultiply(state_capacity, sizeof(real_t), state_bytes)
+      || !checkedAdd(step_bytes, time_bytes, total)
+      || !checkedAdd(total, current_bytes, total)
+      || !checkedAdd(total, state_bytes, total))
+    return slide::Status::Invalid_parameters;
+  output = total;
+  return slide::Status::Success;
+}
+
+slide::Status detail::validateCompressedPayloadSize(
+  CompressionCodec codec,
+  std::uint64_t payload_bytes,
+  const AsyncBufferLayout &layout)
+{
+  const bool valid = codec == CompressionCodec::none
+                       ? payload_bytes == layout.raw_bytes
+                       : codec == CompressionCodec::zstd
+                           && payload_bytes <= layout.compressed_bound;
+  return valid ? slide::Status::Success
+               : slide::Status::Invalid_parameters;
 }
 
 namespace {
@@ -206,6 +322,14 @@ AsyncRecorder::~AsyncRecorder()
   (void)finish();
 }
 
+std::thread AsyncRecorder::makeDrainThread(AsyncRecorder &recorder)
+{
+  return std::thread{ [&recorder] { recorder.drainLoop(); } };
+}
+
+void AsyncRecorder::noOutputHook(std::ofstream &) noexcept
+{}
+
 slide::Status AsyncRecorder::configure(SpmBatch &batch,
                                        const std::filesystem::path &path,
                                        AsyncRecorderConfig config)
@@ -238,6 +362,7 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
     if (!output)
       return slide::Status::Invalid_parameters;
     const CompressedFileHeader placeholder{};
+    before_placeholder_write_(output);
     output.write(reinterpret_cast<const char *>(&placeholder), sizeof(placeholder));
     if (!output)
       return slide::Status::Numerical_failure;
@@ -273,7 +398,7 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
     worker_status_.store(static_cast<int>(slide::Status::Success),
                          std::memory_order_relaxed);
     try {
-      drain_ = std::thread([this] { drainLoop(); });
+      drain_ = drain_thread_factory_(*this);
     } catch (...) {
 #if defined(SLIDE_WITH_ZSTD)
       if (codec_context_ != nullptr)
@@ -286,7 +411,9 @@ slide::Status AsyncRecorder::configure(SpmBatch &batch,
       return slide::Status::Numerical_failure;
     }
   } catch (const std::bad_alloc &) {
-    return slide::Status::Numerical_failure;
+    return allocationFailureStatus();
+  } catch (const std::length_error &) {
+    return allocationFailureStatus();
   }
   return slide::Status::Success;
 }
@@ -400,12 +527,13 @@ slide::Status AsyncRecorder::drainSlot(Slot &slot)
       != slide::Status::Success)
     return slide::Status::Invalid_states;
   std::span<const std::byte> payload;
+#if defined(SLIDE_WITH_ZSTD)
   if (config_.codec == CompressionCodec::none) {
     std::memcpy(slot.compressed.data(), slot.shuffled.data(), slot.shuffled.size());
     payload = std::span<const std::byte>{ slot.compressed }.first(
       slot.shuffled.size());
   } else {
-#if defined(SLIDE_WITH_ZSTD)
+    assert(config_.codec == CompressionCodec::zstd);
     const std::size_t compressed = ZSTD_compressCCtx(
       static_cast<ZSTD_CCtx *>(codec_context_),
       slot.compressed.data(),
@@ -416,10 +544,15 @@ slide::Status AsyncRecorder::drainSlot(Slot &slot)
     if (ZSTD_isError(compressed))
       return slide::Status::Numerical_failure;
     payload = std::span<const std::byte>{ slot.compressed }.first(compressed);
-#else
-    return slide::Status::NotImplementedYet;
-#endif
   }
+#else
+  // configure() rejects every codec except none in an optional-off build, and
+  // config_ is private and immutable while the worker is running.
+  assert(config_.codec == CompressionCodec::none);
+  std::memcpy(slot.compressed.data(), slot.shuffled.data(), slot.shuffled.size());
+  payload = std::span<const std::byte>{ slot.compressed }.first(
+    slot.shuffled.size());
+#endif
 
   CompressedBlockHeader header{
     .magic = block_magic,
@@ -434,6 +567,7 @@ slide::Status AsyncRecorder::drainSlot(Slot &slot)
     .payload_crc32 = crc32(payload),
   };
   header.header_crc32 = blockHeaderCrc(header);
+  before_block_write_(output_);
   output_.write(reinterpret_cast<const char *>(&header), sizeof(header));
   output_.write(reinterpret_cast<const char *>(payload.data()),
                 static_cast<std::streamsize>(payload.size()));
@@ -475,11 +609,15 @@ void AsyncRecorder::drainLoop()
 
 slide::Status AsyncRecorder::finalizeFile()
 {
-  if (!output_)
-    return slide::Status::Numerical_failure;
+  // A failed block write sets worker_status_ and finish() skips finalization;
+  // otherwise configure() owns this still-open stream until this function.
+  assert(output_.is_open() && output_);
+  before_finalize_tell_(output_);
   const auto position = output_.tellp();
-  if (position < 0)
+  if (position < 0) {
+    output_.close();
     return slide::Status::Numerical_failure;
+  }
   const auto file_size = static_cast<std::uint64_t>(position);
   CompressedFileHeader header{ .magic = compressed_magic,
                                .major = format_major,
@@ -493,13 +631,13 @@ slide::Status AsyncRecorder::finalizeFile()
                                .snapshots = snapshotsWritten(),
                                .file_size = file_size };
   header.header_crc32 = fileHeaderCrc(header);
+  before_finalize_write_(output_);
   output_.seekp(0);
   output_.write(reinterpret_cast<const char *>(&header), sizeof(header));
   output_.flush();
-  const bool good = output_.good();
   output_.close();
-  return good ? slide::Status::Success
-              : slide::Status::Numerical_failure;
+  return output_.good() ? slide::Status::Success
+                        : slide::Status::Numerical_failure;
 }
 
 slide::Status AsyncRecorder::finish()
@@ -532,8 +670,30 @@ slide::Status AsyncRecorder::finish()
   return workerStatus();
 }
 
-slide::Status CompressedRecording::open(const std::filesystem::path &path)
+slide::Status CompressedRecording::readExact(
+  std::istream &input,
+  std::span<std::byte>
+    destination,
+  std::uint64_t &remaining)
 {
+  // All production callers pass fixed 64-byte headers or payloads whose size
+  // was checked against streamsize::max before allocation.
+  assert(destination.size()
+         <= static_cast<std::size_t>(
+           std::numeric_limits<std::streamsize>::max()));
+  if (destination.size() > remaining)
+    return slide::Status::Invalid_parameters;
+  const auto bytes = static_cast<std::streamsize>(destination.size());
+  input.read(reinterpret_cast<char *>(destination.data()), bytes);
+  const bool complete = input && input.gcount() == bytes;
+  if (complete)
+    remaining -= destination.size();
+  return complete ? slide::Status::Success
+                  : slide::Status::Invalid_parameters;
+}
+
+slide::Status CompressedRecording::open(const std::filesystem::path &path)
+try {
   std::ifstream input(path, std::ios::binary);
   if (!input)
     return slide::Status::Invalid_parameters;
@@ -542,9 +702,13 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
   if (length < static_cast<std::streamoff>(sizeof(CompressedFileHeader)))
     return slide::Status::Invalid_parameters;
   input.seekg(0);
+  std::uint64_t remaining = static_cast<std::uint64_t>(length);
   CompressedFileHeader header{};
-  input.read(reinterpret_cast<char *>(&header), sizeof(header));
-  if (!input || header.magic != compressed_magic || header.major != format_major
+  const auto header_status = readExact(
+    input, std::as_writable_bytes(std::span{ &header, 1 }), remaining);
+  if (header_status != slide::Status::Success)
+    return header_status;
+  if (header.magic != compressed_magic || header.major != format_major
       || header.minor != format_minor || header.endian != endian_marker
       || header.header_size != sizeof(CompressedFileHeader)
       || header.header_crc32 != fileHeaderCrc(header)
@@ -566,82 +730,106 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
           / sizeof(CompressedBlockHeader))
     return slide::Status::Invalid_parameters;
 
-  std::size_t state_values{}, raw_values{}, raw_bytes{}, state_storage{}, current_storage{};
-  if (!checkedMultiply(static_cast<std::size_t>(header.rows),
-                       static_cast<std::size_t>(header.stride),
-                       state_values)
-      || static_cast<std::size_t>(header.lanes)
-           > std::numeric_limits<std::size_t>::max() - state_values)
-    return slide::Status::Invalid_parameters;
-  raw_values = static_cast<std::size_t>(header.lanes) + state_values;
+  detail::AsyncBufferLayout buffer_layout;
+  const auto layout_status = detail::compressedRecordingBufferLayout(
+    header.rows,
+    header.lanes,
+    header.stride,
+    static_cast<CompressionCodec>(header.codec),
+    buffer_layout);
+  if (layout_status != slide::Status::Success)
+    return layout_status;
+  const std::size_t state_values = buffer_layout.state_values;
+  const std::size_t raw_bytes = buffer_layout.raw_bytes;
   const auto snapshots = static_cast<std::size_t>(header.snapshots);
-  const auto real_vector_limit = std::vector<real_t>{}.max_size();
-  const auto byte_vector_limit = std::vector<std::byte>{}.max_size();
-  if (!checkedMultiply(raw_values, sizeof(real_t), raw_bytes)
-      || !checkedMultiply(snapshots, state_values, state_storage)
-      || !checkedMultiply(snapshots,
-                          static_cast<std::size_t>(header.lanes),
-                          current_storage)
-      || snapshots > std::vector<std::uint64_t>{}.max_size()
-      || snapshots > real_vector_limit || state_storage > real_vector_limit
-      || current_storage > real_vector_limit || raw_bytes > byte_vector_limit)
-    return slide::Status::Invalid_parameters;
+  std::size_t retained_bytes{};
+  const auto retained_status = detail::compressedRecordingRetainedBytes(
+    steps_.capacity(),
+    times_.capacity(),
+    currents_.capacity(),
+    states_.capacity(),
+    retained_bytes);
+  if (retained_status != slide::Status::Success)
+    return retained_status;
+  detail::CompressedRecordingStorageLayout storage_layout;
+  const auto storage_status = detail::compressedRecordingStorageLayout(
+    snapshots,
+    state_values,
+    header.lanes,
+    buffer_layout.raw_bytes,
+    buffer_layout.compressed_bound,
+    static_cast<CompressionCodec>(header.codec),
+    retained_bytes,
+    storage_layout);
+  if (storage_status != slide::Status::Success)
+    return storage_status;
 
-  try {
+  {
     std::vector<std::uint64_t> steps(static_cast<std::size_t>(header.snapshots));
     std::vector<real_t> times(steps.size());
-    std::vector<real_t> currents(current_storage);
-    std::vector<real_t> states(state_storage);
-    std::vector<std::byte> payload;
-    std::vector<std::byte> shuffled(raw_bytes);
-    std::vector<std::byte> raw(raw_bytes);
+    std::vector<real_t> currents(storage_layout.current_values);
+    std::vector<real_t> states(storage_layout.state_values);
+    // Allocate the full validated payload workspace exactly once. Per-block
+    // resize growth could otherwise exceed the resident-byte budget.
+    std::vector<std::byte> payload(storage_layout.payload_bytes);
+    std::vector<std::byte> shuffled(storage_layout.workspace_bytes);
+    std::vector<std::byte> raw(storage_layout.workspace_bytes);
     for (std::size_t index = 0; index < steps.size(); ++index) {
       CompressedBlockHeader block{};
-      input.read(reinterpret_cast<char *>(&block), sizeof(block));
-      if (!input)
-        return slide::Status::Invalid_parameters;
-      const auto position = input.tellg();
-      if (position < 0 || position > length)
-        return slide::Status::Invalid_parameters;
-      const auto remaining = static_cast<std::uint64_t>(length - position);
+      const auto block_status = readExact(
+        input, std::as_writable_bytes(std::span{ &block, 1 }), remaining);
+      if (block_status != slide::Status::Success)
+        return block_status;
       if (block.magic != block_magic
           || block.header_size != sizeof(CompressedBlockHeader)
           || block.header_crc32 != blockHeaderCrc(block)
           || block.codec != header.codec || block.flags != 1U
           || block.raw_bytes != raw_bytes || block.payload_bytes > remaining
           || block.payload_bytes > std::numeric_limits<std::size_t>::max()
-          || block.payload_bytes > payload.max_size()
           || block.payload_bytes
                > static_cast<std::uint64_t>(
                  std::numeric_limits<std::streamsize>::max())
           || !is_finite(block.time)
           || (index > 0 && block.accepted_step <= steps[index - 1]))
         return slide::Status::Invalid_parameters;
-      payload.resize(static_cast<std::size_t>(block.payload_bytes));
-      input.read(reinterpret_cast<char *>(payload.data()),
-                 static_cast<std::streamsize>(payload.size()));
-      if (!input || block.payload_crc32 != crc32(payload))
-        return slide::Status::Invalid_parameters;
       const auto codec = static_cast<CompressionCodec>(block.codec);
-      if (codec == CompressionCodec::none) {
-        if (payload.size() != shuffled.size())
-          return slide::Status::Invalid_parameters;
-        std::memcpy(shuffled.data(), payload.data(), payload.size());
-      } else {
+      const auto payload_layout_status = detail::validateCompressedPayloadSize(
+        codec, block.payload_bytes, buffer_layout);
+      if (payload_layout_status != slide::Status::Success)
+        return payload_layout_status;
+      auto payload_view = std::span<std::byte>{ payload }.first(
+        static_cast<std::size_t>(block.payload_bytes));
+      const auto payload_status = readExact(input, payload_view, remaining);
+      if (payload_status != slide::Status::Success)
+        return payload_status;
+      if (block.payload_crc32 != crc32(payload_view))
+        return slide::Status::Invalid_parameters;
 #if defined(SLIDE_WITH_ZSTD)
+      if (codec == CompressionCodec::none) {
+        // validateCompressedPayloadSize() fixes the none payload to raw_bytes.
+        assert(payload_view.size() == shuffled.size());
+        std::memcpy(shuffled.data(), payload_view.data(), payload_view.size());
+      } else {
+        assert(codec == CompressionCodec::zstd);
         const std::size_t decoded = ZSTD_decompress(shuffled.data(),
                                                     shuffled.size(),
-                                                    payload.data(),
-                                                    payload.size());
+                                                    payload_view.data(),
+                                                    payload_view.size());
         if (ZSTD_isError(decoded) || decoded != shuffled.size())
           return slide::Status::Invalid_parameters;
-#else
-        return slide::Status::NotImplementedYet;
-#endif
       }
-      if (byteUnshuffle(shuffled, raw, sizeof(real_t))
-          != slide::Status::Success)
-        return slide::Status::Invalid_parameters;
+#else
+      // The validated file header excludes zstd before allocation when zstd
+      // support is absent; payload validation then fixes its size to raw_bytes.
+      assert(codec == CompressionCodec::none);
+      assert(payload_view.size() == shuffled.size());
+      std::memcpy(shuffled.data(), payload_view.data(), payload_view.size());
+#endif
+      const auto unshuffle_status = byteUnshuffle(shuffled, raw, sizeof(real_t));
+      // Both vectors were created at raw_bytes, are distinct allocations, and
+      // raw_bytes is an exact multiple of sizeof(real_t).
+      assert(unshuffle_status == slide::Status::Success);
+      (void)unshuffle_status;
       if (block.raw_crc32 != crc32(raw))
         return slide::Status::Invalid_parameters;
       steps[index] = block.accepted_step;
@@ -653,7 +841,7 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
                   raw.data() + header.lanes * sizeof(real_t),
                   state_values * sizeof(real_t));
     }
-    if (input.tellg() != length)
+    if (remaining != 0)
       return slide::Status::Invalid_parameters;
 
     close();
@@ -666,10 +854,12 @@ slide::Status CompressedRecording::open(const std::filesystem::path &path)
     currents_ = std::move(currents);
     states_ = std::move(states);
     valid_ = true;
-  } catch (const std::bad_alloc &) {
-    return slide::Status::Numerical_failure;
   }
   return slide::Status::Success;
+} catch (const std::bad_alloc &) {
+  return allocationFailureStatus();
+} catch (const std::length_error &) {
+  return allocationFailureStatus();
 }
 
 void CompressedRecording::close()
@@ -679,10 +869,10 @@ void CompressedRecording::close()
   lanes_ = 0;
   stride_ = 0;
   state_values_ = 0;
-  steps_.clear();
-  times_.clear();
-  currents_.clear();
-  states_.clear();
+  std::vector<std::uint64_t>{}.swap(steps_);
+  std::vector<real_t>{}.swap(times_);
+  std::vector<real_t>{}.swap(currents_);
+  std::vector<real_t>{}.swap(states_);
 }
 
 SnapshotView CompressedRecording::snapshot(std::size_t index) const
