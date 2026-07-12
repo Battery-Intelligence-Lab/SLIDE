@@ -457,6 +457,11 @@ def _cache_value(build_dir: Path, name: str) -> str:
     raise CoverageError(f"CMake cache value is missing: {name}")
 
 
+def _coverage_tool(build_dir: Path, override: str | None, cache_name: str) -> str:
+    """Use an explicit tool or the exact version selected at CMake configure time."""
+    return override if override is not None else _cache_value(build_dir, cache_name)
+
+
 def _require_up_to_date(build_dir: Path) -> None:
     ninja = _cache_value(build_dir, "CMAKE_MAKE_PROGRAM")
     result = subprocess.run(
@@ -1142,6 +1147,19 @@ slide::Status f(bool ok) {
     }
     with tempfile.TemporaryDirectory() as directory_text:
         directory = Path(directory_text)
+        (directory / "CMakeCache.txt").write_text(
+            "SLIDE_LLVM_COV_EXECUTABLE:FILEPATH=/opt/llvm-cov-18\n"
+            "SLIDE_LLVM_PROFDATA_EXECUTABLE:FILEPATH=/opt/llvm-profdata-18\n",
+            encoding="utf-8",
+        )
+        if _coverage_tool(
+            directory, None, "SLIDE_LLVM_COV_EXECUTABLE"
+        ) != "/opt/llvm-cov-18":
+            raise CoverageError("tool self-test ignored the configured llvm-cov")
+        if _coverage_tool(
+            directory, "/explicit/llvm-profdata", "SLIDE_LLVM_PROFDATA_EXECUTABLE"
+        ) != "/explicit/llvm-profdata":
+            raise CoverageError("tool self-test ignored an explicit override")
         manifest = directory / "exceptions.json"
         manifest.write_text(
             json.dumps({"schema_version": 1, "exceptions": [valid_exception]}),
@@ -1211,8 +1229,14 @@ def _parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--exceptions", type=Path, required=True)
     report_parser.add_argument("--json-output", type=Path, required=True)
     report_parser.add_argument("--markdown-output", type=Path, required=True)
-    report_parser.add_argument("--llvm-cov", default="llvm-cov")
-    report_parser.add_argument("--llvm-profdata", default="llvm-profdata")
+    report_parser.add_argument(
+        "--llvm-cov",
+        help="override the llvm-cov selected in the build's CMake cache",
+    )
+    report_parser.add_argument(
+        "--llvm-profdata",
+        help="override the llvm-profdata selected in the build's CMake cache",
+    )
     census_parser = subparsers.add_parser("census", help="print the lexical site census")
     census_parser.add_argument("--source-root", type=Path, default=Path.cwd())
     census_parser.add_argument("--build-dir", type=Path)
@@ -1232,8 +1256,16 @@ def main() -> int:
                 args.exceptions,
                 args.json_output,
                 args.markdown_output,
-                args.llvm_cov,
-                args.llvm_profdata,
+                _coverage_tool(
+                    args.build_dir,
+                    args.llvm_cov,
+                    "SLIDE_LLVM_COV_EXECUTABLE",
+                ),
+                _coverage_tool(
+                    args.build_dir,
+                    args.llvm_profdata,
+                    "SLIDE_LLVM_PROFDATA_EXECUTABLE",
+                ),
             )
         elif args.command == "census":
             census(args.source_root, args.build_dir)
