@@ -5,6 +5,7 @@
 
 #include "../../src/core/AsyncRecorder.hpp"
 #include "../../src/core/EulerLegacy.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 #include "../support/KokamSpmFixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -105,16 +106,6 @@ private:
 } // namespace slide::core::detail
 
 namespace {
-
-core::SpmBatch makeBatch(double electrode_area = -1.0)
-{
-  core::SpmBatch batch;
-  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
-  if (electrode_area > 0.0)
-    input.design.electrode_area = electrode_area;
-  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
-  return batch;
-}
 
 std::filesystem::path temporary(std::string_view suffix)
 {
@@ -396,7 +387,10 @@ TEST_CASE("Async recorder rejects adversarial metadata without exceptions",
     const std::array current{ 1.0, -1.0 };
     CHECK(recorder.enqueue(0, current) == Status::Invalid_parameters);
 
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     REQUIRE(recorder.configure(
               batch,
               path,
@@ -416,7 +410,10 @@ TEST_CASE("Async recorder rejects adversarial metadata without exceptions",
 
   SECTION("a directory cannot be configured as an output file")
   {
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder recorder;
     CHECK(recorder.configure(
             batch,
@@ -432,7 +429,10 @@ TEST_CASE("Async recorder rejects adversarial metadata without exceptions",
   {
     const auto path = temporary("p9_codec.slcmp");
     std::filesystem::remove(path, ignored);
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder writer;
     REQUIRE(writer.configure(
               batch,
@@ -465,7 +465,10 @@ TEST_CASE("Async recorder rejects adversarial metadata without exceptions",
     std::filesystem::remove(invalid_path, ignored);
     std::filesystem::remove(density_path, ignored);
 
-    auto batch = makeBatch();
+    const auto invalid_input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      invalid_input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder invalid;
     CHECK(invalid.configure(
             batch,
@@ -476,7 +479,11 @@ TEST_CASE("Async recorder rejects adversarial metadata without exceptions",
           == Status::Invalid_parameters);
     CHECK_FALSE(invalid.configured());
 
-    auto tiny_area_batch = makeBatch(1e-300);
+    auto density_input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    density_input.design.electrode_area = 1e-300;
+    auto tiny_area_batch = test_support::requireSpmBatch(
+      density_input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder density;
     REQUIRE(density.configure(
               tiny_area_batch,
@@ -504,7 +511,10 @@ TEST_CASE("Async recorder translates deterministic worker and stream faults",
   {
     const auto path = temporary("fault_placeholder.slcmp");
     std::filesystem::remove(path, ignored);
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder recorder;
     core::detail::AsyncRecorderTestAccess::failPlaceholderWrite(recorder);
     CHECK(recorder.configure(
@@ -522,7 +532,10 @@ TEST_CASE("Async recorder translates deterministic worker and stream faults",
   {
     const auto path = temporary("fault_thread.slcmp");
     std::filesystem::remove(path, ignored);
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder recorder;
     core::detail::AsyncRecorderTestAccess::failThreadCreation(recorder);
     CHECK(recorder.configure(
@@ -555,7 +568,10 @@ TEST_CASE("Async recorder translates deterministic worker and stream faults",
   {
     const auto path = temporary("fault_shuffle.slcmp");
     std::filesystem::remove(path, ignored);
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder recorder;
     REQUIRE(recorder.configure(
               batch,
@@ -575,7 +591,10 @@ TEST_CASE("Async recorder translates deterministic worker and stream faults",
   {
     const auto path = temporary("fault_block.slcmp");
     std::filesystem::remove(path, ignored);
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder recorder;
     REQUIRE(recorder.configure(
               batch,
@@ -595,7 +614,10 @@ TEST_CASE("Async recorder translates deterministic worker and stream faults",
   {
     const auto path = temporary("fault_finalize_tell.slcmp");
     std::filesystem::remove(path, ignored);
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder recorder;
     core::detail::AsyncRecorderTestAccess::failFinalizeTell(recorder);
     REQUIRE(recorder.configure(
@@ -613,7 +635,10 @@ TEST_CASE("Async recorder translates deterministic worker and stream faults",
   {
     const auto path = temporary("fault_finalize_write.slcmp");
     std::filesystem::remove(path, ignored);
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::AsyncRecorder recorder;
     core::detail::AsyncRecorderTestAccess::failFinalizeWrite(recorder);
     REQUIRE(recorder.configure(
@@ -691,7 +716,10 @@ TEST_CASE("P8-G3 async blocks round-trip accepted snapshots bitwise",
   const auto path = temporary("roundtrip.slcmp");
   std::error_code ignored;
   std::filesystem::remove(path, ignored);
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::Recorder reference;
   REQUIRE(reference.configure(batch, { .capacity = 8 }) == Status::Success);
   core::AsyncRecorder async;
@@ -750,7 +778,10 @@ TEST_CASE("empty async recording opens without decode workspace",
   const auto path = temporary("empty.slcmp");
   std::error_code ignored;
   std::filesystem::remove(path, ignored);
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::AsyncRecorder writer;
   REQUIRE(writer.configure(
             batch,
@@ -779,7 +810,10 @@ TEST_CASE("P8-G3 thin never waits silently and block stays lossless",
   std::error_code ignored;
   std::filesystem::remove(thin_path, ignored);
   std::filesystem::remove(block_path, ignored);
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   const std::array current{ 1.0, 1.0 };
 
   core::AsyncRecorder thin;
@@ -828,7 +862,10 @@ TEST_CASE("closing wakes a producer blocked behind a full async ring",
   const auto path = temporary("closing_wakeup.slcmp");
   std::error_code ignored;
   std::filesystem::remove(path, ignored);
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
 
   std::promise<void> drain_entered;
   auto entered = drain_entered.get_future();
@@ -902,7 +939,10 @@ TEST_CASE("P8-G3 compressed reader atomically rejects corruption and truncation"
   std::error_code ignored;
   for (const auto &path : { valid, header_corrupt, payload_corrupt, truncated })
     std::filesystem::remove(path, ignored);
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::AsyncRecorder recorder;
   REQUIRE(recorder.configure(batch,
                              valid,
@@ -958,7 +998,10 @@ TEST_CASE("compressed reader rejects exact block and layout corruptions",
                             short_file })
     std::filesystem::remove(path, ignored);
 
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::AsyncRecorder recorder;
   REQUIRE(recorder.configure(
             batch,

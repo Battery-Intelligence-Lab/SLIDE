@@ -5,6 +5,7 @@
 
 #include "../../src/core/EulerLegacy.hpp"
 #include "../../src/core/Recorder.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 #include "../support/KokamSpmFixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -43,26 +44,6 @@ struct RecorderTestAccess
 } // namespace slide::core::detail
 
 namespace {
-
-core::SpmBatch makeBatch(double electrode_area = -1.0)
-{
-  core::SpmBatch batch;
-  auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
-  if (electrode_area > 0.0)
-    input.design.electrode_area = electrode_area;
-  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
-  return batch;
-}
-
-std::array<double, 2> liveVoltage(core::SpmBatch &batch,
-                                  const std::array<double, 2> &current)
-{
-  const std::array density{ current[0] / batch.electrode_area(),
-                            current[1] / batch.electrode_area() };
-  std::array<double, 2> voltage{};
-  REQUIRE(batch.terminalVoltage({ .i_app = density }, voltage) == Status::Success);
-  return voltage;
-}
 
 std::filesystem::path temporary(const std::string &suffix)
 {
@@ -143,7 +124,10 @@ TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering
 {
   SECTION("invalid backpressure policy is rejected before configuration")
   {
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::Recorder recorder;
     CHECK(recorder.configure(
             batch,
@@ -155,7 +139,10 @@ TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering
 
   SECTION("overflowing capacity is rejected before allocation")
   {
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::Recorder recorder;
     CHECK(recorder.configure(
             batch,
@@ -177,7 +164,10 @@ TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering
     CHECK(recorder.writeBinary(temporary("unconfigured.slrec"))
           == Status::Invalid_parameters);
 
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     REQUIRE(recorder.configure(batch, { .capacity = 1 })
             == Status::Success);
     CHECK(recorder.terminalVoltage(0, voltage)
@@ -190,7 +180,10 @@ TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering
 
   SECTION("thin mode tracks the last omitted cadence point")
   {
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::Recorder recorder;
     REQUIRE(recorder.configure(
               batch,
@@ -211,7 +204,10 @@ TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering
 
   SECTION("non-finite elapsed time is rejected atomically")
   {
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::Recorder recorder;
     REQUIRE(recorder.configure(batch, { .capacity = 1 })
             == Status::Success);
@@ -224,7 +220,11 @@ TEST_CASE("Recorder rejects invalid derived metadata and preserves thin ordering
 
   SECTION("finite current and area cannot store infinite current density")
   {
-    auto batch = makeBatch(1e-300);
+    auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    input.design.electrode_area = 1e-300;
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::Recorder recorder;
     REQUIRE(recorder.configure(batch, { .capacity = 1 })
             == Status::Success);
@@ -273,7 +273,10 @@ TEST_CASE("Recorder checks binary layouts and propagates deterministic sink faul
 
   SECTION("a failed CSV stream reports the write failure")
   {
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::Recorder recorder;
     REQUIRE(recorder.configure(batch, { .capacity = 1 })
             == Status::Success);
@@ -287,7 +290,10 @@ TEST_CASE("Recorder checks binary layouts and propagates deterministic sink faul
     const auto path = temporary("flush_failure.slrec");
     std::error_code ignored;
     std::filesystem::remove(path, ignored);
-    auto batch = makeBatch();
+    const auto input =
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+    auto batch = test_support::requireSpmBatch(
+      input, core::SpmModelOptions{}, 2);
     core::Recorder recorder;
     REQUIRE(recorder.configure(batch, { .capacity = 1 })
             == Status::Success);
@@ -302,12 +308,22 @@ TEST_CASE("Recorder checks binary layouts and propagates deterministic sink faul
 TEST_CASE("P6-G1 recorded states lazily reproduce live voltage",
           "[core][recorder][lazy][P6-G1]")
 {
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::Recorder recorder;
   REQUIRE(recorder.configure(batch, { .cadence = 2, .capacity = 3 })
           == Status::Success);
   const std::array current{ 8.0, -4.0 };
-  const auto voltage0 = liveVoltage(batch, current);
+  std::array<double, 2> voltage_density_scratch{};
+  std::array<double, 2> voltage0{};
+  test_support::requireTerminalVoltage(
+    batch,
+    test_support::CurrentA{ std::span<const core::real_t>{ current } },
+    0.0,
+    voltage_density_scratch,
+    voltage0);
   REQUIRE(recorder.record(0, current) == Status::Success);
 
   core::EulerLegacy stepper{ batch };
@@ -316,7 +332,13 @@ TEST_CASE("P6-G1 recorded states lazily reproduce live voltage",
   REQUIRE(stepper.step(batch, density, 0.0, 1.0) == Status::Success);
   REQUIRE(recorder.record(1, current) == Status::Success); // cadence skip
   REQUIRE(stepper.step(batch, density, 1.0, 1.0) == Status::Success);
-  const auto voltage2 = liveVoltage(batch, current);
+  std::array<double, 2> voltage2{};
+  test_support::requireTerminalVoltage(
+    batch,
+    test_support::CurrentA{ std::span<const core::real_t>{ current } },
+    0.0,
+    voltage_density_scratch,
+    voltage2);
   REQUIRE(recorder.record(2, current) == Status::Success);
   REQUIRE(recorder.size() == 2);
 
@@ -357,7 +379,10 @@ TEST_CASE("P6-G1 CSV and mmap recordings preserve snapshots",
   std::filesystem::remove(csv_path, ignored);
   std::filesystem::remove(binary_path, ignored);
 
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::Recorder recorder;
   REQUIRE(recorder.configure(batch, { .capacity = 3 }) == Status::Success);
   core::EulerLegacy stepper{ batch };
@@ -421,7 +446,10 @@ TEST_CASE("P6-G1 mmap open rejects truncated CRC and offset corruption",
                             truncated })
     std::filesystem::remove(path, ignored);
 
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::Recorder recorder;
   REQUIRE(recorder.configure(batch, { .capacity = 1 }) == Status::Success);
   const std::array current{ 8.0, -4.0 };
@@ -485,7 +513,10 @@ TEST_CASE("Binary recording rejects overflowing layouts and trailing bytes",
   for (const auto &path : { valid, overflow, trailing })
     std::filesystem::remove(path, ignored);
 
-  auto batch = makeBatch();
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::Recorder writer;
   REQUIRE(writer.configure(batch, { .capacity = 1 }) == Status::Success);
   const std::array current{ 1.0, -1.0 };

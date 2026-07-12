@@ -4,6 +4,7 @@
  */
 
 #include "../../src/core/AsyncRecorder.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 #include "../support/KokamSpmFixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -202,9 +203,9 @@ void writeBytes(const std::filesystem::path &path,
 TEST_CASE("Async configure rolls back a path-copy allocation failure",
           "[core][async-recorder][allocation][rollback][P9]")
 {
-  core::SpmBatch batch;
   const auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
-  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   const auto path = std::filesystem::temp_directory_path()
                     / ("slide_async_fault_" + std::string(128, 'x')
                        + ".slcmp");
@@ -267,10 +268,10 @@ TEST_CASE("Async configure rolls back a path-copy allocation failure",
 TEST_CASE("Compressed reader translates allocation failure",
           "[core][async-recorder][reader][allocation][coverage]")
 {
-  core::SpmBatch batch;
   const auto input = test_support::make_legacy_kokam_input(
     0.55, 298.0, 298.0);
-  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   const auto path = std::filesystem::temp_directory_path()
                     / "slide_async_reader_allocation.slcmp";
   std::error_code ignored;
@@ -358,9 +359,9 @@ TEST_CASE("Compressed reader rejects amplified storage before allocation",
 TEST_CASE("P8-G3 async enqueue allocates nothing on the simulation thread",
           "[core][async-recorder][allocation][P8-G3]")
 {
-  core::SpmBatch batch;
   const auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
-  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   const auto path = std::filesystem::temp_directory_path()
                     / "slide_async_allocation.slcmp";
   std::error_code ignored;

@@ -4,6 +4,7 @@
  */
 
 #include "../../src/core/Recorder.hpp"
+#include "../support/CoreSpmTestHarness.hpp"
 #include "../support/KokamSpmFixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -127,9 +128,9 @@ std::filesystem::path temporary(std::string_view suffix)
 TEST_CASE("Phase-6 accepted snapshots allocate nothing",
           "[core][recorder][allocation][P6-G1]")
 {
-  core::SpmBatch batch;
   const auto input = test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
-  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::Recorder recorder;
   REQUIRE(recorder.configure(batch, { .capacity = 2 }) == Status::Success);
   const std::array current{ 8.0, -4.0 };
@@ -144,10 +145,10 @@ TEST_CASE("Phase-6 accepted snapshots allocate nothing",
 TEST_CASE("Recorder reconfiguration translates allocation failure atomically",
           "[core][recorder][allocation][coverage]")
 {
-  core::SpmBatch batch;
   const auto input = test_support::make_legacy_kokam_input(
     0.55, 298.0, 298.0);
-  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
 
   core::Recorder recorder;
   REQUIRE(recorder.configure(batch, { .capacity = 3 }) == Status::Success);
@@ -189,10 +190,10 @@ TEST_CASE("Recorder reconfiguration translates allocation failure atomically",
 TEST_CASE("Recorder public I/O boundaries translate allocation failure",
           "[core][recorder][allocation][io][coverage]")
 {
-  core::SpmBatch batch;
   const auto input = test_support::make_legacy_kokam_input(
     0.55, 298.0, 298.0);
-  REQUIRE(core::buildSpmBatch(input, {}, 2, batch) == Status::Success);
+  auto batch = test_support::requireSpmBatch(
+    input, core::SpmModelOptions{}, 2);
   core::Recorder recorder;
   REQUIRE(recorder.configure(batch, { .capacity = 1 }) == Status::Success);
   const std::array current{ 1.0, -1.0 };
