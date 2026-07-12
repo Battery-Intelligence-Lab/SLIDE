@@ -31,6 +31,7 @@ namespace {
 
 constexpr int nch = 5;
 constexpr int lanes = 7;
+constexpr std::array ageing_current_a{ -2.1, -1.2, -0.35, 0.0, 0.45, 1.15, 2.0 };
 
 core::SpmFactoryInput make_ageing_input()
 {
@@ -140,11 +141,10 @@ slide::test_support::RecordedBits recorded_ageing_trace()
           == Status::Success);
   make_lanes_heterogeneous(batch);
 
-  constexpr std::array current_a{ -2.1, -1.2, -0.35, 0.0, 0.45, 1.15, 2.0 };
   constexpr std::array current_b{ 1.6, -0.8, 0.25, -1.45, 0.9, -2.2, 0.55 };
   const std::array<std::span<const double>, 3> currents{
-    std::span<const double>{ current_a }, std::span<const double>{ current_b },
-    std::span<const double>{ current_a }
+    std::span<const double>{ ageing_current_a }, std::span<const double>{ current_b },
+    std::span<const double>{ ageing_current_a }
   };
 
   slide::test_support::RecordedBits recorded;
@@ -275,6 +275,50 @@ TEST_CASE("9C-2 surface-crack diffusivity is scalar-generic for Dual",
           <= 1e-8 * std::max(std::abs(crack_fd), 1e-30));
   REQUIRE(std::abs(dual[1].derivative - diffusion_fd)
           <= 1e-8 * std::max(std::abs(diffusion_fd), 1e-30));
+}
+
+TEST_CASE("9C-2 heterogeneous ageing lanes equal isolated evaluations",
+          "[core][ageing][9C-2][lanes]")
+{
+  core::SpmBatch batched;
+  REQUIRE(core::buildSpmBatch(make_ageing_input(), all_ageing_options(), lanes, batched)
+          == Status::Success);
+  make_lanes_heterogeneous(batched);
+  const core::StepCtx batched_ctx{ .time = 3.25,
+                                   .dt = 0.5,
+                                   .i_app = ageing_current_a };
+  REQUIRE(batched.evaluate(batched_ctx) == Status::Success);
+  std::array<double, lanes> batched_voltage{};
+  REQUIRE(batched.terminalVoltage(batched_ctx, batched_voltage) == Status::Success);
+
+  for (int lane = 0; lane < lanes; ++lane) {
+    core::SpmBatch isolated;
+    REQUIRE(core::buildSpmBatch(make_ageing_input(), all_ageing_options(), 1, isolated)
+            == Status::Success);
+    REQUIRE(isolated.state().n_rows() == batched.state().n_rows());
+    for (int row = 0; row < batched.state().n_rows(); ++row)
+      isolated.state().row(row)[0] =
+        batched.state().row(row)[static_cast<std::size_t>(lane)];
+    const std::array current{ ageing_current_a[static_cast<std::size_t>(lane)] };
+    const core::StepCtx isolated_ctx{ .time = batched_ctx.time,
+                                      .dt = batched_ctx.dt,
+                                      .i_app = current };
+    REQUIRE(isolated.evaluate(isolated_ctx) == Status::Success);
+    for (int row = 0; row < batched.derivative().n_rows(); ++row) {
+      const auto batched_bits = std::bit_cast<std::uint64_t>(
+        batched.derivative().row(row)[static_cast<std::size_t>(lane)]);
+      const auto isolated_bits = std::bit_cast<std::uint64_t>(
+        isolated.derivative().row(row)[0]);
+      CAPTURE(lane, row, batched_bits, isolated_bits);
+      REQUIRE(batched_bits == isolated_bits);
+    }
+    std::array<double, 1> isolated_voltage{};
+    REQUIRE(isolated.terminalVoltage(isolated_ctx, isolated_voltage)
+            == Status::Success);
+    CAPTURE(lane, batched_voltage[static_cast<std::size_t>(lane)], isolated_voltage[0]);
+    REQUIRE(std::bit_cast<std::uint64_t>(batched_voltage[static_cast<std::size_t>(lane)])
+            == std::bit_cast<std::uint64_t>(isolated_voltage[0]));
+  }
 }
 
 TEST_CASE("9C-2 common ageing scaffold fixes mask, scratch, and traversal order",
