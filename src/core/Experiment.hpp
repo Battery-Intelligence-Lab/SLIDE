@@ -1,6 +1,10 @@
 /**
  * @file Experiment.hpp
- * @brief PyBaMM-style experiment grammar and event-aligned core cycler.
+ * @brief PyBaMM-style experiment values, grammar, and event-aligned cycler API.
+ *
+ * MC-3 ownership contract: Experiment.cpp owns parsing and CyclerV2.cpp owns
+ * execution. Shared normalisation and segment validation have one internal
+ * definition outside this public interface.
  */
 
 #pragma once
@@ -8,8 +12,8 @@
 #include "EulerLegacy.hpp"
 #include "ExponentialModal.hpp"
 
+#include <cstddef>
 #include <functional>
-#include <limits>
 #include <span>
 #include <string>
 #include <vector>
@@ -77,6 +81,7 @@ struct Experiment
 {
   std::vector<ExperimentSegment> segments{};
 
+  /** Parse atomically; parser mechanics are owned solely by Experiment.cpp. */
   [[nodiscard]] static slide::Status parse(
     std::span<const std::string> steps,
     Experiment &output,
@@ -110,6 +115,13 @@ struct DriveCycle
 enum class CyclerIntegrator : unsigned char { euler_legacy,
                                               exponential };
 
+/**
+ * Event-aligned runner for one configured SPM lane.
+ *
+ * All method definitions and transaction scratch ownership live in
+ * CyclerV2.cpp. Parser and runner accept segments through the same internal
+ * semantic predicate, preventing two validation implementations from drifting.
+ */
 class CyclerV2
 {
 public:

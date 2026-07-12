@@ -5,6 +5,7 @@
 
 #include "../support/RecordedBits.hpp"
 #include "../../src/core/ParameterSet.hpp"
+#include "../../src/core/detail/StrictJson.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -457,6 +458,39 @@ std::string allOperatorsBpxFixture()
 }
 
 } // namespace
+
+TEST_CASE("strict JSON replaces successful outputs and preserves rejected outputs",
+          "[core][parameters][JSON][atomic][9C-3]")
+{
+  core::detail::StrictJsonValue output;
+  output.kind = core::detail::StrictJsonValue::Kind::object;
+  output.object["stale"].kind =
+    core::detail::StrictJsonValue::Kind::boolean;
+  output.object["stale"].boolean = true;
+
+  std::string diagnostic{ "stale diagnostic" };
+  REQUIRE(core::detail::parseStrictJson(
+    R"json({"fresh":[1,2]})json", output, diagnostic));
+  CHECK(diagnostic.empty());
+  REQUIRE(output.kind == core::detail::StrictJsonValue::Kind::object);
+  REQUIRE(output.object.size() == 1);
+  REQUIRE(output.object.contains("fresh"));
+  REQUIRE(output.object.at("fresh").kind
+          == core::detail::StrictJsonValue::Kind::array);
+  REQUIRE(output.object.at("fresh").array.size() == 2);
+  CHECK(output.object.at("fresh").array[0].number == 1.0);
+  CHECK(output.object.at("fresh").array[1].number == 2.0);
+
+  CHECK_FALSE(core::detail::parseStrictJson(
+    R"json({"corrupt":[3,]})json", output, diagnostic));
+  CHECK_FALSE(diagnostic.empty());
+  REQUIRE(output.kind == core::detail::StrictJsonValue::Kind::object);
+  REQUIRE(output.object.size() == 1);
+  REQUIRE(output.object.contains("fresh"));
+  REQUIRE(output.object.at("fresh").array.size() == 2);
+  CHECK(output.object.at("fresh").array[0].number == 1.0);
+  CHECK(output.object.at("fresh").array[1].number == 2.0);
+}
 
 TEST_CASE("M0.7 pre-split ParameterSet behavior is bit-exact and fully framed",
           "[core][parameters][BPX][9C-3][recorded]")

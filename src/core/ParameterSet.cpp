@@ -1,60 +1,24 @@
 /**
  * @file ParameterSet.cpp
- * @brief PyBaMM 26.6.2.0 Chen2020 and BPX 1.x absorption.
+ * @brief Cold value absorption and SPM input compilation.
  */
 
 #include "ParameterSet.hpp"
-#include "BoundedFileReader.hpp"
+#include "detail/ParameterCurve.hpp"
 
-#include <algorithm>
+#include "Numeric.hpp"
+
 #include <array>
-#include <cctype>
-#include <charconv>
 #include <cmath>
-#include <fstream>
-#include <limits>
 #include <new>
-#include <optional>
-#include <queue>
 #include <stdexcept>
-#include <tuple>
+#include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace slide::core {
 namespace {
-
-  constexpr std::size_t max_bpx_json_bytes = 4U * 1024U * 1024U;
-  constexpr std::size_t max_json_values = 65'536;
-
-  void assignDiagnosticNoThrow(std::string &target,
-                               std::string_view message) noexcept
-  {
-    try {
-      target.assign(message);
-    } catch (...) {
-      target.clear();
-    }
-  }
-
-  slide::Status allocationFailure(std::string &diagnostic,
-                                  std::string_view message) noexcept
-  {
-    assignDiagnosticNoThrow(diagnostic, message);
-    return slide::Status::Numerical_failure;
-  }
-
-  bool validCurve(const OCVCurve &curve)
-  {
-    if (curve.stoichiometry.size() != curve.value.size()
-        || curve.stoichiometry.size() < 2)
-      return false;
-    for (std::size_t i = 0; i < curve.stoichiometry.size(); ++i)
-      if (!is_finite(curve.stoichiometry[i]) || !is_finite(curve.value[i])
-          || (i > 0 && curve.stoichiometry[i] <= curve.stoichiometry[i - 1]))
-        return false;
-    return true;
-  }
 
   real_t graphiteOcp(real_t x)
   {
@@ -70,70 +34,6 @@ namespace {
            - 0.0428 * std::tanh(18.5138 * (x - 0.5542))
            - 17.7326 * std::tanh(15.7890 * (x - 0.3117))
            + 17.5842 * std::tanh(15.9308 * (x - 0.3120));
-  }
-
-  template <class Function>
-  OCVCurve sampleCurve(Function function)
-  {
-    struct Segment
-    {
-      real_t left;
-      real_t right;
-      real_t left_value;
-      real_t right_value;
-      real_t relative_error;
-    };
-    const auto make_segment = [&function](real_t left, real_t right, real_t left_value, real_t right_value) {
-      real_t error{};
-      for (const real_t fraction : { real_t{ 0.25 }, real_t{ 0.5 }, real_t{ 0.75 } }) {
-        const real_t x = left + fraction * (right - left);
-        const real_t exact = function(x);
-        const real_t linear = left_value + fraction * (right_value - left_value);
-        error = std::max(error, std::abs(linear - exact) / std::max(std::abs(exact), real_t{ 1e-12 }));
-      }
-      return Segment{ left, right, left_value, right_value, error };
-    };
-    const auto lower_error = [](const Segment &left, const Segment &right) {
-      return left.relative_error < right.relative_error;
-    };
-
-    constexpr std::size_t maximum_points = 4096;
-    // Quarter-point checks plus this safety factor bound interpolation between
-    // the probes without spending the table budget in traversal order.
-    constexpr real_t relative_tolerance = 1e-7;
-
-    std::priority_queue<Segment, std::vector<Segment>, decltype(lower_error)>
-      work{ lower_error };
-    work.push(make_segment(0.0, 1.0, function(0.0), function(1.0)));
-    while (work.size() + 1 < maximum_points
-           && work.top().relative_error > relative_tolerance) {
-      const Segment segment = work.top();
-      work.pop();
-      const real_t middle = 0.5 * (segment.left + segment.right);
-      const real_t middle_value = function(middle);
-      work.push(make_segment(segment.left, middle, segment.left_value, middle_value));
-      work.push(make_segment(middle, segment.right, middle_value, segment.right_value));
-    }
-
-    std::vector<Segment> segments;
-    segments.reserve(work.size());
-    while (!work.empty()) {
-      segments.push_back(work.top());
-      work.pop();
-    }
-    std::sort(segments.begin(), segments.end(), [](const Segment &left, const Segment &right) {
-      return left.left < right.left;
-    });
-    OCVCurve curve;
-    curve.stoichiometry.reserve(segments.size() + 1);
-    curve.value.reserve(segments.size() + 1);
-    for (const auto &segment : segments) {
-      curve.stoichiometry.push_back(segment.left);
-      curve.value.push_back(segment.left_value);
-    }
-    curve.stoichiometry.push_back(segments.back().right);
-    curve.value.push_back(segments.back().right_value);
-    return curve;
   }
 
   const real_t *requiredScalar(const ParameterSet &parameters,
@@ -171,7 +71,7 @@ try {
   if (const auto *scalar = std::get_if<real_t>(&value)) {
     if (!is_finite(*scalar))
       return slide::Status::Invalid_parameters;
-  } else if (!validCurve(std::get<OCVCurve>(value))) {
+  } else if (!detail::validParameterCurve(std::get<OCVCurve>(value))) {
     return slide::Status::Invalid_parameters;
   }
   values_.insert_or_assign(std::move(name),
@@ -192,7 +92,8 @@ slide::Status ParameterSet::update(
   try {
     ParameterSet candidate = *this;
     for (const auto &description : values) {
-      const auto status = candidate.set(description.name, description.value, description.provenance);
+      const auto status = candidate.set(
+        description.name, description.value, description.provenance);
       if (status != slide::Status::Success)
         return status;
     }
@@ -296,18 +197,21 @@ try {
 
   ParameterSet candidate;
   for (const auto &[name, value] : scalars) {
-    const auto status = candidate.set(name, value, "PyBaMM 26.6.2.0 Chen2020");
+    const auto status =
+      candidate.set(name, value, "PyBaMM 26.6.2.0 Chen2020");
     if (status != slide::Status::Success)
       return status;
   }
-  auto status = candidate.set("Negative electrode OCP [V]",
-                              sampleCurve(graphiteOcp),
-                              "PyBaMM 26.6.2.0 Chen2020 function; adaptive D-16 table");
+  auto status = candidate.set(
+    "Negative electrode OCP [V]",
+    detail::sampleParameterCurve(graphiteOcp),
+    "PyBaMM 26.6.2.0 Chen2020 function; adaptive D-16 table");
   if (status != slide::Status::Success)
     return status;
-  status = candidate.set("Positive electrode OCP [V]",
-                         sampleCurve(nmcOcp),
-                         "PyBaMM 26.6.2.0 Chen2020 function; adaptive D-16 table");
+  status = candidate.set(
+    "Positive electrode OCP [V]",
+    detail::sampleParameterCurve(nmcOcp),
+    "PyBaMM 26.6.2.0 Chen2020 function; adaptive D-16 table");
   if (status != slide::Status::Success)
     return status;
   static_assert(std::is_nothrow_move_assignable_v<ParameterSet>);
@@ -340,26 +244,31 @@ try {
   SpmFactoryInput candidate;
   candidate.design.capacity_Ah = *findScalar("Nominal cell capacity [A.h]");
   candidate.design.electrode_area = *findScalar("Electrode area [m2]");
-  candidate.design.electrolyte.concentration = *findScalar(
-    "Initial concentration in electrolyte [mol.m-3]");
-  candidate.design.thermal.reference_temperature = *findScalar("Reference temperature [K]");
-  candidate.design.thermal.environment_temperature = findScalar("Ambient temperature [K]") != nullptr
-                                                       ? *findScalar("Ambient temperature [K]")
-                                                       : candidate.design.thermal.reference_temperature;
+  candidate.design.electrolyte.concentration =
+    *findScalar("Initial concentration in electrolyte [mol.m-3]");
+  candidate.design.thermal.reference_temperature =
+    *findScalar("Reference temperature [K]");
+  candidate.design.thermal.environment_temperature =
+    findScalar("Ambient temperature [K]") != nullptr
+      ? *findScalar("Ambient temperature [K]")
+      : candidate.design.thermal.reference_temperature;
   candidate.design.thermal.volume = findScalar("Cell volume [m3]") != nullptr
                                       ? *findScalar("Cell volume [m3]")
                                       : 1.0;
-  candidate.design.thermal.surface_area = findScalar("Cell cooling surface area [m2]") != nullptr
-                                            ? *findScalar("Cell cooling surface area [m2]")
-                                            : 1.0;
-  candidate.design.thermal.h_conv = findScalar("Total heat transfer coefficient [W.m-2.K-1]") != nullptr
-                                      ? *findScalar("Total heat transfer coefficient [W.m-2.K-1]")
-                                      : 0.0;
+  candidate.design.thermal.surface_area =
+    findScalar("Cell cooling surface area [m2]") != nullptr
+      ? *findScalar("Cell cooling surface area [m2]")
+      : 1.0;
+  candidate.design.thermal.h_conv =
+    findScalar("Total heat transfer coefficient [W.m-2.K-1]") != nullptr
+      ? *findScalar("Total heat transfer coefficient [W.m-2.K-1]")
+      : 0.0;
   candidate.design.thermal.density = 1626.0;
   if (const auto *density = findScalar("Cell density [kg.m-3]"))
     candidate.design.thermal.density = *density;
   candidate.design.thermal.heat_capacity = 750.0;
-  if (const auto *heat_capacity = findScalar("Cell specific heat capacity [J.kg-1.K-1]"))
+  if (const auto *heat_capacity =
+        findScalar("Cell specific heat capacity [J.kg-1.K-1]"))
     candidate.design.thermal.heat_capacity = *heat_capacity;
   candidate.initial_temperature = *findScalar("Initial temperature [K]");
   candidate.initial_sei_thickness = *findScalar("Initial SEI thickness [m]");
@@ -369,7 +278,8 @@ try {
   const real_t contact = findScalar("Contact resistance [Ohm]") != nullptr
                            ? *findScalar("Contact resistance [Ohm]")
                            : 0.0;
-  candidate.initial_current_collector_resistance = contact * candidate.design.electrode_area;
+  candidate.initial_current_collector_resistance =
+    contact * candidate.design.electrode_area;
 
   struct ElectrodeNames
   {
@@ -395,12 +305,14 @@ try {
     const auto *radius = scalar(" particle radius [m]");
     const auto *cs_max = findScalar(names.concentration);
     const auto *diffusivity = findScalar(names.diffusivity);
-    const auto *diffusivity_activation = scalar(
-      " particle diffusivity activation energy [J.mol-1]");
+    const auto *diffusivity_activation =
+      scalar(" particle diffusivity activation energy [J.mol-1]");
     const auto *minimum = scalar(" electrode minimum stoichiometry");
     const auto *maximum = scalar(" electrode maximum stoichiometry");
-    const auto *reaction = scalar(" electrode reaction rate constant [mol.m-2.s-1]");
-    const auto *reaction_activation = scalar(" electrode reaction rate activation energy [J.mol-1]");
+    const auto *reaction =
+      scalar(" electrode reaction rate constant [mol.m-2.s-1]");
+    const auto *reaction_activation =
+      scalar(" electrode reaction rate activation energy [J.mol-1]");
     if (thickness == nullptr || porosity == nullptr || fraction == nullptr
         || radius == nullptr || cs_max == nullptr || diffusivity == nullptr
         || minimum == nullptr || maximum == nullptr || reaction == nullptr)
@@ -410,36 +322,49 @@ try {
     electrode.active_fraction = *fraction;
     electrode.particle_radius = *radius;
     electrode.active_material.cs_max = *cs_max;
-    electrode.active_material.x_0 = names.domain == Domain::neg ? *minimum : *maximum;
-    electrode.active_material.x_100 = names.domain == Domain::neg ? *maximum : *minimum;
-    electrode.active_material.D_s = { .reference_value = *diffusivity,
-                                      .activation_energy = diffusivity_activation == nullptr
-                                                             ? 0.0
-                                                             : *diffusivity_activation,
-                                      .reference_temperature = candidate.design.thermal.reference_temperature };
-    electrode.active_material.k_ct = { .reference_value = *reaction,
-                                       .activation_energy = reaction_activation == nullptr ? 0.0 : *reaction_activation,
-                                       .reference_temperature = candidate.design.thermal.reference_temperature };
+    electrode.active_material.x_0 =
+      names.domain == Domain::neg ? *minimum : *maximum;
+    electrode.active_material.x_100 =
+      names.domain == Domain::neg ? *maximum : *minimum;
+    electrode.active_material.D_s = {
+      .reference_value = *diffusivity,
+      .activation_energy = diffusivity_activation == nullptr
+                             ? 0.0
+                             : *diffusivity_activation,
+      .reference_temperature = candidate.design.thermal.reference_temperature
+    };
+    electrode.active_material.k_ct = {
+      .reference_value = *reaction,
+      .activation_energy = reaction_activation == nullptr
+                             ? 0.0
+                             : *reaction_activation,
+      .reference_temperature = candidate.design.thermal.reference_temperature
+    };
     electrode.active_material.ocv = *findCurve(names.ocp);
   }
-  const auto &negative = domain_value(candidate.design.electrode, Domain::neg).active_material;
+  const auto &negative =
+    domain_value(candidate.design.electrode, Domain::neg).active_material;
   if (const auto *initial_soc = findScalar("Initial state-of-charge")) {
     candidate.initial_soc = *initial_soc;
   } else {
-    const auto *initial_concentration = findScalar(
-      "Initial concentration in negative electrode [mol.m-3]");
+    const auto *initial_concentration =
+      findScalar("Initial concentration in negative electrode [mol.m-3]");
     if (initial_concentration == nullptr)
       return slide::Status::Invalid_parameters;
-    const real_t negative_initial = *initial_concentration
-                                    / *findScalar("Maximum concentration in negative electrode [mol.m-3]");
+    const real_t negative_initial =
+      *initial_concentration
+      / *findScalar("Maximum concentration in negative electrode [mol.m-3]");
     candidate.initial_soc = (negative_initial - negative.x_0)
                             / (negative.x_100 - negative.x_0);
   }
   constexpr std::array zero_x{ 0.0, 1.0 };
   constexpr std::array zero_y{ 0.0, 0.0 };
-  candidate.total_entropic_coefficient = { std::vector<real_t>{ zero_x.begin(), zero_x.end() },
-                                           std::vector<real_t>{ zero_y.begin(), zero_y.end() } };
-  candidate.negative_entropic_coefficient = candidate.total_entropic_coefficient;
+  candidate.total_entropic_coefficient = {
+    std::vector<real_t>{ zero_x.begin(), zero_x.end() },
+    std::vector<real_t>{ zero_y.begin(), zero_y.end() }
+  };
+  candidate.negative_entropic_coefficient =
+    candidate.total_entropic_coefficient;
   static_assert(std::is_nothrow_move_assignable_v<SpmFactoryInput>);
   output = std::move(candidate);
   return slide::Status::Success;
@@ -447,1061 +372,6 @@ try {
   return slide::Status::Numerical_failure;
 } catch (const std::length_error &) {
   return slide::Status::Numerical_failure;
-}
-
-namespace {
-
-  struct JsonValue
-  {
-    enum class Kind : unsigned char { null_value,
-                                      boolean,
-                                      number,
-                                      string,
-                                      array,
-                                      object } kind{ Kind::null_value };
-    bool boolean{};
-    real_t number{};
-    std::string string{};
-    std::vector<JsonValue> array{};
-    std::map<std::string, JsonValue, std::less<>> object{};
-  };
-
-  /** Strict evaluator for BPX's documented one-variable expression language. */
-  class BpxExpression
-  {
-  public:
-    bool compile(std::string_view source, std::string &diagnostic)
-    {
-      source_ = source;
-      cursor_ = 0;
-      nodes_.clear();
-      diagnostic.clear();
-      if (source.empty() || source.size() > 65'536)
-        return fail(diagnostic, "BPX expression is empty or too long");
-      root_ = parseExpression(diagnostic, 0);
-      skipSpace();
-      if (root_ < 0 || cursor_ != source_.size()) {
-        if (diagnostic.empty())
-          fail(diagnostic, "unexpected BPX expression token");
-        return false;
-      }
-      return true;
-    }
-
-    bool evaluate(real_t x, real_t &output) const
-    {
-      return root_ >= 0 && evaluateNode(root_, x, output, 0)
-             && is_finite(output);
-    }
-
-  private:
-    enum class Kind : unsigned char {
-      literal,
-      variable,
-      add,
-      subtract,
-      multiply,
-      divide,
-      power,
-      negate,
-      exponential,
-      hyperbolic_tangent,
-      hyperbolic_cosine
-    };
-
-    struct Node
-    {
-      Kind kind{ Kind::literal };
-      real_t value{};
-      int left{ -1 };
-      int right{ -1 };
-    };
-
-    int append(Node node, std::string &diagnostic)
-    {
-      if (nodes_.size() >= 1024) {
-        fail(diagnostic, "BPX expression exceeds 1024 operations");
-        return -1;
-      }
-      nodes_.push_back(node);
-      return static_cast<int>(nodes_.size() - 1);
-    }
-
-    int parseExpression(std::string &diagnostic, int depth)
-    {
-      if (depth > 128) {
-        fail(diagnostic, "BPX expression nesting exceeds 128 levels");
-        return -1;
-      }
-      int left = parseTerm(diagnostic, depth + 1);
-      while (left >= 0) {
-        skipSpace();
-        Kind kind;
-        if (take('+'))
-          kind = Kind::add;
-        else if (take('-'))
-          kind = Kind::subtract;
-        else
-          break;
-        const int right = parseTerm(diagnostic, depth + 1);
-        if (right < 0)
-          return -1;
-        left = append({ .kind = kind, .left = left, .right = right }, diagnostic);
-      }
-      return left;
-    }
-
-    int parseTerm(std::string &diagnostic, int depth)
-    {
-      int left = parseUnary(diagnostic, depth + 1);
-      while (left >= 0) {
-        skipSpace();
-        Kind kind;
-        if (source_.substr(cursor_).starts_with("**"))
-          break;
-        if (take('*'))
-          kind = Kind::multiply;
-        else if (take('/'))
-          kind = Kind::divide;
-        else
-          break;
-        const int right = parseUnary(diagnostic, depth + 1);
-        if (right < 0)
-          return -1;
-        left = append({ .kind = kind, .left = left, .right = right }, diagnostic);
-      }
-      return left;
-    }
-
-    int parseUnary(std::string &diagnostic, int depth)
-    {
-      if (depth > 128) {
-        fail(diagnostic, "BPX expression nesting exceeds 128 levels");
-        return -1;
-      }
-      skipSpace();
-      if (take('+'))
-        return parseUnary(diagnostic, depth + 1);
-      if (take('-')) {
-        const int child = parseUnary(diagnostic, depth + 1);
-        return child < 0 ? -1
-                         : append({ .kind = Kind::negate, .left = child }, diagnostic);
-      }
-      return parsePower(diagnostic, depth + 1);
-    }
-
-    int parsePower(std::string &diagnostic, int depth)
-    {
-      int left = parsePrimary(diagnostic, depth + 1);
-      skipSpace();
-      if (left >= 0 && consume("**")) {
-        const int right = parseUnary(diagnostic, depth + 1);
-        if (right < 0)
-          return -1;
-        left = append({ .kind = Kind::power, .left = left, .right = right }, diagnostic);
-      }
-      return left;
-    }
-
-    int parsePrimary(std::string &diagnostic, int depth)
-    {
-      if (depth > 128) {
-        fail(diagnostic, "BPX expression nesting exceeds 128 levels");
-        return -1;
-      }
-      skipSpace();
-      if (take('(')) {
-        const int result = parseExpression(diagnostic, depth + 1);
-        skipSpace();
-        if (result < 0 || !take(')')) {
-          fail(diagnostic, "expected ')' in BPX expression");
-          return -1;
-        }
-        return result;
-      }
-      if (cursor_ < source_.size()
-          && (std::isdigit(static_cast<unsigned char>(source_[cursor_]))
-              || source_[cursor_] == '.')) {
-        const char *first = source_.data() + cursor_;
-        const char *last = source_.data() + source_.size();
-        real_t value{};
-        const auto parsed = std::from_chars(first, last, value, std::chars_format::general);
-        if (parsed.ec != std::errc{} || parsed.ptr == first || !is_finite(value)) {
-          fail(diagnostic, "invalid number in BPX expression");
-          return -1;
-        }
-        cursor_ = static_cast<std::size_t>(parsed.ptr - source_.data());
-        return append({ .kind = Kind::literal, .value = value }, diagnostic);
-      }
-      if (cursor_ < source_.size()
-          && std::isalpha(static_cast<unsigned char>(source_[cursor_]))) {
-        const std::size_t begin = cursor_++;
-        while (cursor_ < source_.size()
-               && std::isalnum(static_cast<unsigned char>(source_[cursor_])))
-          ++cursor_;
-        const auto identifier = source_.substr(begin, cursor_ - begin);
-        if (identifier == "x")
-          return append({ .kind = Kind::variable }, diagnostic);
-        Kind kind;
-        if (identifier == "exp")
-          kind = Kind::exponential;
-        else if (identifier == "tanh")
-          kind = Kind::hyperbolic_tangent;
-        else if (identifier == "cosh")
-          kind = Kind::hyperbolic_cosine;
-        else {
-          fail(diagnostic, "unsupported BPX expression identifier");
-          return -1;
-        }
-        skipSpace();
-        if (!take('(')) {
-          fail(diagnostic, "expected '(' after BPX function");
-          return -1;
-        }
-        const int child = parseExpression(diagnostic, depth + 1);
-        skipSpace();
-        if (child < 0 || !take(')')) {
-          fail(diagnostic, "expected ')' after BPX function argument");
-          return -1;
-        }
-        return append({ .kind = kind, .left = child }, diagnostic);
-      }
-      fail(diagnostic, "expected value in BPX expression");
-      return -1;
-    }
-
-    bool evaluateNode(int index, real_t x, real_t &output, int depth) const
-    {
-      if (depth > 128 || index < 0
-          || static_cast<std::size_t>(index) >= nodes_.size())
-        return false;
-      const auto &node = nodes_[static_cast<std::size_t>(index)];
-      if (node.kind == Kind::literal) {
-        output = node.value;
-        return true;
-      }
-      if (node.kind == Kind::variable) {
-        output = x;
-        return is_finite(output);
-      }
-      real_t left{};
-      if (!evaluateNode(node.left, x, left, depth + 1))
-        return false;
-      if (node.kind == Kind::negate)
-        output = -left;
-      else if (node.kind == Kind::exponential)
-        output = std::exp(left);
-      else if (node.kind == Kind::hyperbolic_tangent)
-        output = std::tanh(left);
-      else if (node.kind == Kind::hyperbolic_cosine)
-        output = std::cosh(left);
-      else {
-        real_t right{};
-        if (!evaluateNode(node.right, x, right, depth + 1))
-          return false;
-        switch (node.kind) {
-        case Kind::add:
-          output = left + right;
-          break;
-        case Kind::subtract:
-          output = left - right;
-          break;
-        case Kind::multiply:
-          output = left * right;
-          break;
-        case Kind::divide:
-          if (right == 0.0)
-            return false;
-          output = left / right;
-          break;
-        case Kind::power:
-          output = std::pow(left, right);
-          break;
-        default:
-          return false;
-        }
-      }
-      return is_finite(output);
-    }
-
-    void skipSpace()
-    {
-      while (cursor_ < source_.size()
-             && std::isspace(static_cast<unsigned char>(source_[cursor_])))
-        ++cursor_;
-    }
-
-    bool take(char token)
-    {
-      if (cursor_ < source_.size() && source_[cursor_] == token) {
-        ++cursor_;
-        return true;
-      }
-      return false;
-    }
-
-    bool consume(std::string_view token)
-    {
-      if (!source_.substr(cursor_).starts_with(token))
-        return false;
-      cursor_ += token.size();
-      return true;
-    }
-
-    bool fail(std::string &diagnostic, std::string_view message)
-    {
-      if (diagnostic.empty())
-        diagnostic = std::string{ message } + " at expression byte "
-                     + std::to_string(cursor_);
-      return false;
-    }
-
-    std::string_view source_{};
-    std::size_t cursor_{};
-    std::vector<Node> nodes_{};
-    int root_{ -1 };
-  };
-
-  class JsonParser
-  {
-  public:
-    JsonParser(std::string_view source, std::string &diagnostic)
-      : source_{ source }, diagnostic_{ diagnostic }
-    {}
-
-    bool parse(JsonValue &output)
-    {
-      diagnostic_.clear();
-      skipSpace();
-      if (!parseValue(output, 0))
-        return false;
-      skipSpace();
-      if (cursor_ != source_.size())
-        return fail("unexpected trailing JSON data");
-      return true;
-    }
-
-  private:
-    bool parseValue(JsonValue &output, int depth)
-    {
-      if (depth > 64)
-        return fail("JSON nesting exceeds 64 levels");
-      if (values_ >= max_json_values)
-        return fail("JSON value count exceeds 65536");
-      ++values_;
-      skipSpace();
-      if (cursor_ == source_.size())
-        return fail("unexpected end of JSON");
-      const char token = source_[cursor_];
-      if (token == '{') return parseObject(output, depth + 1);
-      if (token == '[') return parseArray(output, depth + 1);
-      if (token == '"') {
-        output.kind = JsonValue::Kind::string;
-        return parseString(output.string);
-      }
-      if (token == '-' || (token >= '0' && token <= '9'))
-        return parseNumber(output);
-      if (consume("true")) {
-        output.kind = JsonValue::Kind::boolean;
-        output.boolean = true;
-        return true;
-      }
-      if (consume("false")) {
-        output.kind = JsonValue::Kind::boolean;
-        output.boolean = false;
-        return true;
-      }
-      if (consume("null")) {
-        output.kind = JsonValue::Kind::null_value;
-        return true;
-      }
-      return fail("invalid JSON value");
-    }
-
-    bool parseObject(JsonValue &output, int depth)
-    {
-      ++cursor_;
-      output.kind = JsonValue::Kind::object;
-      skipSpace();
-      if (take('}')) return true;
-      while (true) {
-        std::string key;
-        if (!parseString(key))
-          return false;
-        skipSpace();
-        if (!take(':'))
-          return fail("expected ':' after object key");
-        JsonValue value;
-        if (!parseValue(value, depth))
-          return false;
-        if (!output.object.emplace(std::move(key), std::move(value)).second)
-          return fail("duplicate JSON object key");
-        skipSpace();
-        if (take('}')) return true;
-        if (!take(','))
-          return fail("expected ',' or '}' in object");
-        skipSpace();
-      }
-    }
-
-    bool parseArray(JsonValue &output, int depth)
-    {
-      ++cursor_;
-      output.kind = JsonValue::Kind::array;
-      skipSpace();
-      if (take(']')) return true;
-      while (true) {
-        JsonValue value;
-        if (!parseValue(value, depth))
-          return false;
-        output.array.push_back(std::move(value));
-        skipSpace();
-        if (take(']')) return true;
-        if (!take(','))
-          return fail("expected ',' or ']' in array");
-        skipSpace();
-      }
-    }
-
-    bool parseString(std::string &output)
-    {
-      skipSpace();
-      if (!take('"'))
-        return fail("expected JSON string");
-      output.clear();
-      while (cursor_ < source_.size()) {
-        const unsigned char c = static_cast<unsigned char>(source_[cursor_++]);
-        if (c == '"') return true;
-        if (c < 0x20)
-          return fail("control byte in JSON string");
-        if (c != '\\') {
-          if (c < 0x80U)
-            output.push_back(static_cast<char>(c));
-          else if (!appendRawUtf8(output, c))
-            return false;
-          continue;
-        }
-        if (cursor_ == source_.size())
-          return fail("unfinished JSON escape");
-        const char escape = source_[cursor_++];
-        switch (escape) {
-        case '"':
-          output.push_back('"');
-          break;
-        case '\\':
-          output.push_back('\\');
-          break;
-        case '/':
-          output.push_back('/');
-          break;
-        case 'b':
-          output.push_back('\b');
-          break;
-        case 'f':
-          output.push_back('\f');
-          break;
-        case 'n':
-          output.push_back('\n');
-          break;
-        case 'r':
-          output.push_back('\r');
-          break;
-        case 't':
-          output.push_back('\t');
-          break;
-        case 'u': {
-          std::uint32_t codepoint{};
-          if (!parseHex4(codepoint))
-            return false;
-          if (codepoint >= 0xd800U && codepoint <= 0xdbffU) {
-            if (cursor_ + 2 > source_.size() || source_[cursor_] != '\\'
-                || source_[cursor_ + 1] != 'u')
-              return fail("high surrogate without low surrogate");
-            cursor_ += 2;
-            std::uint32_t low{};
-            if (!parseHex4(low))
-              return false;
-            if (low < 0xdc00U || low > 0xdfffU)
-              return fail("invalid low surrogate");
-            codepoint = 0x10000U + ((codepoint - 0xd800U) << 10U)
-                        + (low - 0xdc00U);
-          } else if (codepoint >= 0xdc00U && codepoint <= 0xdfffU) {
-            return fail("unpaired low surrogate");
-          }
-          appendUtf8(output, codepoint);
-          break;
-        }
-        default:
-          return fail("unsupported JSON escape (use UTF-8 directly)");
-        }
-      }
-      return fail("unterminated JSON string");
-    }
-
-    bool parseNumber(JsonValue &output)
-    {
-      const std::size_t begin = cursor_;
-      if (take('-') && cursor_ == source_.size())
-        return fail("invalid JSON number");
-      if (cursor_ == source_.size())
-        return fail("invalid JSON number");
-      if (source_[cursor_] == '0') {
-        ++cursor_;
-        if (cursor_ < source_.size() && source_[cursor_] >= '0'
-            && source_[cursor_] <= '9')
-          return fail("leading zero in JSON number");
-      } else if (source_[cursor_] >= '1' && source_[cursor_] <= '9') {
-        while (cursor_ < source_.size() && source_[cursor_] >= '0'
-               && source_[cursor_] <= '9')
-          ++cursor_;
-      } else {
-        return fail("invalid JSON number");
-      }
-      if (cursor_ < source_.size() && source_[cursor_] == '.') {
-        ++cursor_;
-        const std::size_t fraction = cursor_;
-        while (cursor_ < source_.size() && source_[cursor_] >= '0'
-               && source_[cursor_] <= '9')
-          ++cursor_;
-        if (cursor_ == fraction)
-          return fail("JSON fraction needs a digit");
-      }
-      if (cursor_ < source_.size()
-          && (source_[cursor_] == 'e' || source_[cursor_] == 'E')) {
-        ++cursor_;
-        if (cursor_ < source_.size()
-            && (source_[cursor_] == '+' || source_[cursor_] == '-'))
-          ++cursor_;
-        const std::size_t exponent = cursor_;
-        while (cursor_ < source_.size() && source_[cursor_] >= '0'
-               && source_[cursor_] <= '9')
-          ++cursor_;
-        if (cursor_ == exponent)
-          return fail("JSON exponent needs a digit");
-      }
-
-      const char *first = source_.data() + begin;
-      const char *last = source_.data() + cursor_;
-      real_t value{};
-      const auto parsed = std::from_chars(first, last, value, std::chars_format::general);
-      if (parsed.ec != std::errc{} || parsed.ptr != last || !is_finite(value))
-        return fail("invalid JSON number");
-      output.kind = JsonValue::Kind::number;
-      output.number = value;
-      return true;
-    }
-
-    bool appendRawUtf8(std::string &output, unsigned char lead)
-    {
-      const std::size_t begin = cursor_ - 1;
-      std::size_t continuations{};
-      std::uint32_t codepoint{};
-      std::uint32_t minimum{};
-      if (lead >= 0xc2U && lead <= 0xdfU) {
-        continuations = 1;
-        codepoint = lead & 0x1fU;
-        minimum = 0x80U;
-      } else if (lead >= 0xe0U && lead <= 0xefU) {
-        continuations = 2;
-        codepoint = lead & 0x0fU;
-        minimum = 0x800U;
-      } else if (lead >= 0xf0U && lead <= 0xf4U) {
-        continuations = 3;
-        codepoint = lead & 0x07U;
-        minimum = 0x10000U;
-      } else {
-        return fail("invalid UTF-8 lead byte in JSON string");
-      }
-      if (continuations > source_.size() - cursor_)
-        return fail("unfinished UTF-8 sequence in JSON string");
-      for (std::size_t i = 0; i < continuations; ++i) {
-        const auto continuation = static_cast<unsigned char>(source_[cursor_++]);
-        if ((continuation & 0xc0U) != 0x80U)
-          return fail("invalid UTF-8 continuation in JSON string");
-        codepoint = (codepoint << 6U) | (continuation & 0x3fU);
-      }
-      if (codepoint < minimum || codepoint > 0x10ffffU
-          || (codepoint >= 0xd800U && codepoint <= 0xdfffU))
-        return fail("invalid UTF-8 scalar in JSON string");
-      output.append(source_.substr(begin, continuations + 1));
-      return true;
-    }
-
-    bool parseHex4(std::uint32_t &value)
-    {
-      if (cursor_ + 4 > source_.size())
-        return fail("unfinished Unicode escape");
-      value = 0;
-      for (int i = 0; i < 4; ++i) {
-        const char c = source_[cursor_++];
-        unsigned digit{};
-        if (c >= '0' && c <= '9')
-          digit = static_cast<unsigned>(c - '0');
-        else if (c >= 'a' && c <= 'f')
-          digit = 10U + static_cast<unsigned>(c - 'a');
-        else if (c >= 'A' && c <= 'F')
-          digit = 10U + static_cast<unsigned>(c - 'A');
-        else
-          return fail("invalid hexadecimal Unicode escape");
-        value = (value << 4U) | digit;
-      }
-      return true;
-    }
-
-    static void appendUtf8(std::string &output, std::uint32_t codepoint)
-    {
-      if (codepoint <= 0x7fU) {
-        output.push_back(static_cast<char>(codepoint));
-      } else if (codepoint <= 0x7ffU) {
-        output.push_back(static_cast<char>(0xc0U | (codepoint >> 6U)));
-        output.push_back(static_cast<char>(0x80U | (codepoint & 0x3fU)));
-      } else if (codepoint <= 0xffffU) {
-        output.push_back(static_cast<char>(0xe0U | (codepoint >> 12U)));
-        output.push_back(static_cast<char>(0x80U | ((codepoint >> 6U) & 0x3fU)));
-        output.push_back(static_cast<char>(0x80U | (codepoint & 0x3fU)));
-      } else {
-        output.push_back(static_cast<char>(0xf0U | (codepoint >> 18U)));
-        output.push_back(static_cast<char>(0x80U | ((codepoint >> 12U) & 0x3fU)));
-        output.push_back(static_cast<char>(0x80U | ((codepoint >> 6U) & 0x3fU)));
-        output.push_back(static_cast<char>(0x80U | (codepoint & 0x3fU)));
-      }
-    }
-
-    void skipSpace()
-    {
-      while (cursor_ < source_.size()
-             && (source_[cursor_] == ' ' || source_[cursor_] == '\t'
-                 || source_[cursor_] == '\r' || source_[cursor_] == '\n'))
-        ++cursor_;
-    }
-
-    bool take(char expected)
-    {
-      if (cursor_ < source_.size() && source_[cursor_] == expected) {
-        ++cursor_;
-        return true;
-      }
-      return false;
-    }
-
-    bool consume(std::string_view text)
-    {
-      if (!source_.substr(cursor_).starts_with(text))
-        return false;
-      cursor_ += text.size();
-      return true;
-    }
-
-    bool fail(std::string_view message)
-    {
-      diagnostic_ = std::string{ message } + " at byte " + std::to_string(cursor_);
-      return false;
-    }
-
-    std::string_view source_{};
-    std::string &diagnostic_;
-    std::size_t cursor_{};
-    std::size_t values_{};
-  };
-
-  const JsonValue *jsonPath(const JsonValue &root,
-                            std::initializer_list<std::string_view>
-                              path)
-  {
-    const JsonValue *current = &root;
-    for (const auto name : path) {
-      if (current->kind != JsonValue::Kind::object)
-        return nullptr;
-      const auto found = current->object.find(name);
-      if (found == current->object.end())
-        return nullptr;
-      current = &found->second;
-    }
-    return current;
-  }
-
-  std::optional<real_t> jsonConstant(const JsonValue &value,
-                                     std::string &diagnostic)
-  {
-    if (value.kind == JsonValue::Kind::number)
-      return value.number;
-    if (value.kind != JsonValue::Kind::string)
-      return std::nullopt;
-    BpxExpression expression;
-    if (!expression.compile(value.string, diagnostic))
-      return std::nullopt;
-    std::array<real_t, 3> samples{};
-    if (!expression.evaluate(0.0, samples[0])
-        || !expression.evaluate(0.5, samples[1])
-        || !expression.evaluate(1.0, samples[2])) {
-      diagnostic = "BPX scalar expression is non-finite";
-      return std::nullopt;
-    }
-    const real_t tolerance = 64.0 * std::numeric_limits<real_t>::epsilon()
-                             * std::max(std::numeric_limits<real_t>::min(),
-                                        std::abs(samples[0]));
-    if (std::abs(samples[1] - samples[0]) > tolerance
-        || std::abs(samples[2] - samples[0]) > tolerance) {
-      diagnostic = "state-dependent BPX diffusivity is not supported by the constant-D SPM composition";
-      return std::nullopt;
-    }
-    return samples[0];
-  }
-
-  std::optional<OCVCurve> jsonCurve(const JsonValue &value,
-                                    std::string &diagnostic)
-  {
-    if (value.kind == JsonValue::Kind::number)
-      return OCVCurve{ { 0.0, 1.0 }, { value.number, value.number } };
-    if (value.kind == JsonValue::Kind::string) {
-      BpxExpression expression;
-      if (!expression.compile(value.string, diagnostic))
-        return std::nullopt;
-      const auto curve = sampleCurve([&expression](real_t x) {
-        real_t value_at_x{};
-        return expression.evaluate(x, value_at_x)
-                 ? value_at_x
-                 : std::numeric_limits<real_t>::quiet_NaN();
-      });
-      if (!validCurve(curve)) {
-        diagnostic = "BPX function is non-finite on stoichiometry [0,1]";
-        return std::nullopt;
-      }
-      return curve;
-    }
-    if (value.kind != JsonValue::Kind::object)
-      return std::nullopt;
-    const auto x = value.object.find("x");
-    const auto y = value.object.find("y");
-    if (x == value.object.end() || y == value.object.end()
-        || x->second.kind != JsonValue::Kind::array
-        || y->second.kind != JsonValue::Kind::array
-        || x->second.array.size() != y->second.array.size())
-      return std::nullopt;
-    OCVCurve curve;
-    for (std::size_t i = 0; i < x->second.array.size(); ++i) {
-      if (x->second.array[i].kind != JsonValue::Kind::number
-          || y->second.array[i].kind != JsonValue::Kind::number)
-        return std::nullopt;
-      curve.stoichiometry.push_back(x->second.array[i].number);
-      curve.value.push_back(y->second.array[i].number);
-    }
-    return validCurve(curve) ? std::optional<OCVCurve>{ std::move(curve) }
-                             : std::nullopt;
-  }
-
-} // namespace
-
-slide::Status ParameterSet::fromBpxJson(std::string_view json,
-                                        ParameterSet &output,
-                                        std::string &diagnostic)
-try {
-  if (json.size() > max_bpx_json_bytes) {
-    diagnostic = "BPX JSON exceeds 4194304 bytes";
-    return slide::Status::Invalid_parameters;
-  }
-  JsonValue root;
-  JsonParser parser{ json, diagnostic };
-  if (!parser.parse(root) || root.kind != JsonValue::Kind::object) {
-    if (diagnostic.empty()) diagnostic = "BPX root must be an object";
-    return slide::Status::Invalid_parameters;
-  }
-  const auto *version = jsonPath(root, { "Header", "BPX" });
-  const auto *model = jsonPath(root, { "Header", "Model" });
-  std::string version_text;
-  if (version != nullptr && version->kind == JsonValue::Kind::string
-      && version->string.starts_with("1."))
-    version_text = version->string;
-  else if (version != nullptr && version->kind == JsonValue::Kind::number
-           && version->number >= 1.0 && version->number < 2.0)
-    version_text = "1.0 (legacy numeric header)";
-  if (version_text.empty() || model == nullptr
-      || model->kind != JsonValue::Kind::string
-      || (model->string != "SPM" && model->string != "SPMe"
-          && model->string != "DFN" && model->string != "Partial")) {
-    diagnostic = "expected BPX 1.x Header with Model SPM, SPMe, DFN, or Partial";
-    return slide::Status::Invalid_parameters;
-  }
-  ParameterSet candidate;
-  auto addScalar = [&](std::initializer_list<std::string_view> path,
-                       std::string_view name,
-                       bool required = true) -> slide::Status {
-    const auto *value = jsonPath(root, path);
-    if (value == nullptr)
-      return required ? slide::Status::Invalid_parameters
-                      : slide::Status::Success;
-    if (value->kind != JsonValue::Kind::number)
-      return slide::Status::Invalid_parameters;
-    return candidate.set(
-      std::string{ name }, value->number, "BPX " + version_text);
-  };
-  const auto requireCellScalar = [&](std::string_view bpx_name,
-                                     std::string_view parameter_name) {
-    const auto status = addScalar(
-      { "Parameterisation", "Cell", bpx_name }, parameter_name);
-    if (status != slide::Status::Success)
-      diagnostic = "missing, non-numeric, or invalid BPX Cell parameter: "
-                   + std::string{ parameter_name };
-    return status;
-  };
-  for (const auto &[bpx_name, parameter_name] : {
-         std::pair{ std::string_view{ "Electrode area [m2]" },
-                    std::string_view{ "Electrode area [m2]" } },
-         std::pair{ std::string_view{ "Nominal cell capacity [A.h]" },
-                    std::string_view{ "Nominal cell capacity [A.h]" } },
-         std::pair{ std::string_view{ "Reference temperature [K]" },
-                    std::string_view{ "Reference temperature [K]" } },
-       }) {
-    const auto status = requireCellScalar(bpx_name, parameter_name);
-    if (status != slide::Status::Success)
-      return status;
-  }
-  const auto optionalScalar = [&](std::initializer_list<std::string_view> path,
-                                  std::string_view name) {
-    const auto status = addScalar(path, name, false);
-    if (status != slide::Status::Success)
-      diagnostic = "invalid optional BPX scalar: " + std::string{ name };
-    return status;
-  };
-  for (const auto &[bpx_name, parameter_name] : {
-         std::pair{ std::string_view{ "External surface area [m2]" },
-                    std::string_view{ "Cell cooling surface area [m2]" } },
-         std::pair{ std::string_view{ "Volume [m3]" },
-                    std::string_view{ "Cell volume [m3]" } },
-         std::pair{ std::string_view{ "Density [kg.m-3]" },
-                    std::string_view{ "Cell density [kg.m-3]" } },
-         std::pair{ std::string_view{ "Specific heat capacity [J.K-1.kg-1]" },
-                    std::string_view{ "Cell specific heat capacity [J.kg-1.K-1]" } },
-       }) {
-    const auto status = optionalScalar(
-      { "Parameterisation", "Cell", bpx_name }, parameter_name);
-    if (status != slide::Status::Success)
-      return status;
-  }
-
-  struct BpxElectrode
-  {
-    std::string_view section;
-    std::string_view prefix;
-    std::string_view concentration_name;
-    std::string_view diffusivity_name;
-    std::string_view ocp_name;
-  };
-  constexpr std::array electrodes{
-    BpxElectrode{ "Negative electrode", "Negative", "Maximum concentration in negative electrode [mol.m-3]", "Negative particle diffusivity [m2.s-1]", "Negative electrode OCP [V]" },
-    BpxElectrode{ "Positive electrode", "Positive", "Maximum concentration in positive electrode [mol.m-3]", "Positive particle diffusivity [m2.s-1]", "Positive electrode OCP [V]" },
-  };
-  for (const auto &electrode : electrodes) {
-    const std::string prefix{ electrode.prefix };
-    const auto path = [&](std::string_view field) {
-      return jsonPath(root, { "Parameterisation", electrode.section, field });
-    };
-    auto requireNumber = [&](std::string_view field, std::string name) {
-      const auto *value = path(field);
-      if (value == nullptr || value->kind != JsonValue::Kind::number)
-        return slide::Status::Invalid_parameters;
-      return candidate.set(
-        std::move(name), value->number, "BPX " + version_text);
-    };
-    auto requireConstant = [&](std::string_view field, std::string name) {
-      const auto *value = path(field);
-      if (value == nullptr)
-        return slide::Status::Invalid_parameters;
-      auto constant = jsonConstant(*value, diagnostic);
-      if (!constant.has_value())
-        return slide::Status::Invalid_parameters;
-      return candidate.set(
-        std::move(name), *constant, "BPX " + version_text);
-    };
-    const auto requireElectrode = [&](slide::Status status) {
-      if (status != slide::Status::Success && diagnostic.empty())
-        diagnostic = "missing or unsupported BPX electrode scalar";
-      return status;
-    };
-    auto status = requireElectrode(
-      requireNumber("Thickness [m]", prefix + " electrode thickness [m]"));
-    if (status != slide::Status::Success)
-      return status;
-    status = requireElectrode(requireNumber(
-      "Minimum stoichiometry", prefix + " electrode minimum stoichiometry"));
-    if (status != slide::Status::Success)
-      return status;
-    status = requireElectrode(requireNumber(
-      "Maximum stoichiometry", prefix + " electrode maximum stoichiometry"));
-    if (status != slide::Status::Success)
-      return status;
-    status = requireElectrode(requireNumber(
-      "Maximum concentration [mol.m-3]",
-      std::string{ electrode.concentration_name }));
-    if (status != slide::Status::Success)
-      return status;
-    status = requireElectrode(requireNumber(
-      "Particle radius [m]", prefix + " particle radius [m]"));
-    if (status != slide::Status::Success)
-      return status;
-    status = requireElectrode(requireConstant(
-      "Diffusivity [m2.s-1]", std::string{ electrode.diffusivity_name }));
-    if (status != slide::Status::Success)
-      return status;
-    status = requireElectrode(requireNumber(
-      "Reaction rate constant [mol.m-2.s-1]",
-      prefix + " electrode reaction rate constant [mol.m-2.s-1]"));
-    if (status != slide::Status::Success)
-      return status;
-    const auto *area = path("Surface area per unit volume [m-1]");
-    const auto *radius = path("Particle radius [m]");
-    if (area == nullptr || radius == nullptr
-        || area->kind != JsonValue::Kind::number
-        || radius->kind != JsonValue::Kind::number) {
-      diagnostic = "BPX electrode needs numeric surface area and particle radius";
-      return slide::Status::Invalid_parameters;
-    }
-    const real_t fraction = area->number * radius->number / 3.0;
-    const auto *porosity = path("Porosity");
-    if (porosity != nullptr && porosity->kind != JsonValue::Kind::number) {
-      diagnostic = "invalid optional BPX electrode porosity";
-      return slide::Status::Invalid_parameters;
-    }
-    const real_t porosity_value = porosity != nullptr
-                                    ? porosity->number
-                                    : 1.0 - fraction;
-    const std::string porosity_provenance = porosity != nullptr
-                                              ? "BPX " + version_text
-                                              : "SPM complement of BPX a*R/3";
-    status = candidate.set(prefix + " electrode active material volume fraction",
-                           fraction,
-                           "derived exactly from BPX a*R/3");
-    if (status != slide::Status::Success) {
-      diagnostic = "invalid BPX derived active fraction";
-      return status;
-    }
-    status = candidate.set(
-      prefix + " electrode porosity", porosity_value, porosity_provenance);
-    if (status != slide::Status::Success) {
-      diagnostic = "invalid BPX electrode porosity";
-      return status;
-    }
-    const auto *ocp = path("OCP [V]");
-    const auto curve = ocp == nullptr ? std::nullopt : jsonCurve(*ocp, diagnostic);
-    if (!curve.has_value()) {
-      if (diagnostic.empty())
-        diagnostic = "BPX OCP must be a numeric constant, function, or exact {x,y} table";
-      return slide::Status::Invalid_parameters;
-    }
-    status = candidate.set(std::string{ electrode.ocp_name },
-                           *curve,
-                           "BPX " + version_text + " canonical curve");
-    if (status != slide::Status::Success) {
-      diagnostic = "failed to store BPX OCP canonical curve";
-      return status;
-    }
-    const auto *activation = path("Reaction rate constant activation energy [J.mol-1]");
-    if (activation != nullptr) {
-      if (activation->kind != JsonValue::Kind::number) {
-        diagnostic = "invalid BPX reaction-rate activation energy";
-        return slide::Status::Invalid_parameters;
-      }
-      status = candidate.set(
-        prefix + " electrode reaction rate activation energy [J.mol-1]",
-        activation->number,
-        "BPX " + version_text);
-      if (status != slide::Status::Success) {
-        diagnostic = "failed to store BPX reaction-rate activation energy";
-        return status;
-      }
-    }
-    const auto *diffusion_activation = path("Diffusivity activation energy [J.mol-1]");
-    if (diffusion_activation != nullptr) {
-      if (diffusion_activation->kind != JsonValue::Kind::number) {
-        diagnostic = "invalid BPX diffusivity activation energy";
-        return slide::Status::Invalid_parameters;
-      }
-      status = candidate.set(
-        prefix + " particle diffusivity activation energy [J.mol-1]",
-        diffusion_activation->number,
-        "BPX " + version_text);
-      if (status != slide::Status::Success) {
-        diagnostic = "failed to store BPX diffusivity activation energy";
-        return status;
-      }
-    }
-  }
-
-  auto setDefault = [&](std::string name, real_t value) -> slide::Status {
-    return candidate.contains(name)
-             ? slide::Status::Success
-             : candidate.set(std::move(name), value, "BPX SPM default");
-  };
-  for (const auto &[section, bpx_name, parameter_name] : {
-         std::tuple{ std::string_view{ "Initial conditions" },
-                     std::string_view{ "Initial state-of-charge" },
-                     std::string_view{ "Initial state-of-charge" } },
-         std::tuple{ std::string_view{ "Initial conditions" },
-                     std::string_view{ "Initial temperature [K]" },
-                     std::string_view{ "Initial temperature [K]" } },
-         std::tuple{ std::string_view{ "Initial conditions" },
-                     std::string_view{ "Initial electrolyte concentration [mol.m-3]" },
-                     std::string_view{ "Initial concentration in electrolyte [mol.m-3]" } },
-         std::tuple{ std::string_view{ "Thermal environment" },
-                     std::string_view{ "Ambient temperature [K]" },
-                     std::string_view{ "Ambient temperature [K]" } },
-         std::tuple{ std::string_view{ "Thermal environment" },
-                     std::string_view{ "Heat transfer coefficient [W.m-2.K-1]" },
-                     std::string_view{ "Total heat transfer coefficient [W.m-2.K-1]" } },
-       }) {
-    const auto status = optionalScalar(
-      { "State", section, bpx_name }, parameter_name);
-    if (status != slide::Status::Success)
-      return status;
-  }
-  const real_t reference_temperature =
-    *candidate.findScalar("Reference temperature [K]");
-  for (const auto &[name, value] : {
-         std::pair{ std::string_view{ "Initial state-of-charge" }, 0.5 },
-         std::pair{ std::string_view{ "Initial temperature [K]" },
-                    reference_temperature },
-         std::pair{ std::string_view{ "Ambient temperature [K]" },
-                    reference_temperature },
-         std::pair{ std::string_view{ "Initial concentration in electrolyte [mol.m-3]" },
-                    1000.0 },
-         std::pair{ std::string_view{ "Initial SEI thickness [m]" }, 1e-9 },
-         std::pair{ std::string_view{ "Contact resistance [Ohm]" }, 0.0 },
-       }) {
-    const auto status = setDefault(std::string{ name }, value);
-    if (status != slide::Status::Success) {
-      diagnostic = "failed to install BPX SPM default: " + std::string{ name };
-      return status;
-    }
-  }
-  diagnostic.clear();
-  output = std::move(candidate);
-  return slide::Status::Success;
-} catch (const std::bad_alloc &) {
-  return allocationFailure(diagnostic, "BPX JSON allocation failed");
-} catch (const std::length_error &) {
-  return allocationFailure(diagnostic, "BPX JSON size is not representable");
-}
-
-slide::Status ParameterSet::fromBpxFile(const std::filesystem::path &path,
-                                        ParameterSet &output,
-                                        std::string &diagnostic)
-try {
-  std::string contents;
-  const auto read = detail::readBoundedFile(path, max_bpx_json_bytes, contents);
-  if (read != detail::BoundedFileRead::success) {
-    if (read == detail::BoundedFileRead::open_failed)
-      diagnostic = "could not open BPX file";
-    else if (read == detail::BoundedFileRead::too_large)
-      diagnostic = "BPX JSON exceeds 4194304 bytes";
-    else
-      diagnostic = "could not read complete BPX file";
-    return detail::boundedFileStatus(read);
-  }
-  return fromBpxJson(contents, output, diagnostic);
-} catch (const std::bad_alloc &) {
-  return allocationFailure(diagnostic, "BPX file allocation failed");
-} catch (const std::length_error &) {
-  return allocationFailure(diagnostic, "BPX file size is not representable");
 }
 
 } // namespace slide::core

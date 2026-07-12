@@ -25,7 +25,10 @@ function(slide_add_core_library target)
   find_package(Threads REQUIRED)
   add_library(${target} STATIC
     "${PROJECT_SOURCE_DIR}/src/core/AsyncRecorder.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/BpxExpression.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/BpxParameterReader.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/CudaSpmBatch.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/CyclerV2.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/Experiment.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/ForwardSensitivity.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/NetlistCsv.cpp"
@@ -37,6 +40,7 @@ function(slide_add_core_library target)
     "${PROJECT_SOURCE_DIR}/src/core/Recorder.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/SpmFactory.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/Simulation.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/StrictJson.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/ThreadPool.cpp")
   slide_use_strict_fp(
     "${PROJECT_SOURCE_DIR}/src/core/ForwardSensitivity.cpp"
