@@ -300,6 +300,8 @@ TEST_CASE("9C-2 common ageing scaffold fixes mask, scratch, and traversal order"
   REQUIRE_THROWS_AS(core::SurfaceCrackScratch<>{ -1 }, std::invalid_argument);
   REQUIRE_THROWS_AS(core::LamScratch<>{ 0 }, std::invalid_argument);
   REQUIRE_THROWS_AS(core::LamScratch<>{ -1 }, std::invalid_argument);
+  REQUIRE_THROWS_AS(core::LithiumPlatingScratch<>{ 0 }, std::invalid_argument);
+  REQUIRE_THROWS_AS(core::LithiumPlatingScratch<>{ -1 }, std::invalid_argument);
   core::detail::AgeingScratchStorage<double, 3> scratch{ 4 };
   REQUIRE(scratch.n_lanes() == 4);
   for (std::size_t field = 0; field < scratch.field_count; ++field) {

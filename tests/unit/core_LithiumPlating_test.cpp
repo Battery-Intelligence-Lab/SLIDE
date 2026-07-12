@@ -86,7 +86,8 @@ TEST_CASE("Lithium plating matches legacy Cell_SPM", "[core][ageing][plating]")
     const core::StepCtx ctx{ .i_app = current_density };
     std::array<double, 1> actual{};
     const core::ConstBatchView state{ core::BatchShape::from(arena), arena.raw() };
-    REQUIRE(core::computeLithiumPlating(params, state, layout, ctx, observables, std::span<double>{ actual })
+    const core::BasicLithiumPlatingOutput output{ std::span<double>{ actual } };
+    REQUIRE(core::computeLithiumPlating(params, state, layout, ctx, observables, output)
             == Status::Success);
     CAPTURE(current, expected, actual[0]);
     REQUIRE(std::abs(actual[0] - expected)
@@ -98,7 +99,7 @@ TEST_CASE("Lithium plating matches legacy Cell_SPM", "[core][ageing][plating]")
       explosive.reaction_rate_ref = std::numeric_limits<double>::max();
       REQUIRE(core::validateLithiumPlatingParams(explosive) == Status::Success);
       const auto before_failure = actual;
-      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, std::span<double>{ actual })
+      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, output)
               == Status::Numerical_failure);
       CHECK(actual == before_failure);
 
@@ -107,7 +108,7 @@ TEST_CASE("Lithium plating matches legacy Cell_SPM", "[core][ageing][plating]")
       explosive.F = std::numeric_limits<double>::max();
       REQUIRE(core::validateLithiumPlatingParams(explosive)
               == Status::Invalid_parameters);
-      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, std::span<double>{ actual })
+      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, output)
               == Status::Numerical_failure);
       CHECK(actual == before_failure);
 
@@ -116,13 +117,13 @@ TEST_CASE("Lithium plating matches legacy Cell_SPM", "[core][ageing][plating]")
       explosive.F = std::numeric_limits<double>::max();
       REQUIRE(core::validateLithiumPlatingParams(explosive)
               == Status::Invalid_parameters);
-      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, std::span<double>{ actual })
+      REQUIRE(core::computeLithiumPlating(explosive, state, layout, ctx, observables, output)
               == Status::Numerical_failure);
       CHECK(actual == before_failure);
 
       const double saved_overpotential = observables.overpotential[neg][0];
       observables.overpotential[neg][0] = -1e6;
-      REQUIRE(core::computeLithiumPlating(params, state, layout, ctx, observables, std::span<double>{ actual })
+      REQUIRE(core::computeLithiumPlating(params, state, layout, ctx, observables, output)
               == Status::Numerical_failure);
       CHECK(actual == before_failure);
       observables.overpotential[neg][0] = saved_overpotential;
@@ -213,7 +214,12 @@ TEST_CASE("Lithium-plating RHS maps current into all affected states",
   views.rebind(arena.raw(), ydot.raw());
   views.zero_derivative();
   const std::array<double, 1> side_current{ 3e-8 };
-  core::addLithiumPlatingRhs(params, views.y, views.ydot, layout, std::span<const double>{ side_current });
+  core::addLithiumPlatingRhs(
+    params,
+    views.y,
+    views.ydot,
+    layout,
+    core::BasicLithiumPlatingOutput<const double>{ side_current });
   const double charge_rate = side_current[0] / (params.mechanism.n_plating * params.mechanism.F);
   REQUIRE(views.ydot.at(layout.plated_lithium_thickness, 0, 0)
           == charge_rate / params.mechanism.plated_lithium_molar_density);

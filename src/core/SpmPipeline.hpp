@@ -146,7 +146,7 @@ public:
                                                       + layout.elapsed_time.rows + 2)
                                * static_cast<std::size_t>(((n_lanes + 7) / 8) * 8)
                            : 0),
-      plating_current_(WithLithiumPlating ? static_cast<std::size_t>(n_lanes) : 0)
+      plating_{ n_lanes }
   {
     assert(n_lanes > 0);
   }
@@ -290,19 +290,21 @@ public:
 
     if constexpr (WithLithiumPlating) {
       if (params_.enable_lithium_plating) {
+        auto plating_view = plating_.view();
         status = computeLithiumPlating(params_.lithium_plating.mechanism,
                                        views.y,
                                        layout_.spm,
                                        ctx,
                                        observable_view,
-                                       std::span<real_t>{ plating_current_ });
+                                       plating_view);
         if (status != slide::Status::Success)
           return status;
         addLithiumPlatingRhs(params_.lithium_plating,
                              views.y,
                              views.ydot,
                              layout_.spm,
-                             std::span<const real_t>{ plating_current_ });
+                             BasicLithiumPlatingOutput<const real_t>{
+                               plating_view.side_reaction_current });
       }
     }
     return slide::Status::Success;
@@ -724,7 +726,10 @@ private:
   SpmTransportCache single_transport_cache_;
   std::vector<real_t> thevenin_current_density_{};
   std::vector<real_t> slow_rate_scratch_{};
-  std::vector<real_t> plating_current_{};
+  std::conditional_t<WithLithiumPlating,
+                     LithiumPlatingScratch<>,
+                     EmptyPipelineScratch>
+    plating_;
 };
 
 } // namespace slide::core

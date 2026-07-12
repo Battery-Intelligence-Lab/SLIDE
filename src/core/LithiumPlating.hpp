@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "AgeingKernel.hpp"
 #include "SpmObservables.hpp"
 
 #include <array>
@@ -36,6 +37,29 @@ struct LithiumPlatingScales
   real_t faradaic_scale{};        //!< n_plating * F
   real_t kinetic_charge{};        //!< n * F
   real_t thickness_denominator{}; //!< n_plating * F * plated molar density
+};
+
+template <class Real>
+struct BasicLithiumPlatingOutput
+{
+  std::span<Real> side_reaction_current{};
+};
+
+template <class Real = real_t>
+class LithiumPlatingScratch
+{
+public:
+  explicit LithiumPlatingScratch(int n_lanes)
+    : storage_{ n_lanes }
+  {}
+
+  BasicLithiumPlatingOutput<Real> view()
+  {
+    return { storage_.field(0) };
+  }
+
+private:
+  detail::AgeingScratchStorage<Real, 1> storage_;
 };
 
 [[nodiscard]] inline bool tryLithiumPlatingScales(
@@ -95,18 +119,18 @@ template <class Real>
   const SpmStateLayout &layout,
   const BasicStepCtx<Real> &ctx,
   const BasicSpmObservables<Real> &observables,
-  std::span<Real>
-    side_reaction_current)
+  BasicLithiumPlatingOutput<Real>
+    output)
 {
   const int lanes = state.n_lanes();
-  assert(static_cast<int>(side_reaction_current.size()) == lanes);
+  assert(static_cast<int>(output.side_reaction_current.size()) == lanes);
   ctx.assert_valid_for(lanes);
   const auto neg = domain_index(Domain::neg);
   using std::exp;
   LithiumPlatingScales scales;
   if (!tryLithiumPlatingScales(p, scales))
     return slide::Status::Numerical_failure;
-  for (int lane = 0; lane < lanes; ++lane) {
+  return detail::for_each_ageing_lane_while_success(lanes, [&](int lane) {
     const auto i = static_cast<std::size_t>(lane);
     const Real T = state.at(layout.temperature, 0, lane);
     const Real current = ctx.i_app[i] * p.electrode_area;
@@ -134,16 +158,16 @@ template <class Real>
           faradaic_reaction, kinetic_primal, current_primal))
       return slide::Status::Numerical_failure;
     if constexpr (std::is_same_v<std::remove_cvref_t<Real>, real_t>) {
-      side_reaction_current[i] = current_primal;
+      output.side_reaction_current[i] = current_primal;
     } else {
       const Real faradaic_reaction_real = scales.faradaic_scale * reaction_rate;
       const Real candidate = faradaic_reaction_real * kinetic_factor;
       // The two checked primal products above use this same order.  Preserve the
       // non-scalar candidate here so derivative components are not discarded.
-      side_reaction_current[i] = candidate;
+      output.side_reaction_current[i] = candidate;
     }
-  }
-  return slide::Status::Success;
+    return slide::Status::Success;
+  });
 }
 
 template <int NCH>
@@ -159,20 +183,19 @@ void addLithiumPlatingRhs(const LithiumPlatingRhsParams<NCH> &p,
                           BasicBatchView<Real>
                             derivative,
                           const SpmStateLayout &layout,
-                          std::span<const Real>
-                            side_reaction_current)
+                          const BasicLithiumPlatingOutput<const Real> &output)
 {
   const int lanes = state.n_lanes();
-  assert(static_cast<int>(side_reaction_current.size()) == lanes);
+  assert(static_cast<int>(output.side_reaction_current.size()) == lanes);
   LithiumPlatingScales scales;
   const bool valid_scales = tryLithiumPlatingScales(p.mechanism, scales);
   assert(valid_scales);
   if (!valid_scales)
     return;
   const auto neg = domain_index(Domain::neg);
-  for (int lane = 0; lane < lanes; ++lane) {
+  detail::for_each_ageing_lane(lanes, [&](int lane) {
     const auto i = static_cast<std::size_t>(lane);
-    const Real plating_current = side_reaction_current[i];
+    const Real plating_current = output.side_reaction_current[i];
     for (int mode = 0; mode < NCH; ++mode)
       derivative.at(layout.z[neg], mode, lane) += p.negative_input_map[static_cast<std::size_t>(mode)] * plating_current
                                                   / scales.faradaic_scale;
@@ -181,7 +204,7 @@ void addLithiumPlatingRhs(const LithiumPlatingRhsParams<NCH> &p,
                                                    * state.at(layout.specific_surface_area[neg], 0, lane);
     derivative.at(layout.plated_lithium_thickness, 0, lane) += plating_current
                                                                / scales.thickness_denominator;
-  }
+  });
 }
 
 } // namespace slide::core
