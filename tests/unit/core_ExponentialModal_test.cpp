@@ -164,9 +164,15 @@ test_support::RecordedBits recordedCpuKernelTrace()
 
 } // namespace
 
-TEST_CASE("PC-10 CPU batches retain their pre-refactor scalar-kernel bits",
+TEST_CASE("PC-10 CPU traces retain portable framing and capture-host bits",
           "[core][integrator][PC-10][recorded]")
 {
+  const std::array traces{ recordedCpuKernelTrace<5>(),
+                           recordedCpuKernelTrace<8>(),
+                           recordedCpuKernelTrace<12>() };
+  constexpr std::array nch{ 5, 8, 12 };
+  constexpr std::array<std::size_t, 3> expected_values{ 944, 1136, 1392 };
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
 #if defined(SLIDE_TEST_IPO) && defined(__FAST_MATH__)
   constexpr std::array expected_fnv{ UINT64_C(0x00a78a61e6bd84d6),
                                      UINT64_C(0xf4d3b8eb337172a6),
@@ -189,14 +195,14 @@ TEST_CASE("PC-10 CPU batches retain their pre-refactor scalar-kernel bits",
                                        UINT64_C(0xde4eb9a14a355bc4),
                                        UINT64_C(0xdfc61b3e371e80f1) };
 #endif
-  const std::array traces{ recordedCpuKernelTrace<5>(),
-                           recordedCpuKernelTrace<8>(),
-                           recordedCpuKernelTrace<12>() };
-  constexpr std::array nch{ 5, 8, 12 };
+#endif
   for (std::size_t i = 0; i < traces.size(); ++i) {
     CAPTURE(nch[i], traces[i].values, traces[i].fnv1a, traces[i].mixed);
+    REQUIRE(traces[i].values == expected_values[i]);
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
     CHECK(traces[i].fnv1a == expected_fnv[i]);
     CHECK(traces[i].mixed == expected_mixed[i]);
+#endif
   }
 }
 

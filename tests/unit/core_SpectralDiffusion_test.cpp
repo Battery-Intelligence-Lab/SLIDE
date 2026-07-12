@@ -43,6 +43,7 @@
 #include "../../src/core/BatchBuilder.hpp"
 #include "../../src/core/SpectralDiffusion.hpp"       // production kernel under test
 #include "../../src/core/SpectralDiffusionLegacy.hpp" // per-lane oracle (legacy-validated)
+#include "../support/RecordedBits.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -158,6 +159,8 @@ TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per 
   bool all_finite = true;
   const std::span<const core::real_t> Tspan{ Tl.data(), L };
   const std::span<const core::real_t> ispan{ iappl.data(), L };
+  test_support::RecordedBits recorded;
+  recorded.append(arena.raw());
 
   auto track = [&](double zc, double zr) {
     if (!std::isfinite(zc) || !std::isfinite(zr)) all_finite = false;
@@ -169,6 +172,7 @@ TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per 
 
   for (int t = 0; t < nsteps; ++t) {
     prod.stepEuler(arena, zp, zn, Tspan, ispan, dt);
+    recorded.append(arena.raw());
     for (int c = 0; c < L; ++c)
       refKern[c].step(refArena[c], zp, zn, 0, dt);
 
@@ -202,4 +206,21 @@ TEST_CASE("SpectralDiffusion<NCH> production kernel == legacy-shaped kernel per 
     "kernel; decisive rel band is the gate (see header, §7 Q8)\n");
 #endif
   REQUIRE(max_rel <= 1e-12); // Q8 decisive band for production vectorised kernels (both configs)
+
+  CAPTURE(recorded.values, recorded.fnv1a, recorded.mixed);
+  REQUIRE(recorded.values == 48080);
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
+#if defined(SLIDE_TEST_IPO) && defined(__FAST_MATH__)
+  constexpr auto expected_fnv = UINT64_C(0x785b850afc76b768);
+  constexpr auto expected_mixed = UINT64_C(0x3a0476924499700f);
+#elif defined(__FAST_MATH__)
+  constexpr auto expected_fnv = UINT64_C(0x8f7f609c10bb3d1a);
+  constexpr auto expected_mixed = UINT64_C(0x8332970bbbba9a67);
+#else
+  constexpr auto expected_fnv = UINT64_C(0xd2601e8e7d13249b);
+  constexpr auto expected_mixed = UINT64_C(0x5eabfd035f26594c);
+#endif
+  CHECK(recorded.fnv1a == expected_fnv);
+  CHECK(recorded.mixed == expected_mixed);
+#endif
 }

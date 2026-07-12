@@ -1,3 +1,29 @@
+# Recorded bit patterns are a compiler/CRT/ISA contract, not a portable numerical
+# oracle.  Enable them only on the x64 Windows Clang toolchain used to capture both
+# sides of the refactor; all other toolchains retain the independent math gates.
+set(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS OFF)
+if(SLIDE_ENABLE_RECORDED_SCALAR_BITS)
+  if(NOT (WIN32
+          AND CMAKE_SIZEOF_VOID_P EQUAL 8
+          AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+          AND CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "21.1.8"))
+    message(
+      FATAL_ERROR
+      "SLIDE_ENABLE_RECORDED_SCALAR_BITS requires x64 Windows Clang 21.1.8")
+  endif()
+  set(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS ON)
+endif()
+
+function(slide_configure_recorded_scalar_fixture target)
+  if(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
+    target_compile_definitions(
+      ${target} PRIVATE SLIDE_TEST_HAS_RECORDED_SCALAR_BITS=1)
+  endif()
+  target_compile_definitions(
+    ${target} PRIVATE
+    "$<$<AND:$<CONFIG:Release>,$<BOOL:$<TARGET_PROPERTY:INTERPROCEDURAL_OPTIMIZATION>>>:SLIDE_TEST_IPO=1>")
+endfunction()
+
 # Add executables and tests with coverage flags applied
 add_executable_with_coverage_and_test(unit_test_Cell_Bucket Cell_Bucket_test.cpp)
 add_executable_with_coverage_and_test(unit_test_Cell_ECM Cell_ECM_test.cpp)
@@ -34,6 +60,7 @@ target_link_libraries(unit_test_core_P1G0_pilot PRIVATE slide_core)
 # Phase 1: production SpectralDiffusion<NCH> vs legacy-shaped oracle (PLAN.md §3.2/§3.5) — needs legacy src (Model_SPM) + slide_core
 add_executable_with_coverage_and_test(unit_test_core_SpectralDiffusion core_SpectralDiffusion_test.cpp)
 target_link_libraries(unit_test_core_SpectralDiffusion PRIVATE slide_core)
+slide_configure_recorded_scalar_fixture(unit_test_core_SpectralDiffusion)
 
 # Phase 1 P1-G3 (part a): analytic Chebyshev eigenvalue oracle (roots of tan(mu)=mu) — needs Model_SPM
 add_executable_with_coverage_and_test(unit_test_core_ChebyshevEigenvalues core_ChebyshevEigenvalues_test.cpp)
@@ -131,9 +158,7 @@ target_link_libraries(unit_test_core_P2G1_allocation PRIVATE slide_core)
 # Phase 3: exact modal propagator, conservation, and nch=12 stability gates
 add_executable_with_coverage_and_test(unit_test_core_ExponentialModal core_ExponentialModal_test.cpp)
 target_link_libraries(unit_test_core_ExponentialModal PRIVATE slide_core)
-target_compile_definitions(
-  unit_test_core_ExponentialModal PRIVATE
-  "$<$<AND:$<CONFIG:Release>,$<BOOL:$<TARGET_PROPERTY:INTERPROCEDURAL_OPTIMIZATION>>>:SLIDE_TEST_IPO=1>")
+slide_configure_recorded_scalar_fixture(unit_test_core_ExponentialModal)
 
 # Phase 4: waveform-relaxation/Baumgarte and 100k-cell scale gates
 add_executable_with_coverage_and_test(unit_test_core_ModeC core_ModeC_test.cpp)
@@ -168,9 +193,7 @@ target_compile_definitions(unit_test_core_P7G3_PyBaMM PRIVATE SLIDE_SOURCE_DIR="
 # Phase 7 P7-G2: true forward sensitivities against centered finite differences
 add_executable_with_coverage_and_test(unit_test_core_ForwardSensitivity core_ForwardSensitivity_test.cpp)
 target_link_libraries(unit_test_core_ForwardSensitivity PRIVATE slide_core)
-target_compile_definitions(
-  unit_test_core_ForwardSensitivity PRIVATE
-  "$<$<AND:$<CONFIG:Release>,$<BOOL:$<TARGET_PROPERTY:INTERPROCEDURAL_OPTIMIZATION>>>:SLIDE_TEST_IPO=1>")
+slide_configure_recorded_scalar_fixture(unit_test_core_ForwardSensitivity)
 
 # Phase 8 P8-G4: persistent dependency-free pool and measured diagnostic
 add_executable_with_coverage_and_test(unit_test_core_ThreadPool core_ThreadPool_test.cpp)
@@ -195,6 +218,7 @@ if(SLIDE_WITH_CUDA)
   # Phase 8 P8-G2: non-block-multiple device parity, host coupling, and rollback
   add_executable_with_coverage_and_test(unit_test_core_CudaSpmBatch core_CudaSpmBatch_test.cpp)
   target_link_libraries(unit_test_core_CudaSpmBatch PRIVATE slide_core)
+  slide_configure_recorded_scalar_fixture(unit_test_core_CudaSpmBatch)
 else()
   # P9-G3: every optional-off CUDA facade failure must remain observable.
   add_executable_with_coverage_and_test(unit_test_core_CudaDisabled core_CudaDisabled_test.cpp)

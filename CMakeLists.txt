@@ -16,6 +16,10 @@ option(SLIDE_WITH_CUDA "Enable the optional CUDA SPM batch backend" OFF)
 option(SLIDE_WITH_MATLAB "Build the optional MATLAB MEX and +slide package" OFF)
 option(SLIDE_BUILD_CORE_TESTS "Build the dependency-light v4 core smoke tests" OFF)
 option(SLIDE_BUILD_FUZZERS "Build Clang libFuzzer parser targets" OFF)
+option(
+  SLIDE_ENABLE_RECORDED_SCALAR_BITS
+  "Enable capture-host-qualified exact scalar trace fingerprints"
+  OFF)
 if(SLIDE_WITH_CUDA)
   include(CheckLanguage)
   check_language(CUDA)
