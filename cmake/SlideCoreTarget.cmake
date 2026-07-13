@@ -25,6 +25,7 @@ function(slide_add_core_library target)
   find_package(Threads REQUIRED)
   add_library(${target} STATIC
     "${PROJECT_SOURCE_DIR}/src/core/AsyncRecorder.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/AsyncRecordingCodec.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/BpxExpression.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/BpxParameterReader.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/CudaSpmBatch.cpp"
@@ -33,11 +34,14 @@ function(slide_add_core_library target)
     "${PROJECT_SOURCE_DIR}/src/core/ForwardSensitivity.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/NetlistCsv.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackSolver.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/PackSolverIterative.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackSolverValidation.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackStepper.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackTopology.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/ParameterSet.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/Recorder.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/RecordingFormat.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/SpmBatch.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/SpmFactory.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/Simulation.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/StrictJson.cpp"

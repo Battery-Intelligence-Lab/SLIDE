@@ -62,7 +62,13 @@ function(slice_between label content_variable begin_marker end_marker output)
   set(${output} "${result}" PARENT_SCOPE)
 endfunction()
 
+# M0.10 / 9C-6 moved the diffusion RHS mapping into its own header, beside every other
+# mechanism's. The PC-10 invariant is untouched -- every CPU diffusion leaf still calls the one
+# shared scalar kernel -- so the count is taken over the pipeline and the mapping together, and
+# the expected total (3) is unchanged.
 load_compact("src/core/SpmPipeline.hpp" pipeline)
+load_compact("src/core/SpmDiffusionRhs.hpp" diffusion_rhs)
+string(APPEND pipeline "${diffusion_rhs}")
 load_compact("src/core/SpmObservables.hpp" observables)
 load_compact("src/core/ForwardSensitivity.cpp" dual)
 load_compact("src/core/CudaSpmRuntime.cu" cuda)
