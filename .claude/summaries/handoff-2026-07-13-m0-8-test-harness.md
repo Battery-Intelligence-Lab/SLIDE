@@ -1,0 +1,9 @@
+# Handoff — M0.8 / 9C-4 shared test harness (2026-07-13)
+- Codex had landed the harness + four migration commits but had run NO gate; this session ran it and closed the box (`8b4552e`, `777417b`). PLAN §6 M0.8 is ticked, §8 row added, NEXT is M0.9 / 9C-5 public-surface audit.
+- Green: native Debug, fast-math Release, CUDA each 57/57; WSL Clang 18 ASan+UBSan+LSan 57/57, zero findings (139 s). All 43 pre-existing binaries meet or exceed their frozen assertion floors, no test-case drop; CudaSpmBatch unchanged at 433,671/4.
+- 15 registered mutations turn a gate red (sign flip, omitted A→A/m², dropped initial sample/final interval, uniform dt, self-comparison, RMS/(N−1), naive IEEE-unguarded metric, wrong absolute step time, 50 mV PyBaMM perturbation, …).
+- FALSIFIED and recorded: (1) the aggregate per-binary floor CANNOT see one removed assertion — floors re-frozen at measured counts; (2) the allocation-window prohibition lives in the allocation binaries' ordinals, NOT the structural gate.
+- Review fixes committed: structural blacklist now also forbids `EulerLegacy`/`stepper_`/Catch matcher tolerances (each verified RED by injection); `core_ForwardSensitivity_test.cpp` bitwise-asserts the accumulated grid re-differences to the exact `dt`; the configured-batch no-move invariant (`Recorder`/`CyclerV2` hold a raw `SpmBatch *`) is documented on the seam.
+- Honest debt: M0.8 did NOT reduce lines (AsyncRecorder 1,075→1,118; Experiment 1,091→1,168; ~+1,190 test lines). MC-1 line sweep is M0.10's, recorded in TODO.md and §8.
+- WSL sanitizer lane must be built INSIDE the repo tree (`build-m08-asan`, gitignored) — tests resolve `../../data/*.csv` relatively; a `/tmp` build fails 6 tests for that reason alone. Use the pip CMake at `/home/vk/.cache/slide-cmake/.../bin/cmake` (system 3.28 is too old) and `-DENABLE_IPO=OFF`.
+- TSan not rerun; hosted CI committed, not claimed run. Report: `.claude/reports/p9c4-shared-test-harness-validation-2026-07-13.md`.
