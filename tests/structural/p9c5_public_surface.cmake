@@ -174,8 +174,10 @@ foreach(entry IN LISTS P9C5_ANCHORS)
   endif()
   p9c5_compact("${raw}" compact)
   foreach(type IN LISTS P9C5_TYPES_${stem})
-    string(FIND "${compact}" "${type}" position)
-    if(position EQUAL -1)
+    # Match the declaration, not the substring: a plain FIND for `NetlistCsvDiagnostic`
+    # also succeeds against `NetlistCsvDiagnosticRenamed`, so a rename of a public type
+    # would slip through with the anchor count unchanged.
+    if(NOT compact MATCHES "(class|struct|enumclass|using)${type}[{:=;<]")
       message(FATAL_ERROR
         "9C-5 R4: ${stem}.hpp no longer declares the pinned public type ${type}")
     endif()
@@ -227,8 +229,13 @@ set(P9C5_FORBIDDEN_TOKENS
   "deviceBytes(")
 set(P9C5_FORBIDDEN_REGEX
   "boolvalidate[A-Z]"      # validate... must return slide::Status
-  "Statusvalid[A-Z]"       # valid... must be a bool predicate
-  "[^A-Za-z_]get[A-Z]")    # no get-prefixed accessors in core
+  "Statusvalid[A-Z]")      # valid... must be a bool predicate
+
+# Checked against comment-stripped text that still has its whitespace: in the compacted form
+# a leading `get` is glued to the return type (`inlineintgetWorkerCount`) and no word
+# boundary survives to anchor against.
+set(P9C5_FORBIDDEN_SPACED_REGEX
+  "[ \t(*&,:~]get[A-Z]")   # no get-prefixed accessors in core
 
 file(GLOB P9C5_SOURCES
   "${SLIDE_SOURCE_DIR}/src/core/*.hpp"
@@ -248,6 +255,13 @@ foreach(source IN LISTS P9C5_SOURCES)
   endforeach()
   foreach(pattern IN LISTS P9C5_FORBIDDEN_REGEX)
     if(compact MATCHES "${pattern}")
+      message(FATAL_ERROR
+        "9C-5 R6: ${name} matches the forbidden naming pattern '${pattern}' (${CMAKE_MATCH_0})")
+    endif()
+  endforeach()
+  p9c5_strip_comments("${raw}" spaced)
+  foreach(pattern IN LISTS P9C5_FORBIDDEN_SPACED_REGEX)
+    if(spaced MATCHES "${pattern}")
       message(FATAL_ERROR
         "9C-5 R6: ${name} matches the forbidden naming pattern '${pattern}' (${CMAKE_MATCH_0})")
     endif()
