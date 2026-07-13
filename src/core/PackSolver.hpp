@@ -1,6 +1,7 @@
 /**
  * @file PackSolver.hpp
  * @brief Batch Thevenin interface, persistent sparse workspace, and Mode A/B pack solvers.
+ * @surface api
  */
 
 #pragma once

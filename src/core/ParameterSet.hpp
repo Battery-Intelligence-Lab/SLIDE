@@ -1,6 +1,7 @@
 /**
  * @file ParameterSet.hpp
  * @brief PyBaMM/BPX-named cold parameter absorption and traceability.
+ * @surface api
  */
 
 #pragma once

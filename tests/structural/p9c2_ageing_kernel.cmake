@@ -68,6 +68,14 @@ load_compact("src/core/AgeingKernel.hpp" scaffold)
 load_compact("src/core/SurfaceCrack.hpp" crack)
 load_compact("src/core/Lam.hpp" lam)
 load_compact("src/core/LithiumPlating.hpp" plating)
+# M0.9 / 9C-5 moved the cold parameter blocks and their shared model-mask vocabulary out of
+# the mechanism headers so the public factory does not drag a kernel in. The 9C-2 invariant
+# is unchanged -- one mask idiom, not four hand-rolled ones -- so it is now checked where the
+# masks live, and each mechanism must consume its own parameter header.
+load_compact("src/core/SeiParams.hpp" sei_params)
+load_compact("src/core/SurfaceCrackParams.hpp" crack_params)
+load_compact("src/core/LamParams.hpp" lam_params)
+load_compact("src/core/LithiumPlatingParams.hpp" plating_params)
 load_compact("src/core/SpmStress.hpp" stress)
 load_compact("src/core/SpmPipeline.hpp" pipeline)
 load_compact("src/core/SpmFactory.cpp" factory)
@@ -82,9 +90,20 @@ require_tokens("shared scaffold" scaffold
   "SLIDE_AGEING_FORCE_INLINEslide::Statusfor_each_enabled_ageing_model_lane("
   "SLIDE_AGEING_FORCE_INLINEslide::Statusevaluate_ageing_stage(")
 
-require_tokens("SEI" sei
+require_tokens("SEI masks" sei_params
   "ageing_model_bit<4>(model)"
-  "valid_ageing_model_mask<4>(p.model_mask)"
+  "valid_ageing_model_mask<4>(p.model_mask)")
+require_tokens("surface-crack masks" crack_params
+  "ageing_model_bit<5>(model)"
+  "valid_ageing_model_mask<5>(p.model_mask)")
+require_tokens("LAM masks" lam_params
+  "ageing_model_bit<4>(model)"
+  "valid_ageing_model_mask<4>(p.model_mask)")
+require_tokens("plating scales" plating_params
+  "tryLithiumPlatingScales(")
+
+require_tokens("SEI" sei
+  "#include\"SeiParams.hpp\""
   "detail::AgeingScratchStorage<Real,2>"
   "detail::clear_ageing_fields<Real,2>("
   "detail::for_each_enabled_ageing_model_lane<4>("
@@ -93,8 +112,7 @@ require_tokens("SEI" sei
   "return{storage_.field(0),storage_.field(1)}")
 
 require_tokens("surface crack" crack
-  "ageing_model_bit<5>(model)"
-  "valid_ageing_model_mask<5>(p.model_mask)"
+  "#include\"SurfaceCrackParams.hpp\""
   "detail::AgeingScratchStorage<Real,3>"
   "detail::clear_ageing_fields<Real,3>("
   "detail::for_each_enabled_ageing_model_lane<5>("
@@ -103,8 +121,7 @@ require_tokens("surface crack" crack
   "return{storage_.field(0),storage_.field(1),storage_.field(2)}")
 
 require_tokens("LAM" lam
-  "ageing_model_bit<4>(model)"
-  "valid_ageing_model_mask<4>(p.model_mask)"
+  "#include\"LamParams.hpp\""
   "detail::AgeingScratchStorage<Real,6>"
   "detail::clear_ageing_fields<Real,6>("
   "detail::for_each_enabled_ageing_model_lane<4>("
@@ -114,6 +131,7 @@ require_tokens("LAM" lam
   "++cursor")
 
 require_tokens("lithium plating" plating
+  "#include\"LithiumPlatingParams.hpp\""
   "BasicLithiumPlatingOutput"
   "detail::AgeingScratchStorage<Real,1>"
   "return{storage_.field(0)}"

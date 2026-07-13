@@ -1,6 +1,7 @@
 /**
  * @file AsyncRecorder.hpp
  * @brief Preallocated asynchronous snapshot ring with shuffled block compression.
+ * @surface api
  */
 
 #pragma once
@@ -249,8 +250,8 @@ public:
   void close();
   bool valid() const { return valid_; }
   std::size_t size() const { return steps_.size(); }
-  int nRows() const { return rows_; }
-  int nLanes() const { return lanes_; }
+  int n_rows() const { return rows_; }
+  int n_lanes() const { return lanes_; }
   int stride() const { return stride_; }
   SnapshotView snapshot(std::size_t index) const;
 

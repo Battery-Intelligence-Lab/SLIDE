@@ -1,6 +1,7 @@
 /**
  * @file BoundedFileReader.hpp
  * @brief Exact, allocation-bounded binary file reads shared by cold parsers.
+ * @surface internal
  */
 
 #pragma once

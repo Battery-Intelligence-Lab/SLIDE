@@ -1,6 +1,7 @@
 /**
  * @file NetlistCsv.hpp
  * @brief Bounded liionpack-compatible CSV absorption into a compiled topology.
+ * @surface api
  */
 
 #pragma once

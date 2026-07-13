@@ -1,30 +1,16 @@
 /**
  * @file SpmState.hpp
  * @brief Named arena layout for the v4 SPM composition.
+ * @surface internal
  */
 
 #pragma once
 
 #include "BatchBuilder.hpp"
 #include "CellDesign.hpp"
+#include "SpmBatchLayout.hpp"
 
 namespace slide::core {
-
-struct SpmStateLayout
-{
-  PerDomain<StateSlice> z{};
-  StateSlice temperature{};
-  StateSlice sei_thickness{};
-  StateSlice lost_lithium{};
-  StateSlice crack_surface{};
-  StateSlice plated_lithium_thickness{};
-  PerDomain<StateSlice> active_fraction{};
-  PerDomain<StateSlice> diffusion_coefficient{};
-  PerDomain<StateSlice> electrode_thickness{};
-  PerDomain<StateSlice> specific_surface_area{};
-  PerDomain<StateSlice> specific_resistance{};
-  StateSlice current_collector_resistance{};
-};
 
 template <int NCH>
 SpmStateLayout declareSpmState(BatchBuilder &builder,

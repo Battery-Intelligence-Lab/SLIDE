@@ -19,6 +19,7 @@
  * Output scratch is caller-owned and allocated once by the composed batch (PC-1).
  *
  * @date 2026-07-10
+ * @surface internal
  */
 
 #pragma once
@@ -67,7 +68,7 @@ struct SpmConcentrationParams
 struct SpmTransportCache
 {
   explicit SpmTransportCache(int lanes)
-    : SpmTransportCache{ checkedShape(lanes) }
+    : SpmTransportCache{ checked_shape(lanes) }
   {}
 
   int lanes() const { return lanes_; }
@@ -101,7 +102,7 @@ private:
       effective_diffusivity_(shape.values), flux_denominator_(shape.values)
   {}
 
-  static CheckedShape checkedShape(int lanes)
+  static CheckedShape checked_shape(int lanes)
   {
     if (lanes <= 0)
       throw std::invalid_argument{ "SPM transport cache requires at least one lane" };

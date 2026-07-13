@@ -1,6 +1,7 @@
 /**
  * @file ForwardSensitivity.hpp
  * @brief True dual-number forward sensitivities for the isothermal SPM.
+ * @surface api
  */
 
 #pragma once

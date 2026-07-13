@@ -414,8 +414,8 @@ TEST_CASE("P6-G1 CSV and mmap recordings preserve snapshots",
   REQUIRE(mapped.open(binary_path) == Status::Success);
   REQUIRE(mapped.valid());
   REQUIRE(mapped.size() == recorder.size());
-  CHECK(mapped.nRows() == recorder.nRows());
-  CHECK(mapped.nLanes() == recorder.nLanes());
+  CHECK(mapped.n_rows() == recorder.n_rows());
+  CHECK(mapped.n_lanes() == recorder.n_lanes());
   CHECK(mapped.stride() == recorder.stride());
   for (std::size_t index = 0; index < recorder.size(); ++index) {
     const auto expected = recorder.snapshot(index);

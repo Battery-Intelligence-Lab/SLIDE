@@ -5,6 +5,7 @@
  * MC-3 ownership contract: Experiment.cpp owns parsing and CyclerV2.cpp owns
  * execution. Shared normalisation and segment validation have one internal
  * definition outside this public interface.
+ * @surface api
  */
 
 #pragma once

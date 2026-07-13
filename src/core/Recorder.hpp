@@ -1,6 +1,7 @@
 /**
  * @file Recorder.hpp
  * @brief Allocation-free snapshot recorder and portable CSV/mmap sinks.
+ * @surface api
  */
 
 #pragma once
@@ -76,8 +77,8 @@ public:
   std::size_t size() const { return count_; }
   std::size_t capacity() const { return config_.capacity; }
   std::uint64_t thinnedSnapshots() const { return thinned_; }
-  int nRows() const { return rows_; }
-  int nLanes() const { return lanes_; }
+  int n_rows() const { return rows_; }
+  int n_lanes() const { return lanes_; }
   int stride() const { return stride_; }
   std::size_t stateValues() const { return state_values_; }
   SnapshotView snapshot(std::size_t index) const;
@@ -136,8 +137,8 @@ public:
   void close();
   bool valid() const;
   std::size_t size() const { return snapshots_; }
-  int nRows() const { return rows_; }
-  int nLanes() const { return lanes_; }
+  int n_rows() const { return rows_; }
+  int n_lanes() const { return lanes_; }
   int stride() const { return stride_; }
   SnapshotView snapshot(std::size_t index) const;
 

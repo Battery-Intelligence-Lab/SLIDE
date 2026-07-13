@@ -5,6 +5,7 @@
  * M0.7 / 9C-3 cold-path contract: this header exposes compilation and
  * evaluation only. The AST, scanner, parser, and evaluator layout remain
  * translation-unit-local so BPX grammar internals cannot become public API.
+ * @surface internal
  */
 
 #pragma once

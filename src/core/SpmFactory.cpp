@@ -6,6 +6,7 @@
 #include "SpmFactory.hpp"
 
 #include "SpectralModel.hpp"
+#include "SpmPipeline.hpp"
 
 #include <algorithm>
 #include <array>
@@ -29,7 +30,7 @@ SpmBatch::SpmBatch(void *implementation,
                    real_t capacity_Ah,
                    real_t electrode_area,
                    SpmComposition composition,
-                   SpmPipelineLayout layout,
+                   SpmBatchLayout layout,
                    StateArena state,
                    StateArena derivative,
                    std::vector<StateRole>
@@ -243,7 +244,7 @@ struct SpmBatchFactoryAccess
                        real_t capacity_Ah,
                        real_t electrode_area,
                        SpmComposition composition,
-                       SpmPipelineLayout layout,
+                       SpmBatchLayout layout,
                        StateArena state,
                        StateArena derivative,
                        std::vector<StateRole>

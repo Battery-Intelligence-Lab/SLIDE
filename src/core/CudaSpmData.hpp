@@ -1,6 +1,7 @@
 /**
  * @file CudaSpmData.hpp
  * @brief Private POD boundary between the dependency-light host facade and CUDA runtime.
+ * @surface internal
  */
 
 #pragma once
@@ -89,9 +90,9 @@ RuntimeResult synchronize(Runtime *runtime,
                           std::span<double> terminal_voltage) noexcept;
 RuntimeResult checkpoint(Runtime *runtime) noexcept;
 RuntimeResult restore(Runtime *runtime) noexcept;
-std::size_t deviceBytes(const Runtime *runtime) noexcept;
-std::size_t deviceAllocations(const Runtime *runtime) noexcept;
-std::size_t deviceWideSynchronizations(const Runtime *runtime) noexcept;
+std::size_t deviceArenaBytes(const Runtime *runtime) noexcept;
+std::size_t deviceAllocationCount(const Runtime *runtime) noexcept;
+std::size_t deviceWideSynchronizationCount(const Runtime *runtime) noexcept;
 
 RuntimeResult createRecording(Runtime *runtime,
                               std::size_t slots,

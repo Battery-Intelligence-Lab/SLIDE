@@ -1,6 +1,7 @@
 /**
  * @file ExponentialModal.hpp
  * @brief Allocation-free exact modal diffusion stepper with Strang slow-physics splitting.
+ * @surface api
  */
 
 #pragma once

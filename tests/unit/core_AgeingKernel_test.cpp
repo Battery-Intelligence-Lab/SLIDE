@@ -12,6 +12,7 @@
 #include "../../src/core/AgeingKernel.hpp"
 #include "../../src/core/Dual.hpp"
 #include "../../src/core/SpmFactory.hpp"
+#include "../../src/core/SpmPipeline.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -577,11 +578,11 @@ TEST_CASE("9C-2 common ageing scaffold fixes mask, scratch, and traversal order"
                     std::length_error);
   using MinimalPipeline = core::SpmPipeline<1, false, false, false, false, false>;
   REQUIRE_THROWS_AS(
-    MinimalPipeline(core::SpmPipelineParams<1>{}, core::SpmPipelineLayout{}, 0),
+    MinimalPipeline(core::SpmPipelineParams<1>{}, core::SpmBatchLayout{}, 0),
     std::invalid_argument);
   REQUIRE_THROWS_AS(
     MinimalPipeline(core::SpmPipelineParams<1>{},
-                    core::SpmPipelineLayout{},
+                    core::SpmBatchLayout{},
                     std::numeric_limits<int>::max()),
     std::length_error);
   core::detail::AgeingScratchStorage<double, 3> scratch{ 4 };

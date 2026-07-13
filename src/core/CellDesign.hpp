@@ -1,6 +1,7 @@
 /**
  * @file CellDesign.hpp
  * @brief Cold physical description hierarchy and hot electrode parameters (PLAN.md §3.3).
+ * @surface api
  */
 
 #pragma once

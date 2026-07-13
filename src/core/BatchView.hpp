@@ -6,6 +6,7 @@
  * Adaptive integrators evaluate the RHS at their own trial vectors, so the pointer is
  * rebound on every evaluation; slices and strides never change. Rebinding allocates
  * nothing and does not copy state.
+ * @surface support
  */
 
 #pragma once

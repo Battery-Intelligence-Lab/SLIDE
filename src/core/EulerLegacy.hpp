@@ -1,6 +1,7 @@
 /**
  * @file EulerLegacy.hpp
  * @brief Allocation-free forward-Euler stepper for Phase-1 parity mode.
+ * @surface api
  */
 
 #pragma once

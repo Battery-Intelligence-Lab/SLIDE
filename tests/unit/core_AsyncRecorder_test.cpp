@@ -747,8 +747,8 @@ TEST_CASE("P8-G3 async blocks round-trip accepted snapshots bitwise",
   core::CompressedRecording decoded;
   REQUIRE(decoded.open(path) == Status::Success);
   REQUIRE(decoded.size() == reference.size());
-  CHECK(decoded.nRows() == reference.nRows());
-  CHECK(decoded.nLanes() == reference.nLanes());
+  CHECK(decoded.n_rows() == reference.n_rows());
+  CHECK(decoded.n_lanes() == reference.n_lanes());
   CHECK(decoded.stride() == reference.stride());
   for (std::size_t index = 0; index < reference.size(); ++index) {
     const auto expected = reference.snapshot(index);

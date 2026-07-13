@@ -10,6 +10,7 @@
  * exactly once, at build), PC-3 contiguous/64B-aligned/SoA, PC-7 rollback = memcpy.
  *
  * @date 2026-07-07
+ * @surface support
  */
 
 #pragma once

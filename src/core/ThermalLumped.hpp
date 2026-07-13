@@ -1,12 +1,14 @@
 /**
  * @file ThermalLumped.hpp
  * @brief Allocation-free lumped thermal RHS for the v4 core (PLAN.md Phase 1).
+ * @surface internal
  */
 
 #pragma once
 
 #include "BatchBuilder.hpp"
 #include "CellDesign.hpp"
+#include "SpmBatchLayout.hpp"
 #include "SpmObservables.hpp"
 
 #include <cassert>
@@ -57,14 +59,6 @@ struct ThermalLumpedParams
  * They are monotone lifetime integrals in v4; no resettable hidden accumulator is needed because
  * temperature itself is integrated from the same instantaneous RHS.
  */
-struct ThermalLumpedLayout
-{
-  StateSlice temperature{};
-  StateSlice external_heat_flow{};    //!< q_ext, positive into the cell [W]
-  StateSlice generated_heat_energy{}; //!< integral of internal heat generation [J]
-  StateSlice thermal_elapsed_time{};  //!< time integrated by the thermal component [s]
-};
-
 inline ThermalLumpedLayout declareThermalLumped(BatchBuilder &builder,
                                                 StateSlice temperature)
 {

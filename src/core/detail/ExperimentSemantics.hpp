@@ -6,6 +6,7 @@
  * implementations of normalisation, normalised name equality, direction
  * validation, and segment validation. Keep this header dependency-light and
  * self-contained; do not add parser or runner state here.
+ * @surface internal
  */
 
 #pragma once

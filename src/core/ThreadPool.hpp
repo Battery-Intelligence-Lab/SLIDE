@@ -1,6 +1,7 @@
 /**
  * @file ThreadPool.hpp
  * @brief Persistent dependency-free batch task runtime and deterministic reductions.
+ * @surface api
  */
 
 #pragma once

@@ -1,12 +1,14 @@
 /**
  * @file SpmStress.hpp
  * @brief Shared Dai/Laresgoiti stress observables and explicit history state.
+ * @surface internal
  */
 
 #pragma once
 
 #include "AgeingKernel.hpp"
 #include "CompiledCurve.hpp"
+#include "SpmBatchLayout.hpp"
 #include "SpmObservables.hpp"
 
 #include <algorithm>
@@ -16,14 +18,6 @@
 #include <span>
 
 namespace slide::core {
-
-/** Previous-step values consumed by crack/LAM rate laws; all are checkpointed arena rows. */
-struct StressHistoryLayout
-{
-  PerDomain<StateSlice> previous_dai{};
-  StateSlice previous_laresgoiti_negative{};
-  StateSlice interval{};
-};
 
 inline StressHistoryLayout declareStressHistory(BatchBuilder &builder)
 {

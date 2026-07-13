@@ -3,15 +3,19 @@
  * @brief Shared zero-overhead scaffolding for scalar-generic ageing kernels.
  *
  * M0.6 / 9C-2 keeps SEI, surface-crack, LAM, and lithium-plating equations in
- * their named mechanism headers. This file owns only their common model-mask,
- * checked field-major scratch, clearing, and traversal idiom. Traversal order is
- * part of the numerical contract: enabled models are visited in ascending order,
- * and every model visits lanes in ascending order.
+ * their named mechanism headers. This file owns only their common checked
+ * field-major scratch, clearing, and traversal idiom; the model-mask vocabulary
+ * they share with the public parameter surface lives in `AgeingModelMask.hpp`.
+ * Traversal order is part of the numerical contract: enabled models are visited in
+ * ascending order, and every model visits lanes in ascending order.
+ * Hot: the traversal bodies run inside every RHS evaluation.
+ * @surface internal
  */
 
 #pragma once
 
 #include "../types/Status.hpp"
+#include "AgeingModelMask.hpp"
 
 #include <algorithm>
 #include <array>
@@ -35,35 +39,6 @@
 #endif
 
 namespace slide::core {
-
-template <unsigned ModelCount>
-constexpr std::uint8_t ageing_model_bit(unsigned model) noexcept
-{
-  static_assert(ModelCount > 0 && ModelCount <= 8);
-  return model >= 1 && model <= ModelCount
-           ? static_cast<std::uint8_t>(std::uint16_t{ 1 } << (model - 1))
-           : std::uint8_t{};
-}
-
-template <unsigned ModelCount>
-constexpr std::uint8_t ageing_model_mask() noexcept
-{
-  static_assert(ModelCount > 0 && ModelCount <= 8);
-  return static_cast<std::uint8_t>((std::uint16_t{ 1 } << ModelCount) - 1);
-}
-
-template <unsigned ModelCount>
-constexpr bool valid_ageing_model_mask(std::uint8_t mask) noexcept
-{
-  return mask != 0
-         && (mask & static_cast<std::uint8_t>(~ageing_model_mask<ModelCount>())) == 0;
-}
-
-template <unsigned ModelCount>
-constexpr bool valid_optional_ageing_model_mask(std::uint8_t mask) noexcept
-{
-  return (mask & static_cast<std::uint8_t>(~ageing_model_mask<ModelCount>())) == 0;
-}
 
 namespace detail {
 

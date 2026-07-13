@@ -3,6 +3,7 @@
  * @brief Internal numeric helpers shared only with focused solver tests.
  * @details Owns M0.3 diagnostic-bound saturation; hot, allocation-free, and
  *          deliberately excluded from the public PackSolver surface.
+ * @surface internal
  */
 
 #pragma once

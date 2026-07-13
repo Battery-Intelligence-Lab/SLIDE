@@ -33,6 +33,7 @@
  * (constants.hpp:20,21,23).
  *
  * @date 2026-07-07
+ * @surface internal
  */
 
 #pragma once

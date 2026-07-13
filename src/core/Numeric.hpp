@@ -1,6 +1,7 @@
 /**
  * @file Numeric.hpp
  * @brief Scalar-generic numeric helpers that remain valid under fast-math builds.
+ * @surface support
  */
 
 #pragma once

@@ -1,11 +1,26 @@
 /**
  * @file SpmFactory.hpp
  * @brief Cold SPM parameter compiler and D-02 batch-composition registry.
+ *
+ * Owns: the cold factory input, the model options, and `SpmBatch` — the type every caller
+ * holds. Implements PLAN.md §3.2 (zero-overhead composition) and §3.11. Cold: one build per
+ * batch; the hot path is one indirect call into the compiled pipeline.
+ * MC-5: this header names the batch's *types*, never its kernels. `SpmPipeline.hpp` and the
+ * ageing kernels are included by `SpmFactory.cpp` alone, so a user translation unit that
+ * includes this file does not compile the physics.
+ * @surface api
  */
 
 #pragma once
 
-#include "SpmPipeline.hpp"
+#include "BatchView.hpp"
+#include "CellDesign.hpp"
+#include "LamParams.hpp"
+#include "LithiumPlatingParams.hpp"
+#include "SeiParams.hpp"
+#include "SpmBatchLayout.hpp"
+#include "StateArena.hpp"
+#include "SurfaceCrackParams.hpp"
 
 #include <array>
 #include <cstdint>
@@ -86,7 +101,7 @@ public:
   real_t capacity_Ah() const { return capacity_Ah_; }
   real_t electrode_area() const { return electrode_area_; }
   SpmComposition composition() const { return composition_; }
-  const SpmPipelineLayout &layout() const { return layout_; }
+  const SpmBatchLayout &layout() const { return layout_; }
   std::span<const StateRole> roles() const { return roles_; }
 
   StateArena &state() { return state_; }
@@ -151,7 +166,7 @@ private:
            real_t capacity_Ah,
            real_t electrode_area,
            SpmComposition composition,
-           SpmPipelineLayout layout,
+           SpmBatchLayout layout,
            StateArena state,
            StateArena derivative,
            std::vector<StateRole>
@@ -172,7 +187,7 @@ private:
   real_t capacity_Ah_{};
   real_t electrode_area_{};
   SpmComposition composition_{ SpmComposition::isothermal };
-  SpmPipelineLayout layout_{};
+  SpmBatchLayout layout_{};
   StateArena state_{};
   StateArena derivative_{};
   std::vector<StateRole> roles_{};

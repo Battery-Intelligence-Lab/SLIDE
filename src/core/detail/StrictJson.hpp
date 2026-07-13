@@ -5,6 +5,7 @@
  * M0.7 / 9C-3 cold-path contract: this header owns only the internal DOM and
  * one bounded parse entry point. Grammar, UTF-8 scanning, and resource limits
  * remain translation-unit-local and independent of all wire-format consumers.
+ * @surface internal
  */
 
 #pragma once

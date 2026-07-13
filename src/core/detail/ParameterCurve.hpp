@@ -5,6 +5,7 @@
  * M0.7 / 9C-3 cold-path contract: this header owns the one reusable curve
  * validation/sampling implementation shared by built-in absorption and BPX.
  * It preserves the D-16 priority refinement order and 4,096-point ceiling.
+ * @surface internal
  */
 
 #pragma once

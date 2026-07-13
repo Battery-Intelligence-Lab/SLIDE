@@ -1,6 +1,7 @@
 /**
  * @file PackStepper.hpp
  * @brief Transactional staggered electrical/thermal advance for compiled SPM packs.
+ * @surface api
  */
 
 #pragma once

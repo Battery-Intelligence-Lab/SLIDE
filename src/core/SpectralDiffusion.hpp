@@ -29,6 +29,7 @@
  * are shared with that path through SpmScalarKernels.hpp.
  *
  * @date 2026-07-08
+ * @surface internal
  */
 
 #pragma once

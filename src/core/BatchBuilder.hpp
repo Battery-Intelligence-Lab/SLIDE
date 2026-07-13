@@ -9,6 +9,7 @@
  * it survives into the hot loop except integer StateSlices.
  *
  * @date 2026-07-07
+ * @surface support
  */
 
 #pragma once

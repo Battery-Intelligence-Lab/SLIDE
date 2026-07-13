@@ -263,7 +263,7 @@ slide::Status CudaSpmBatch::step(std::span<const real_t> current_density,
                                  real_t dt)
 {
 #if defined(SLIDE_WITH_CUDA)
-  if (!valid() || static_cast<int>(current_density.size()) != nLanes()
+  if (!valid() || static_cast<int>(current_density.size()) != n_lanes()
       || !is_finite(time) || !is_finite(dt) || !(dt > 0.0))
     return slide::Status::Invalid_parameters;
   for (const auto current : current_density)
@@ -318,7 +318,7 @@ slide::Status CudaSpmBatch::restore()
 #endif
 }
 
-int CudaSpmBatch::nLanes() const
+int CudaSpmBatch::n_lanes() const
 {
   return impl_ == nullptr ? 0 : impl_->host.n_lanes();
 }
@@ -326,7 +326,7 @@ int CudaSpmBatch::nLanes() const
 std::size_t CudaSpmBatch::deviceArenaBytes() const noexcept
 {
 #if defined(SLIDE_WITH_CUDA)
-  return valid() ? cuda_detail::deviceBytes(impl_->runtime) : 0;
+  return valid() ? cuda_detail::deviceArenaBytes(impl_->runtime) : 0;
 #else
   return 0;
 #endif
@@ -335,7 +335,7 @@ std::size_t CudaSpmBatch::deviceArenaBytes() const noexcept
 std::size_t CudaSpmBatch::deviceAllocationCount() const noexcept
 {
 #if defined(SLIDE_WITH_CUDA)
-  return valid() ? cuda_detail::deviceAllocations(impl_->runtime) : 0;
+  return valid() ? cuda_detail::deviceAllocationCount(impl_->runtime) : 0;
 #else
   return 0;
 #endif
@@ -344,7 +344,7 @@ std::size_t CudaSpmBatch::deviceAllocationCount() const noexcept
 std::size_t CudaSpmBatch::deviceWideSynchronizationCount() const noexcept
 {
 #if defined(SLIDE_WITH_CUDA)
-  return valid() ? cuda_detail::deviceWideSynchronizations(impl_->runtime) : 0;
+  return valid() ? cuda_detail::deviceWideSynchronizationCount(impl_->runtime) : 0;
 #else
   return 0;
 #endif

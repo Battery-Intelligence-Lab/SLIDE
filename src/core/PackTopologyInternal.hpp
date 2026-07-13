@@ -1,6 +1,7 @@
 /**
  * @file PackTopologyInternal.hpp
  * @brief Internal cold-path finalisation shared by topology importers and solvers.
+ * @surface internal
  */
 
 #pragma once

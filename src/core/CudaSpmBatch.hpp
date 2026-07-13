@@ -1,6 +1,7 @@
 /**
  * @file CudaSpmBatch.hpp
  * @brief Optional one-lane-per-thread base-isothermal SPM backend.
+ * @surface api
  */
 
 #pragma once
@@ -54,7 +55,7 @@ public:
   [[nodiscard]] slide::Status checkpoint();
   [[nodiscard]] slide::Status restore();
 
-  int nLanes() const;
+  int n_lanes() const;
   std::size_t deviceArenaBytes() const noexcept;
   std::size_t deviceAllocationCount() const noexcept;
   std::size_t deviceWideSynchronizationCount() const noexcept;

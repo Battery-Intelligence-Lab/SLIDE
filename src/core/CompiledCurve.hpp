@@ -1,6 +1,7 @@
 /**
  * @file CompiledCurve.hpp
  * @brief Build-time curve canonicalisation with allocation-free O(1) evaluation (PLAN.md §3.11, D-16).
+ * @surface support
  */
 
 #pragma once

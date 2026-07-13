@@ -1,0 +1,284 @@
+# M0.9 / 9C-5: the public surface is minimal, classified, and intentional (MC-5).
+#
+# Every src/core header carries exactly one `@surface api|support|internal` tag.
+# `api` names what a binding may include; `support` is the vocabulary the API's signatures
+# are written in; `internal` is implementation detail. The load-bearing rule is R3: no
+# api/support header may include an internal one, so no user translation unit compiles a
+# kernel. The api set and each api header's declaration count are pinned, so a new public
+# entity cannot appear without a deliberate edit to this file.
+
+if(NOT DEFINED SLIDE_SOURCE_DIR)
+  message(FATAL_ERROR "SLIDE_SOURCE_DIR is required")
+endif()
+
+set(P9C5_API
+  AsyncRecorder CellDesign CudaSpmBatch EulerLegacy Experiment ExponentialModal
+  ForwardSensitivity NetlistCsv PackSolver PackStepper PackTopology ParameterSet
+  Recorder Simulation SpmFactory ThreadPool)
+
+set(P9C5_SUPPORT
+  AgeingModelMask BatchBuilder BatchView CompiledCurve LamParams LithiumPlatingParams
+  Numeric SeiParams SpmBatchLayout SpmScalarKernels StateArena SurfaceCrackParams)
+
+# Column-0 declaration anchors per api header: newline followed by an identifier start or
+# `[[nodiscard]]`. Adding or removing any namespace-scope entity changes the count.
+set(P9C5_ANCHORS
+  "AsyncRecorder=14" "CellDesign=24" "CudaSpmBatch=8" "EulerLegacy=4" "Experiment=16"
+  "ExponentialModal=4" "ForwardSensitivity=8" "NetlistCsv=5" "PackSolver=16"
+  "PackStepper=4" "PackTopology=23" "ParameterSet=6" "Recorder=11" "Simulation=6"
+  "SpmFactory=9" "ThreadPool=12")
+
+# Public types each api header must still declare (removal is as much a surface change as
+# addition, and an aggregate count alone cannot see a swap).
+set(P9C5_TYPES_AsyncRecorder AsyncBackpressurePolicy CompressionCodec AsyncRecorderConfig AsyncRecorder CompressedRecording)
+set(P9C5_TYPES_CellDesign Domain PerDomain OCVCurve Arrhenius ActiveMaterial StressParams AgingMechanismKind AgingMechanismSpec ElectrodeDesign SeparatorDesign ElectrolyteDesign ThermalDesign CellDesign ElectrodeParams)
+set(P9C5_TYPES_CudaSpmBatch CudaAsyncRecorder CudaSpmBatch)
+set(P9C5_TYPES_EulerLegacy EulerLegacy)
+set(P9C5_TYPES_Experiment ControlMode Direction ExperimentVariables ExperimentFunction CustomTermination ExperimentSegment ParseDiagnostic Experiment TerminationReason ExperimentSolution DriveCycle CyclerIntegrator CyclerV2)
+set(P9C5_TYPES_ExponentialModal ExponentialModal)
+set(P9C5_TYPES_ForwardSensitivity SensitivityParameter ForwardSensitivitySolution)
+set(P9C5_TYPES_NetlistCsv NetlistCsvOptions NetlistCsvDiagnostic)
+set(P9C5_TYPES_PackSolver TheveninBatchView PackTheveninSystem PackSolveMode PackSolveDiagnostics PackSolution SolverWorkspace PackSolver)
+set(P9C5_TYPES_PackStepper PackStepper)
+set(P9C5_TYPES_PackTopology PackCellSpec PackLink PackNodeKind PackNode ThermalBoundarySpec ThermalLinkSpec PackDescription ElectricalBranchKind CompiledElectricalBranch BatchLaneLocation CompiledCell CompiledElectricalNetlist ThermalEdge ThermalIncident CompiledThermalGraph CompiledPackTopology)
+set(P9C5_TYPES_ParameterSet ParameterValue ParameterDescription ParameterSet)
+set(P9C5_TYPES_Recorder BackpressurePolicy RecorderConfig SnapshotView Recorder BinaryRecording)
+set(P9C5_TYPES_Simulation ConstantCurrentExperiment SimulationSolution Simulation)
+set(P9C5_TYPES_SpmFactory SpmComposition SpmModelOptions SpmFactoryInput SpmBatch)
+set(P9C5_TYPES_ThreadPool ThreadPool BatchExecutor ParallelisationDiagnostic)
+
+function(p9c5_strip_comments raw output)
+  set(content "${raw}")
+  string(REGEX REPLACE "/\\*([^*]|\\*+[^*/])*\\*+/" "" content "${content}")
+  string(REGEX REPLACE "//[^\r\n]*" "" content "${content}")
+  set(${output} "${content}" PARENT_SCOPE)
+endfunction()
+
+function(p9c5_compact raw output)
+  p9c5_strip_comments("${raw}" content)
+  string(REGEX REPLACE "[ \t\r\n]" "" content "${content}")
+  set(${output} "${content}" PARENT_SCOPE)
+endfunction()
+
+# ---------------------------------------------------------------------------------------
+# R1 -- every core header is classified, exactly once, with a valid tier.
+# ---------------------------------------------------------------------------------------
+file(GLOB P9C5_HEADERS
+  "${SLIDE_SOURCE_DIR}/src/core/*.hpp"
+  "${SLIDE_SOURCE_DIR}/src/core/detail/*.hpp")
+if(P9C5_HEADERS STREQUAL "")
+  message(FATAL_ERROR "9C-5: no src/core headers found")
+endif()
+
+set(P9C5_TIER_MAP "")
+foreach(header IN LISTS P9C5_HEADERS)
+  get_filename_component(stem "${header}" NAME_WE)
+  file(READ "${header}" raw)
+  string(REGEX MATCHALL "@surface[ \t]+([A-Za-z]+)" tags "${raw}")
+  list(LENGTH tags tag_count)
+  if(NOT tag_count EQUAL 1)
+    message(FATAL_ERROR
+      "9C-5 R1: ${stem}.hpp must carry exactly one @surface tag, found ${tag_count}")
+  endif()
+  string(REGEX REPLACE "@surface[ \t]+" "" tier "${tags}")
+  if(NOT tier MATCHES "^(api|support|internal)$")
+    message(FATAL_ERROR
+      "9C-5 R1: ${stem}.hpp has an unknown @surface tier: '${tier}'")
+  endif()
+
+  # R2 -- the tier a header claims must match the pinned classification.
+  if(stem IN_LIST P9C5_API)
+    set(expected api)
+  elseif(stem IN_LIST P9C5_SUPPORT)
+    set(expected support)
+  else()
+    set(expected internal)
+  endif()
+  if(NOT tier STREQUAL expected)
+    message(FATAL_ERROR
+      "9C-5 R2: ${stem}.hpp is tagged '${tier}' but this gate pins it as '${expected}'. "
+      "Changing the public surface is a deliberate act: update tests/structural/p9c5_public_surface.cmake.")
+  endif()
+  list(APPEND P9C5_TIER_MAP "${stem}=${tier}")
+endforeach()
+
+# Every pinned api/support header must exist (a rename must not silently drop a rule).
+foreach(stem IN LISTS P9C5_API P9C5_SUPPORT)
+  if(NOT EXISTS "${SLIDE_SOURCE_DIR}/src/core/${stem}.hpp")
+    message(FATAL_ERROR "9C-5 R2: pinned surface header is missing: ${stem}.hpp")
+  endif()
+endforeach()
+
+function(p9c5_tier stem output)
+  foreach(entry IN LISTS P9C5_TIER_MAP)
+    if(entry MATCHES "^${stem}=(.*)$")
+      set(${output} "${CMAKE_MATCH_1}" PARENT_SCOPE)
+      return()
+    endif()
+  endforeach()
+  set(${output} "unknown" PARENT_SCOPE)
+endfunction()
+
+# ---------------------------------------------------------------------------------------
+# R3 -- no api/support header includes an internal header. This is MC-5 itself: a user
+# translation unit that includes the api set must not compile a kernel.
+# ---------------------------------------------------------------------------------------
+foreach(header IN LISTS P9C5_HEADERS)
+  get_filename_component(stem "${header}" NAME_WE)
+  p9c5_tier("${stem}" tier)
+  if(tier STREQUAL "internal")
+    continue()
+  endif()
+  file(READ "${header}" raw)
+  p9c5_strip_comments("${raw}" content)
+  string(REGEX MATCHALL "#include[ \t]+\"[A-Za-z_/.]+\"" includes "${content}")
+  foreach(include IN LISTS includes)
+    string(REGEX REPLACE "#include[ \t]+\"(.*)\"" "\\1" target "${include}")
+    if(target MATCHES "^\\.\\./")
+      continue() # types/Status.hpp and friends live outside src/core
+    endif()
+    get_filename_component(target_stem "${target}" NAME_WE)
+    p9c5_tier("${target_stem}" target_tier)
+    if(target_tier STREQUAL "internal")
+      message(FATAL_ERROR
+        "9C-5 R3: ${tier} header ${stem}.hpp includes internal header ${target}. "
+        "Implementation detail must not reach a user translation unit (MC-5).")
+    endif()
+    if(target_tier STREQUAL "unknown")
+      message(FATAL_ERROR
+        "9C-5 R3: ${stem}.hpp includes ${target}, which carries no surface classification")
+    endif()
+  endforeach()
+endforeach()
+
+# ---------------------------------------------------------------------------------------
+# R4 -- the api surface is pinned: declaration count and public types per header.
+# ---------------------------------------------------------------------------------------
+foreach(entry IN LISTS P9C5_ANCHORS)
+  string(REGEX REPLACE "=.*$" "" stem "${entry}")
+  string(REGEX REPLACE "^.*=" "" expected "${entry}")
+  file(READ "${SLIDE_SOURCE_DIR}/src/core/${stem}.hpp" raw)
+  p9c5_strip_comments("${raw}" content)
+  # Count by length growth, not list(LENGTH): a match containing '[' does not survive
+  # CMake's list re-parsing, and would silently undercount `[[nodiscard]]` declarations.
+  # Every match is two characters, so replacing each with three grows the string by the
+  # number of matches.
+  string(REGEX REPLACE "\n([A-Za-z_]|\\[)" "###" marked "${content}")
+  string(LENGTH "${content}" plain_length)
+  string(LENGTH "${marked}" marked_length)
+  math(EXPR count "${marked_length} - ${plain_length}")
+  if(NOT count EQUAL expected)
+    message(FATAL_ERROR
+      "9C-5 R4: ${stem}.hpp declares ${count} namespace-scope entities, the pinned surface "
+      "has ${expected}. A public entity was added or removed -- update this gate on purpose.")
+  endif()
+  p9c5_compact("${raw}" compact)
+  foreach(type IN LISTS P9C5_TYPES_${stem})
+    string(FIND "${compact}" "${type}" position)
+    if(position EQUAL -1)
+      message(FATAL_ERROR
+        "9C-5 R4: ${stem}.hpp no longer declares the pinned public type ${type}")
+    endif()
+  endforeach()
+endforeach()
+
+# ---------------------------------------------------------------------------------------
+# R5 -- language bindings and docs see only the api surface.
+# ---------------------------------------------------------------------------------------
+set(P9C5_CONSUMERS
+  "python/bindings.cpp"
+  "matlab/slide_mex.cpp"
+  "docs/v4/quickstart-cpp.md")
+foreach(consumer IN LISTS P9C5_CONSUMERS)
+  set(path "${SLIDE_SOURCE_DIR}/${consumer}")
+  if(NOT EXISTS "${path}")
+    message(FATAL_ERROR "9C-5 R5: registered public consumer is missing: ${consumer}")
+  endif()
+  file(READ "${path}" raw)
+  string(REGEX MATCHALL "core/[A-Za-z_]+\\.hpp" includes "${raw}")
+  foreach(include IN LISTS includes)
+    get_filename_component(target_stem "${include}" NAME_WE)
+    p9c5_tier("${target_stem}" target_tier)
+    if(NOT target_tier STREQUAL "api")
+      message(FATAL_ERROR
+        "9C-5 R5: ${consumer} includes core/${target_stem}.hpp, which is '${target_tier}'. "
+        "Bindings and docs may include api headers only.")
+    endif()
+  endforeach()
+endforeach()
+
+# ---------------------------------------------------------------------------------------
+# R6 -- one name per concept (the M0.9 lexicon).
+#   * lane/row counts are n_lanes()/n_rows(), never nLanes()/nRows()
+#   * the device counters are ...Count / deviceArenaBytes
+#   * the private lane check is checked_lane_count / checked_shape
+#   * validate... returns slide::Status; valid.../is... returns bool
+#   * no get-prefixed accessors
+# ---------------------------------------------------------------------------------------
+set(P9C5_FORBIDDEN_TOKENS
+  "intnLanes("
+  "intnRows("
+  ".nLanes()"
+  ".nRows()"
+  "checkedLaneCount"
+  "checkedShape"
+  "deviceAllocations("
+  "deviceWideSynchronizations("
+  "deviceBytes(")
+set(P9C5_FORBIDDEN_REGEX
+  "boolvalidate[A-Z]"      # validate... must return slide::Status
+  "Statusvalid[A-Z]"       # valid... must be a bool predicate
+  "[^A-Za-z_]get[A-Z]")    # no get-prefixed accessors in core
+
+file(GLOB P9C5_SOURCES
+  "${SLIDE_SOURCE_DIR}/src/core/*.hpp"
+  "${SLIDE_SOURCE_DIR}/src/core/*.cpp"
+  "${SLIDE_SOURCE_DIR}/src/core/*.cu"
+  "${SLIDE_SOURCE_DIR}/src/core/detail/*.hpp")
+foreach(source IN LISTS P9C5_SOURCES)
+  get_filename_component(name "${source}" NAME)
+  file(READ "${source}" raw)
+  p9c5_compact("${raw}" compact)
+  foreach(token IN LISTS P9C5_FORBIDDEN_TOKENS)
+    string(FIND "${compact}" "${token}" position)
+    if(NOT position EQUAL -1)
+      message(FATAL_ERROR
+        "9C-5 R6: ${name} uses '${token}', which is not the canonical name for that concept")
+    endif()
+  endforeach()
+  foreach(pattern IN LISTS P9C5_FORBIDDEN_REGEX)
+    if(compact MATCHES "${pattern}")
+      message(FATAL_ERROR
+        "9C-5 R6: ${name} matches the forbidden naming pattern '${pattern}' (${CMAKE_MATCH_0})")
+    endif()
+  endforeach()
+endforeach()
+
+# The canonical spellings must actually be there -- a gate of prohibitions alone would pass
+# on an empty file.
+set(P9C5_REQUIRED
+  "src/core/StateArena.hpp=intn_lanes()"
+  "src/core/BatchView.hpp=intn_lanes()"
+  "src/core/Recorder.hpp=intn_lanes()"
+  "src/core/AsyncRecorder.hpp=intn_lanes()"
+  "src/core/CudaSpmBatch.hpp=intn_lanes()"
+  "src/core/SpmFactory.hpp=intn_lanes()"
+  "src/core/CudaSpmBatch.hpp=deviceAllocationCount()"
+  "src/core/CudaSpmData.hpp=deviceAllocationCount("
+  "src/core/SeiParams.hpp=StatusvalidateSeiParams("
+  "src/core/LamParams.hpp=StatusvalidateLamParams("
+  "src/core/SurfaceCrackParams.hpp=StatusvalidateSurfaceCrackParams("
+  "src/core/LithiumPlatingParams.hpp=StatusvalidateLithiumPlatingParams(")
+foreach(entry IN LISTS P9C5_REQUIRED)
+  string(REGEX REPLACE "=.*$" "" relative "${entry}")
+  string(REGEX REPLACE "^[^=]*=" "" token "${entry}")
+  file(READ "${SLIDE_SOURCE_DIR}/${relative}" raw)
+  p9c5_compact("${raw}" compact)
+  string(FIND "${compact}" "${token}" position)
+  if(position EQUAL -1)
+    message(FATAL_ERROR
+      "9C-5 R6: ${relative} no longer spells the canonical name '${token}'")
+  endif()
+endforeach()
+
+message(STATUS "9C-5 public-surface gate passed")

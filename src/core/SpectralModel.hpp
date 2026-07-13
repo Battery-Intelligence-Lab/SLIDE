@@ -1,6 +1,7 @@
 /**
  * @file SpectralModel.hpp
  * @brief Validated cold compiler for the spherical Chebyshev diffusion model.
+ * @surface internal
  */
 
 #pragma once

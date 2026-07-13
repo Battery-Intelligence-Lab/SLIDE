@@ -7,6 +7,7 @@
  * validation, Status publication, and rollback. The allocation-free, container-free
  * definitions instantiate for CPU, CUDA, and Dual; WASM uses the ordinary C++
  * instantiation, with independent wasm/native validation deferred to M10.
+ * @surface support
  */
 
 #pragma once

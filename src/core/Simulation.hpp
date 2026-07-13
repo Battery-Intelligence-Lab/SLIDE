@@ -1,6 +1,7 @@
 /**
  * @file Simulation.hpp
  * @brief Minimal Phase-1 single-batch Simulation façade and solution.
+ * @surface api
  */
 
 #pragma once

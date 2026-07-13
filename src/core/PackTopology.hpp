@@ -1,6 +1,7 @@
 /**
  * @file PackTopology.hpp
  * @brief Value-semantic pack combinators and cold-compiled electrical/thermal topology.
+ * @surface api
  */
 
 #pragma once

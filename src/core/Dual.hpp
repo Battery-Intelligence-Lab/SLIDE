@@ -1,6 +1,7 @@
 /**
  * @file Dual.hpp
  * @brief Dependency-free first-order dual number for forward sensitivities.
+ * @surface internal
  */
 
 #pragma once

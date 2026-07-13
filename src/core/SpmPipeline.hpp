@@ -1,6 +1,7 @@
 /**
  * @file SpmPipeline.hpp
  * @brief Compile-time composed, allocation-free SPM RHS pipeline.
+ * @surface internal
  */
 
 #pragma once
@@ -64,16 +65,6 @@ void addSpmDiffusionRhs(const SpmDiffusionRhsParams<NCH> &p,
   }
 }
 
-struct SpmPipelineLayout
-{
-  SpmStateLayout spm{};
-  ThermalLumpedLayout thermal{};
-  StressHistoryLayout stress_history{};
-  StateSlice elapsed_time{};
-  StateSlice charge_throughput{};
-  StateSlice energy_throughput{};
-};
-
 template <int NCH>
 struct SpmPipelineParams
 {
@@ -118,9 +109,9 @@ public:
                                                      || WithLithiumPlating;
   static constexpr bool supports_fused_euler = !needs_full_rhs_observables;
 
-  static SpmPipelineLayout declareLayout(BatchBuilder &builder)
+  static SpmBatchLayout declareLayout(BatchBuilder &builder)
   {
-    SpmPipelineLayout layout;
+    SpmBatchLayout layout;
     layout.spm = declareSpmState<NCH>(builder,
                                       WithThermal,
                                       WithSei || WithSurfaceCrack || WithLam
@@ -136,10 +127,10 @@ public:
   }
 
   SpmPipeline(SpmPipelineParams<NCH> params,
-              SpmPipelineLayout layout,
+              SpmBatchLayout layout,
               int n_lanes)
     : params_{ std::move(params) }, layout_{ layout },
-      n_lanes_{ checkedLaneCount(n_lanes) },
+      n_lanes_{ checked_lane_count(n_lanes) },
       observables_{ n_lanes_ }, stress_{ n_lanes_ }, sei_{ n_lanes_ },
       surface_crack_{ n_lanes_ }, lam_{ n_lanes_ },
       transport_cache_{ n_lanes_ },
@@ -654,7 +645,7 @@ public:
     }
   }
 
-  const SpmPipelineLayout &layout() const { return layout_; }
+  const SpmBatchLayout &layout() const { return layout_; }
   const SpmPipelineParams<NCH> &params() const { return params_; }
   int n_lanes() const { return n_lanes_; }
   int trustedLanePeriod() const { return trusted_lane_period_; }
@@ -687,7 +678,7 @@ public:
   }
 
 private:
-  static int checkedLaneCount(int lanes)
+  static int checked_lane_count(int lanes)
   {
     if (lanes <= 0)
       throw std::invalid_argument{ "SPM pipeline requires at least one lane" };
@@ -697,7 +688,7 @@ private:
     return lanes;
   }
 
-  static std::size_t slowRateScratchSize(const SpmPipelineLayout &layout,
+  static std::size_t slowRateScratchSize(const SpmBatchLayout &layout,
                                          int lanes)
   {
     if constexpr (!needs_full_rhs_observables)
@@ -769,7 +760,7 @@ private:
   }
 
   SpmPipelineParams<NCH> params_;
-  SpmPipelineLayout layout_{};
+  SpmBatchLayout layout_{};
   int n_lanes_{};
   int trusted_lane_period_{ n_lanes_ };
   SpmObservableScratch<NCH> observables_;
