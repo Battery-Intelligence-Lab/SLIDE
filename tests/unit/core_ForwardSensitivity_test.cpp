@@ -39,6 +39,9 @@ std::vector<double> productionTrace(const core::SpmFactoryInput &input,
     const double dt = std::min(sample_step, duration - time);
     time += dt;
     sample_time[sample] = time;
+    // The harness re-derives dt by differencing this grid; on a grid where the
+    // accumulation rounds, that would silently integrate a different problem.
+    REQUIRE(sample_time[sample] - sample_time[sample - 1] == dt);
   }
   std::vector<double> voltage(samples);
   core::ExponentialModal stepper;

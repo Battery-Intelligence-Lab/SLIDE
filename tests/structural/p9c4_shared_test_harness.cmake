@@ -268,7 +268,13 @@ p9c4_forbid_tokens("narrow ownership and policy" harness
   "SLIDE_SOURCE_DIR"
   "thread_local"
   "mutable"
-  "core::ExponentialModalstepper")
+  "core::ExponentialModalstepper"
+  "EulerLegacy"
+  "SpmBatchbatch_"
+  "stepper_"
+  "Catch::Matchers"
+  "WithinAbs"
+  "WithinRel")
 p9c4_forbid_tokens("no static process state" harness_without_casts "static")
 
 # Independent coverage pins configuration, both current units, caller storage,

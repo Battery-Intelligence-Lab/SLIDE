@@ -5,6 +5,11 @@
  *
  * The caller owns every batch, stepper, input span, scratch span, and output.
  * Unit tags prevent amperes from being passed where A/m2 is required.
+ *
+ * Ownership invariant: `requireSpmBatch` yields a prvalue, so name it as a
+ * local before configuring anything against it. `Recorder` and `CyclerV2` store
+ * a raw `SpmBatch *` at configure time, and a configured batch must therefore
+ * never be moved, reseated, or reallocated inside a container.
  */
 
 #pragma once
