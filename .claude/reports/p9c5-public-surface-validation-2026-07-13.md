@@ -29,11 +29,21 @@ the naming lexicon.
 | CTest CUDA (`build-cuda4`, sm_89) | 57/57 |
 | `unit_test_core_CudaSpmBatch` | 433671 assertions / 4 cases — the frozen M0.8 number, unchanged |
 
-**B2 — MC-5 property, compiler-verified. PASS, exactly at the registered target.** The probe TU
-(`Experiment` + `ParameterSet` + `ExponentialModal` + `ForwardSensitivity` + `CudaSpmBatch`) went
-from **26 core headers, 8 of them kernels** to **21 core headers, 0 kernels** (`clang++ -MM`).
-Registered target was 8 → 0 kernels and 20 ± 3 headers. The eight that left: `SpmPipeline`,
-`SpmObservables`, `Sei`, `Lam`, `SurfaceCrack`, `LithiumPlating`, `ThermalLumped`, `SpmStress`.
+**B2 — MC-5 property, compiler-verified. PASS at the registered target, with one claim corrected.**
+The probe TU (`Experiment` + `ParameterSet` + `ExponentialModal` + `ForwardSensitivity` +
+`CudaSpmBatch`) went from **26 core headers to 21**, and all eight registered kernel headers left:
+`SpmPipeline`, `SpmObservables`, `Sei`, `Lam`, `SurfaceCrack`, `LithiumPlating`, `ThermalLumped`,
+`SpmStress` (registered target 8 → 0; header count 20 ± 3).
+
+**Corrected overclaim.** An earlier draft of this report, the CHANGELOG, and the commit message
+said the TU contains "zero kernels". That is **false**. `SpmScalarKernels.hpp` — 364 lines that
+call themselves "the sole owner of SPM scalar expression trees" — is still in every user TU, via
+`SpmFactory.hpp` → `LamParams.hpp` → `CompiledCurve.hpp:11`, because `IndexedPiecewiseLinear`'s
+inline evaluator calls `spm_scalar::linearInterpolate` (`CompiledCurve.hpp:151`). This was a known,
+recorded design decision (PC-10 outranks MC-5: the alternative is duplicating interpolation), but
+the *claim* did not match it. The rule R3 enforces is the honest one — **no header classified
+`internal` is reachable from the api set** — and the gate's own comment now says exactly that
+instead of "must not compile a kernel".
 
 R3 makes this an invariant rather than a measurement: every core header is classified (R1), and
 no api/support header may include an internal one, so no internal header is reachable from the
@@ -77,6 +87,58 @@ only that rule can catch) turns red.
 
 Both holes were found because the mutation was registered before the run. Neither would have
 been visible from a green gate.
+
+## 3b. Adversarial review — seven more evasions, and one real defect
+
+An independent reviewer was tasked to break this work. It did, and everything below is fixed and
+verified red by injection. Mutations 14–20 are its attacks, added to the battery (**20/20 RED**).
+
+**A1 (fixed, HIGH) — R4 pinned almost nothing.** The anchor count matched column-0 declarations
+only, so every class member, enumerator, and struct field was unpinned; and **no support header
+was pinned at all**, even though the `*Params` structs *are* the public parameter surface — a new
+field in `SeiParams` silently changes the layout of `SpmFactoryInput`, an api type. The reviewer
+added a public method to `SpmBatch`, an enumerator to `SpmComposition`, and a field to `SeiParams`,
+and the gate stayed green all three times. R4 now pins **both** anchor levels (namespace-scope and
+member-level, at two-space indent) across **api and support** headers — mutations 14, 15, 16 RED.
+
+**A2 (fixed, HIGH) — three working routes back into the kernels.** An api header could include
+`"../core/SpmPipeline.hpp"` (the `../` escape hatch added for `types/Status.hpp` whitelisted a path
+that climbs back into `src/core`), or `<core/SpmPipeline.hpp>` (R3 matched quoted includes only);
+and a binding could include `"core/detail/StrictJson.hpp"` (R5's regex could not match a nested
+path). All three passed a green gate. Fixed and now RED — mutations 17, 18, 19.
+
+**A3 (fixed, MEDIUM, a real code defect) — two of my new headers were not self-contained.**
+`SeiParams.hpp` and `SurfaceCrackParams.hpp` use `slide::Status` but included neither
+`../types/Status.hpp` nor anything that provides it:
+
+```
+SeiParams.hpp:65:29: error: no type named 'Status' in namespace 'slide'
+SurfaceCrackParams.hpp:49:29: error: no type named 'Status' in namespace 'slide'
+```
+
+They compiled only because `SpmFactory.hpp` includes `LamParams.hpp` (→ `CompiledCurve.hpp` →
+`../types/Status.hpp`) alphabetically first. I hit this exact error while writing
+`LithiumPlatingParams.hpp`, fixed it there, and did not check its three siblings. Any include
+reorder, IWYU pass, or a user writing `#include <core/SeiParams.hpp>` first would have broken the
+build. Fixed in all three; and a new **compiler-verified** gate,
+`structural_test_core_9C5HeaderSelfContained`, now compiles each of the 28 api/support headers
+alone (`-fsyntax-only`). A token gate could never have caught this; the compiler catches it every
+time. CTest is now 58.
+
+**A4 (fixed, LOW) — R6 forbade one syntactic shape, not the dead name.** `intnLanes(` missed
+`auto nLanes()`, `a->nLanes()`, and `std::size_t nLanes()`. The bare tokens `nLanes(` / `nRows(`
+are now forbidden outright (no legitimate use exists), `SpmPipelineLayout` is forbidden too, and
+`n_rows()` is required where it was previously only implied — mutation 20 RED.
+
+**A5 (fixed, LOW-MED) — `p9c2` was weakened by include-presence.** After the params moved, the gate
+checked only that each mechanism header *includes* its params header. A mechanism could have
+stopped consuming the shared mask and stayed green. It now re-pins mask **use**:
+`for_each_enabled_ageing_model_lane<N>(p.model_mask,` in each of SEI, surface-crack, and LAM. The
+earlier claim that the 9C-2 invariant was "unchanged" was slightly overclaimed; this makes it true.
+
+**Refuted / accepted, not acted on:** `SpmFactory.hpp:195`'s `friend struct SpmBatchFactoryAccess;`
+lets any user define that struct and reach `SpmBatch`'s private constructor. Real, but **pre-existing**
+(not introduced by M0.9) and out of scope for this box — recorded here so it is not lost.
 
 ## 4. FALSIFIED / corrected during the run — recorded, not hidden
 

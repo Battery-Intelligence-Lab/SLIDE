@@ -20,13 +20,27 @@ set(P9C5_SUPPORT
   AgeingModelMask BatchBuilder BatchView CompiledCurve LamParams LithiumPlatingParams
   Numeric SeiParams SpmBatchLayout SpmScalarKernels StateArena SurfaceCrackParams)
 
-# Column-0 declaration anchors per api header: newline followed by an identifier start or
+# Column-0 declaration anchors, api AND support: newline followed by an identifier start or
 # `[[nodiscard]]`. Adding or removing any namespace-scope entity changes the count.
 set(P9C5_ANCHORS
   "AsyncRecorder=14" "CellDesign=24" "CudaSpmBatch=8" "EulerLegacy=4" "Experiment=16"
   "ExponentialModal=4" "ForwardSensitivity=8" "NetlistCsv=5" "PackSolver=16"
   "PackStepper=4" "PackTopology=23" "ParameterSet=6" "Recorder=11" "Simulation=6"
-  "SpmFactory=9" "ThreadPool=12")
+  "SpmFactory=9" "ThreadPool=12"
+  "AgeingModelMask=9" "BatchBuilder=4" "BatchView=13" "CompiledCurve=8" "LamParams=4"
+  "LithiumPlatingParams=5" "Numeric=9" "SeiParams=4" "SpmBatchLayout=5"
+  "SpmScalarKernels=36" "StateArena=9" "SurfaceCrackParams=4")
+
+# Member-level anchors (exactly two spaces of indent): class methods, enumerators, and struct
+# fields. Without these, the entire member surface of every public class was unpinned.
+set(P9C5_MEMBERS
+  "AsyncRecorder=93" "CellDesign=65" "CudaSpmBatch=38" "EulerLegacy=14" "Experiment=60"
+  "ExponentialModal=14" "ForwardSensitivity=36" "NetlistCsv=13" "PackSolver=85"
+  "PackStepper=33" "PackTopology=55" "ParameterSet=18" "Recorder=69" "Simulation=20"
+  "SpmFactory=90" "ThreadPool=54"
+  "AgeingModelMask=6" "BatchBuilder=14" "BatchView=28" "CompiledCurve=27" "LamParams=21"
+  "LithiumPlatingParams=27" "Numeric=18" "SeiParams=37" "SpmBatchLayout=25"
+  "SpmScalarKernels=122" "StateArena=56" "SurfaceCrackParams=25")
 
 # Public types each api header must still declare (removal is as much a surface change as
 # addition, and an aggregate count alone cannot see a swap).
@@ -120,8 +134,18 @@ function(p9c5_tier stem output)
 endfunction()
 
 # ---------------------------------------------------------------------------------------
-# R3 -- no api/support header includes an internal header. This is MC-5 itself: a user
-# translation unit that includes the api set must not compile a kernel.
+# R3 -- no api/support header includes an internal header.
+#
+# This enforces exactly one thing: no header classified `internal` is reachable from the api
+# set. That kills the ageing/pipeline kernel stack (SpmPipeline, SpmObservables, Sei, Lam,
+# SurfaceCrack, LithiumPlating, ThermalLumped, SpmStress). It does NOT claim a user TU
+# compiles no physics at all: `SpmScalarKernels.hpp` is `support` and IS reachable, because
+# `CompiledCurve`'s inline evaluator calls `linearInterpolate` and duplicating it would break
+# PC-10 (one physics source), which outranks MC-5. That residual is deliberate and recorded in
+# `.claude/designs/m0-9-public-surface.md`; do not read this rule as more than it is.
+#
+# Both include spellings are checked, and a `../` prefix does not exempt a path that climbs
+# back into src/core -- an adversarial review walked through both of those holes.
 # ---------------------------------------------------------------------------------------
 foreach(header IN LISTS P9C5_HEADERS)
   get_filename_component(stem "${header}" NAME_WE)
@@ -131,13 +155,13 @@ foreach(header IN LISTS P9C5_HEADERS)
   endif()
   file(READ "${header}" raw)
   p9c5_strip_comments("${raw}" content)
-  string(REGEX MATCHALL "#include[ \t]+\"[A-Za-z_/.]+\"" includes "${content}")
+  string(REGEX MATCHALL "#include[ \t]+[\"<][A-Za-z_/.]+[\">]" includes "${content}")
   foreach(include IN LISTS includes)
-    string(REGEX REPLACE "#include[ \t]+\"(.*)\"" "\\1" target "${include}")
-    if(target MATCHES "^\\.\\./")
-      continue() # types/Status.hpp and friends live outside src/core
-    endif()
+    string(REGEX REPLACE "#include[ \t]+[\"<](.*)[\">]" "\\1" target "${include}")
     get_filename_component(target_stem "${target}" NAME_WE)
+    if(target MATCHES "^\\.\\./" AND NOT target MATCHES "core/")
+      continue() # ../types/Status.hpp and friends genuinely live outside src/core
+    endif()
     p9c5_tier("${target_stem}" target_tier)
     if(target_tier STREQUAL "internal")
       message(FATAL_ERROR
@@ -145,33 +169,73 @@ foreach(header IN LISTS P9C5_HEADERS)
         "Implementation detail must not reach a user translation unit (MC-5).")
     endif()
     if(target_tier STREQUAL "unknown")
-      message(FATAL_ERROR
-        "9C-5 R3: ${stem}.hpp includes ${target}, which carries no surface classification")
+      # Standard-library and external headers carry no tier and need none. A path that names
+      # src/core, however, must be classified -- otherwise a new unclassified core header would
+      # be a free pass through this rule.
+      if(EXISTS "${SLIDE_SOURCE_DIR}/src/core/${target_stem}.hpp"
+         OR EXISTS "${SLIDE_SOURCE_DIR}/src/core/detail/${target_stem}.hpp")
+        message(FATAL_ERROR
+          "9C-5 R3: ${stem}.hpp includes ${target}, which carries no surface classification")
+      endif()
     endif()
   endforeach()
 endforeach()
 
 # ---------------------------------------------------------------------------------------
-# R4 -- the api surface is pinned: declaration count and public types per header.
+# R4 -- the public surface is pinned, at BOTH levels, across api AND support headers.
+#
+# The first version of this rule counted column-0 declarations only, so every class member,
+# every enumerator, and every parameter field was unpinned: an adversarial review added a
+# public method to `SpmBatch`, an enumerator to `SpmComposition`, and a field to `SeiParams`,
+# and the gate stayed green all three times. Support headers were not pinned at all, even
+# though the `*Params` structs ARE the public parameter surface -- a new field in `SeiParams`
+# changes the layout of `SpmFactoryInput`, an api type.
+#
+# So both anchors are pinned now: namespace-scope declarations (column 0) and member-level
+# declarations (exactly two spaces of indent, which is where this codebase puts class members
+# and enumerators). This is a tripwire on the shape of these headers, not a parser: it fires
+# on any added or removed declaration, and two offsetting edits could still net out.
 # ---------------------------------------------------------------------------------------
+function(p9c5_count_anchors content pattern output)
+  # Count by length growth, not list(LENGTH): a match containing '[' does not survive CMake's
+  # list re-parsing, and would silently undercount `[[nodiscard]]` declarations. Every match is
+  # two or three characters, so measure the growth per match rather than assuming a width.
+  string(REGEX REPLACE "${pattern}" "@@@@@@@@" marked "${content}")
+  string(LENGTH "${content}" plain_length)
+  string(LENGTH "${marked}" marked_length)
+  math(EXPR delta "${marked_length} - ${plain_length}")
+  set(${output} "${delta}" PARENT_SCOPE)
+endfunction()
+
 foreach(entry IN LISTS P9C5_ANCHORS)
   string(REGEX REPLACE "=.*$" "" stem "${entry}")
   string(REGEX REPLACE "^.*=" "" expected "${entry}")
   file(READ "${SLIDE_SOURCE_DIR}/src/core/${stem}.hpp" raw)
   p9c5_strip_comments("${raw}" content)
-  # Count by length growth, not list(LENGTH): a match containing '[' does not survive
-  # CMake's list re-parsing, and would silently undercount `[[nodiscard]]` declarations.
-  # Every match is two characters, so replacing each with three grows the string by the
-  # number of matches.
-  string(REGEX REPLACE "\n([A-Za-z_]|\\[)" "###" marked "${content}")
-  string(LENGTH "${content}" plain_length)
-  string(LENGTH "${marked}" marked_length)
-  math(EXPR count "${marked_length} - ${plain_length}")
+  # Each match is 2 chars ("\n" + 1) replaced by 8, so growth is 6 per match.
+  p9c5_count_anchors("${content}" "\n([A-Za-z_]|\\[)" growth)
+  math(EXPR count "${growth} / 6")
   if(NOT count EQUAL expected)
     message(FATAL_ERROR
       "9C-5 R4: ${stem}.hpp declares ${count} namespace-scope entities, the pinned surface "
       "has ${expected}. A public entity was added or removed -- update this gate on purpose.")
   endif()
+
+  # Member level: "\n" + two spaces + 1 char = 4 chars replaced by 8, so growth is 4 per match.
+  foreach(member_entry IN LISTS P9C5_MEMBERS)
+    if(member_entry MATCHES "^${stem}=(.*)$")
+      set(expected_members "${CMAKE_MATCH_1}")
+      p9c5_count_anchors("${content}" "\n  ([A-Za-z_~]|\\[)" member_growth)
+      math(EXPR member_count "${member_growth} / 4")
+      if(NOT member_count EQUAL expected_members)
+        message(FATAL_ERROR
+          "9C-5 R4: ${stem}.hpp declares ${member_count} member-level entities, the pinned "
+          "surface has ${expected_members}. A public method, enumerator, or field was added or "
+          "removed -- update this gate on purpose.")
+      endif()
+    endif()
+  endforeach()
+
   p9c5_compact("${raw}" compact)
   foreach(type IN LISTS P9C5_TYPES_${stem})
     # Match the declaration, not the substring: a plain FIND for `NetlistCsvDiagnostic`
@@ -197,13 +261,15 @@ foreach(consumer IN LISTS P9C5_CONSUMERS)
     message(FATAL_ERROR "9C-5 R5: registered public consumer is missing: ${consumer}")
   endif()
   file(READ "${path}" raw)
-  string(REGEX MATCHALL "core/[A-Za-z_]+\\.hpp" includes "${raw}")
+  # `core/[A-Za-z_]+\.hpp` could not match `core/detail/StrictJson.hpp`, so a binding could
+  # include a detail header and pass. Match nested paths too.
+  string(REGEX MATCHALL "core/[A-Za-z_/]+\\.hpp" includes "${raw}")
   foreach(include IN LISTS includes)
     get_filename_component(target_stem "${include}" NAME_WE)
     p9c5_tier("${target_stem}" target_tier)
     if(NOT target_tier STREQUAL "api")
       message(FATAL_ERROR
-        "9C-5 R5: ${consumer} includes core/${target_stem}.hpp, which is '${target_tier}'. "
+        "9C-5 R5: ${consumer} includes ${include}, which is '${target_tier}'. "
         "Bindings and docs may include api headers only.")
     endif()
   endforeach()
@@ -217,16 +283,18 @@ endforeach()
 #   * validate... returns slide::Status; valid.../is... returns bool
 #   * no get-prefixed accessors
 # ---------------------------------------------------------------------------------------
+# Forbid the dead spelling itself, not one syntactic shape of it: `intnLanes(` missed
+# `auto nLanes()`, `a->nLanes()`, and `std::size_t nLanes()`. No legitimate use of these
+# spellings exists anywhere in core, so the bare token is the right prohibition.
 set(P9C5_FORBIDDEN_TOKENS
-  "intnLanes("
-  "intnRows("
-  ".nLanes()"
-  ".nRows()"
+  "nLanes("
+  "nRows("
   "checkedLaneCount"
   "checkedShape"
   "deviceAllocations("
   "deviceWideSynchronizations("
-  "deviceBytes(")
+  "deviceBytes("
+  "SpmPipelineLayout")
 set(P9C5_FORBIDDEN_REGEX
   "boolvalidate[A-Z]"      # validate... must return slide::Status
   "Statusvalid[A-Z]")      # valid... must be a bool predicate
@@ -272,9 +340,13 @@ endforeach()
 # on an empty file.
 set(P9C5_REQUIRED
   "src/core/StateArena.hpp=intn_lanes()"
+  "src/core/StateArena.hpp=intn_rows()"
   "src/core/BatchView.hpp=intn_lanes()"
+  "src/core/BatchView.hpp=intn_rows()"
   "src/core/Recorder.hpp=intn_lanes()"
+  "src/core/Recorder.hpp=intn_rows()"
   "src/core/AsyncRecorder.hpp=intn_lanes()"
+  "src/core/AsyncRecorder.hpp=intn_rows()"
   "src/core/CudaSpmBatch.hpp=intn_lanes()"
   "src/core/SpmFactory.hpp=intn_lanes()"
   "src/core/CudaSpmBatch.hpp=deviceAllocationCount()"

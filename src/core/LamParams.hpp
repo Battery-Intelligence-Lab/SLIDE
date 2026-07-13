@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include "../types/Status.hpp"
+#include "../types/Status.hpp"
 #include "AgeingModelMask.hpp"
 #include "CellDesign.hpp"
 #include "CompiledCurve.hpp"

@@ -102,6 +102,16 @@ require_tokens("LAM masks" lam_params
 require_tokens("plating scales" plating_params
   "tryLithiumPlatingScales(")
 
+# Include-presence alone would be weaker than what 9C-2 defended before M0.9: a mechanism could
+# include its params header and still stop consuming the shared mask. So each mechanism must
+# still hand its own `p.model_mask` into the shared traversal, which is the actual invariant.
+require_tokens("SEI mask use" sei
+  "detail::for_each_enabled_ageing_model_lane<4>(p.model_mask,")
+require_tokens("surface-crack mask use" crack
+  "detail::for_each_enabled_ageing_model_lane<5>(p.model_mask,")
+require_tokens("LAM mask use" lam
+  "detail::for_each_enabled_ageing_model_lane<4>(p.model_mask,")
+
 require_tokens("SEI" sei
   "#include\"SeiParams.hpp\""
   "detail::AgeingScratchStorage<Real,2>"
