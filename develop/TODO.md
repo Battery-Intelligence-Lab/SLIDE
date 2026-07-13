@@ -9,7 +9,8 @@
 > Phase 9B systematic adversarial bug-hunt is complete; its Experiment transaction/parser,
 > BPX parser/allocation, recorder, pack-solver/stepper/thermal, byte-shuffle, and compiled-curve index defects are fixed and recorded in the Phase-9B ledger. Historical "Critical Bugs"
 > below may be superseded by PLAN.md. Update PLAN.md §8, not just this file.
-> M0.6/9C-2 is complete: SEI, surface cracking, LAM, and plating retain named physics bodies behind one force-inlined scaffold with zero accepted-step allocations; saturated Dual branches, zero-exponent powers, and every adjacent SPM scratch extent found by the audit are hardened. Native Debug/Release/CUDA and full Clang 18 ASan+UBSan are 56/56. Exact optional-off Status coverage resolves all 339 active arms (332 measured plus seven structural exceptions) with zero uncovered/unmapped; core-only and nested consumers pass 1/1. Hosted workflows are committed but have not run. M0.7/9C-3 cold-file splitting is next.
+> M0.7/9C-3 cold-file splitting is complete (see CHANGELOG and `.claude/reports/p9c3-cold-file-split-validation-2026-07-12.md`).
+> M0.8/9C-4 is complete: `tests/support/CoreSpmTestHarness.hpp` is the single test-scaffolding idiom (MC-4) for successful build, unit-tagged observation, constant-current traces, and voltage-error metrics; nine binaries are migrated and construction/allocation/topology/backend subjects keep direct factory calls by allowlist. Native Debug, fast-math Release, and CUDA each pass 57/57; all 43 pre-existing binaries meet or exceed their frozen assertion floors; fifteen registered mutations turn a gate red. Recorded honestly: M0.8 did NOT reduce lines (see the MC-1 item below), and two preregistered mutations were falsified — the aggregate floor cannot see a single removed assertion (floors re-frozen), and the allocation-window rule lives in the allocation binaries, not the structural gate. Report: `.claude/reports/p9c4-shared-test-harness-validation-2026-07-13.md`. M0.9/9C-5 public-surface audit is next.
 
 ---
 
@@ -35,7 +36,7 @@
 ## Short-Term (This Quarter)
 
 ### Code Quality
-- [ ] Resolve remaining M0.3 MC-1 debt during M0.8/M0.10: factor repeated fixtures out of the >700-line PackSolver, AsyncRecorder, and Experiment tests in M0.8; review/split the 1,281-line coverage reporter, oversized recorder/solver/factory translation units, and `SpmPipeline.hpp` under M0.10's line-reduction gate without reducing assertion or exact-site coverage.
+- [ ] Resolve remaining M0.3 MC-1 debt in M0.10. M0.8 shared the test *mechanics* (one harness idiom, MC-4) but did NOT reduce lines: caller-owned scratch spans cost more per call site than the local lambdas they replaced, so `core_AsyncRecorder_test.cpp` grew 1,075 → 1,118 and `core_Experiment_test.cpp` 1,091 → 1,168, and `core_PackSolver_test.cpp` (1,128) stays on the direct-call allowlist. M0.10 therefore owns the whole line-debt sweep: those three test files, the 1,281-line coverage reporter, the oversized recorder/solver/factory translation units, and `SpmPipeline.hpp` — without reducing assertion or exact-site coverage.
 - [ ] Replace `assert()` with Catch2 `REQUIRE()` in tests
 - [ ] Convert `#define DATASTORE_BATT` to constexpr (settings.hpp)
 - [ ] `StorageUnit::copy()` should return `unique_ptr` not raw pointer
