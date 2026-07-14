@@ -21,6 +21,10 @@
 > The M0.10 UNMET test-file line debt now has its owner: **M1.0** is the next unticked box. An
 > independent orthogonal review of the revision (12 findings, all applied) is at
 > `.claude/reports/plan-revision-orthogonal-review-2026-07-14.md`.
+> Same day, the **Newman instrumentation & design wave** was added: §3.26 + D-50..D-52 + new M18
+> (thermodynamic identity gates, EIS by analytic linearisation, Ragone/sizing optimisation with exact
+> forward-sensitivity Jacobians, Jacobian service, ICA/DVA, (opt) PSD tier), each box shipping
+> oracle-first unit tests per MC-2/MC-4; former M18/M19 renumbered M19/M20 — `v6.0.0` is now M20.
 >
 > **Stale build artifacts (found during M0.9, worth cleaning):** `build-release/bin/Release/` still holds `*_fast`/`*_ipo` probe binaries dated 2026-07-12 that are NOT in the current Ninja build graph. One of them fails an assertion. They are not evidence about current code — the live Release lane already compiles with `-ffast-math` and passes that test — but they will keep poisoning any glob-based measurement until the directory is reconfigured from scratch.
 
