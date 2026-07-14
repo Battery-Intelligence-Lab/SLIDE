@@ -1,6 +1,7 @@
-# SLIDE v5 — THE GOAL: the fastest, most expressive battery-simulation stack (living contract)
+# SLIDE — THE GOAL: the superior battery-simulation stack (living contract)
 
-> **Status:** ACTIVE. Rewritten 2026-07-11 (Fable) around a SINGLE GOAL with one milestone ladder (§6).
+> **Status:** ACTIVE. Rewritten 2026-07-11 (Fable) around a SINGLE GOAL with one milestone ladder (§6);
+> extended 2026-07-14 (Fable) with the breadth wave (goals 15–23, M13–M19) from Volkan's 16-point directive.
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
@@ -62,14 +63,17 @@ lazy-genius creed with pride:
 
 ## 1. THE GOAL
 
-**Ship SLIDE v5.0.0: the fastest battery-simulation stack in existence — PyBaMM's model breadth
-(SPM/SPMe/DFN, swappable discretisations, 2+1D/3D thermal, a multi-chemistry parameter library with
-citations) at compiled-SoA speed; expressive enough that a pack study is a `std::ranges` one-liner;
-portable enough that the full core runs in a browser tab; and usable enough that a non-programmer designs,
-simulates, saves, and plots a pack in SLIDE Studio without reading a manual.**
+**Ship the superior battery-simulation stack: PyBaMM's model breadth and validation culture at
+compiled-SoA speed; PyTorch's one-word device choice; COMSOL's parameter/material/discretisation
+flexibility; a PyBaMM drop-in Python subset; Python, MATLAB, and browser reach; SimSES's system-level
+scope — SPM/SPMe/DFN/ECM, lead-acid Schiffer, and semi-empirical tiers on one zero-overhead
+architecture, every tier cross-validated against PyBaMM and fit-tested through PyBOP; enjoyable for the
+developer (std-library composability, helper one-liners, clean seams) and for the user (Studio, docs
+site, honest advisors).** Three release checkpoints mark the road: `v4.0.0` (M2), `v5.0.0` (M12 — the
+original v5 scope, goals 9–14), `v6.0.0` (M19 — the 2026-07-14 breadth wave, goals 15–23).
 
-Definition of done = every MANDATORY §6 box ticked or recorded FALSIFIED/waived in §8 (optional boxes
-skipped only with recorded justification), and the `v5.0.0` tag gates green. The v4 goals (scale
+Definition of done = every MANDATORY §6 box through M19 ticked or recorded FALSIFIED/waived in §8
+(optional boxes skipped only with recorded justification), and the `v6.0.0` tag gates green. The v4 goals (scale
 10⁴–10⁵ cells, zero-overhead composition, electrode-first modularity, flat compiled pack solving, CasADi-style
 interface symmetry, memory-aware recording, portability, correctness discipline) remain in force — they are
 the floor, not the target. v5 adds:
@@ -89,6 +93,50 @@ the floor, not the target. v5 adds:
 14. **Expressiveness:** packs and batches compose with the standard library — row spans, lazy ranges,
     named helpers (`total_current`, `max_temperature`, `weakest_cell`) that make developers enjoy building
     on SLIDE.
+
+**The breadth wave (Volkan directive 2026-07-14; lands in M13–M19):**
+
+15. **Model-family breadth beyond Li-ion porous-electrode:** a first-class ECM batch tier in the core
+    (legacy `Cell_ECM` parity), a semi-empirical degradation tier (SimSES-class stress-factor calendar +
+    cycle models), the lead-acid Schiffer weighted-Ah-throughput model (Q16 OVERTURNED for lead-acid —
+    D-43), and a storage-system tier (power conversion, EMS, application profiles) — §3.23, D-48.
+16. **PyBaMM drop-in subset:** `import slide.pybamm as pybamm` runs a defined, honestly documented subset
+    of PyBaMM scripts unchanged — the JAX-for-NumPy positioning (§3.24, D-44).
+17. **Device as UX:** `device="cuda"` is a one-word choice on every GPU-instantiated tier (recorded
+    list, minimum SPM + ECM — M16.1), PyTorch-style; every other tier reports the capability gap
+    EXPLICITLY, never silently; CPU stays the reference; per-tier CPU↔GPU digit gates (D-45; §3.8
+    promoted to a user contract).
+18. **Cross-validation as a standing contract:** every tier with a PyBaMM counterpart ships registered
+    parity fixtures; every fit-relevant surface is exercised through PyBOP (§1.4 VC table).
+19. **Gradients everywhere they pay:** forward Dual sensitivities on all tiers (PC-10 makes them
+    near-free); Jacobians served to PyBOP; adjoint/Enzyme evaluated once with a recorded decision (M16.5).
+20. **Toolchain breadth:** Clang + GCC + MSVC across Linux/Windows/macOS CI, all mandatory (M18.1).
+21. **A real documentation website:** task-first tutorials per interface, theory pages linking the
+    derivation docs, Doxygen API reference, benchmark page under D-27 discipline (M18.2).
+22. **Speed research with registered hypotheses:** specialised integrators exploiting THIS architecture
+    (exponential/Rosenbrock, splitting theory, projective/cycle-extrapolation predictors,
+    Anderson-accelerated relaxation) admitted only through derive-first gates; a falsified candidate is a
+    deliverable (§3.25, D-49; M17).
+23. **Hardening as ladder work, not culture:** recurring verification/bug-hunt/performance/simplification
+    passes are explicit boxes (D-46; M12.0, M19.1).
+
+**Directive concerns that are ALREADY contract rows — do not re-derive, point here:** 10⁵-cell storage =
+D-01 SoA arena + PC-3/PC-6 budgets; "don't compute voltage when not needed" = D-10 (snapshots stored,
+observables derived lazily on demand); "cache variables/matrices/Jacobians" = D-18 chord/Shamanskii
+`SolverWorkspace` + D-16 compiled-curve canonicalisation; "PI-control-like faster simulation" = the
+error-controlled outer step (§3.5, D-08 — the literal proportional–integral step controller is M17.2)
+and Mode C relaxation advance (§3.4); "helpers for standard algorithms / elegant code" = §3.13,
+EC-2/EC-3; "small libraries that do the job without bloat (Highway, Thrust/CUB)" = D-47 measured-in
+optional-dep policy; multi-rate integrators = D-08 (in force since v4); "different ageing formulas" =
+the §3.2 mechanism slots + per-batch masks + the goal-15 semi-empirical tier; "easy battery
+construction" = §3.4.2 value-combinators + Studio's pack designer (§3.22).
+
+**Plan flexibility (restating §0.3(4), because it governs the new wave too):** boxes state WHAT and the
+gates; the HOW belongs to the implementing agent. An intelligent agent is expected to IMPROVE this
+ladder — split boxes, add gates, redesign within the invariants, or overturn a decision with evidence —
+by writing the design note, adding the §4 D-entry (ASSUMED where §0.3(4) allows), and recording the
+change in §8. The fixed points are the contracts (§1.1–§1.4), the evidence discipline (§5), and the
+non-stop protocol (§0.3) — never the wording of a box.
 
 ### 1.1 Performance contract (enforceable invariants — every milestone gate re-checks these)
 
@@ -130,6 +178,16 @@ Any proposed change that violates a PC-invariant needs a §4 decision-log entry 
 | MC-3 | Every `src/core` header opens with a 3–6 line contract comment: what it owns, which PLAN.md § it implements, hot/cold classification | review rule (pattern already established) |
 | MC-4 | Tests mirror source names; the shared test harness (M0.8) is the ONLY test scaffolding idiom | test-layout review |
 | MC-5 | Public surface minimal and intentional; implementation detail lives in `detail::` or private headers | M0.9 surface audit, kept current |
+
+### 1.4 Validation contract (cross-tool honesty, testably)
+
+| # | Invariant | Enforced by |
+|---|-----------|-------------|
+| VC-1 | Every model tier with a PyBaMM counterpart (SPM, SPMe, DFN, ECM/Thevenin — counterpart names verified at each box, never from memory) ships committed parity fixtures against the pinned PyBaMM, bands registered BEFORE comparison (P7-G3 pattern); tiers with no counterpart record that fact, never silently skip | per-tier parity boxes (M5.6, M6.6, M7.6, M13.2) + drift jobs |
+| VC-2 | Every fit-relevant surface (fitting parameters, `simulateS1` sensitivities) is exercised through PyBOP in installed-wheel CI | M1 suite + per-tier extensions (M13.5, M13.6, M16.3; Schiffer fit-relevance decided and recorded at M14.2) |
+| VC-3 | Every tier that claims GPU support digit-matches its CPU instantiation on registered fixtures | existing CUDA gates + M16.2 |
+| VC-4 | The `slide.pybamm` shim's supported subset is defined by a committed coverage matrix and proven by running pinned PyBaMM's own examples under it; everything else raises with a pointer, never silently diverges | G-SHIM (M15.3) |
+| VC-5 | Cross-tool numbers (PyBaMM, liionpack, SimSES) are qualified per D-27 and never claimed from memory | §5.6/§5.7 discipline |
 
 ## 2. Where we stand (v4 evidence, compressed 2026-07-11; full audit text in the archives)
 
@@ -578,7 +636,7 @@ violations surface as `Status` from `step()`, and the Cycler restores the arena 
   Run-to-run reproducibility at the 1e-12 parity scale depends on it (GROMACS/LAMMPS deterministic-reduction
   precedent). Corollary: per-lane adaptive dt is REJECTED (destroys the SoA sweep) — batch-uniform step, error
   controlled on the batch max-norm.
-- `device={cpu,gpu}` selected per Simulation (PyTorch-style, template = dtw-cpp `_api.py` lazy-dispatch design).
+- `device={"cpu","cuda"}` selected per Simulation (PyTorch-style, template = dtw-cpp `_api.py` lazy-dispatch design).
   GPU phase: one-cell-per-thread batched stepping (DiffEqGPU, arXiv:2304.06835, shows 20–100× vs vmap approaches for
   exactly this shape); MNA/relaxation coupling stays on host between batch steps. CUDA first; the SoA arena (§3.1) is
   already the correct device memory layout.
@@ -1003,6 +1061,89 @@ Not a COMSOL clone — an original, small, fast tool over our own schema. Archit
 - **Constraints:** fully offline-capable (no CDN at runtime); assert-data-not-pixels testing; accessibility
   basics (keyboard nav, contrast — the Wong palette already carries this).
 
+### 3.23 Model-family tiers — ECM, semi-empirical, lead-acid Schiffer, storage-system (M13–M14)
+
+Breadth beyond Li-ion porous-electrode models, all on the SAME arena/batch/registry machinery — a tier is
+a composition (§3.2), never a parallel architecture:
+
+- **ECM batch tier (M13).** 1–3 RC pairs on the §3.12 pipeline: rows {SOC, V_RC1..n, T}, OCV via D-16
+  compiled curves, linear-when-fixed-R detected structurally → the Tier-0 constant-Jacobian fast path
+  (§3.4.1) at pack scale. Legacy `Cell_ECM` (already validated) is the digit-parity oracle via the §5.2
+  harness. This tier is also the natural home of grid-scale 10⁵-lane studies where SPM fidelity is
+  unnecessary.
+- **Semi-empirical degradation tier (M13).** SimSES-class stress-factor models: capacity/resistance change
+  = calendar(t, T, SOC) + cycle(throughput, DOD, C-rate) superposition, integrated as slow SoA rows over
+  macro steps. Formulas and coefficients enumerated from a PINNED SimSES release and their source papers
+  (D-38 provenance discipline — programmatic extraction, committed JSON, citations web-verified at the
+  box). Composable with ECM (the SimSES pairing) or SPM tiers.
+- **Lead-acid Schiffer tier (M14).** The weighted-Ah-throughput lifetime model (Schiffer et al., J. Power
+  Sources 2007 — citation web-verified at M14.1, never trusted from memory): SOC/acid-stratification/
+  current-weighted throughput, corrosion-layer growth, gassing, capacity loss. A DIFFERENT model family:
+  it gets its own composition tier and derivation doc, never a forced fit into particle-diffusion slots.
+  Validation = the paper's own registered behaviours + limit checks. Whether VC-1 binds is decided at
+  M14.1, separately for the ageing and electrical halves: "PyBaMM ships no Schiffer-ageing counterpart"
+  is a from-memory claim to WEB-VERIFY there — PyBaMM's origins include lead-acid porous-electrode
+  models, so the electrical half may have a counterpart even where the ageing half does not.
+- **Storage-system tier (M14).** SimSES-scope system simulation as COLD orchestration over batch tiers:
+  power-conversion efficiency curves (legacy `src/power_conversion` absorbed or replaced), energy-
+  management strategies, application profiles (FCR, peak shaving, self-consumption) driving
+  Experiment-grade current/power schedules. Hot path untouched — the system layer only schedules segments
+  and reads observables (D-10). Every new file/profile parser inherits the D-29 fuzz discipline.
+
+### 3.24 `slide.pybamm` — the drop-in subset shim (M15; D-44)
+
+The JAX-for-NumPy positioning: `import slide.pybamm as pybamm` runs a DEFINED subset of PyBaMM scripts
+unchanged, at SLIDE speed. Honesty is the design centre:
+
+- **Coverage matrix first:** the pinned PyBaMM public API is enumerated programmatically; every symbol is
+  classified {supported, mappable-later, out-of-scope} in a COMMITTED matrix. Out-of-scope forever (and
+  said so): arbitrary expression-tree model surgery, custom spatial methods, solver internals.
+- **The shim translates, never simulates:** a thin Python layer mapping PyBaMM's classes (`Simulation`,
+  `Experiment`, `ParameterValues`, model classes for supported tiers, `Solution`'s dict surface) onto the
+  native bindings (§3.9). Zero physics in the shim (D-11 one-source rule).
+- **Unsupported ⇒ loud:** `NotImplementedError` naming the nearest native path — never a silent
+  approximation of PyBaMM behaviour (§1 traceability applied to API semantics).
+- **The gate is PyBaMM's own code:** a committed subset of the pinned release's example scripts runs
+  unchanged under the shim within registered bands (G-SHIM); a non-blocking latest-PyBaMM job flags drift.
+
+### 3.25 Integrator & predictive-acceleration research programme (M17; D-49)
+
+Volkan's directive (2026-07-14): specialised integrators for THIS architecture (Leimkuhler-school
+structure exploitation) and data-driven extrapolate-then-correct acceleration. This is RESEARCH — every
+candidate enters through a derivation + registered-hypothesis gate, and a falsified candidate recorded
+with its numbers is a full deliverable (§0.3(3)). Candidates, ranked by expected value:
+
+1. **Cycle-extrapolation / projective integration for ageing (the highest-value target).** Degradation
+   rows evolve smoothly over thousands of cycles: simulate k full cycles, fit the slow-row trajectory,
+   extrapolate N cycles ahead (the Gear–Kevrekidis projective-integration shape), re-simulate, correct;
+   accept/reject on a registered predictor-error test — extrapolation is NEVER silently trusted. Battery
+   cycle-jumping precedents exist — SOTA-check at the box before designing. Hypothesis to register:
+   order-of-magnitude fewer simulated cycles at bounded, measured degradation-state error, ON a scenario
+   short enough that its full run is the oracle; the years-long claim is recorded separately as
+   qualified extrapolation, never as the gate.
+2. **PI step-size controller on the multirate outer step** (the Hairer–Wanner proportional–integral
+   idiom; D-08's "error-controlled outer step" made literal): smoother step sequences and fewer
+   rejections than a pure proportional rule; batch-uniform dt preserved (§3.8 corollary stands).
+3. **Exponential Rosenbrock / Lawson methods** (the Hochbruck–Ostermann exponential-integrator family)
+   for the nonlinearly coupled thermal + ageing outer system, reusing the ONE φ₁ source (PC-10): the
+   linear-dissipative part is already exact (D-07); the open question is whether stiff nonlinear coupling
+   ever limits the outer step in practice — derive the regime first, implement only if it does.
+4. **Anderson acceleration on Mode C waveform relaxation** (Walker–Ni): cheap memory over past iterates,
+   potentially large iteration-count cuts at 10⁴⁺ lanes; gate on iteration counters (structural, not
+   wall-clock).
+5. **Splitting / backward-error analysis (Leimkuhler & Reich):** our system is DISSIPATIVE, not
+   Hamiltonian — symplectic integrators are the wrong tool, named here so nobody chases them; what that
+   school DOES give us is splitting-error theory and the modified-equation view to justify/refine the
+   D-08 Strang split.
+6. **Parareal / parallel-in-time (Lions–Maday–Turinici):** likely FALSIFIED for us — batch lanes already
+   saturate the hardware with spatial parallelism, and parareal's coarse-propagator overhead competes
+   with an exact exponential fast path. Derive the speedup bound first; expect to record the kill,
+   cheaply and simulation-free.
+
+All citations in this section are from-memory pointers to be WEB-VERIFIED at M17.1 (M4.7 discipline)
+before any implementation cites them. Each adopted method registers its Citation (§3.20) and its gate;
+each rejected one gets a §8 FALSIFIED row with the derivation or measurement that killed it.
+
 ## 4. Decision log (do not re-litigate without overturning the evidence)
 
 | ID | Decision | Rationale | Rejected alternative |
@@ -1049,6 +1190,13 @@ Not a COMSOL clone — an original, small, fast tool over our own schema. Archit
 | D-40 | WASM via Emscripten: single-thread default (PC-9), embind surface mirroring §3.9, no-CDN/offline constraint, registered size budget, wasm-vs-native 1e-12 determinism gate | smallest portable step to the browser; unibatt evidence that COOP/COEP (threads) breaks offline/CDN-free deployment — so threads are NOT the v5 default | (a) pthreads-first build; (b) rewriting the core in JS/Rust; (c) server-side simulation (kills offline + privacy) |
 | D-42 (ASSUMED, M0.9) | MC-5 is enforced as a three-tier header classification — `@surface api` (16 headers; the only ones a binding or doc may include), `support` (12; the value/vocabulary types the API's signatures are written in), `internal` (everything else, incl. all of `src/core/detail/`) — with the load-bearing rule that **no api or support header may include an internal one**. Value types are split out of kernel headers (`*Params.hpp`, `SpmBatchLayout.hpp`, `AgeingModelMask.hpp`) so the public factory can name them without dragging the physics in. `SpmScalarKernels.hpp` is `support` and DOES reach a user TU: PC-10 (one physics source) outranks MC-5 there, since the alternative is duplicating interpolation inside `CompiledCurve` | classification alone would have labelled the violation instead of removing it: a user TU was compiling eight kernel headers. R3 + R1 make the property inductive rather than merely measured, and `clang -MM` confirms it (26 headers/8 kernels → 21/0) | (a) tag-only audit (labels the leak, keeps it); (b) pimpl `SpmFactoryInput` (kills the aggregate, adds a cold allocation/indirection for no gain); (c) duplicate the curve interpolation to free `CompiledCurve` from `SpmScalarKernels` (violates PC-10, the stronger contract) |
 | D-41 | Studio = vanilla ES modules + Vite + Web Workers over the M10 module; unibatt palette (Wong data colours, Oxford-blue chrome only); versioned `.slide.json` project schema = the C++ description layer (EC-5); single-file offline artifact; Playwright data-assert E2E | proven stack in `C:\D\git\unibatt` (shipped, offline-capable, ~2.3 MB single file); no framework = no churn; one schema = no drift between Studio and core | (a) React/Vue/framework stack (dependency churn, larger surface); (b) CDN-dependent runtime (breaks offline artifact); (c) pixel-golden screenshot tests (flaky, theme-dependent) |
+| D-43 | Q16 OVERTURNED for lead-acid (Volkan directive 2026-07-14): the Schiffer weighted-Ah-throughput model enters as its own composition tier (M14) with its own derivation doc and validation gates | the user directive is the overturning evidence §4 requires; the model family is industry-standard for off-grid/renewable lead-acid lifetime prediction (SimSES ships it — verify at the M13.3 pin) | (a) keeping lead-acid out (directive says in); (b) forcing lead-acid into particle-diffusion slots (wrong physics shape) |
+| D-44 | PyBaMM drop-in = `slide.pybamm` shim: committed programmatically-enumerated coverage matrix; translate-only layer over the native bindings; NotImplementedError-with-pointer for everything else; gated by pinned PyBaMM's own examples running unchanged (G-SHIM, §3.24) | JAX-for-NumPy positioning (Volkan 2026-07-14) with the §1 honesty standard applied to API semantics; D-11 keeps one physics/parser source | (a) claiming full compatibility (expression trees/spatial methods make it a lie); (b) forking PyBaMM internals (unmaintainable); (c) silent behavioural approximation of unsupported paths |
+| D-45 | Device selection is a USER contract: `device={"cpu","cuda"}` per Simulation/batch, cold path only; device change = rebuild arenas, never hot-path branching; CPU is the reference implementation; every GPU-claiming tier carries a CPU↔GPU digit gate (VC-3) | PyTorch-style ergonomics (Volkan 2026-07-14) on the §3.8 design that already exists; digit gates keep both instantiations honest through the ONE physics source (PC-10) | (a) per-call device dispatch (hot-path branching); (b) GPU-only tiers (kills the reference/arbiter); (c) implicit device inference (surprising, irreproducible) |
+| D-46 | Recurring hardening passes are LADDER BOXES: H1 (M12.0) and H2 (M19.1), each = {adversarial orthogonal review, bug ledger failing-test-first, mutation battery over new gates, sanitizer + fuzz lanes over new parsers, performance-counter re-baseline, simplification sweep with digit-identical gates} | Volkan 2026-07-14: verification/bugfix/perf/simplification passes must be scheduled work, not culture; M0/9B/9C proved the pattern pays (50 closed bugs, 20/20 mutation batteries) | (a) trusting per-milestone gates alone (misses cross-cutting interactions); (b) "continuous" background hardening with no box (never happens under §0.3(1)) |
+| D-47 | Optional acceleration deps (Highway SIMD, CUB/Thrust device primitives; KLU already optional) enter ONLY behind a CMake option with a core fallback, admitted by a registered measurement gate on structural counters (+ qualified wall clock); a dep that loses its gate is recorded FALSIFIED and stays out | small well-justified deps allowed (§3.10) but the core must build with none (non-negotiable #4); measured-in beats fashionable-in (Volkan 2026-07-14: "does the job very well, unlike Boost") | (a) required deps; (b) Boost-class monoliths; (c) adopting on reputation without the gate |
+| D-48 | Semi-empirical + storage-system tiers (SimSES scope): stress-factor calendar/cycle models as slow SoA rows; the system layer (converters, EMS, application profiles) is COLD orchestration over batch tiers reading D-10 observables; formulas/coefficients enumerated from a pinned SimSES release with D-38 provenance | grid-scale system studies are the SimSES use case Volkan wants absorbed (2026-07-14); cold orchestration keeps every PC row intact | (a) hot-path system coupling (violates PC-4 for no physics reason); (b) hand-copied coefficients (D-38 already rejected that); (c) a separate system simulator beside SLIDE (two sources of truth) |
+| D-49 | Speed research (M17) is hypothesis-gated: every integrator/predictor candidate needs {derivation of the expected win, registered band, SHORT decisive test}; extrapolation predictors always carry a runtime accept/reject error test — never silently trusted; falsified candidates are deliverables | Volkan 2026-07-14 (Leimkuhler-school integrators, data-driven extrapolate-then-correct); the §3 registered-prediction discipline is what separates research from vibes | (a) implementing integrators before deriving their regime; (b) trusting extrapolation without a runtime rejection test (silent wrong answers); (c) treating a falsified candidate as wasted work |
 
 ## 5. Migration strategy & verification discipline
 
@@ -1190,6 +1338,12 @@ recorded there — killed ideas stay killed).
 Derive before running: identifiability and noise floors computed analytically FIRST, bands registered from
 the derivation, not from a trial fit.
 
+- [ ] M1.0 Pay the MC-1 TEST-file debt owed by M0.8/M0.10 (explicit owner box — do not inherit again):
+      split `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,198),
+      `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118),
+      `core_ParameterSet_test.cpp` (1,007) along fixture/subsystem boundaries; the SUM of
+      successor-binary assertion/test-case counts must be ≥ each predecessor's frozen floor, and floors
+      are re-frozen per successor binary (M0.8 discipline); harness idiom (MC-4) preserved.
 - [ ] M1.1 (10A) gradient regression kept pinned (P7-G2 L-BFGS-B via `simulateS1`).
 - [ ] M1.2 (10B) gradient-FREE optimiser (CMA-ES or XNES) through PyBOP: 2-parameter synthetic recovery,
       registered looser band.
@@ -1377,15 +1531,124 @@ the derivation, not from a trial fit.
 
 ### M12 — v5.0.0 release
 
+- [ ] M12.0 Hardening pass H1 (D-46 template) over everything landed since M0: adversarial orthogonal
+      review; bug ledger failing-test-first; mutation battery over gates added in M3–M11; sanitizer +
+      fuzz lanes over parsers added since M0 (schema JSON, netlist, Experiment extensions); performance-
+      counter re-baseline; simplification sweep (digit-identical gates); MC-1 line-debt check.
 - [ ] M12.1 Docs sweep: every milestone's derivation docs + guides linked from the docs site; API reference
       regenerated; changelog consolidated with migration notes.
 - [ ] M12.2 Version sync + artifacts: wheels (CPU/CUDA), MEX, npm wasm package, Studio site build + offline
       HTML; all CI matrices green. (No public deploy in this box.)
 - [ ] M12.3 Release notes: model-tier matrix, qualified-timing caveats, citation instructions, known limits
-      (distributed electro-thermal closure = v6, adjoint = v6, `.yp`/`.observe()` and FMU export still out
-      of scope — v6 candidates, lead-acid out of scope Q16).
+      (distributed electro-thermal closure quarantined D-36 — unscheduled, beyond v6.0.0; adjoint = an
+      M16.5 evaluation only; `.yp`/`.observe()` and FMU export unscheduled beyond v6.0.0; lead-acid
+      Schiffer ARRIVES in v6 at M14 per D-43).
 - [ ] M12.4 Annotated `v5.0.0` tag/publish + Studio Pages deploy — §0.3(5) exception, one-word go from
       Volkan (all outward publishing lives HERE, not in M12.2).
+
+### M13 — ECM core tier + semi-empirical degradation tier (§3.23; D-48; goal 15)
+
+- [ ] M13.1 **(design note first)** ECM batch tier: 1–3 RC pairs on the §3.12 pipeline (StateSpec rows,
+      scalar-generic, registry entries); Tier-0 constant-Jacobian fast path (§3.4.1) detected
+      structurally; legacy `Cell_ECM` digit-parity gates via the §5.2 harness across 1/2/3-RC fixtures.
+- [ ] M13.2 ECM in packs + Experiment/Recorder/events; PyBaMM Thevenin-model parity fixture (VC-1, band
+      registered first); PC-6 ECM budget registered (ASSUMED ≤ 64 B/cell — measure, tighten).
+- [ ] M13.3 **(design note first)** semi-empirical tier: calendar + cycle stress-factor superposition as
+      slow SoA rows; formulas/coefficients enumerated from a PINNED SimSES release + source papers (D-38
+      provenance; citations web-verified at this box); Dual instantiation compiles.
+- [ ] M13.4 Validation: closed-form throughput/time cases (pure derivation, registered bands); one
+      registered scenario cross-checked against the pinned SimSES run (qualified, VC-5).
+- [ ] M13.5 PyBOP fit of semi-empirical parameters on synthetic data (M1 discipline: identifiability +
+      CRLB derivation first, bands registered before the one decisive run) (VC-2).
+- [ ] M13.6 PyBOP fit of ECM parameters (R0, R_i/C_i, OCV scaling) on synthetic data — the most common
+      PyBOP use case (M1 discipline; VC-2).
+
+### M14 — Lead-acid Schiffer tier + storage-system tier (§3.23; D-43, D-48; goal 15)
+
+- [ ] M14.1 **(design note first)** derivation doc `docs/derivations/schiffer.md`: weighted Ah throughput
+      (SOC/stratification/current weighting), corrosion-layer growth, gassing, capacity loss — every
+      equation unit-checked, regime + deliberate omissions stated; the Schiffer 2007 citation
+      WEB-VERIFIED here.
+- [ ] M14.2 Schiffer tier implementation (own composition tier, NOT particle-diffusion slots); SHORT
+      validation cases reproducing the paper's registered behaviours; Recorder/Experiment/series-string
+      pack integration. VC-1 binding decided at M14.1 per half (ageing vs electrical) and recorded;
+      Schiffer VC-2 fit-relevance decided and recorded HERE (a fit box or a justified waiver).
+- [ ] M14.3 Storage-system tier: converter efficiency curves (absorb or replace legacy
+      `src/power_conversion`), EMS + application profiles (FCR, peak shaving, self-consumption) as cold
+      orchestration over batch tiers; any new profile/file parser inherits the D-29 fuzz discipline.
+- [ ] M14.4 System validation: energy conservation across the converter chain to roundoff; one registered
+      application-profile scenario vs the pinned SimSES run (qualified, VC-5); docs quickstart.
+
+### M15 — `slide.pybamm` drop-in shim (§3.24; D-44; goal 16)
+
+- [ ] M15.1 **(design note first)** coverage matrix: pinned PyBaMM public API enumerated
+      programmatically; every symbol classified {supported, mappable-later, out-of-scope}; matrix
+      committed; NotImplementedError-with-pointer policy defined.
+- [ ] M15.2 Shim implementation over the native bindings (translate-only; zero physics; D-11 symmetry).
+- [ ] M15.3 **Gate G-SHIM (mandatory):** a committed subset of the pinned release's own example scripts
+      runs UNCHANGED under `import slide.pybamm as pybamm`, with named `Solution` variables per script
+      compared against committed pinned-PyBaMM outputs, band registered per script (VC-4 — script
+      completion alone never ticks this); pass-list committed; non-blocking latest-PyBaMM drift job.
+- [ ] M15.4 Docs page "shim coverage, honestly": the matrix rendered; unsupported paths named with their
+      native alternatives.
+
+### M16 — Device UX, gradients, measured-in acceleration (D-45, D-47; goals 17, 19)
+
+- [ ] M16.1 `device=` API uniform across ALL tiers; the GPU-instantiated list is RECORDED in this box,
+      minimum {SPM (exists), ECM (implement here — the cheap tier, Tier-0 structure)}; SPMe/DFN join if
+      M6.9/M7.9 landed (each skip already carries its §8 line); any tier without a GPU instantiation
+      reports the capability gap explicitly (PC-9 idiom — degrade EXPLICITLY, never silently).
+- [ ] M16.2 CPU↔GPU digit gates for every tier on the M16.1 recorded list, on registered fixtures
+      (VC-3) — the gate names the list, so it cannot pass vacuously.
+- [ ] M16.3 PyBOP per-tier fit smoke: SPMe and DFN synthetic recoveries through PyBOP (M1 discipline,
+      SHORT) — VC-2 closure across tiers.
+- [ ] M16.4 *(opt)* Highway (SIMD row sweeps) / CUB–Thrust (device reductions) measured in per D-47; a
+      dep that loses its gate is recorded FALSIFIED and stays out.
+- [ ] M16.5 *(opt)* adjoint/Enzyme SOTA-check: derive the n_θ crossover vs forward Dual FIRST; prototype
+      only if the derivation says it pays; decision recorded either way (extends D-24); if adopted,
+      Jacobians reach PyBOP through the same `simulateS1` surface.
+
+### M17 — Integrator & predictive-acceleration research (§3.25; D-49; goal 22)
+
+- [ ] M17.1 SOTA + citation verification pass: cycle-jumping/projective-integration literature, PI
+      step controllers, the exponential-Rosenbrock family, Anderson acceleration, parareal — every §3.25
+      from-memory pointer WEB-VERIFIED or corrected; candidate ranking updated in the design note.
+- [ ] M17.2 PI step-size controller on the multirate outer step (Hairer–Wanner idiom): registered
+      step-rejection/accuracy gates on SHORT scenarios; batch-uniform dt preserved (§3.8).
+- [ ] M17.3 **(design note first)** cycle-extrapolation predictor–corrector for ageing: simulate k
+      cycles, fit slow rows, extrapolate N, re-simulate, correct; runtime accept/reject error test
+      MANDATORY (D-49); registered hypothesis: ≥10× fewer simulated cycles at bounded, measured
+      degradation-state error on the SHORT registered scenario whose full run is the oracle; the
+      long-horizon claim is a separate qualified, non-blocking record.
+- [ ] M17.4 *(opt)* exponential-Rosenbrock outer stage: derive FIRST whether stiff thermal/ageing
+      coupling ever limits the outer step; implement only if the derivation says yes; otherwise record
+      the kill.
+- [ ] M17.5 *(opt)* Anderson acceleration on Mode C: gate on iteration counters at 10⁴ lanes.
+- [ ] M17.6 Parareal speedup-bound derivation (expect FALSIFIED; record the kill with numbers — cheap,
+      simulation-free).
+
+### M18 — Toolchain matrix + documentation website (goals 20, 21)
+
+- [ ] M18.1 Mandatory compiler/OS matrix over the APPLICABLE pairs (MSVC is Windows-only): Clang
+      (Linux/Windows/macOS), GCC (Linux + macOS where runners exist), MSVC (Windows) — core, tests,
+      wheels; the matrix itself is COMMITTED (MSVC promoted from M3.6 *(opt)*; its slower codegen is a
+      measurement, never a gate).
+- [ ] M18.2 Docs website expansion: task-first tutorials per interface (C++/Python/MATLAB/Studio), theory
+      section linking every `docs/derivations/*.md`, Doxygen API reference integrated, benchmark page
+      (D-27-qualified numbers only), "which model when" (M9.5) surfaced.
+- [ ] M18.3 Benchmark refresh: PAY-class numbers re-recorded on current code under the D-27 protocol;
+      structural counters asserted in CI for the new tiers (M3.5 extended).
+
+### M19 — Hardening pass H2 + v6.0.0 release (D-46; goal 23)
+
+- [ ] M19.1 Hardening pass H2 over M13–M18 (D-46 template): adversarial orthogonal review; bug ledger
+      failing-test-first; sanitizer + fuzz lanes over every parser added since M12 (shim inputs, profile
+      readers, Schiffer/semi-empirical parameter files); mutation battery; performance-counter
+      re-baseline; simplification sweep (digit-identical); MC-1 line-debt sweep INCLUDING test files.
+- [ ] M19.2 Version sync + artifacts (wheels CPU/CUDA, MEX, npm wasm package, Studio builds, shim
+      package); consolidated CHANGELOG; release notes with the tier matrix, shim coverage matrix, and
+      qualified-timing caveats.
+- [ ] M19.3 Annotated `v6.0.0` tag/publish — §0.3(5) exception, one-word go from Volkan.
 
 ## 7. Open questions for Volkan (OPEN/ASSUMED ledger)
 
@@ -1408,7 +1671,7 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | **Q13** | Studio plotting library? | **ASSUMED uPlot, bundled** (small, fast, offline-friendly); switch to bundled-Plotly only if uPlot provably can't serve a view — record in the M11.1 note |
 | **Q14** | WASM binding surface: embind or flat C API? | **ASSUMED embind** (fast to build, mirrors §3.9); revisit only if module size busts the M10.4 budget — a C API is the recorded fallback |
 | **Q15** | DFN memory budget (PC-6 tier)? | **ASSUMED ≤ 16 KB/cell** (10⁴ DFN cells ≈ 160 MB); tighten in the M7.1 design note from the real state layout |
-| **Q16** | Chemistry scope: sodium-ion? lead-acid? | **ASSUMED:** Na-ion YES where PyBaMM 26.6.2.0 ships sets (same SPM/SPMe maths); lead-acid NO for v5 (different model family — v6 candidate) |
+| **Q16** | Chemistry scope: sodium-ion? lead-acid? | **ASSUMED:** Na-ion YES where PyBaMM 26.6.2.0 ships sets (same SPM/SPMe maths); lead-acid NO for v5. **OVERTURNED for lead-acid 2026-07-14 (Volkan directive): Schiffer tier IN scope at M14 (D-43); Na-ion answer unchanged; still out of v5.0.0 itself** |
 | **Q17** | Studio deployment? | **ASSUMED GitHub Pages + downloadable offline single-file HTML artifact per release** |
 | **Q18** | Distributed (per-plane) electro-thermal coupling in v5? | **NO — quarantined (D-36)** until the pouch project closes EX780–802; v5 ships lumped-Q + tab projections only |
 
@@ -1438,4 +1701,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-13 | M0.8 / 9C-4 shared test harness | PASSED locally — `tests/support/CoreSpmTestHarness.hpp` is the single test-scaffolding idiom (MC-4): caller-owned successful build, unit-tagged (`CurrentA` / `CurrentDensityApm2`) terminal-voltage observation, constant-current `ExponentialModal` traces on a caller-supplied grid including the initial sample and every partial final interval, and a transparent max-abs/RMS voltage metric — with no default options, chemistry, tolerance, reference, file I/O, stored batch/stepper state, or mutable static. Nine binaries migrated; construction/allocation-ordinal/topology/backend subjects keep direct factory calls by the preregistered allowlist. Native Debug, fast-math Release, and CUDA/Release each pass 57/57 (56 baseline + the harness self-test); WSL Clang 18 ASan+UBSan+LSan passes 57/57 with zero findings in 139.14 s. All 43 pre-existing binaries meet or exceed their frozen per-binary assertion floors with no test-case drop (39 identical; Experiment 370→436, ForwardSensitivity 3919→16172, P7G3 6334→7274, Recorder 168→222; CudaSpmBatch unchanged at 433,671/4); floors are re-frozen at these counts. Fifteen registered mutations turn a gate red (hard-coded lanes/nch, flipped discharge sign, omitted A→A/m² conversion, dropped initial sample, dropped final interval, uniform dt, self-comparison, ignored final metric element, RMS/(N−1), naive IEEE-unguarded metric, wrong absolute step time, default lane count, harness inside an allocation-fault window, 50 mV PyBaMM reference perturbation). Adversarial review refuted the by-value-seam, allocation-window, oracle-weakening, and circularity attacks with evidence; its surviving findings were fixed — the structural blacklist now also forbids `EulerLegacy`/`stepper_`/Catch matcher tolerances (each verified RED by injection), `core_ForwardSensitivity_test.cpp` now bitwise-asserts that the accumulated grid re-differences to the exact `dt` the harness re-derives, and the configured-batch no-move invariant (`Recorder`/`CyclerV2` hold a raw `SpmBatch *`) is documented on the seam. **Two preregistered mutations are FALSIFIED and recorded:** the aggregate per-binary floor cannot detect a single removed assertion (harness admission `REQUIRE`s lift counts far above the floors — remedied by re-freezing), and the allocation-window prohibition is enforced by the allocation binaries' ordinals, NOT by the structural gate as preregistered. **M0.8 did not reduce lines** — caller-owned scratch spans cost more per call site than the lambdas they replaced (`core_AsyncRecorder_test.cpp` 1,075→1,118; `core_Experiment_test.cpp` 1,091→1,168; ~+1,190 test lines overall); the MC-1 line debt passes to M0.10, which owns it. TSan was not rerun and no new TSan claim is made; hosted CI is committed, not claimed run. Artifacts: `.claude/reports/p9c4-shared-test-harness-validation-2026-07-13.md` and `.claude/reports/p9c4-pre-refactor-harness-baseline-2026-07-12.md`. |
 | 2026-07-13 | M0.9 / 9C-5 public-surface audit | PASSED locally — MC-5 is now a property, not a label. `SpmFactory.hpp` no longer includes `SpmPipeline.hpp`: the parameter blocks and row layouts it needed **by value** moved into `SeiParams`/`SurfaceCrackParams`/`LamParams`/`LithiumPlatingParams`/`SpmBatchLayout`/`AgeingModelMask.hpp`, the factory header names types and `SpmFactory.cpp` names kernels, and `SpmPipelineLayout` is renamed `SpmBatchLayout` (what `SpmBatch::layout()` returns). A public-consumer TU fell from **26 core headers to 21, with all eight ageing/pipeline kernel headers gone** (`clang++ -MM`; registered target 8 → 0 and 20 ± 3). **Corrected overclaim (adversarial review):** the TU is NOT kernel-free — `SpmScalarKernels.hpp` remains reachable via `CompiledCurve`'s inline `linearInterpolate`, because removing it would duplicate physics and break PC-10, which outranks MC-5. Earlier wording said "zero kernels"; that was false and is fixed in CHANGELOG, the report, and the gate's own comment. Every core header carries an `@surface` tag with tier api, support, or internal (16 api / 12 support / rest internal) and `tests/structural/p9c5_public_surface.cmake` enforces R1 classification, R2 the pinned api set, **R3 no api/support header may include an internal one** (which makes the MC-5 property inductive, not merely measured), R4 each api header's pinned declaration count and public types, R5 bindings/docs see api only, R6 the naming lexicon. Naming pass (one verb per concept): `n_lanes()`/`n_rows()` everywhere (`Recorder`, `AsyncRecorder`, `CudaSpmBatch` dropped `nLanes()`/`nRows()`), CUDA shim counters unified to `deviceAllocationCount`/`deviceWideSynchronizationCount`/`deviceArenaBytes`, one `checked_lane_count`/`checked_shape` where three spellings lived; `validate…`→`Status`, `valid…`/`is…`→`bool`, no `get` prefix. **Digit-identical:** all 53 Catch2 binaries report identical assertion and test-case counts to `df2da52` in Debug *and* in a like-for-like fast-math Release baseline build; CTest 57/57 Debug, 57/57 Release, 57/57 CUDA; `CudaSpmBatch` unchanged at 433,671/4. **Twenty registered mutations turn a gate red**, after three rounds of hardening. My own battery found two holes (R4's substring check could not see a renamed public type; the `get`-prefix rule could never fire against whitespace-stripped text). **Adversarial review then broke the gate seven more ways, all now red:** a public method, an enumerator, or a `*Params` field could be added unseen (R4 counted column-0 declarations only, and pinned NO support header — yet the `*Params` structs are the public parameter surface, and a new `SeiParams` field changes the layout of the api type `SpmFactoryInput`); a kernel could be included through a `../` path or an angle bracket (R3 matched quoted, non-`../` includes only); a binding could include `core/detail/…` (R5's regex could not match a nested path). **It also found a real code defect, now fixed:** `SeiParams.hpp` and `SurfaceCrackParams.hpp` used `slide::Status` without including `../types/Status.hpp` and compiled only by luck of include order — a new compiler-verified gate (`structural_test_core_9C5HeaderSelfContained`, CTest 58) now compiles each of the 28 api/support headers standalone. `p9c2` additionally re-pins mask *use* (`for_each_enabled_ageing_model_lane<N>(p.model_mask`), since include-presence alone was weaker than what it defended before. **Recorded, not hidden:** the `*_fast`/`*_ipo` binaries in `build-release/bin` are stale 2026-07-12 artifacts outside the Ninja graph — one fails an assertion and is NOT evidence about current code (the live Release lane is already `-ffast-math` and passes that case); the single Release count that differed from baseline was the `SLIDE_ENABLE_RECORDED_SCALAR_BITS` option, not behaviour — matched like-for-like, the baseline reproduces it exactly, and the two extra assertions are fast-math bit-hash checks that PASS. `SpmScalarKernels.hpp` stays reachable from user code by design (PC-10 beats MC-5 there). The CUDA lane needs MSVC `cl.exe` on PATH (VS 18 `VC/Tools/MSVC/14.50.35717`); that is environment, not code. TSan not rerun, no new TSan claim; hosted CI committed, not claimed run. Artifacts: `.claude/reports/p9c5-public-surface-{preregistration,validation}-2026-07-13.md`, `.claude/designs/m0-9-public-surface.md`. |
 | 2026-07-13 | M0.10 / 9C-6 dead-code + line-debt sweep (P9-G5) | PASSED locally — **there was no dead code to remove**, and that is the finding: every namespace-scope entity in `src/core` is referenced (the 17 a naive scan flagged are aggregate members or same-file callees), and `SpectralDiffusionLegacy` stays as the parity oracle. So 9C-6 is a line-debt sweep. The four oversized TUs split along boundaries that proved real: `SpmFactory.cpp` 713 → 494 + **`SpmBatch.cpp` 237** (the batch reaches its implementation only through type-erased pointers, so `SpmBatch.cpp` does not include `SpmPipeline.hpp` at all); `PackSolver.cpp` 910 → 610 + **`PackSolverIterative.cpp` 266** (ladder and relaxation never touch `SolverWorkspace::Impl` — they factorise nothing, which is why they can move); `AsyncRecorder.cpp` 890 → 396 + **`AsyncRecordingCodec.cpp` 452** + **`detail/AsyncRecordingFormat.hpp` 116** (transport vs codec, one shared format); `Recorder.cpp` 721 → 293 + **`RecordingFormat.cpp` 451** (writer and reader stay together — they must agree byte for byte). `SpmPipeline.hpp` 783 → 745 + **`SpmDiffusionRhs.hpp` 64** (every other mechanism's RHS already had its own header). `scripts/status_failure_coverage.py` 1,281 → 135 + the `slide_coverage` package (scanner/session/classify/report/constants) behind the same CLI. **One real duplicate removed:** `checkedAdd`/`checkedMultiply` lived twice with identical semantics → `detail/CheckedArithmetic.hpp`. **Digit-identical:** all 53 binaries identical in Debug and in a like-for-like fast-math Release baseline; CTest **58/58 Debug, Release, and CUDA**; `CudaSpmBatch` unchanged at 433,671/4; the coverage reporter's self-test passes, its census is byte-identical, and `ruff` proves no undefined name crosses the new module seams. **Five mutations, one per new TU, turn a gate red** (three first-attempt mutations were DISCARDED, not counted, because no existing oracle could observe them — a self-consistent CRC, an unexercised overflow, and an `SpmBatch::rhs` path `ExponentialModal` never calls). **Line count GREW 17,363 → 17,595 (+1.3%)** — predicted and registered BEFORE the work, against PLAN's default expectation of a reduction: splitting a TU adds a guard, an include block, and a namespace, and there was no dead code to delete. MC-1's goal is met where it matters: only two `src/core` files exceed 700 lines, both with written justifications — `SpmPipeline.hpp` (745; a template whose composition cannot be split without destroying D-02's zero overhead) and `CyclerV2.cpp` (771; the M0.7 exception). **UNMET, recorded not buried:** the oversized TEST files (`core_ParserAllocation` 1,229, `core_PackSolver` 1,198, `core_Experiment` 1,168, `core_AsyncRecorder` 1,118, `core_ParameterSet` 1,007) are untouched for the second milestone running — M0.8 grew them, M0.10 did not cut them, and they need an explicit owner rather than a third inherited assignment. The Linux llvm-cov lane was NOT re-run; the workflow's path filter now includes `scripts/slide_coverage/**`, but no coverage claim is made. Artifacts: `.claude/reports/p9c6-line-debt-{preregistration,validation}-2026-07-13.md`. |
-| — | NEXT | §6 M0 is COMPLETE. Ladder continues at **M1.1** (PyBOP gradient regression) → M1.2 → … — take the first unticked box, §0.3 protocol. Carry the UNMET test-file line debt above into an owner. |
+| 2026-07-14 | PLAN extended to THE superior-stack goal (Fable): Volkan's 16-point directive + integrator-research directive absorbed — goals 15–23; §1.4 validation contract VC-1..VC-5; §3.23 model-family tiers (ECM, semi-empirical/SimSES, lead-acid Schiffer, storage-system), §3.24 `slide.pybamm` drop-in shim, §3.25 integrator & predictive-acceleration research programme; D-43..D-49; ladder extended M13–M19 with v6.0.0 at M19; M1.0 test-file-debt owner box added (closes the M0.10 UNMET carry); M12.0 hardening pass H1 added; Q16 overturned for lead-acid (D-43). Directive items already covered were POINTED at, not duplicated (D-01/D-10/D-16/D-18/D-08/§3.13/§3.8). Independent orthogonal review (Fable critic, same day) returned 12 findings — 1 CRITICAL (this very row had recorded the review as done before it ran), 5 MAJOR (stale header wave numbering; goal-17 GPU promise resting on skippable/missing boxes; VC-2 quantifier unclosed over ECM/Schiffer; M12.3 release-note pointers contradicting D-43/v6; unmarked from-memory VC-1 waiver for Schiffer), 6 MINOR — ALL twelve applied before commit; review artifact: `.claude/reports/plan-revision-orthogonal-review-2026-07-14.md`. | DONE (this revision) |
+| — | NEXT | §6 M0 is COMPLETE. Ladder continues at **M1.0** (pay the test-file line debt) → M1.1 (PyBOP gradient regression) → … — take the first unticked box, §0.3 protocol. |
