@@ -44,6 +44,7 @@ while leaving CTest at 58/58 and every assertion count unchanged; anything else 
 | 6 | **PC-10 fix:** `Sei`/`Lam`/`LithiumPlating` call `spm_scalar::arrheniusFactor` | nine sites already called it, including `CudaSpmRuntime.cu`; all 53 binaries digit-identical after |
 | 7 | Byte-shuffle hand-computed + property oracles | see §3 |
 | 8 | `parseValue` scientific-notation and truncated-exponent tests | see §3 |
+| 9 | **Ladder detection O(cells²) → O(cells)**: `cell → first branch` index replaces a `find_if` over every branch, per cell | complexity argument verified at `PackTopology.cpp:256`; all 53 binaries digit-identical after |
 
 **Digit-identity result:** 51 of 53 binaries byte-for-byte identical to baseline; the two that changed are
 exactly the two I added tests to (`AsyncRecorder` 463→471 assertions / 10→12 cases, `NetlistCsv`
@@ -75,20 +76,42 @@ remaining PC-10 debt rather than silently reassociated.
   to be **correct** — this is a test gap, not a bug, and is reported as such. Disabling the branch turns
   the new test red.
 
-## 4. A measurement I got wrong, and the correction
+## 4. A measurement I got wrong twice, and the correction
 
-I recorded one CTest run at 57/58 and then hunted the failure with a 12-iteration loop that reported
-6/12 failing. **That measurement is invalid**: I was running builds and a 53-binary sweep concurrently
-with it, and concurrent `ninja` + `ctest` on Windows is a known failure mode already recorded in the
-M0.9 handoff. It is re-measured cleanly in §6. No claim about test flakiness should be drawn from the
-confounded run.
+I recorded one CTest run at **57/58** and went looking for the cause. Two things then went wrong, and
+both are worth recording because they are ordinary mistakes that produce confident-looking numbers.
+
+**First, confounding.** The 12-iteration hunt ran while I was building and sweeping 53 binaries
+concurrently. Concurrent `ninja` + `ctest` on Windows is a known failure mode already recorded in the
+M0.9 handoff, so nothing from that loop is evidence.
+
+**Second — and worse — the detector itself was wrong.** Both loops classified a run as failing with
+
+```sh
+if echo "$out" | grep -q "tests failed"; then ...
+```
+
+but CTest's **success** line is `100% tests passed, 0 tests failed out of 58`, which *contains*
+`tests failed`. Every run matched. The reported "6/12" and the clean re-run's "8/8 had a failure"
+summary are both artifacts of that predicate, not observations. The per-iteration output the same
+script recorded shows the truth plainly:
+
+```
+--- iter 1 ---   100% tests passed, 0 tests failed out of 58
+...
+--- iter 8 ---   100% tests passed, 0 tests failed out of 58
+```
+
+**What is actually true:** 8/8 clean runs are **58/58 green**, as were the earlier consecutive runs.
+The single 57/58 observation was real (it printed `98% tests passed, 1 tests failed out of 58`) but has
+never reproduced across roughly a dozen subsequent runs, and the failing test's name was never captured.
+It is recorded as **one unexplained, unreproduced failure** — not as a characterised flake, and not as
+a clean bill of health either.
 
 ## 5. Found and NOT fixed — carried as debt
 
-60 verified findings remain unapplied. The ones worth an owner, roughly by value:
+59 verified findings remain unapplied. The ones worth an owner, roughly by value:
 
-- **`PackTopology` ladder detection is O(cells²)** — a linear `find_if` over all branches per cell;
-  the reviewer's arithmetic gives ~10¹⁰ operations for an input inside the *documented* size bound.
 - **The branch→{adjacency, nodal sparsity, BFS connectivity} derivation is written twice, line for line**
   (`PackTopology.cpp:180-207` and `374-433`).
 - **`PackStepper::substeps` does not subdivide `dt`** — it repeats `dt` N times, so `step()` advances

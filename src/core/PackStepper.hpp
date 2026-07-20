@@ -23,6 +23,14 @@ public:
     std::span<SpmBatch *const> batches,
     unsigned workers = 0);
 
+  //!< Advances the pack by `substeps * dt`, NOT by `dt`.
+  //!<
+  //!< `substeps` does not subdivide `dt`: the loop runs `substeps` iterations and
+  //!< each one advances the full `dt`, at `time + substep * dt` (PackStepper.cpp).
+  //!< It is the number of inner electrical steps taken per outer solve — the
+  //!< electrical current is re-solved once, then held frozen across them (§3.5
+  //!< multirate). The name reads like subdivision, so it is spelled out here:
+  //!< `step(I, t, 1.0, ..., substeps = 10)` advances **10 seconds**, not one.
   [[nodiscard]] slide::Status step(
     real_t applied_current,
     real_t time,

@@ -233,6 +233,22 @@ namespace {
           && simple_adjacency[node].size() != 2)
         return;
 
+    //!< cell id -> index of the FIRST branch carrying it. The ladder walk below needs
+    //!< this lookup once per cell, and doing it with a linear scan over every branch
+    //!< made detection O(cells^2) — the wrong complexity for the 10^4-10^5 cell packs
+    //!< this project targets (PLAN.md §1). Built here, after every early return, so a
+    //!< pack that is not a ladder pays nothing for it. `try_emplace` keeps the FIRST
+    //!< match, exactly like the std::find_if it replaces, so a duplicated cell id
+    //!< still resolves to the same branch. A map rather than a vector indexed by cell
+    //!< id: ids are dense today, but sizing an allocation from an input-derived
+    //!< maximum is the amplification shape D-29 already had to fix once.
+    std::unordered_map<std::uint32_t, std::uint32_t> branch_of_cell;
+    branch_of_cell.reserve(netlist.branches.size());
+    for (std::size_t index = 0; index < netlist.branches.size(); ++index)
+      if (netlist.branches[index].kind == ElectricalBranchKind::cell)
+        branch_of_cell.try_emplace(netlist.branches[index].cell,
+                                   static_cast<std::uint32_t>(index));
+
     netlist.ladder_offsets.push_back(0);
     netlist.ladder_nodes.push_back(netlist.terminal_positive);
     std::uint32_t previous = node_count;
@@ -253,11 +269,11 @@ namespace {
       auto cells = layers.at({ endpoints.first, endpoints.second });
       std::sort(cells.begin(), cells.end());
       for (const auto cell : cells) {
-        const auto branch = std::find_if(netlist.branches.begin(), netlist.branches.end(), [&](const auto &candidate) {
-          return candidate.kind == ElectricalBranchKind::cell
-                 && candidate.cell == cell;
-        });
-        if (branch == netlist.branches.end() || branch->node_positive != current
+        const auto found = branch_of_cell.find(cell);
+        const auto *branch = found == branch_of_cell.end()
+                               ? nullptr
+                               : &netlist.branches[found->second];
+        if (branch == nullptr || branch->node_positive != current
             || branch->node_negative != next) {
           netlist.ladder_offsets.clear();
           netlist.ladder_cells.clear();
