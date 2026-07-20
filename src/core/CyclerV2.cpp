@@ -471,16 +471,16 @@ try {
         status = currentForCustom(segment, time, local_time, current);
       } else {
         status = voltageAt(current, voltage);
-        real_t derivative{};
+        real_t current_derivative{}; //!< d(current)/dt from the user function; NOT the arena derivative rows
         if (status == slide::Status::Success)
           status = evaluateFunction(segment.custom_control,
                                     time,
                                     local_time,
                                     voltage,
                                     current,
-                                    derivative);
+                                    current_derivative);
         if (status == slide::Status::Success) {
-          current += derivative * dt;
+          current += current_derivative * dt;
           if (!is_finite(current))
             status = slide::Status::Invalid_states;
         }

@@ -19,18 +19,26 @@ inline std::filesystem::path operator+(const std::filesystem::path &lhs, const s
 namespace PathVar {
 namespace fs = std::filesystem;
 
+//!< `inline` (not `static`): one object for the whole program. As `static` these
+//!< were a separate dynamically-initialised copy in every translation unit that
+//!< included this header, and `results`/`data` were additionally non-const, so a
+//!< write would have silently changed only the writing TU's view. Nothing assigns
+//!< to them, so `inline const` is the honest declaration.
 #ifdef SLIDE_ROOT_DIR //!< SLIDE_CMAKE_MACROS
 //!< If path macros are defined in CMake, then use them.
-const auto root_folder = fs::path(SLIDE_ROOT_DIR).make_preferred();
+inline const auto root_folder = fs::path(SLIDE_ROOT_DIR).make_preferred();
 #else
-const static fs::path root_folder{ "../.." };
+//!< Fallback for builds that do not define the macro: resolved against the
+//!< *current working directory*, so a binary run from anywhere else cannot find
+//!< `data/`. The build system defines SLIDE_ROOT_DIR precisely to avoid this.
+inline const fs::path root_folder{ "../.." };
 #endif
 
-const static fs::path results_folder = "results";
-const static fs::path data_folder = "data";
+inline const fs::path results_folder = "results";
+inline const fs::path data_folder = "data";
 
-static fs::path results = root_folder / results_folder;
-static fs::path data = root_folder / data_folder;
+inline const fs::path results = root_folder / results_folder;
+inline const fs::path data = root_folder / data_folder;
 } // namespace PathVar
 
 namespace slide::settings::path::Kokam {

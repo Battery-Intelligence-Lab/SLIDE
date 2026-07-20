@@ -3,6 +3,16 @@
 include(${PROJECT_SOURCE_DIR}/cmake/SlideCoreTarget.cmake)
 slide_add_core_library(slide_core)
 
+# The core compiles clean under the project warning policy
+# (cmake/CompilerWarnings.cmake), but nothing was enforcing that: project_warnings
+# had exactly one consumer, the `slide` executable, so slide_core and every test
+# built with no -W flags at all. Link it PRIVATE — the policy is ours to keep, not
+# something downstream consumers of slide_core should inherit. The guard keeps the
+# standalone/core-only consumer builds of this directory working.
+if(TARGET project_warnings)
+  target_link_libraries(slide_core PRIVATE project_warnings)
+endif()
+
 if(SLIDE_WITH_CUDA)
   # Keep CUDA language metadata and device-runtime linkage inside one private
   # shared boundary. This prevents nvcc's Windows device libraries leaking as

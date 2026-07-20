@@ -41,6 +41,21 @@ add_library(project_warnings INTERFACE)
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
 
+# src/settings/slide_paths.hpp has always had this escape hatch, but nothing ever
+# defined the macro, so every build silently took the "../.." fallback and resolved
+# `data/` and `results/` against the CURRENT WORKING DIRECTORY. That is why a test
+# binary passes under CTest (which happens to run it from <build>/bin) and fails
+# with "file ../../data/... could not be opened" when a developer runs it directly.
+# Defining it here makes the paths independent of where the binary is launched.
+#
+# Directory scope rather than a target: the legacy sub-libraries are PRIVATE
+# dependencies of `src` and the test tree is a sibling, so neither would inherit a
+# linked interface target. Excluded from SLIDE_CORE_ONLY (wheel/WASM/consumer
+# builds) because the v5 core reads no repo-relative path and must stay relocatable.
+if(NOT SLIDE_CORE_ONLY)
+  add_compile_definitions(SLIDE_ROOT_DIR="${PROJECT_SOURCE_DIR}")
+endif()
+
 # Sanitizer lanes are homogeneous whole-project builds. Apply their directory
 # options before creating any SLIDE library or executable so static core,
 # legacy objects, test translation units, and final links are all instrumented.
