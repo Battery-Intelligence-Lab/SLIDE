@@ -10,6 +10,7 @@
 #include "Numeric.hpp"
 #include "SeiParams.hpp"
 #include "SpmObservables.hpp"
+#include "SpmScalarKernels.hpp"
 #include "SpmState.hpp"
 
 #include <array>
@@ -70,7 +71,8 @@ template <class Real>
       const Real T = state.at(layout.temperature, 0, lane);
       const Real delta = state.at(layout.sei_thickness, 0, lane);
       const Real current = ctx.i_app[static_cast<std::size_t>(lane)] * p.electrode_area;
-      const Real arrhenius = (Real{ 1 } / p.reference_temperature - Real{ 1 } / T) / p.Rg;
+      const Real arrhenius = spm_scalar::arrheniusFactor(
+        static_cast<Real>(p.reference_temperature), T, static_cast<Real>(p.Rg));
       const Real ocv_neg_temperature = observables.electrode_ocv[neg][static_cast<std::size_t>(lane)]
                                        + (T - p.reference_temperature)
                                            * observables.negative_entropic_coefficient[static_cast<std::size_t>(lane)];

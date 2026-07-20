@@ -8,6 +8,7 @@
 
 #include "AgeingKernel.hpp"
 #include "LamParams.hpp"
+#include "SpmScalarKernels.hpp"
 #include "SpmStress.hpp"
 
 #include <array>
@@ -81,7 +82,8 @@ template <class Real>
     p.model_mask, lanes, [&](unsigned model, int lane) {
       const auto i = static_cast<std::size_t>(lane);
       const Real T = state.at(layout.temperature, 0, lane);
-      const Real arrhenius = (Real{ 1 } / p.reference_temperature - Real{ 1 } / T) / p.Rg;
+      const Real arrhenius = spm_scalar::arrheniusFactor(
+        static_cast<Real>(p.reference_temperature), T, static_cast<Real>(p.Rg));
       if (model == 1) {
         const Real interval = state.at(history_layout.interval, 0, lane);
         if (!(primal_value(interval) > 0.0))

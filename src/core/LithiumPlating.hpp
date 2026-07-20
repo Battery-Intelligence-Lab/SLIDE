@@ -9,6 +9,7 @@
 #include "AgeingKernel.hpp"
 #include "LithiumPlatingParams.hpp"
 #include "SpmObservables.hpp"
+#include "SpmScalarKernels.hpp"
 
 #include <array>
 #include <cassert>
@@ -68,7 +69,8 @@ template <class Real>
       const auto i = static_cast<std::size_t>(lane);
       const Real T = state.at(layout.temperature, 0, lane);
       const Real current = ctx.i_app[i] * p.electrode_area;
-      const Real arrhenius = (Real{ 1 } / p.reference_temperature - Real{ 1 } / T) / p.Rg;
+      const Real arrhenius = spm_scalar::arrheniusFactor(
+        static_cast<Real>(p.reference_temperature), T, static_cast<Real>(p.Rg));
       const Real reaction_rate = p.reaction_rate_ref
                                  * exp(p.reaction_rate_activation * arrhenius);
       const Real ocv_negative_temperature = observables.electrode_ocv[neg][i]

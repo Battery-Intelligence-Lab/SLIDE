@@ -10,6 +10,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cassert>
@@ -669,6 +670,75 @@ TEST_CASE("Async recorder translates deterministic worker and stream faults",
           == Status::Invalid_parameters);
     CHECK(remaining == 1);
   }
+}
+
+TEST_CASE("byte shuffle produces the hand-computed byte-plane permutation",
+          "[core][async-recorder][shuffle]")
+{
+  //!< The involution test below is self-confirming: byteShuffle/byteUnshuffle
+  //!< would both pass it while implementing the SAME wrong permutation, because
+  //!< it only ever checks that one undoes the other. This pins the permutation
+  //!< itself against an expectation worked out by hand, so the pair cannot drift
+  //!< together. Three elements of four bytes, deliberately small enough to read:
+  //!<   input  (element-major): [10 11 12 13][20 21 22 23][30 31 32 33]
+  //!<   output (plane-major):   [10 20 30][11 21 31][12 22 32][13 23 33]
+  //!< i.e. plane b collects byte b of every element, in element order.
+  constexpr std::size_t width = 4;
+  const std::array<std::byte, 12> input{
+    std::byte{ 0x10 }, std::byte{ 0x11 }, std::byte{ 0x12 }, std::byte{ 0x13 },
+    std::byte{ 0x20 }, std::byte{ 0x21 }, std::byte{ 0x22 }, std::byte{ 0x23 },
+    std::byte{ 0x30 }, std::byte{ 0x31 }, std::byte{ 0x32 }, std::byte{ 0x33 }
+  };
+  const std::array<std::byte, 12> expected{
+    std::byte{ 0x10 }, std::byte{ 0x20 }, std::byte{ 0x30 },
+    std::byte{ 0x11 }, std::byte{ 0x21 }, std::byte{ 0x31 },
+    std::byte{ 0x12 }, std::byte{ 0x22 }, std::byte{ 0x32 },
+    std::byte{ 0x13 }, std::byte{ 0x23 }, std::byte{ 0x33 }
+  };
+  std::vector<std::byte> shuffled(input.size());
+  REQUIRE(core::byteShuffle(input, shuffled, width) == Status::Success);
+  CHECK(std::equal(expected.begin(), expected.end(), shuffled.begin(), shuffled.end()));
+
+  //!< And the inverse is pinned against the same hand-computed pair, so that
+  //!< byteUnshuffle is checked by something other than byteShuffle.
+  std::vector<std::byte> unshuffled(input.size());
+  REQUIRE(core::byteUnshuffle(expected, unshuffled, width) == Status::Success);
+  CHECK(std::equal(input.begin(), input.end(), unshuffled.begin(), unshuffled.end()));
+}
+
+TEST_CASE("byte shuffle groups the shared high-order bytes it exists to expose",
+          "[core][async-recorder][shuffle]")
+{
+  //!< The transform earns its place only because neighbouring states are similar,
+  //!< so their sign/exponent bytes repeat and the compressor sees long runs
+  //!< (PLAN.md §3.7, the Blosc pattern). That is a property of the OUTPUT, and it
+  //!< is independent of the index arithmetic, so it cannot be satisfied by a
+  //!< self-consistent wrong permutation.
+  const std::array<double, 8> values{ 1.0000000, 1.0000001, 1.0000002, 1.0000003,
+                                      1.0000004, 1.0000005, 1.0000006, 1.0000007 };
+  const auto bytes = std::as_bytes(std::span{ values });
+  std::vector<std::byte> shuffled(bytes.size());
+  REQUIRE(core::byteShuffle(bytes, shuffled, sizeof(double)) == Status::Success);
+
+  //!< Every one of these doubles shares its sign+exponent byte, so the plane
+  //!< holding that byte must be a constant run after shuffling, while the raw
+  //!< element-major layout scatters those bytes one per 8.
+  const std::size_t elements = values.size();
+  const auto plane = [&](std::size_t index) {
+    return std::span{ shuffled }.subspan(index * elements, elements);
+  };
+  const auto top = plane(sizeof(double) - 1); //!< little-endian: the exponent's high byte
+  CHECK(std::ranges::all_of(top, [&](std::byte b) { return b == top[0]; }));
+
+  //!< Guard against a "permutation" that simply constant-fills: the low-order
+  //!< plane must still vary, and the whole output must be a permutation of the
+  //!< input (same byte multiset), which a lossy transform would fail.
+  const auto bottom = plane(0);
+  CHECK_FALSE(std::ranges::all_of(bottom, [&](std::byte b) { return b == bottom[0]; }));
+  std::vector<std::byte> a(bytes.begin(), bytes.end()), b(shuffled.begin(), shuffled.end());
+  std::ranges::sort(a);
+  std::ranges::sort(b);
+  CHECK(a == b);
 }
 
 TEST_CASE("P8-G3 byte shuffle is a bitwise involution",

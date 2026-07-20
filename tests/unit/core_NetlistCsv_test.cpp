@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <istream>
@@ -16,6 +17,7 @@
 #include <streambuf>
 #include <string>
 #include <utility>
+#include <vector>
 
 using namespace slide;
 
@@ -112,6 +114,68 @@ TEST_CASE("liionpack CSV imports arbitrary resistor/cell graphs atomically",
   core::SolverWorkspace workspace;
   CHECK(workspace.configure(topology.electrical, topology.cells.size())
         == Status::Success);
+}
+
+TEST_CASE("liionpack CSV parses scientific-notation values exactly",
+          "[core][pack][netlist][csv]")
+{
+  //!< pandas/numpy write small floats in exponent form by default, so a liionpack
+  //!< `netlist.to_csv()` routinely contains values like 1e-05 for the connection
+  //!< resistances. `parseValue` has an exponent branch (NetlistCsv.cpp:185-197),
+  //!< but no test had ever driven a value through it: the fixtures elsewhere in
+  //!< this file all use plain decimals. This pins the accepted spellings AND the
+  //!< resulting magnitudes, so a regression cannot silently reinterpret 1e-05.
+  constexpr std::string_view csv =
+    "desc,node1,node2,value\n"
+    "V0,2,1,4.2\n"
+    "R0,3,2,1e-05\n"    //!< numpy's default small-float spelling
+    "R1,4,3,1.5E+03\n"  //!< uppercase E and an explicit + sign
+    "R2,5,4,2.5e2\n"    //!< exponent with no sign at all
+    "I0,5,1,80\n";
+  core::CompiledPackTopology topology;
+  core::NetlistCsvDiagnostic diagnostic;
+  REQUIRE(core::parseLiionpackNetlistCsv(csv, topology, diagnostic)
+          == Status::Success);
+  CHECK(diagnostic.message.empty());
+
+  std::vector<core::real_t> resistances;
+  for (const auto &branch : topology.electrical.branches)
+    if (branch.kind == core::ElectricalBranchKind::resistor)
+      resistances.push_back(branch.resistance);
+  std::ranges::sort(resistances);
+
+  //!< Exact equality is the right assertion, not a tolerance: `std::from_chars`
+  //!< and the C++ literal must both round to the same nearest double.
+  REQUIRE(resistances.size() == 3);
+  CHECK(resistances[0] == 1e-05);
+  CHECK(resistances[1] == 250.0);
+  CHECK(resistances[2] == 1500.0);
+}
+
+TEST_CASE("liionpack CSV rejects truncated exponents rather than guessing",
+          "[core][pack][netlist][csv]")
+{
+  //!< The exponent branch returns false when no digit follows `e`/`E` or its sign.
+  //!< Without these, a parser that silently accepted "1e" as 1.0 would pass every
+  //!< other test in this file.
+  const auto rejects = [](std::string_view value) {
+    std::string csv = "desc,node1,node2,value\nV0,2,1,4.2\nR0,3,2,";
+    csv += value;
+    csv += "\nI0,3,1,80\n";
+    core::CompiledPackTopology topology;
+    core::NetlistCsvDiagnostic diagnostic;
+    const Status status =
+      core::parseLiionpackNetlistCsv(csv, topology, diagnostic);
+    //!< Rejection must also be atomic: nothing published on the way out.
+    CHECK(topology.cells.empty());
+    CHECK(topology.electrical.branches.empty());
+    return status != Status::Success;
+  };
+  CHECK(rejects("1e"));
+  CHECK(rejects("1e+"));
+  CHECK(rejects("1e-"));
+  CHECK(rejects("1e+x"));
+  CHECK(rejects("1.e5e5"));
 }
 
 TEST_CASE("liionpack CSV contracts ideal wires and remaps sparse node labels",
