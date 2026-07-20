@@ -26,6 +26,19 @@
 > forward-sensitivity Jacobians, Jacobian service, ICA/DVA, (opt) PSD tier), each box shipping
 > oracle-first unit tests per MC-2/MC-4; former M18/M19 renumbered M19/M20 — `v6.0.0` is now M20.
 >
+> **2026-07-21 — code-quality pass (Debug only).** A nine-way disjoint review of `src/core` with an
+> adversarial verifier per finding raised 117, of which 68 survived. Eight landed (PC-10 Arrhenius
+> duplication; `SLIDE_ROOT_DIR` never defined so binaries depended on their launch directory;
+> `project_warnings` never linked to `slide_core` or the unit tests; a shadowed `derivative`; Boost as
+> `SYSTEM`; `PathVar` globals `inline const`; plus real oracles for the byte-shuffle codec and
+> `parseValue`'s exponent branch, both of which were previously untestable-by-construction).
+> **60 verified findings remain unapplied and need owners** — see §5 of
+> `.claude/reports/code-quality-pass-2026-07-21.md`; the full machine-readable set is
+> `.claude/reports/code-quality-pass-2026-07-21-survivors.json`. Highlights: O(cells²) ladder detection,
+> a line-for-line duplicated topology derivation, `PackStepper::substeps` not subdividing `dt`,
+> `crc32` defined twice in the recording subsystem, a fast-math-unsafe FP validity gate.
+> **Release and CUDA were not re-run for this pass.**
+>
 > **Stale build artifacts (found during M0.9, worth cleaning):** `build-release/bin/Release/` still holds `*_fast`/`*_ipo` probe binaries dated 2026-07-12 that are NOT in the current Ninja build graph. One of them fails an assertion. They are not evidence about current code — the live Release lane already compiles with `-ffast-math` and passes that test — but they will keep poisoning any glob-based measurement until the directory is reconfigured from scratch.
 
 ---
