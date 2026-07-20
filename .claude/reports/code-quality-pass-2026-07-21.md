@@ -115,7 +115,9 @@ a clean bill of health either.
 - **The branch→{adjacency, nodal sparsity, BFS connectivity} derivation is written twice, line for line**
   (`PackTopology.cpp:180-207` and `374-433`).
 - **`PackStepper::substeps` does not subdivide `dt`** — it repeats `dt` N times, so `step()` advances
-  `substeps·dt`. The name contradicts the code and nothing documents it.
+  `substeps·dt`. **Partially addressed**: the declaration now documents it (verified: the electrical
+  solve and thermal assembly do sit outside the loop, so the current really is frozen across substeps).
+  The name still contradicts the code; renaming it is a breaking API change and needs its own decision.
 - **`relaxation_target_` is reused for three unrelated quantities** in one function, including as the
   Kahan compensation array for a differently-named buffer.
 - **`crc32`, `allocationFailureStatus`, `endian_marker` are each defined twice** inside the recording
