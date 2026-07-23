@@ -286,7 +286,18 @@ public:
                                            std::span<real_t> terminal_voltage)
     requires(supports_fused_euler)
   {
-    assert(static_cast<int>(terminal_voltage.size()) == n_lanes_);
+    const int expected_rows = layout_.energy_throughput.row_begin
+                              + layout_.energy_throughput.rows;
+    if (state.n_rows() != expected_rows || state.n_lanes() != n_lanes_
+        || ctx.i_app.size() != static_cast<std::size_t>(n_lanes_)
+        || terminal_voltage.size() != static_cast<std::size_t>(n_lanes_)
+        || !is_finite(ctx.time) || !is_finite(ctx.dt)
+        || !is_finite(dt) || !(dt > 0.0)
+        || !std::all_of(ctx.i_app.begin(),
+                        ctx.i_app.end(),
+                        [](const real_t &current) { return is_finite(current); }))
+      return slide::Status::Invalid_parameters;
+
     const ConstBatchView current{ state.shape(), std::span<const real_t>{ state.raw() } };
     const int period = lanePeriod(current, ctx);
     const bool coalesced = period < n_lanes_;
