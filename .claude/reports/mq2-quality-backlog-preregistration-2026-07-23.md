@@ -252,6 +252,42 @@ These bands are fixed before the corresponding test or source change.
   zero occurrences of the compact old association
   `p.model5_k_activation/p.Rg*(Real{1}/p.reference_temperature-Real{1}/T)`.
   Reintroducing any eliminated private expression must make the gate red.
+
+### A1 SEI owner amendment after the registered exact gate falsified a function boundary
+
+The function-shaped `seiKineticCurrent` extraction above is retained as the
+original registration, but its digit-identity hypothesis is **FALSIFIED** for
+the Release/ThinLTO capture mode. Three genuinely different implementations
+all produced the same changed all-ageing fingerprint
+`01ada7c263317e7f / b2d2672a19e42c12` instead of
+`0be580cf849e57e1 / 4c6451971b74f789`, and changed the factory initial
+derivative SHA-256 from
+`3f5de3d1146e51b5d8d5755130753f329944a7c9cada50e5909aa348e76ed178`
+to
+`3c712d4b1d5c625c29f8cb2b43468da904f103847ad3c371cd6601e243a4c2b6`:
+
+1. the preregistered `<Real, Scalar>` function with `const Real &` operands;
+2. the same function forced `always_inline`; and
+3. a fully deduced, by-value, `auto`-returning function.
+
+Keeping the five `activatedValue` calls while restoring only the three kinetic
+expressions restored both exact fixtures, isolating the optimizer-sensitive
+boundary. Therefore, before trying the replacement, A1 registers the same
+expression-macro remedy already required by the modal kernel:
+
+- `SpmScalarKernels.hpp` owns exactly one
+  `SLIDE_SPM_SEI_KINETIC_CURRENT` definition;
+- `Sei.hpp` contains exactly three calls and no definition (four name tokens
+  total across owner and consumer);
+- the macro accepts the caller's `exp` token so double and ADL `Dual` retain
+  the existing caller expression tree;
+- the five `spm_scalar::activatedValue(` counts and all old-private-expression
+  prohibitions remain as registered;
+- Debug, Release, and Release/ThinLTO all-ageing and factory fingerprints must
+  remain unchanged. No changed hash is authorized.
+
+This amendment changes the structural spelling, not the finding's disposition
+or behavior contract. It is registered before the first macro build/run.
 - The final disposition-table census is executable: JSON ID count = 68, unique
   ID count = 68, and the table matches that set exactly. Its supplemental set
   must equal exactly

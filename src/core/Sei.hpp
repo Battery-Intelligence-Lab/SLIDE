@@ -82,18 +82,33 @@ template <class Real>
 
       Real contribution{};
       if (model == 1) {
-        const Real kt = p.model1_k * exp(p.model1_k_activation * arrhenius);
-        contribution = p.n_sei * p.F * kt
-                       * exp(-p.n_sei * p.F / (p.Rg * T) * p.alpha_sei
-                             * (ocv_neg_temperature + eta_neg
-                                - p.sei_equilibrium_potential + film_drop));
+        const Real kt = spm_scalar::activatedValue(
+          p.model1_k, p.model1_k_activation, arrhenius);
+        contribution = SLIDE_SPM_SEI_KINETIC_CURRENT(
+          p.n_sei,
+          p.F,
+          kt,
+          p.Rg,
+          T,
+          p.alpha_sei,
+          ocv_neg_temperature + eta_neg
+            - p.sei_equilibrium_potential + film_drop,
+          exp);
       } else if (model == 2) {
-        const Real kt = p.model2_k * exp(p.model2_k_activation * arrhenius);
-        const Real Dt = p.model2_D * exp(p.model2_D_activation * arrhenius);
-        const Real kinetics = p.n_sei * p.F * kt
-                              * exp(-p.n_sei * p.F / (p.Rg * T) * p.alpha_sei
-                                    * (ocv_neg_temperature + eta_neg
-                                       - p.sei_equilibrium_potential + film_drop));
+        const Real kt = spm_scalar::activatedValue(
+          p.model2_k, p.model2_k_activation, arrhenius);
+        const Real Dt = spm_scalar::activatedValue(
+          p.model2_D, p.model2_D_activation, arrhenius);
+        const Real kinetics = SLIDE_SPM_SEI_KINETIC_CURRENT(
+          p.n_sei,
+          p.F,
+          kt,
+          p.Rg,
+          T,
+          p.alpha_sei,
+          ocv_neg_temperature + eta_neg
+            - p.sei_equilibrium_potential + film_drop,
+          exp);
         const Real diffusion = delta / (p.n_sei * p.F * Dt);
         contribution = p.electrolyte_reactant_concentration
                        / (Real{ 1 } / kinetics + diffusion);
@@ -105,16 +120,23 @@ template <class Real>
         const Real D_ref = model3 ? p.model3_D : p.model4_D;
         const Real D_activation = model3 ? p.model3_D_activation
                                          : p.model4_D_activation;
-        const Real kt = k_ref * exp(k_activation * arrhenius);
-        const Real Dt = D_ref * exp(D_activation * arrhenius);
+        const Real kt = spm_scalar::activatedValue(
+          k_ref, k_activation, arrhenius);
+        const Real Dt = spm_scalar::activatedValue(
+          D_ref, D_activation, arrhenius);
         constexpr real_t a_L_K = 0.134461;
         const Real first_exponent = model3 ? eta_neg + film_drop : eta_neg;
         const Real first = a_L_K
                            * exp(-p.n_sei * p.F * first_exponent / (p.Rg * T));
-        const Real second = p.n_sei * p.F * kt
-                            * exp(-p.n_sei * p.F / (p.Rg * T) * p.alpha_sei
-                                  * (ocv_neg_temperature
-                                     - p.sei_equilibrium_potential));
+        const Real second = SLIDE_SPM_SEI_KINETIC_CURRENT(
+          p.n_sei,
+          p.F,
+          kt,
+          p.Rg,
+          T,
+          p.alpha_sei,
+          ocv_neg_temperature - p.sei_equilibrium_potential,
+          exp);
         const Real third = delta / (p.n_sei * p.F * Dt);
         contribution = first / (Real{ 1 } / second + third);
       }

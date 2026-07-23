@@ -75,6 +75,8 @@ load_compact("src/core/CudaSpmRuntime.cu" cuda)
 load_compact("src/core/CompiledCurve.hpp" curves)
 load_compact("src/core/SpectralDiffusion.hpp" spectral)
 load_compact("src/core/SpectralDiffusionLegacy.hpp" spectral_legacy)
+load_compact("src/core/SpmScalarKernels.hpp" scalar_kernels)
+load_compact("src/core/Sei.hpp" sei)
 
 foreach(consumer IN ITEMS pipeline observables dual cuda curves spectral)
   require_tokens("${consumer}" ${consumer} "#include\"SpmScalarKernels.hpp\"")
@@ -173,5 +175,39 @@ forbid_tokens("spectral diffusion" spectral
 
 forbid_tokens("spectral legacy oracle" spectral_legacy
   "SpmScalarKernels.hpp" "spm_scalar::")
+
+slice_between(
+  "scalar ageing owners"
+  scalar_kernels
+  "template<classScalar>SLIDE_SPM_HOST_DEVICEinlineScalararrheniusFactor("
+  "template<classArea,classElectronCount,classFaraday,classThickness>"
+  scalar_ageing)
+slice_between(
+  "SEI consumer"
+  sei
+  "template<classReal>[[nodiscard]]slide::StatuscomputeSei("
+  "template<intNCH>structSeiRhsParams"
+  sei_consumer)
+
+require_token_count(
+  "scalar ageing owner" scalar_ageing "SLIDE_SPM_SEI_KINETIC_CURRENT(" 1)
+require_token_count(
+  "SEI activation consumers" sei_consumer "spm_scalar::activatedValue(" 5)
+require_token_count(
+  "SEI kinetic consumers" sei_consumer "SLIDE_SPM_SEI_KINETIC_CURRENT(" 3)
+set(sei_owner_and_consumer "${scalar_ageing}${sei_consumer}")
+require_token_count(
+  "SEI kinetic owner and consumers" sei_owner_and_consumer
+  "SLIDE_SPM_SEI_KINETIC_CURRENT(" 4)
+require_tokens("SEI direct scalar owner" sei
+  "#include\"SpmScalarKernels.hpp\"")
+forbid_tokens("SEI private activation copies" sei_consumer
+  "p.model1_k*exp(p.model1_k_activation*arrhenius)"
+  "p.model2_k*exp(p.model2_k_activation*arrhenius)"
+  "p.model2_D*exp(p.model2_D_activation*arrhenius)"
+  "k_ref*exp(k_activation*arrhenius)"
+  "D_ref*exp(D_activation*arrhenius)")
+forbid_tokens("SEI private kinetic copies" sei_consumer
+  "p.n_sei*p.F*kt*exp(")
 
 message(STATUS "PC-10 single-source structural gate passed")

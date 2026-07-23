@@ -127,6 +127,20 @@ SLIDE_SPM_HOST_DEVICE inline auto activatedValue(
   return reference * detail::exponential(activation * arrhenius);
 }
 
+/**
+ * SEI kinetic-current expression expanded in the consumer's branch.
+ *
+ * Release/ThinLTO changes its reassociation across an inline-function boundary,
+ * even with always_inline. Keep the one PC-10 expression owner without changing
+ * the caller IR; arguments must be side-effect-free, and `exp_function` must be
+ * the caller's unqualified `exp` token so ADL still selects Dual's overload.
+ */
+#define SLIDE_SPM_SEI_KINETIC_CURRENT(                                                                                      \
+  electron_count, faraday, rate_constant, gas_constant, temperature, transfer_coefficient, driving_potential, exp_function) \
+  ((electron_count) * (faraday) * (rate_constant)                                                                           \
+   * exp_function(-(electron_count) * (faraday) / ((gas_constant) * (temperature))                                          \
+                  * (transfer_coefficient) * (driving_potential)))
+
 template <class Area, class ElectronCount, class Faraday, class Thickness>
 SLIDE_SPM_HOST_DEVICE inline auto fluxDenominator(
   Area specific_area,
