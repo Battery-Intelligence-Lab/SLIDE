@@ -15,6 +15,7 @@ fixtures`). The first three completed boundaries are:
 | `ec7ac09` | O2 fast-math validity | invalid-state behavior hardening |
 | `025108f` | O3 stress/thermal oracles | test-only |
 | `ac15536` | F0 factory byte oracle | oracle-only, before factory source edits |
+| `b9c4db1` | F1 shared factory constants | exact no-op; homogeneous rewrite deferred |
 
 The retained build trees are `build-mq1-debug` (Clang 21.1.8 Debug/ThinLTO),
 `build-mq1-release` (Clang 21.1.8 fast-math Release, IPO off), and
@@ -170,3 +171,55 @@ focused [MQ.2][recorded] case:   1414 assertions in 1 test case
 
 `clang-format --dry-run --Werror` and `git diff --check` passed. No factory
 source had changed at this evidence boundary.
+
+## F1 — shared factory constants and falsified homogeneous rewrite
+
+The repeated factory propagation of `F`, `Rg`, reference temperature, and the
+mechanism-dependent shared fields now has one anonymous-namespace owner.
+`sei_resistivity_area` is read from the already-compiled electrical parameter
+block, and the negative spectral input map is bound once by reference. Each
+helper call remains after its whole-struct mechanism copy, so the factory-owned
+values still win over the deliberately conflicting F0 sentinels.
+
+The final shared-constant-only source passed both exact fixture families in all
+three configurations:
+
+| Binary | Debug | Release | Release/ThinLTO CUDA tree |
+|---|---:|---:|---:|
+| `unit_test_core_SpmFactory` | 1472 / 8 | 1472 / 8 | 1472 / 8 |
+| `unit_test_core_AgeingKernel` | 384 / 6 | 384 / 6 | 384 / 6 |
+
+All nine F0 SHA-256 constants and all three mode-specific 1,077-value
+AgeingKernel hashes remained unchanged.
+
+The registered hypothesis that the homogeneous initialization loop could be
+removed as a digit-identical cleanup was **FALSIFIED** after three different
+implementations:
+
+1. **Compute each lane-independent value once, then fill live rows.** Debug
+   stayed exact, but fast-math Release changed the F0 hashes to
+   `b36c14f510de590f7702d9f9a58b543df536aea7d783e93ed05aa651d9a54907`,
+   `b37a3718ce1bcb5a1f794ea57ab2954219203902fdadf5a0be7dfdd83266bcc4`,
+   and
+   `163eac6fd30c298db82fb77f0f6c9a4859ae37597d09b4046e291731f70d616e`.
+2. **Cache the first lane's scalar results inside the runtime lane loop.**
+   Fast-math Release changed the negative zero mode by one ULP
+   (`bfdf03f288bd0ed6` to `bfdf03f288bd0ed7`), with F0 hashes
+   `2fa3461c9e33075ea387a0efccbdcfd2feb1ca0a9071350f1d6cb09c7666780e`,
+   `f438aecdadd12fdf19cc81f16840acc5a0f1893cdadb673818359d5696d6c677`,
+   and
+   `e4e641ca37f611fff5b612dc263090f0907c682a33286399f0c5e67e2f9ce1fc`.
+3. **Keep the lane-zero arithmetic block verbatim and copy all later arena
+   rows from lane zero.** The NCH=12 F0 hashes passed, but the independent NCH=5
+   fast-math all-ageing fixture moved from
+   `dc8f92a59dd8d67f / 59085638e06725d3` to
+   `8ce61773119858d1 / 7aaf4294740b7321` (the 1,077-value count stayed fixed).
+
+No changed hash was accepted. The initialization source was restored exactly,
+and the final Debug/Release/ThinLTO runs above are green. The finding
+`homogeneous-init-lane-loop` therefore changes from preliminary `APPLIED` to
+`DEFERRED — MQ.7 structural performance hunt`: that box must first establish
+whether this cold-path operation count warrants an optimizer-sensitive
+numerical change. This changes the predicted original-68 distribution to
+59 applied, one refuted, and eight named deferrals; it does not alter the
+71-row census.
