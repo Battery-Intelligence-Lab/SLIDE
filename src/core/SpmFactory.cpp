@@ -108,6 +108,26 @@ namespace {
     return output.build(source.stoichiometry, source.value);
   }
 
+  /**
+   * Propagate the batch-owned constants into every mechanism member that
+   * declares the same concept. Call this only after copying the mechanism:
+   * adding one of these names to a parameter type intentionally opts it in.
+   */
+  template <int NCH, class Mechanism>
+  void applySharedConstants(const SpmElectricalParams<NCH> &electrical,
+                            Mechanism &mechanism)
+  {
+    mechanism.F = electrical.F;
+    mechanism.Rg = electrical.Rg;
+    mechanism.reference_temperature = electrical.reference_temperature;
+    if constexpr (requires { mechanism.n; })
+      mechanism.n = electrical.n;
+    if constexpr (requires { mechanism.electrode_area; })
+      mechanism.electrode_area = electrical.electrode_area;
+    if constexpr (requires { mechanism.sei_resistivity_area; })
+      mechanism.sei_resistivity_area = electrical.sei_resistivity_area;
+  }
+
   slide::Status validateInput(const SpmFactoryInput &input,
                               const SpmModelOptions &options,
                               int n_lanes)
@@ -269,17 +289,13 @@ namespace {
       }
 
       const auto neg = domain_index(Domain::neg);
+      const auto &negative_input_map = spectral.B[neg];
       params.sei.mechanism = input.sei;
       params.sei.mechanism.model_mask = options.sei_model_mask;
       params.sei.mechanism.reduce_active_fraction = options.sei_porosity;
-      params.sei.mechanism.F = electrical.F;
-      params.sei.mechanism.Rg = electrical.Rg;
-      params.sei.mechanism.n = electrical.n;
-      params.sei.mechanism.reference_temperature = electrical.reference_temperature;
-      params.sei.mechanism.electrode_area = electrical.electrode_area;
+      applySharedConstants(electrical, params.sei.mechanism);
       params.sei.mechanism.negative_particle_radius = input.design.electrode[neg].particle_radius;
-      params.sei.mechanism.sei_resistivity_area = input.sei_resistivity_area;
-      params.sei.negative_input_map = spectral.B[neg];
+      params.sei.negative_input_map = negative_input_map;
       if (options.sei_model_mask != 0) {
         status = validateSeiParams(params.sei.mechanism);
         if (status != slide::Status::Success)
@@ -289,17 +305,13 @@ namespace {
       params.surface_crack.mechanism = input.surface_crack;
       params.surface_crack.mechanism.model_mask = options.surface_crack_model_mask;
       params.surface_crack.mechanism.reduce_negative_diffusivity = options.surface_crack_diffusivity;
-      params.surface_crack.mechanism.F = electrical.F;
-      params.surface_crack.mechanism.Rg = electrical.Rg;
-      params.surface_crack.mechanism.reference_temperature = electrical.reference_temperature;
-      params.surface_crack.mechanism.electrode_area = electrical.electrode_area;
+      applySharedConstants(electrical, params.surface_crack.mechanism);
       params.surface_crack.mechanism.negative_cs_max = input.design.electrode[neg].active_material.cs_max;
-      params.surface_crack.mechanism.sei_resistivity_area = input.sei_resistivity_area;
       const double negative_area = electrical.electrode[neg].specific_surface_area
                                    * electrical.electrode_area * electrical.electrode[neg].thickness;
       if (!(params.surface_crack.mechanism.model4_max_surface > 0.0))
         params.surface_crack.mechanism.model4_max_surface = 5.0 * input.initial_crack_surface_fraction * negative_area;
-      params.surface_crack.negative_input_map = spectral.B[neg];
+      params.surface_crack.negative_input_map = negative_input_map;
       if (options.surface_crack_model_mask != 0) {
         status = validateSurfaceCrackParams(params.surface_crack.mechanism);
         if (status != slide::Status::Success)
@@ -308,10 +320,7 @@ namespace {
 
       params.lam = input.lam;
       params.lam.model_mask = options.lam_model_mask;
-      params.lam.F = electrical.F;
-      params.lam.Rg = electrical.Rg;
-      params.lam.n = electrical.n;
-      params.lam.reference_temperature = electrical.reference_temperature;
+      applySharedConstants(electrical, params.lam);
       params.lam.particle_radius = radius;
       status = params.lam.positive_ocv.build(
         input.design.electrode[domain_index(Domain::pos)].active_material.ocv.stoichiometry,
@@ -325,15 +334,10 @@ namespace {
       }
 
       params.lithium_plating.mechanism = input.lithium_plating;
-      params.lithium_plating.mechanism.F = electrical.F;
-      params.lithium_plating.mechanism.Rg = electrical.Rg;
-      params.lithium_plating.mechanism.n = electrical.n;
-      params.lithium_plating.mechanism.reference_temperature = electrical.reference_temperature;
-      params.lithium_plating.mechanism.electrode_area = electrical.electrode_area;
-      params.lithium_plating.mechanism.sei_resistivity_area = input.sei_resistivity_area;
+      applySharedConstants(electrical, params.lithium_plating.mechanism);
       if (!options.lithium_plating)
         params.lithium_plating.mechanism.reaction_rate_ref = 0.0;
-      params.lithium_plating.negative_input_map = spectral.B[neg];
+      params.lithium_plating.negative_input_map = negative_input_map;
       if (options.lithium_plating) {
         status = validateLithiumPlatingParams(
           params.lithium_plating.mechanism);
