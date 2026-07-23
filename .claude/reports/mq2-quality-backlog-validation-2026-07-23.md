@@ -16,6 +16,9 @@ fixtures`). The first three completed boundaries are:
 | `025108f` | O3 stress/thermal oracles | test-only |
 | `ac15536` | F0 factory byte oracle | oracle-only, before factory source edits |
 | `b9c4db1` | F1 shared factory constants | exact no-op; homogeneous rewrite deferred |
+| `43c4953` | A1.0 surface-crack oracles | oracle-only, before ageing source edits |
+| `a699da5` | A1.1 SEI scalar ownership | exact no-op; function-boundary hypothesis falsified |
+| `e34f548` | A1.2 SurfaceCrack Arrhenius | registered low-bit association correction |
 
 The retained build trees are `build-mq1-debug` (Clang 21.1.8 Debug/ThinLTO),
 `build-mq1-release` (Clang 21.1.8 fast-math Release, IPO off), and
@@ -361,3 +364,130 @@ PackSolver.cpp              A5155224C2BAC572BF4CD785859988A3C8E23BCC5AB6CC097E4C
 
 Both structural binaries pass, changed C++ files pass
 `clang-format --dry-run --Werror`, and `git diff --check` is clean.
+
+## A1 — ageing scalar ownership and SurfaceCrack association
+
+### A1.0 — association-sensitive oracles before source edits
+
+Commit `43c4953` extends the existing direct legacy test before either ageing
+source changes. The production outputs for models 1–4 are recorded as 24
+doubles (three outputs, two diffusivity settings, four models) with two
+independent bit recurrences:
+
+| Configuration | FNV-1a | mixed |
+|---|---|---|
+| Debug | `26095ff417f83ca0` | `af0313f19f95e3dc` |
+| fast-math Release, IPO off | `4f691333ce8072a6` | `823f0fffde2c3d18` |
+| Release/ThinLTO CUDA tree | `dc30ce9466aa1ae3` | `699574956434b620` |
+
+Each pair was first captured through two deliberate zero-placeholder
+failures: Debug passed 93/95 assertions and each Release mode passed 92/94.
+After installing only the observed constants, the three modes passed 95/4,
+94/4, and 94/4. This freezes current production, not legacy: an exploratory
+bitwise comparison found that Debug model 3 already differs from legacy by one
+ULP in crack rate and two ULPs in the reduced-diffusivity rate, so that wrong
+identity target was not retained.
+
+The model-5 fixture independently assembles both associations at `T = 310 K`,
+uses a nonzero low-stoichiometry charging branch, and evaluates the complete
+crack-side reaction rather than only its exponential. In Debug, the old and
+shared results are respectively
+`0x3e05bf8574544a7a` and `0x3e05bf8574544a77`, a relative delta of
+`4.9e-16` against the registered `1e-13` band. The corrected production result
+equals the shared result in Debug. The rate is approximately
+`6.3295389e-10`, so a zero branch cannot satisfy the test. In fast-math Release
+the two scalar associations round identically; this is why the strict
+bit-inequality witness is limited to the explicitly recorded compiler mode,
+while the numerical oracle is portable.
+
+Seeding temperature as `Dual{310, 1}` gives a derivative of approximately
+`-1.2401496e-10`, equal at the printed precision to the centered
+`h = 1e-4 K` finite difference and within the registered `1e-8` relative
+band. The Release Dual value differs from its double value by only
+`1.63e-15` relative, within the registered `1e-13` band.
+
+### A1.1 — exact SEI single ownership
+
+The five activation expressions now call `spm_scalar::activatedValue`. The
+three repeated kinetic-current expressions use the one
+`SLIDE_SPM_SEI_KINETIC_CURRENT` owner in `SpmScalarKernels.hpp`; branch policy
+and the two distinct driving potentials remain local to `computeSei`.
+
+The originally preregistered ordinary function extraction was
+**FALSIFIED**, not silently reblessed. Debug and IPO-off Release stayed exact,
+but Release/ThinLTO changed:
+
+```text
+AgeingKernel:
+  0be580cf849e57e1 / 4c6451971b74f789
+  -> 01ada7c263317e7f / b2d2672a19e42c12
+
+Factory initial derivative:
+  3f5de3d1146e51b5d8d5755130753f329944a7c9cada50e5909aa348e76ed178
+  -> 3c712d4b1d5c625c29f8cb2b43468da904f103847ad3c371cd6601e243a4c2b6
+```
+
+Three distinct implementations produced those same changed values: the
+preregistered `<Real, Scalar>` function with reference operands, a forced
+`always_inline` form, and a fully deduced by-value `auto` form. Keeping the
+five activation-owner calls while restoring only the kinetic expressions
+restored both fingerprints, isolating the inline boundary. The macro remedy
+was then registered before its first build/run; it mirrors the modal kernel's
+already-established optimizer-sensitive one-source pattern and passes the
+caller `exp` token so ADL still selects `Dual`.
+
+No hash was accepted. With the caller-expanded owner, `core_Sei` remains 57/3,
+`core_AgeingKernel` 384/6, and `core_SpmFactory` 1472/8 in Debug, fast-math
+Release, and Release/ThinLTO. Every pre-A1 ageing/factory fingerprint remains
+unchanged.
+
+The kinetic exponent is dimensionless: `F/(Rg*T)` has units `1/V` and its
+driving potential has units `V`. The Arrhenius exponent is likewise
+dimensionless:
+`(J/mol) * ((1/K) / (J/(mol K))) = 1`.
+
+### A1.2 — registered SurfaceCrack association correction
+
+Model 5 now calls `spm_scalar::arrheniusFactor` directly and evaluates
+`Ea * ((1/Tref - 1/T)/Rg)`. The `2*k` versus `k` branch multiplication and the
+final crack-side Butler–Volmer ordering are deliberately untouched. The
+independent oracle above passes after the source change, every model mask
+remains within `1e-12` of legacy, and the frozen production bits for models
+1–4 remain exact.
+
+Focused final results:
+
+| Binary | Debug | fast-math Release | Release/ThinLTO CUDA tree |
+|---|---:|---:|---:|
+| `unit_test_core_SurfaceCrack` | 95 / 4 | 94 / 4 | 94 / 4 |
+| `unit_test_core_Sei` | 57 / 3 | 57 / 3 | 57 / 3 |
+| `unit_test_core_AgeingKernel` | 384 / 6 | 384 / 6 | 384 / 6 |
+| `unit_test_core_SpmFactory` | 1472 / 8 | 1472 / 8 | 1472 / 8 |
+
+Although a low-bit change is observable in the dedicated Debug fixture, none
+of the existing all-ageing or padded-factory fingerprints moves for their
+inputs, so no recorded constant was reblessed.
+
+Four adversarial mutations turned red:
+
+1. restoring one private activation expression made the structural count
+   report four rather than five calls;
+2. restoring one private kinetic expression made the structural count report
+   two rather than three macro calls;
+3. giving model 1 the film-free driving potential failed direct legacy parity
+   with relative error `0.74232267435407617`;
+4. restoring the old SurfaceCrack association made the required shared-owner
+   token disappear from the structural gate.
+
+Each mutation was explicitly reversed. Final source SHA-256 values are:
+
+```text
+SpmScalarKernels.hpp          4B54927A59CA88D9863AA4325AA1F59089961A03FA1F66986775D12E704117F8
+Sei.hpp                      9B5BA40BF4BB8D96E03F0CA4D0342AB316AA3E16FAA30340FA8014CB45388214
+SurfaceCrack.hpp             A759F6E01E28271BB0342CD5C5EC0F0508A26F8D9490CC24361CFAAB391ADBAB
+core_SurfaceCrack_test.cpp   CE5BB09FB355F7B34193826D675F3C377CB06290FFA2246367B85FF698DDF9B3
+pc10_single_source.cmake     641AE57005A8BFFA3309F965E85B3182630F6B09574B0AFB706B3FE933711C43
+```
+
+The final structural gate, changed-file formatting checks, and
+`git diff --check` pass.
