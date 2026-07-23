@@ -6,6 +6,11 @@
  *  - dT/dt matches (Qgen + qext + hA*(Tenv-T))/(rho*Cp*V) to 1e-14 relative.
  *  - internal generated energy and thermal elapsed time are arena derivatives, not hidden state.
  *  - malformed physical descriptions return Invalid_parameters and clear compiled output.
+ *  - overflowing h*A returns Invalid_parameters and atomically clears all compiled output.
+ *  - with freshly compiled parameters and positive temperature, opaque bit-built qNaN in
+ *    either internal or external heat returns Invalid_states; an all-finite control succeeds.
+ *  - in the adiabatic zero-heat limit, dT/dt is exactly 0 and d(t_thermal)/dt is exactly 1
+ *    after the derivative arena is zeroed.
  */
 
 #include "../../src/core/ThermalLumped.hpp"
@@ -133,4 +138,49 @@ TEST_CASE("ThermalLumped validates cold parameters and hot state", "[core][therm
   views.zero_derivative();
   REQUIRE(core::addThermalLumpedRhs(params, views.y, views.ydot, layout, observables, core::StepCtx{ .i_app = current })
           == Status::Invalid_states);
+
+  design.h_conv = 1.0;
+  design.surface_area = 1.0;
+  REQUIRE(core::compileThermalLumped(design, params) == Status::Success);
+  design.h_conv = std::numeric_limits<double>::max();
+  design.surface_area = 2.0;
+  REQUIRE(core::compileThermalLumped(design, params)
+          == Status::Invalid_parameters);
+  REQUIRE(params.thermal_capacity == 0.0);
+  REQUIRE(params.environment_conductance == 0.0);
+  REQUIRE(params.environment_temperature == 0.0);
+
+  design.h_conv = 1.0;
+  design.surface_area = 1.0;
+  REQUIRE(core::compileThermalLumped(design, params) == Status::Success);
+  arena.at(layout.temperature, 0, 0) = 300.0;
+  arena.at(layout.external_heat_flow, 0, 0) = 0.0;
+  observables.total_heat[0] = 0.0;
+  views.zero_derivative();
+  REQUIRE(core::addThermalLumpedRhs(params, views.y, views.ydot, layout, observables, core::StepCtx{ .i_app = current })
+          == Status::Success);
+  REQUIRE(std::isfinite(views.ydot.at(layout.temperature, 0, 0)));
+  REQUIRE(std::isfinite(views.ydot.at(layout.generated_heat_energy, 0, 0)));
+  REQUIRE(std::isfinite(views.ydot.at(layout.thermal_elapsed_time, 0, 0)));
+
+  const double opaque_qnan =
+    std::bit_cast<double>(UINT64_C(0x7ff8000000000000));
+  observables.total_heat[0] = opaque_qnan;
+  REQUIRE(core::addThermalLumpedRhs(params, views.y, views.ydot, layout, observables, core::StepCtx{ .i_app = current })
+          == Status::Invalid_states);
+  observables.total_heat[0] = 0.0;
+  arena.at(layout.external_heat_flow, 0, 0) = opaque_qnan;
+  REQUIRE(core::addThermalLumpedRhs(params, views.y, views.ydot, layout, observables, core::StepCtx{ .i_app = current })
+          == Status::Invalid_states);
+  arena.at(layout.external_heat_flow, 0, 0) = 0.0;
+
+  design.h_conv = 0.0;
+  REQUIRE(core::compileThermalLumped(design, params) == Status::Success);
+  REQUIRE(params.environment_conductance == 0.0);
+  arena.at(layout.temperature, 0, 0) = 310.0;
+  views.zero_derivative();
+  REQUIRE(core::addThermalLumpedRhs(params, views.y, views.ydot, layout, observables, core::StepCtx{ .i_app = current })
+          == Status::Success);
+  REQUIRE(views.ydot.at(layout.temperature, 0, 0) == 0.0);
+  REQUIRE(views.ydot.at(layout.thermal_elapsed_time, 0, 0) == 1.0);
 }
