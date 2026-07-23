@@ -230,10 +230,10 @@ These bands are fixed before the corresponding test or source change.
 
 A read-only review fixed the following oracle inputs before the first P1/P2
 source edit. Traces A–C were specified before their first test run; this
-repository addendum makes that earlier registration durable. Trace D is
-registered here before its first build/run after adversarial review found that
-A–C use only dyadic resistances and therefore cannot freeze the
-`x/R` versus `x*(1/R)` fast-math seam.
+repository addendum makes that earlier registration durable. The initial D0
+candidate was registered before its run after adversarial review found that
+A–C use only dyadic resistances. Its mutation was subsequently falsified and
+the revised Trace D below is registered before its first evidentiary run.
 
 1. **Trace A — exact high-dynamic-range all-mode solve.** Compile
    `parallel(4, affine)` with `H = 0x1p53`,
@@ -257,27 +257,53 @@ A–C use only dyadic resistances and therefore cannot freeze the
    and maximum three iterations, sparse solve must take exactly three:
    half damping, root, confirmation. It publishes voltage `4`, currents
    `{4,-4}`, nodes `{4,0}`, and independent exact-zero KCL.
-4. **Trace D — non-dyadic callback and publication bits.** A test-only affine
-   adapter records every current span passed to `linearizeThevenin` before
-   copying its constant `E/R` outputs. First, fresh sparse, ladder, and
-   relaxation solvers run `parallel(4, affine)` with
+4. **Trace D0 — first non-dyadic candidate, FALSIFIED.** A test-only affine
+   adapter recorded every current span passed to `linearizeThevenin` before
+   copying its constant `E/R` outputs. Fresh sparse, ladder, and relaxation
+   solvers used `parallel(4, affine)`,
    `E={4,4.1,3.9,4.2}`, `R={0.1,0.2,0.15,0.3}`, applied current `2`,
-   tolerance `1e-12`, and maximum four iterations; each must take exactly two.
-   Second, a fresh damped sparse solver uses `parallel(2, affine)`,
-   `E={4,0}`, `R={0.3,0.7}`, zero applied current, the same tolerance, and
-   maximum three iterations; it must take exactly three. For each of the four
-   paths, two independent `RecordedBits` recurrences hash, in order, every
-   callback-current frame, final cell currents, final node voltages, and one
-   scalar frame containing terminal voltage, residual norm, constraint drift,
-   constraint bound, and relaxation gain. Expected hashes are captured
-   separately for Debug, fast-math Release/IPO-off, and
-   Release/ThinLTO/CUDA-host builds through deliberate zero placeholders
-   before any pack source edit. The all-mode records contain 19 doubles each;
-   the damped record contains 15. No hash may be reblessed during P1 or P2.
+   tolerance `1e-12`, and maximum four iterations; a damped sparse solver used
+   `parallel(2, affine)`, `E={4,0}`, `R={0.3,0.7}`, zero applied current, and
+   maximum three iterations. Baseline records were 19 doubles for each
+   all-mode path and 15 for the damped path. All three configurations produced
+   the same four FNV recurrences
+   `{6ff139e00d3a135a,4cd7e2c4e437d0a6,8941772cd3334768,a943f04490d81eb6}`
+   and mixed recurrences
+   `{32a19f0565ed72b7,c7540d7f77909867,536ea92d297f75c9,a002fa5404b9b09b}`.
+   However, changing all four reconstruction sites from `x/R` to
+   `x*(1/R)` left the Debug gate green at 26/26: every realized
+   numerator/resistance pair rounded identically. Production was restored.
+   D0 is therefore exploration and falsification evidence, not an identity
+   gate, and its hashes are not retained as acceptance criteria.
+5. **Trace D — bit-separating callback and publication bits.** Before its
+   first evidentiary build/run, the replacement is fixed as follows. Fresh
+   sparse, ladder, and relaxation solvers use `parallel(2, affine)`, `E={0,0}`,
+   `R={0.1,0.1}`, applied current `0.1`, tolerance `1e-12`, and maximum four
+   iterations; each must take exactly two. The analytic terminal voltage is
+   `-0.005`. Direct reconstruction `0.005/0.1` has bits
+   `3fa9999999999999`, while the forbidden reciprocal multiplication has bits
+   `3fa999999999999a`.
 
-Trace D is the decisive digit-identity gate for non-dyadic division at all
-four current-reconstruction sites: sparse undamped, sparse damped, ladder, and
-relaxation. A final solution-only hash is insufficient because a later
+   The damped sparse path uses `parallel(2, affine)`, `E={0.5,0}`,
+   `R={0.1,0.1}`, zero applied current, the same tolerance, and maximum three
+   iterations. Its first undamped voltage is `0.25`; current magnitude `2.5`
+   selects damping `0.8`, producing voltage `0.2`. The first reconstructed
+   positive current is direct `(0.5-0.2)/0.1` with bits
+   `4007ffffffffffff`, versus reciprocal-multiply bits
+   `4008000000000000`. The solve must take exactly three iterations.
+
+   For all four paths, two independent `RecordedBits` recurrences hash, in
+   order, every callback-current frame, final cell currents, final node
+   voltages, and one scalar frame containing terminal voltage, residual norm,
+   constraint drift, constraint bound, and relaxation gain. Expected hashes
+   are captured separately for Debug, fast-math Release/IPO-off, and
+   Release/ThinLTO/CUDA-host builds through deliberate zero placeholders. The
+   all-mode records contain 13 doubles each; the damped record contains 15.
+   No hash may be reblessed during P1 or P2.
+
+Revised Trace D is the decisive digit-identity gate for non-dyadic division at
+all four current-reconstruction sites: sparse undamped, sparse damped, ladder,
+and relaxation. A final solution-only hash is insufficient because a later
 iteration could wash out a changed reconstructed current; callback frame two
 is therefore part of the record.
 
