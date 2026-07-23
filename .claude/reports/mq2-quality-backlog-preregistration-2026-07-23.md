@@ -280,6 +280,74 @@ four current-reconstruction sites: sparse undamped, sparse damped, ladder, and
 relaxation. A final solution-only hash is insufficient because a later
 iteration could wash out a changed reconstructed current; callback frame two
 is therefore part of the record.
+
+### P1/P2 pack-algebra implementation addendum
+
+The implementation shape and structural gates below are registered after the
+read-only review and before the first P1/P2 production-source edit.
+
+P1 gives the duplicated algebra five owners in `PackSolverInternal.hpp`.
+Every scalar operand passed across a helper boundary is a `const real_t &`;
+that spelling is load-bearing under finite-math because `Numeric.hpp`
+documents that a by-value argument may acquire `nofpclass` and let Clang fold
+the bitwise finiteness gate away.
+
+- `branchDrop` owns the ordered positive-node minus negative-node
+  subtraction.
+- `BranchAffine` carries resistance and source. `branchAffine` must branch on
+  kind before indexing the cell arrays; a resistor returns its own resistance
+  and positive zero source.
+- `branchCurrentNumerator` owns `drop-source`, and `branchCurrentOut` owns
+  `numerator/resistance`. They deliberately do not validate: sparse retains
+  its runtime numerator rejection while relaxation retains its documented
+  assertion.
+- `cellCurrentFromDrop` owns the checked discharge-positive
+  `(ocv-drop)/resistance` reconstruction.
+
+In compacted production sources the exact token census is:
+
+| Token | owner | `PackSolver.cpp` | `PackSolverIterative.cpp` | total |
+|---|---:|---:|---:|---:|
+| `cellCurrentFromDrop(` | 1 | 2 | 2 | 5 |
+| `branchDrop(` | 1 | 4 | 2 | 7 |
+| `branchAffine(` | 1 | 2 | 2 | 5 |
+| `branchCurrentNumerator(` | 1 | 1 | 1 | 3 |
+| `branchCurrentOut(` | 1 | 1 | 1 | 3 |
+
+The gate also forbids every old raw cell reconstruction, the six raw branch
+drops, and the two cell/resistor affine ternaries. It slices sparse undamped
+and damped bodies and requires one reconstruction-helper call in each. The
+dead `<cstring>` include and three dead namespace `using` declarations are
+forbidden. The Kahan/fast-math rationale moves immediately above its pragma
+block; the false claim that the compensated helper serves the sparse solve is
+deleted.
+
+P2 replaces four multiply-used vectors with one private
+`RelaxationScratch` containing exactly seven cold-sized vectors:
+`diagonal`, `diagonal_compensation`, `rhs`, `rhs_compensation`, `target`,
+`residual`, and `residual_compensation`. This is an increase of three vectors,
+all allocated during transactional `configure`; the candidate aggregate is
+published by one no-throw move only after all fallible work. Hot traffic stays
+at exactly six fills: diagonal and its compensation plus RHS and its
+compensation at entry, then residual and its compensation immediately before
+KCL. `target` is not filled because every node is unconditionally assigned.
+No vector construction is permitted inside `solveRelaxation`.
+
+Within compacted `solveRelaxation`, indexed-use counts are exactly
+`diagonal[`: 4, `diagonal_compensation[`: 2, `rhs[`: 6,
+`rhs_compensation[`: 4, `target[`: 4, `residual[`: 5, and
+`residual_compensation[`: 4. All four old member names are forbidden
+repository-wide. The private P9C5 `PackSolver` two-space member-anchor count
+changes from 85 to 83 solely because four private member declarations become
+one private struct declaration plus one member.
+
+P1 and P2 must retain every Trace D hash in all three configurations without
+reblessing. A reciprocal-multiply mutation must make the non-dyadic record
+red. Replacing diagonal compensation or residual storage with `target` must
+make the indexed-role gate red; removing the residual reset must make the
+six-fill gate red and the repeated relaxation record red. All mutations are
+reversed with exact source hashes before acceptance.
+
 - Recording refactors retain byte-identical encoded headers, payloads, CRCs, and
   CSV text on the existing fixtures. Added CSV value tests parse every data cell
   and require `max_digits10` round-trip equality.
