@@ -223,3 +223,58 @@ whether this cold-path operation count warrants an optimizer-sensitive
 numerical change. This changes the predicted original-68 distribution to
 59 applied, one refuted, and eight named deferrals; it does not alter the
 71-row census.
+
+## F1 — direct fused-Euler validation
+
+Commit `e034d23` changes the direct base-archetype fused-Euler boundary from a
+Debug-only output-size assertion plus implicit assumptions to a Release-active
+transactional guard. Before constructing a state view for lane-period
+detection, it now requires the pipeline's exact row/lane counts, exact
+current/output span sizes, finite `ctx.time`, `ctx.dt`, explicit `dt`, and every
+current, plus strictly positive explicit `dt`.
+
+The preregistered old-source SHORT witness was red: a zero explicit `dt`
+returned `Success` and changed terminal output, so 6/8 assertions passed and
+two failed. The permanent table has 21 invalid rows: undersized and oversized
+state row/lane counts; empty, short, and long current/output spans; opaque
+qNaN/+Inf/-Inf currents; zero, negative, qNaN, and +Inf explicit steps; and
+qNaN/+Inf context step/time. Every row requires `Invalid_parameters`, a
+byte-identical complete candidate arena, and all three terminal sentinels
+unchanged. The valid control additionally requires a changed arena and both
+published voltages to replace their finite sentinels, so returning `Success`
+without doing work cannot satisfy the gate.
+
+Final clean direct-binary results:
+
+| Binary | Debug | fast-math Release | host-ThinLTO/CUDA tree |
+|---|---:|---:|---:|
+| `unit_test_core_SpmPipeline` | 114 / 2 | 114 / 2 | 114 / 2 |
+| `unit_test_core_SpmFactory` | 1472 / 8 | 1472 / 8 | 1472 / 8 |
+| `unit_test_core_AgeingKernel` | 384 / 6 | 384 / 6 | 384 / 6 |
+
+The factory and all-ageing exact fixtures retained their previously recorded
+hashes. Three adversarial mutations were independently red:
+
+1. changing exact row/lane comparisons from `!=` to `<` accepted both
+   oversized shapes and failed 6/96 focused assertions, including state and
+   output atomicity;
+2. returning `Success` immediately after validation failed 3/96 assertions
+   because neither arena nor terminal output changed;
+3. deleting the strict-positive explicit-step predicate failed 4/96
+   assertions: zero `dt` returned `Success` and published output, while
+   negative `dt` reached later physics and mutated state before rejection.
+
+Moving the guard below `lanePeriod` made the deliberately null empty-current
+span reach indexed period detection and hang the mutated process; it was
+terminated, the mutation was reversed explicitly, and the final source hashes
+were restored to:
+
+```text
+SpmPipeline.hpp             6786685528480BA65129136896D8823ADCB457A9ABCCDFEBD844D8F633C770FF
+core_SpmPipeline_test.cpp   63159E07680EE783377CF7D952543C7A18329C210142F38FEBB6F4E59DB5BD95
+```
+
+`clang-format --dry-run --Werror` passes the changed test file and
+`git diff --check` passes. The pre-existing formatting debt later in
+`SpmPipeline.hpp` remains outside this batch; no whole-header formatting claim
+is made.
