@@ -13,8 +13,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstdio>
+#include <cstdint>
 #include <span>
 
 using namespace slide;
@@ -24,6 +26,13 @@ namespace {
 constexpr std::size_t core_index(slide::Domain domain)
 {
   return core::domain_index(domain == pos ? core::Domain::pos : core::Domain::neg);
+}
+
+double runtime_real_from_bits(std::uint64_t bits)
+{
+  volatile std::uint64_t opaque_bits = bits;
+  const std::uint64_t copied_bits = opaque_bits;
+  return std::bit_cast<double>(copied_bits);
 }
 
 template <int NCH>
@@ -183,4 +192,27 @@ TEST_CASE("SPM electrical observable stage returns Status for invalid concentrat
   core::SpmObservableScratch<NCH> scratch{ 1 };
   REQUIRE(core::computeSpmObservables(params, state, layout, ctx, scratch.view())
           == Status::Invalid_states);
+
+  copy_state<NCH>(cell.getStateObj(), layout, arena);
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    REQUIRE(arena.at(layout.diffusion_coefficient[d], 0, 0) > 0.0);
+  }
+  REQUIRE(core::computeSpmObservables(params, state, layout, ctx, scratch.view())
+          == Status::Success);
+
+  auto &modal_state =
+    arena.at(layout.z[core::domain_index(core::Domain::neg)], 0, 0);
+  const auto valid_modal_state = modal_state;
+  constexpr std::array invalid_bits{
+    UINT64_C(0x7ff8000000000000),
+    UINT64_C(0x7ff0000000000000),
+    UINT64_C(0xfff0000000000000),
+  };
+  for (const auto bits : invalid_bits) {
+    modal_state = runtime_real_from_bits(bits);
+    REQUIRE(core::computeSpmObservables(params, state, layout, ctx, scratch.view())
+            == Status::Invalid_states);
+  }
+  modal_state = valid_modal_state;
 }

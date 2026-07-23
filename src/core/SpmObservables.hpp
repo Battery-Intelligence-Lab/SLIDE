@@ -27,6 +27,7 @@
 #include "BatchView.hpp"
 #include "CellDesign.hpp"
 #include "CompiledCurve.hpp"
+#include "Numeric.hpp"
 #include "SpmScalarKernels.hpp"
 #include "SpmState.hpp"
 
@@ -463,7 +464,9 @@ template <int NCH, class Real>
       const Real cs = output.concentration[d][lane];
       const Real z_surface = spm_scalar::surfaceStoichiometry(
         cs, electrode.cs_max);
-      if (!(primal_value(z_surface) > 0.0 && primal_value(z_surface) < 1.0))
+      if (!is_finite_primal(z_surface)
+          || !(primal_value(z_surface) > 0.0
+               && primal_value(z_surface) < 1.0))
         return slide::Status::Invalid_states;
 
       const Real reaction_rate = spm_scalar::activatedValue(
