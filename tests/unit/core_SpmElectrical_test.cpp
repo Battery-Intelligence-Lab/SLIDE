@@ -103,6 +103,27 @@ void copy_state(State_SPM &legacy, const core::SpmStateLayout &layout,
 
 } // namespace
 
+TEST_CASE("SPM observable scratch spans its complete named field extent",
+          "[core][observables][scratch]")
+{
+  constexpr int NCH = static_cast<int>(settings::nch);
+  constexpr int lanes = 3;
+  constexpr std::size_t expected_values =
+    static_cast<std::size_t>(lanes)
+    * (2 * (static_cast<std::size_t>(NCH) + 2) + 2 * 6 + 9);
+
+  core::SpmObservableScratch<NCH> scratch{ lanes };
+  const auto output = scratch.view();
+  const auto *first =
+    output.concentration[core::domain_index(core::Domain::neg)].data();
+  const auto *last = output.total_heat.data() + output.total_heat.size();
+
+  REQUIRE(output.concentration[core::domain_index(core::Domain::neg)].size()
+          == static_cast<std::size_t>(NCH + 2) * lanes);
+  REQUIRE(output.total_heat.size() == static_cast<std::size_t>(lanes));
+  REQUIRE(static_cast<std::size_t>(last - first) == expected_values);
+}
+
 TEST_CASE("SPM electrical observable stage matches legacy Cell_SPM", "[core][observables]")
 {
   constexpr int NCH = static_cast<int>(settings::nch);

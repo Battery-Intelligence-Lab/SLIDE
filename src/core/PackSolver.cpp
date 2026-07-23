@@ -55,7 +55,7 @@ slide::Status TheveninBatchView::linearize(std::span<const real_t> current,
                                            std::span<real_t>
                                              resistance) const
 {
-  if (!valid() || static_cast<int>(current.size()) != lanes_
+  if (!valid() || static_cast<int>(current.size()) != n_lanes_
       || ocv.size() != current.size() || resistance.size() != current.size())
     return slide::Status::Invalid_parameters;
   return linearize_(object_, current, ocv, resistance);
@@ -104,7 +104,8 @@ slide::Status PackTheveninSystem::configure(
       return slide::Status::Invalid_parameters;
   std::vector<BatchScratch> scratch(batches.size());
   for (std::size_t batch = 0; batch < batches.size(); ++batch) {
-    if (!batches[batch].valid() || batches[batch].lanes() != required_lanes[batch])
+    if (!batches[batch].valid()
+        || batches[batch].n_lanes() != required_lanes[batch])
       return slide::Status::Invalid_parameters;
     for (std::size_t prior = 0; prior < batch; ++prior)
       if (batches[batch].identity() == batches[prior].identity())

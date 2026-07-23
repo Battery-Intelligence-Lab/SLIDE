@@ -344,14 +344,24 @@ p9c3_require_tokens("Cycler stale-scratch coverage witness" experiment_test
   "std::ranges::equal(batch.derivative().raw(),derivative_before)")
 
 # Internal sharing must not leak into the two public description headers or
-# any other top-level core header.
+# any other top-level core header. MQ.2 adds one exact internal scratch-sizing
+# owner to two internal consumers; remove only that reviewed edge before
+# enforcing the original global prohibition.
 p9c3_forbid_tokens("ParameterSet public header" parameter_set_public "detail/")
 p9c3_forbid_tokens("Experiment public header" experiment_public "detail/")
-file(GLOB p9c3_public_headers "${SLIDE_SOURCE_DIR}/src/core/*.hpp")
-foreach(public_header_path IN LISTS p9c3_public_headers)
+file(GLOB p9c3_top_level_headers "${SLIDE_SOURCE_DIR}/src/core/*.hpp")
+foreach(public_header_path IN LISTS p9c3_top_level_headers)
   file(RELATIVE_PATH public_header_relative
     "${SLIDE_SOURCE_DIR}" "${public_header_path}")
   p9c3_load_compact("${public_header_relative}" public_header)
+  if(public_header_relative STREQUAL "src/core/AgeingKernel.hpp"
+     OR public_header_relative STREQUAL "src/core/SpmObservables.hpp")
+    set(checked_extent_include "#include\"detail/CheckedLaneExtent.hpp\"")
+    p9c3_require_token_count(
+      "checked lane extent allowlisted edge (${public_header_relative})"
+      public_header "${checked_extent_include}" 1)
+    string(REPLACE "${checked_extent_include}" "" public_header "${public_header}")
+  endif()
   p9c3_forbid_tokens(
     "public header isolation (${public_header_relative})" public_header
     "#include\"detail/"

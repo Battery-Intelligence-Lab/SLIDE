@@ -68,15 +68,16 @@ template <class Real>
   using std::exp;
   const auto model_status = detail::for_each_enabled_ageing_model_lane<4>(
     p.model_mask, lanes, [&](unsigned model, int lane) {
+      const auto i = static_cast<std::size_t>(lane);
       const Real T = state.at(layout.temperature, 0, lane);
       const Real delta = state.at(layout.sei_thickness, 0, lane);
-      const Real current = ctx.i_app[static_cast<std::size_t>(lane)] * p.electrode_area;
+      const Real current = ctx.i_app[i] * p.electrode_area;
       const Real arrhenius = spm_scalar::arrheniusFactor(
         static_cast<Real>(p.reference_temperature), T, static_cast<Real>(p.Rg));
-      const Real ocv_neg_temperature = observables.electrode_ocv[neg][static_cast<std::size_t>(lane)]
+      const Real ocv_neg_temperature = observables.electrode_ocv[neg][i]
                                        + (T - p.reference_temperature)
-                                           * observables.negative_entropic_coefficient[static_cast<std::size_t>(lane)];
-      const Real eta_neg = observables.overpotential[neg][static_cast<std::size_t>(lane)];
+                                           * observables.negative_entropic_coefficient[i];
+      const Real eta_neg = observables.overpotential[neg][i];
       const Real film_drop = p.sei_resistivity_area * delta * current;
 
       Real contribution{};
@@ -117,7 +118,7 @@ template <class Real>
         const Real third = delta / (p.n_sei * p.F * Dt);
         contribution = first / (Real{ 1 } / second + third);
       }
-      output.side_reaction_current[static_cast<std::size_t>(lane)] += contribution;
+      output.side_reaction_current[i] += contribution;
       return slide::Status::Success;
     });
   if (model_status != slide::Status::Success)

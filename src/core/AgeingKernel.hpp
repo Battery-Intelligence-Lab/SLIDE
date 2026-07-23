@@ -16,13 +16,13 @@
 
 #include "../types/Status.hpp"
 #include "AgeingModelMask.hpp"
+#include "detail/CheckedLaneExtent.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <span>
 #include <stdexcept>
 #include <vector>
@@ -50,7 +50,10 @@ namespace detail {
 
     explicit AgeingScratchStorage(int n_lanes)
       : n_lanes_{ checked_lane_count(n_lanes) },
-        storage_(required_elements(n_lanes))
+        storage_(checked_lane_extent(
+          n_lanes_,
+          FieldCount,
+          "ageing scratch extent is not representable"))
     {}
 
     std::span<Real> field(std::size_t index)
@@ -69,16 +72,6 @@ namespace detail {
       if (n_lanes <= 0)
         throw std::invalid_argument{ "ageing scratch requires at least one lane" };
       return n_lanes;
-    }
-
-    static std::size_t required_elements(int n_lanes)
-    {
-      if (n_lanes <= 0)
-        throw std::invalid_argument{ "ageing scratch requires at least one lane" };
-      const auto lanes = static_cast<std::size_t>(n_lanes);
-      if (lanes > std::numeric_limits<std::size_t>::max() / FieldCount)
-        throw std::length_error{ "ageing scratch extent is not representable" };
-      return lanes * FieldCount;
     }
 
     int n_lanes_{};

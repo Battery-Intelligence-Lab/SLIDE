@@ -30,6 +30,7 @@
 #include "Numeric.hpp"
 #include "SpmScalarKernels.hpp"
 #include "SpmState.hpp"
+#include "detail/CheckedLaneExtent.hpp"
 
 #include <array>
 #include <cassert>
@@ -72,22 +73,45 @@ struct SpmTransportCache
     : SpmTransportCache{ checked_shape(lanes) }
   {}
 
-  int lanes() const { return lanes_; }
+  int n_lanes() const { return n_lanes_; }
 
-  std::size_t index(Domain domain, int lane) const
+  [[nodiscard]] bool try_load(Domain domain,
+                              int lane,
+                              real_t temperature,
+                              real_t diffusion_reference,
+                              real_t specific_area,
+                              real_t thickness,
+                              real_t &effective_diffusivity,
+                              real_t &flux_denominator) const noexcept
   {
-    return domain_index(domain) * static_cast<std::size_t>(lanes_)
-           + static_cast<std::size_t>(lane);
+    const auto i = index(domain, lane);
+    if (valid_[i] == 0 || temperature_[i] != temperature
+        || diffusion_reference_[i] != diffusion_reference
+        || specific_area_[i] != specific_area || thickness_[i] != thickness)
+      return false;
+    effective_diffusivity = effective_diffusivity_[i];
+    flux_denominator = flux_denominator_[i];
+    return true;
   }
 
-  int lanes_{};
-  std::vector<unsigned char> valid_{};
-  std::vector<real_t> temperature_{};
-  std::vector<real_t> diffusion_reference_{};
-  std::vector<real_t> specific_area_{};
-  std::vector<real_t> thickness_{};
-  std::vector<real_t> effective_diffusivity_{};
-  std::vector<real_t> flux_denominator_{};
+  void store(Domain domain,
+             int lane,
+             real_t temperature,
+             real_t diffusion_reference,
+             real_t specific_area,
+             real_t thickness,
+             real_t effective_diffusivity,
+             real_t flux_denominator) noexcept
+  {
+    const auto i = index(domain, lane);
+    temperature_[i] = temperature;
+    diffusion_reference_[i] = diffusion_reference;
+    specific_area_[i] = specific_area;
+    thickness_[i] = thickness;
+    effective_diffusivity_[i] = effective_diffusivity;
+    flux_denominator_[i] = flux_denominator;
+    valid_[i] = 1;
+  }
 
 private:
   struct CheckedShape
@@ -97,11 +121,17 @@ private:
   };
 
   explicit SpmTransportCache(CheckedShape shape)
-    : lanes_{ shape.lanes }, valid_(shape.values),
+    : n_lanes_{ shape.lanes }, valid_(shape.values),
       temperature_(shape.values), diffusion_reference_(shape.values),
       specific_area_(shape.values), thickness_(shape.values),
       effective_diffusivity_(shape.values), flux_denominator_(shape.values)
   {}
+
+  std::size_t index(Domain domain, int lane) const noexcept
+  {
+    return domain_index(domain) * static_cast<std::size_t>(n_lanes_)
+           + static_cast<std::size_t>(lane);
+  }
 
   static CheckedShape checked_shape(int lanes)
   {
@@ -114,6 +144,15 @@ private:
       throw std::length_error{ "SPM transport cache byte count is not representable" };
     return { lanes, values };
   }
+
+  int n_lanes_{};
+  std::vector<unsigned char> valid_{};
+  std::vector<real_t> temperature_{};
+  std::vector<real_t> diffusion_reference_{};
+  std::vector<real_t> specific_area_{};
+  std::vector<real_t> thickness_{};
+  std::vector<real_t> effective_diffusivity_{};
+  std::vector<real_t> flux_denominator_{};
 };
 
 template <int NCH, class Real>
@@ -134,17 +173,20 @@ void computeSpmTransportLane(const SpmConcentrationParams<NCH> &p,
   const Real thickness = state.at(layout.electrode_thickness[d], 0, lane);
   if constexpr (std::is_same_v<std::remove_cv_t<Real>, real_t>) {
     if (cache != nullptr) {
-      assert(cache->lanes() == state.n_lanes());
-      const auto i = cache->index(domain, lane);
-      if (cache->valid_[i] != 0 && cache->temperature_[i] == temperature
-          && cache->diffusion_reference_[i] == diffusion_reference
-          && cache->specific_area_[i] == specific_area
-          && cache->thickness_[i] == thickness) {
-        effective_diffusivity = cache->effective_diffusivity_[i];
+      assert(cache->n_lanes() == state.n_lanes());
+      Real cached_denominator{};
+      if (cache->try_load(domain,
+                          lane,
+                          temperature,
+                          diffusion_reference,
+                          specific_area,
+                          thickness,
+                          effective_diffusivity,
+                          cached_denominator)) {
         molar_flux = spm_scalar::molarFlux(
           static_cast<Real>(molar_flux_sign(domain)),
           ctx.i_app[lane],
-          cache->flux_denominator_[i]);
+          cached_denominator);
         return;
       }
       const Real arrhenius = spm_scalar::arrheniusFactor(
@@ -155,13 +197,14 @@ void computeSpmTransportLane(const SpmConcentrationParams<NCH> &p,
         specific_area, p.n, p.F, thickness);
       molar_flux = spm_scalar::molarFlux(
         static_cast<Real>(molar_flux_sign(domain)), ctx.i_app[lane], denominator);
-      cache->temperature_[i] = temperature;
-      cache->diffusion_reference_[i] = diffusion_reference;
-      cache->specific_area_[i] = specific_area;
-      cache->thickness_[i] = thickness;
-      cache->effective_diffusivity_[i] = effective_diffusivity;
-      cache->flux_denominator_[i] = denominator;
-      cache->valid_[i] = 1;
+      cache->store(domain,
+                   lane,
+                   temperature,
+                   diffusion_reference,
+                   specific_area,
+                   thickness,
+                   effective_diffusivity,
+                   denominator);
       return;
     }
   }
@@ -298,10 +341,7 @@ void computeSpmConcentrations(const SpmConcentrationParams<NCH> &p,
       if (!molar_flux[d].empty())
         molar_flux[d][c] = molarFlux;
 
-      const auto *first_mode = state.raw().data()
-                               + static_cast<std::size_t>(layout.z[d].row_begin)
-                                   * state.stride()
-                               + static_cast<std::size_t>(c);
+      const auto *first_mode = &state.at(layout.z[d], 0, c);
       for (int node = 0; node < NCH + 1; ++node)
         concentration[d][static_cast<std::size_t>(node) * L + c] =
           spm_scalar::concentrationOutput(NCH,
@@ -364,7 +404,7 @@ class SpmObservableScratch
 {
 public:
   explicit SpmObservableScratch(int n_lanes)
-    : n_lanes_{ checked_lane_count(n_lanes) }, storage_(required_size(n_lanes))
+    : n_lanes_{ checked_lane_count(n_lanes) }, storage_(required_size(n_lanes_))
   {}
 
   BasicSpmObservables<Real> view()
@@ -378,6 +418,7 @@ public:
     BasicSpmObservables<Real> output;
     std::size_t cursor = 0;
     auto take = [&](std::size_t count) {
+      assert(cursor <= storage_.size() && count <= storage_.size() - cursor);
       auto result = std::span<Real>{ storage_ }.subspan(cursor, count);
       cursor += count;
       return result;
@@ -402,13 +443,20 @@ public:
     output.reaction_heat = take(L);
     output.ohmic_heat = take(L);
     output.total_heat = take(L);
-    assert(cursor <= storage_.size());
+    assert(cursor == static_cast<std::size_t>(active_lanes) * per_lane);
     return output;
   }
 
   int n_lanes() const { return n_lanes_; }
 
 private:
+  static_assert(NCH > 0);
+  static constexpr std::size_t per_domain_lane_fields = 6;
+  static constexpr std::size_t shared_lane_fields = 9;
+  static constexpr std::size_t per_lane =
+    2 * (static_cast<std::size_t>(NCH) + 2)
+    + 2 * per_domain_lane_fields + shared_lane_fields;
+
   static int checked_lane_count(int n_lanes)
   {
     if (n_lanes <= 0)
@@ -418,14 +466,10 @@ private:
 
   static std::size_t required_size(int n_lanes)
   {
-    if (n_lanes <= 0)
-      throw std::invalid_argument{ "SPM observable scratch requires at least one lane" };
-    static_assert(NCH > 0);
-    constexpr std::size_t per_lane = 2 * (static_cast<std::size_t>(NCH) + 2) + 21;
-    const auto lanes = static_cast<std::size_t>(n_lanes);
-    if (lanes > std::numeric_limits<std::size_t>::max() / per_lane)
-      throw std::length_error{ "SPM observable scratch extent is not representable" };
-    return lanes * per_lane;
+    return detail::checked_lane_extent(
+      n_lanes,
+      per_lane,
+      "SPM observable scratch extent is not representable");
   }
 
   int n_lanes_{};

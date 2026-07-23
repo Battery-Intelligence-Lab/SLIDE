@@ -156,8 +156,14 @@ foreach(header IN LISTS P9C5_HEADERS)
   file(READ "${header}" raw)
   p9c5_strip_comments("${raw}" content)
   string(REGEX MATCHALL "#include[ \t]+[\"<][A-Za-z_/.]+[\">]" includes "${content}")
+  set(seen_include_targets)
   foreach(include IN LISTS includes)
     string(REGEX REPLACE "#include[ \t]+[\"<](.*)[\">]" "\\1" target "${include}")
+    if(target IN_LIST seen_include_targets)
+      message(FATAL_ERROR
+        "9C-5 R3: ${tier} header ${stem}.hpp includes ${target} more than once")
+    endif()
+    list(APPEND seen_include_targets "${target}")
     get_filename_component(target_stem "${target}" NAME_WE)
     if(target MATCHES "^\\.\\./" AND NOT target MATCHES "core/")
       continue() # ../types/Status.hpp and friends genuinely live outside src/core
@@ -303,7 +309,8 @@ set(P9C5_FORBIDDEN_REGEX
 # a leading `get` is glued to the return type (`inlineintgetWorkerCount`) and no word
 # boundary survives to anchor against.
 set(P9C5_FORBIDDEN_SPACED_REGEX
-  "[ \t(*&,:~]get[A-Z]")   # no get-prefixed accessors in core
+  "[ \t(*&,:~]get[A-Z]"    # no get-prefixed accessors in core
+  "(^|[^_A-Za-z0-9])lanes[ \t\r\n]*\\(") # lane-count accessors are n_lanes()
 
 file(GLOB P9C5_SOURCES
   "${SLIDE_SOURCE_DIR}/src/core/*.hpp"

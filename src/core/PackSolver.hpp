@@ -23,7 +23,7 @@ public:
 
   TheveninBatchView() = default;
   TheveninBatchView(void *object, int lanes, LinearizeFn linearize)
-    : object_{ object }, lanes_{ lanes }, linearize_{ linearize }
+    : object_{ object }, n_lanes_{ lanes }, linearize_{ linearize }
   {}
 
   template <class Batch>
@@ -34,16 +34,16 @@ public:
             } };
   }
 
-  bool valid() const { return object_ != nullptr && lanes_ > 0 && linearize_ != nullptr; }
+  bool valid() const { return object_ != nullptr && n_lanes_ > 0 && linearize_ != nullptr; }
   const void *identity() const { return object_; }
-  int lanes() const { return lanes_; }
+  int n_lanes() const { return n_lanes_; }
   [[nodiscard]] slide::Status linearize(std::span<const real_t> current,
                                         std::span<real_t> ocv,
                                         std::span<real_t> resistance) const;
 
 private:
   void *object_{};
-  int lanes_{};
+  int n_lanes_{};
   LinearizeFn linearize_{};
 };
 

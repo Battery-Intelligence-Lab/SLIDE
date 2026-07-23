@@ -21,8 +21,10 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstdio>
+#include <cstdint>
 #include <span>
 
 using namespace slide;
@@ -57,6 +59,100 @@ core::SpmConcentrationParams<NCH> captureParams(Model_SPM<NCH> &model, double Tr
 }
 
 } // namespace
+
+TEST_CASE("SPM transport cache hits and invalidations match the cache-free path",
+          "[core][observables][cache]")
+{
+  // Registered before the first run: the cold miss, unchanged-key hit, and
+  // temperature/D-reference/area/thickness invalidations must reproduce both
+  // cache-free transport outputs bit-for-bit in every lane and domain.
+  constexpr int NCH = 1;
+  constexpr int lanes = 2;
+  constexpr auto neg = core::domain_index(core::Domain::neg);
+  constexpr auto pos = core::domain_index(core::Domain::pos);
+  core::SpmConcentrationParams<NCH> params;
+  params.T_ref = 298.15;
+  params.D_T[neg] = 7000.0;
+  params.D_T[pos] = 29000.0;
+
+  core::BatchBuilder builder;
+  const auto layout = core::declareSpmState<NCH>(builder);
+  auto arena = builder.build(lanes);
+  for (int lane = 0; lane < lanes; ++lane)
+    arena.at(layout.temperature, 0, lane) =
+      295.0 + 5.0 * static_cast<double>(lane);
+  for (const auto domain : core::domains) {
+    const auto d = core::domain_index(domain);
+    for (int lane = 0; lane < lanes; ++lane) {
+      const auto d_value = static_cast<double>(d);
+      const auto lane_value = static_cast<double>(lane);
+      arena.at(layout.diffusion_coefficient[d], 0, lane) =
+        1.0e-14 * (1.0 + d_value + 0.1 * lane_value);
+      arena.at(layout.specific_surface_area[d], 0, lane) =
+        2.0 + d_value + 0.25 * lane_value;
+      arena.at(layout.electrode_thickness[d], 0, lane) =
+        1.0e-4 * (1.0 + d_value + 0.5 * lane_value);
+    }
+  }
+
+  constexpr std::array current_density{ -2.5, 4.0 };
+  const core::ConstBatchView state{ core::BatchShape::from(arena),
+                                    std::span<const core::real_t>{ arena.raw() } };
+  const core::StepCtx ctx{ .time = 0.0, .dt = 0.25, .i_app = current_density };
+  core::SpmTransportCache cache{ lanes };
+  core::PerDomain<std::array<double, lanes>> cached_diffusivity{};
+  core::PerDomain<std::array<double, lanes>> cached_flux{};
+  core::PerDomain<std::array<double, lanes>> direct_diffusivity{};
+  core::PerDomain<std::array<double, lanes>> direct_flux{};
+
+  const auto require_cache_matches = [&] {
+    for (const auto domain : core::domains) {
+      const auto d = core::domain_index(domain);
+      cached_diffusivity[d].fill(-101.0);
+      cached_flux[d].fill(202.0);
+      direct_diffusivity[d].fill(-303.0);
+      direct_flux[d].fill(404.0);
+    }
+    core::computeSpmTransport(
+      params,
+      state,
+      layout,
+      ctx,
+      { std::span{ direct_diffusivity[neg] },
+        std::span{ direct_diffusivity[pos] } },
+      { std::span{ direct_flux[neg] }, std::span{ direct_flux[pos] } });
+    core::computeSpmTransport(
+      params,
+      state,
+      layout,
+      ctx,
+      { std::span{ cached_diffusivity[neg] },
+        std::span{ cached_diffusivity[pos] } },
+      { std::span{ cached_flux[neg] }, std::span{ cached_flux[pos] } },
+      &cache);
+    for (const auto domain : core::domains) {
+      const auto d = core::domain_index(domain);
+      for (int lane = 0; lane < lanes; ++lane) {
+        const auto i = static_cast<std::size_t>(lane);
+        CHECK(std::bit_cast<std::uint64_t>(cached_diffusivity[d][i])
+              == std::bit_cast<std::uint64_t>(direct_diffusivity[d][i]));
+        CHECK(std::bit_cast<std::uint64_t>(cached_flux[d][i])
+              == std::bit_cast<std::uint64_t>(direct_flux[d][i]));
+      }
+    }
+  };
+
+  require_cache_matches(); // cold miss and store
+  require_cache_matches(); // unchanged-key hit
+  arena.at(layout.temperature, 0, 1) += 0.5;
+  require_cache_matches();
+  arena.at(layout.diffusion_coefficient[neg], 0, 0) *= 1.25;
+  require_cache_matches();
+  arena.at(layout.specific_surface_area[pos], 0, 1) *= 1.5;
+  require_cache_matches();
+  arena.at(layout.electrode_thickness[neg], 0, 1) *= 0.75;
+  require_cache_matches();
+}
 
 TEST_CASE("SPM concentration observable reproduces legacy Cell_SPM::getC", "[core][observables]")
 {
