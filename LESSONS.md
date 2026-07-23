@@ -26,6 +26,7 @@ This file records reusable findings from the v4 implementation and validation wo
 - An in-tree target cannot prove that public CMake usage works. Configure SLIDE as a nested subproject and compile headers through `target_link_libraries(slide_core)`; this exposed the incorrect use of `CMAKE_SOURCE_DIR`, which changes meaning in a superproject.
 - “Dependency-free” must be scoped precisely. The v4 core is free of optional CUDA, MATLAB, zstd, Arrow, TBB, and legacy dependencies, but Eigen remains required for cold-path spectral and sparse solves. Prefer an installed package and keep a pinned source fallback.
 - CI path filters are part of correctness: changes under `cmake/**` must trigger both core portability and installed-wheel jobs.
+- Finding one compiler executable is not a usable Windows toolchain environment. CMake's CUDA host probe also needs the VS/Windows SDK include and library paths plus resource/manifest tools; enter the full x64 `vcvars` environment, then explicitly select Clang if desired. A `PATH`-only `cl.exe` probe can compile while manifest embedding or ABI linking still fails.
 
 ## Documentation is an executable interface
 

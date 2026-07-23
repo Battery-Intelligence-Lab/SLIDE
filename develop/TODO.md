@@ -50,6 +50,15 @@
 > MQ.5 independent re-derivation of the mathematics, MQ.6 logic hunt, MQ.7 structural performance
 > hunt, MQ.8 closeout. `AGENTS.md` at the repo root is the standing operating contract for autonomous
 > Codex sessions; PLAN.md remains the single source of truth. Next unticked box: **MQ.1**.
+>
+> **2026-07-23 — MQ.1 baseline restored.** Fresh tree-local native Debug/ThinLTO,
+> fast-math Release, and CUDA Release with host-C++ ThinLTO each discover and pass 58/58; CUDA executes
+> 433,671 assertions / 4 cases and all three repo-root direct-CWD witnesses pass 57 / 3.
+> No source or test changed. The prior `cl.exe`-on-`PATH` CUDA shorthand was falsified twice;
+> fresh CUDA configuration requires the complete x64 `vcvars64.bat` environment. Known test gaps
+> and the two observed build-policy warnings pass to MQ.2; no performance/sanitizer/coverage/CI/
+> package/cross-platform claim is made. Report:
+> `.claude/reports/mq1-baseline-validation-2026-07-23.md`. Next unticked box: **MQ.2**.
 
 ---
 

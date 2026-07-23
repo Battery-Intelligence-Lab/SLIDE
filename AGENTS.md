@@ -75,8 +75,10 @@ You run non-stop until your context or time is exhausted. There is no user to as
 
 - Windows 11 host; native builds MSVC/Clang; sanitizer + coverage lanes run in WSL Clang 18
   (ASan+UBSan full-suite, TSan on the concurrency binaries; llvm-cov exact Status coverage).
-- The CUDA lane needs MSVC `cl.exe` on PATH (VS 18, `VC/Tools/MSVC/14.50.35717`) — an environment
-  fact, not a code defect.
+- A fresh Windows CUDA lane must inherit the complete VS 18 x64 developer environment from
+  `vcvars64.bat` (host-compiler `PATH`, MSVC/Windows SDK `INCLUDE`/`LIB`/`LIBPATH`, and
+  `rc.exe`/`mt.exe`). Prepending only the MSVC 14.50.35717 `cl.exe` directory is insufficient;
+  the successful MQ.1 lane still selected Clang explicitly as `CMAKE_CXX_COMPILER`.
 - Standard flow: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build &&
   ctest --test-dir build`; the fast-math Release tree is `build-release`. Many stale `build-*`
   trees exist on disk; artifacts inside them from earlier dates are NOT evidence about current code.
