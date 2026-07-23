@@ -348,6 +348,49 @@ make the indexed-role gate red; removing the residual reset must make the
 six-fill gate red and the repeated relaxation record red. All mutations are
 reversed with exact source hashes before acceptance.
 
+### S2 source-step rollback exact fixture
+
+The following analytic fixture is fixed before its first test implementation
+or run. One scripted affine batch has two parallel one-ohm cells and emits
+these OCV rows by callback:
+
+```text
+{2,0}, {2,0}, {0,0}, {0,0}, {0,0}, {4,0}, {0,0}
+```
+
+With ladder mode and tolerance `0.5`, an initial zero-current solve with at
+most two iterations publishes bitwise currents `{1,-1}`, nodes `{1,0}`, and
+terminal voltage `1`. The test then calls `invalidate()` so those published
+values remain but the internal warm-state flag is false. A caller-requested
+`I=8`, one-iteration solve must fail: its direct attempt produces `{4,4}` and
+maximum change `4`; hidden source stepping then succeeds at `I=0` with
+`{0,0}`, succeeds at `I=1` with `{0.5,0.5}`, and fails at `I=2` with
+`{3,-1}` and maximum change `2.5`. Exactly six callbacks have occurred.
+
+Rollback must restore the three published solution fields and the false
+warm-state flag. Its diagnostics deliberately describe the failed direct
+caller attempt, exactly:
+
+```text
+iterations=1, numeric_factorizations=0, symbolic_factorizations=0,
+jacobian_refreshes=0, source_steps=0, residual_norm=4,
+constraint_drift=0, constraint_bound=0, relaxation_gain=0
+```
+
+Without diagnostics rollback the observable residual is `2.5`, describing
+the abandoned later hidden solve. A final zero-current, one-iteration solve
+uses the seventh `{0,0}` row and must succeed; this is the independent probe
+that `has_solution_` returned to false rather than warming from `{1,-1}`.
+Every expected scalar is binary-exact.
+
+Three mutations are independently decisive: removing only solution-field
+restoration turns exactly those solution checks red; removing only diagnostics
+restoration changes residual `4` to `2.5`; removing only the warm-state restore
+makes the final one-iteration probe fail. Production changes are limited to a
+POD diagnostics snapshot beside the existing rollback snapshot and its restore
+before workspace invalidation; no allocation or header/member change is
+authorized.
+
 - Recording refactors retain byte-identical encoded headers, payloads, CRCs, and
   CSV text on the existing fixtures. Added CSV value tests parse every data cell
   and require `max_digits10` round-trip equality.
