@@ -278,3 +278,86 @@ core_SpmPipeline_test.cpp   63159E07680EE783377CF7D952543C7A18329C210142F38FEBB6
 `git diff --check` passes. The pre-existing formatting debt later in
 `SpmPipeline.hpp` remains outside this batch; no whole-header formatting claim
 is made.
+
+## O1 — observable storage, cache ownership, and lane lexicon
+
+Commit `83ab7be` applies all six O1 findings. `AgeingScratchStorage` and
+`SpmObservableScratch` now share the construction-only
+`detail::checked_lane_extent` owner while retaining their distinct,
+byte-identical invalid-count and overflow messages. Observable scratch sizing
+names the six per-domain and nine shared fields, guards every subspan before
+formation with a non-underflowing bound, and asserts exact final consumption.
+The concentration kernel obtains its first modal value through
+`BatchView::at`; the SEI model body binds its unsigned lane index once.
+
+`SpmTransportCache` now exposes only `n_lanes`, `try_load`, and `store`; its
+seven buffers and indexing are private. The cache operations own only exact
+key comparison and byte transport. Both Arrhenius/activation/denominator/flux
+arithmetic branches remain in `computeSpmTransportLane`, pinned structurally.
+The public `TheveninBatchView::lanes()` spelling becomes `n_lanes()` and is
+called out in Unreleased. Duplicate includes are rejected only across
+classified api/support headers; the three known non-core duplicates are not
+silently claimed fixed.
+
+The first attempt to include the new detail owner exposed a stale 9C-3 rule
+that described every top-level core header as public. A proposed broad
+internal-header exemption was rejected by adversarial review because it would
+let unrelated cold detail seams leak into `SpmPipeline.hpp`. The final gate
+preserves the original global prohibition and removes exactly one allowlisted
+`CheckedLaneExtent.hpp` edge from each of `AgeingKernel.hpp` and
+`SpmObservables.hpp` before scanning.
+
+Focused clean results:
+
+| Binary | Debug | fast-math Release | host-ThinLTO/CUDA tree |
+|---|---:|---:|---:|
+| `unit_test_core_SpmObservables` | 69 / 3 | 69 / 3 | 69 / 3 |
+| `unit_test_core_SpmElectrical` | 48 / 3 | 48 / 3 | 48 / 3 |
+| `unit_test_core_Sei` | 57 / 3 | 57 / 3 | 57 / 3 |
+| `unit_test_core_AgeingKernel` | 384 / 6 | 384 / 6 | 384 / 6 |
+| `unit_test_core_PackSolver` | 878 / 26 | 878 / 26 | 878 / 26 |
+| `unit_test_core_SpmFactory` | 1472 / 8 | 1472 / 8 | 1472 / 8 |
+
+The pre-existing SpmObservables numerical bands remain unchanged (Debug
+legacy maximum relative error exactly zero; Release/CUDA
+`2.665e-15`; heterogeneous round-trip `9.027e-15` Debug and
+`8.533e-15` Release/CUDA). The 1,077-value ageing hashes and all nine padded
+factory SHA-256 values remain at their preregistered constants.
+
+Two new Release-visible oracles close the actual storage seams. A three-lane
+scratch spans exactly
+`L * (2 * (NCH + 2) + 2 * 6 + 9)` values from the first negative
+concentration value through the end of `total_heat`. A two-lane cache fixture
+requires cold miss, unchanged-key hit, and each of temperature, reference
+diffusivity, specific area, and thickness invalidation to reproduce the
+cache-free diffusivity and molar-flux bits in both domains.
+
+Adversarial mutations:
+
+1. Reintroducing the duplicate Status include fails R3 with the exact repeated
+   header named.
+2. Restoring either `lanes()` or whitespace-obfuscated `lanes ()` fails R6.
+3. Restoring `state.raw()` addressing fails the exact zero-count gate.
+4. Taking `L-1` values for `total_heat` fails the Release scratch case
+   (one of two reached assertions fails).
+5. Adding an unreachable scalar-kernel call inside the cache fails the
+   cache-slice ownership gate.
+6. Swapping the cached diffusivity and denominator initially demonstrated
+   that the existing ageing 15/1 and factory 1414/1 recorded cases were
+   **non-discriminating**: both stayed green. After registering the direct
+   cache oracle, that same mutation fails 30/48 assertions. It was then
+   explicitly reversed and all three clean configurations passed 69/3.
+
+The final key source hashes are:
+
+```text
+CheckedLaneExtent.hpp       ED7A33A1B4638D2EB306F818247B88B20BEF360221284C49A438E366FEA6A552
+AgeingKernel.hpp            FE89EF1AD5470996608A94EC7234341017FF7BE687128B5B05E40692212C95AB
+SpmObservables.hpp          65BA7D54F8C9FEBDBF68F34EB19EDF7F74510CE5D0B3E28F4B345C15FBE6FD4E
+Sei.hpp                     0B706DE2BFDB5C4B708812B240A24EEC139B8B04CE3F5F1E8E2B9A047E5B0C20
+PackSolver.hpp              5A05552D245E0DAD96B70BEF313BD7984AD39BBE3C1BDE4FD53B42E7DABB23F3
+PackSolver.cpp              A5155224C2BAC572BF4CD785859988A3C8E23BCC5AB6CC097E4C214B32C088E6
+```
+
+Both structural binaries pass, changed C++ files pass
+`clang-format --dry-run --Werror`, and `git diff --check` is clean.
