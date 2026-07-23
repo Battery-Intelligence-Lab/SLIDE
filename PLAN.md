@@ -2,12 +2,17 @@
 
 > **Status:** ACTIVE. Rewritten 2026-07-11 (Fable) around a SINGLE GOAL with one milestone ladder (§6);
 > extended 2026-07-14 (Fable) with the breadth wave (goals 15–24, M13–M20) from Volkan's 16-point directive
-> and the same-day Newman-instrumentation directive.
+> and the same-day Newman-instrumentation directive; extended 2026-07-23 (Fable) with the **MQ quality
+> wave** (clean the repository / re-derive the mathematics / hunt logical + performance mistakes —
+> inserted between M0 and M1 in ladder order) and the split-out standing operating contract
+> **`AGENTS.md`** for autonomous Codex sessions.
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
 > `.claude/summaries/plan-archive-2026-07-10-phases0-8.md`) and in git history.
-> **How to use this document:** single source of truth. Any session (Codex, Fable, Opus, human) must
+> **How to use this document:** single source of truth. (`AGENTS.md` at the repo root compresses the
+> operating rules for agents that load it automatically; it points here and never overrides this file.)
+> Any session (Codex, Fable, Opus, human) must
 > (1) read this file first, (2) take the FIRST unticked box in §6 whose dependencies are ticked,
 > (3) tick it, update §8, commit, and take the next box — the non-stop protocol is §0.3. Do not re-litigate
 > §4 decisions without new evidence overturning them.
@@ -1388,6 +1393,78 @@ recorded there — killed ideas stay killed).
       **Gate P9-G5:** every simplification digit-identical; core line count recorded before/after in §8
       (expect net reduction; growth requires written justification).
 
+### MQ — Quality wave: clean, re-derive, hunt (2026-07-23 directive; sits between M0 and M1 in ladder order)
+
+Volkan's directive: before the ladder resumes, spend one wave making what EXISTS top-quality science —
+clean the repository, independently re-derive the mathematics, and hunt the remaining logical and
+performance mistakes. This wave is deliberately LOOSER than most milestones: boxes state WHAT and the
+gate; scope and method inside each box are yours (§0.3(4) governs — improvise, record). Two fixed
+points: the evidence discipline (§5) applies in full — a re-derivation that finds nothing is a PASS
+with the derivation committed, and a suspected bug becomes a failing SHORT test before it becomes a
+fix — and the wave must not balloon: when a finding is real but large, give it an owner box in the
+ladder (record where) instead of dissolving the wave into it. Testing depth, the GUI, and the rest of
+the grand goal are NOT re-planned here — they are the existing ladder (tests ride every box per
+MC-2/MC-4; the GUI is M11 SLIDE Studio; releases are M2/M12/M20).
+
+- [ ] MQ.1 Restore the Debug-AND-Release standard first (the wave's baseline): the 2026-07-21..23
+      landings were validated Debug-only (recorded in §8). Run the full suite on native Debug,
+      fast-math Release, AND CUDA at current HEAD; record counts against the M0.10 baseline
+      (58/58 expected per lane); any delta is explained or ledgered before MQ code changes land
+      on top.
+- [ ] MQ.2 Quality-backlog owner box: triage EVERY remaining verified finding in
+      `.claude/reports/code-quality-pass-2026-07-21-survivors.json` (68 survived its adversarial
+      verification; the ladder-detection O(cells²) scan, the Sei/Lam/LithiumPlating Arrhenius PC-10
+      duplication, two blind-test oracles, the warning-policy hookup, and the CWD dependence are
+      already landed — the report's landed list is authoritative). Each finding ends in exactly one
+      recorded state: applied (digit-identical gate, or a registered behaviour-change gate where the
+      behaviour WAS the bug), REFUTED (with the evidence), or deferred-with-owner (a named ladder
+      box). No silent drops — the report gains a disposition column covering all 68. Named landmines
+      that may not be silently deferred: the line-for-line duplicated topology derivation, the
+      thrice-reused Mode-C relaxation buffer, `crc32` defined twice, the fast-math-unsafe FP gate,
+      the `substeps`-repeats-dt-rather-than-subdividing semantics (documented 2026-07-21; DECIDE the
+      intended semantics here — a behaviour change needs its own registered gate and CHANGELOG line),
+      and the SurfaceCrack Arrhenius association (the recorded remaining PC-10 debt — same decision
+      shape: route through the one source and accept recorded bit changes, or record why not).
+- [ ] MQ.3 Repo hygiene sweep: audit the tracked tree (670 files at this writing) — stale or
+      contradictory docs (develop/TODO.md header vs PLAN §8, README claims, CONTRIBUTING,
+      LESSONS.md), dead scripts, anything tracked that should be ignored; fix `.gitignore` gaps.
+      For UNTRACKED debris (the ~40 stale `build-*` trees, stray `build-*.log` files, the
+      Windows-hazard file literally named `nul` at repo root) produce a deletion-PROPOSAL list in the
+      hygiene report — do NOT delete untracked files or data yourself (§0.3(5): disk deletion is
+      Volkan's one word; `data/` and `results/` stay read-only regardless). Gate: hygiene report
+      committed; develop/TODO.md and README truthful against PLAN §8.
+- [ ] MQ.4 Derivation-inventory matrix: enumerate every physics kernel, numerical method, and solver
+      algorithm in `src/core` (+ the CUDA mirrors) and map each to its derivation artifact
+      (`docs/derivations/*`, a plan §, a cited paper, or NONE). Commit the matrix as
+      `docs/derivations/INDEX.md`. Every NONE becomes an MQ.5 work item; the matrix is the wave's
+      coverage gate — MQ.5 cannot tick while a NONE row is unowned.
+- [ ] MQ.5 Independent re-derivation sweep (the heart of the wave). For each inventory row: re-derive
+      the result from first principles WITHOUT reading the implementation first, unit-check every
+      equation, state each approximation's regime and leading-order error term, THEN diff against the
+      code and any existing doc. Agreement → commit/refresh a derivation doc a reader can re-derive
+      from scratch. Disagreement → failing SHORT test first, then fix or FALSIFY your own derivation;
+      ledger row either way (a wrong derivation honestly recorded is also a deliverable). Priority
+      order, highest consequence first: the modal update + φ₁ Taylor branch (M0.5's one source), the
+      four ageing kernels (SEI/CS/LAM/plating — units and regime of every rate prefactor), Thevenin
+      linearisation + chord/Shamanskii update, Mode B ladder elimination, the Mode C WR+Baumgarte
+      convergence criterion (our own synthesis — deserves the hardest look), D-21 thermal-graph energy
+      bookkeeping, Dual-number algebra at its boundary cases (pow at zero, saturated branches —
+      M0.6 already caught two), OCV/entropic interpolation. Gate: `INDEX.md` shows zero unowned NONE
+      rows; every discrepancy has a ledger row with its test.
+- [ ] MQ.6 Fresh logic bug-hunt round (D-46 template, loop-until-dry): adversarial pass over
+      `src/core`, the bindings, AND the test gates themselves (M0.8 falsified two of its own
+      preregistered mutations — gates are code too); every candidate gets a failing SHORT test or a
+      recorded refutation in the ledger; the round repeats until a full pass yields nothing new.
+- [ ] MQ.7 Performance-mistake hunt, structural evidence only (D-27: wall-clock on this machine is
+      not evidence): complexity audit of every `compile()`/`build()`/per-step path for super-linear
+      scans (the O(cells²) ladder detection just fixed may have siblings), allocation audit against
+      PC-1 on paths the counting allocator does not yet watch, PC-6 memory-budget re-check,
+      counter-regression assertions extended wherever the missing assertion WAS the finding. Wins and
+      non-findings both recorded with counters before/after.
+- [ ] MQ.8 Wave closeout: full Debug + Release + CUDA suites green; CHANGELOG consolidated; a §8 row
+      with the wave's numbers (findings applied/refuted/deferred, derivations added, bugs found and
+      killed); develop/TODO.md synced. Then the ladder resumes at M1.0 — the grand goal is unchanged.
+
 ### M1 — PyBOP integration suite (carries Phase 10; ALL fits on SHORT synthetic data: ≤600 s simulated, dt ≥ 10 s, ≤4 lanes)
 
 Derive before running: identifiability and noise floors computed analytically FIRST, bands registered from
@@ -1801,4 +1878,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-14 | PLAN extended to THE superior-stack goal (Fable): Volkan's 16-point directive + integrator-research directive absorbed — goals 15–23; §1.4 validation contract VC-1..VC-5; §3.23 model-family tiers (ECM, semi-empirical/SimSES, lead-acid Schiffer, storage-system), §3.24 `slide.pybamm` drop-in shim, §3.25 integrator & predictive-acceleration research programme; D-43..D-49; ladder extended M13–M19 with v6.0.0 at M19; M1.0 test-file-debt owner box added (closes the M0.10 UNMET carry); M12.0 hardening pass H1 added; Q16 overturned for lead-acid (D-43). Directive items already covered were POINTED at, not duplicated (D-01/D-10/D-16/D-18/D-08/§3.13/§3.8). Independent orthogonal review (Fable critic, same day) returned 12 findings — 1 CRITICAL (this very row had recorded the review as done before it ran), 5 MAJOR (stale header wave numbering; goal-17 GPU promise resting on skippable/missing boxes; VC-2 quantifier unclosed over ECM/Schiffer; M12.3 release-note pointers contradicting D-43/v6; unmarked from-memory VC-1 waiver for Schiffer), 6 MINOR — ALL twelve applied before commit; review artifact: `.claude/reports/plan-revision-orthogonal-review-2026-07-14.md`. | DONE (this revision) |
 | 2026-07-14 | Newman instrumentation & design wave added (Fable, on Volkan's "think like John Newman" + "EIS, more optimisation, analytical Jacobians" + "good unit tests" directives): goal 24; §3.26; D-50 (thermodynamic identities as runtime gates), D-51 (EIS by analytic linearisation of the compiled system, optional C_dl rows, never time-domain FFT), D-52 (design mode over ensemble lanes with EXACT forward-sensitivity Jacobians — FD gradients forbidden in shipped optimisers); new milestone **M18** (entropy-production + Bernardi energy-balance gates incl. heat of mixing, voltage-loss decomposition identity, virtual reference electrode + plating-onset event, Newman current-distribution groups → M9 advisor, EIS, Ragone/sizing optimisation with analytically derived benchmark optima, Jacobian service surface, ICA/DVA tool, (opt) PSD/MPM tier, D_s convention doc) with an explicit MC-2/MC-4 unit-test preamble (every box ships oracle-first `tests/unit/core_X_test.cpp`); former M18/M19 renumbered **M19/M20** — v6.0.0 now M20; cross-references updated (goals 20/21 → M19.1/M19.2, goal 23 + D-46 H2 → M20.1, header/§1 → goals 15–24, M13–M20); M7.1 extended to record the BAND(J) lineage + the nondimensionalisation decision. All Newman-school citations marked WEB-VERIFY at their boxes. | DONE (this revision) |
 | 2026-07-21 | Implementation & code-quality pass (Volkan-requested, not a ladder box) | DONE (Debug only) — nine-way disjoint fan-out review of `src/core` with an adversarial verifier per finding: **117 raised, 68 survived, 49 refuted**. Landed: the **PC-10 violation** where `Sei`/`Lam`/`LithiumPlating` hand-rolled `(1/T_ref−1/T)/Rg` while nine sites (incl. `CudaSpmRuntime.cu`) already called `spm_scalar::arrheniusFactor` — digit-identical, and provably so for `Dual` because `Dual` declares only `operator/(Dual,Dual)`, so the hand-rolled form was already doing the implicit conversion the cast makes explicit (`SurfaceCrack.hpp` deliberately excluded: different association, would change bits — recorded as remaining PC-10 debt). Also: `SLIDE_ROOT_DIR` was **referenced but never defined anywhere**, so `data/`/`results/` resolved against the CWD and 25 of 53 binaries failed when run directly while CTest passed only because it launches from `<build>/bin` — registered before the fix (25 → 0 failures, counts unchanged) and confirmed; `project_warnings` had **no library consumer**, so `slide_core` and all 53 unit tests compiled with zero `-W` flags (core was already clean bar one `-Wshadow`, so enforcement was free; 22/22 TUs now 0 warnings); Boost joins Eigen/range-v3 as `SYSTEM`; `PathVar` globals `static` → `inline const`. **Two tests that could not fail now can:** the byte-shuffle codec was round-trip-only (green under a self-consistent wrong permutation — demonstrated by reversing plane order in both directions), and `parseValue`'s exponent branch was unexercised though pandas writes `1e-05`. Evidence: 51/53 binaries digit-identical, the two deltas being exactly the added tests, CTest 58/58, every mutation observed red with sources restored. **Recorded honestly:** one 57/58 run and a 6/12 flake loop were **confounded by concurrent builds** and are not evidence; **Release and CUDA were NOT re-run**, so the usual Debug-AND-Release standard is not met by this pass; 60 verified findings remain unapplied and need owners (O(cells²) ladder detection, a line-for-line duplicated topology derivation, `substeps` that does not subdivide `dt`, a thrice-reused relaxation buffer, `crc32` defined twice, a fast-math-unsafe FP gate). Artifacts: `.claude/reports/code-quality-pass-2026-07-21.{md,-survivors.json}`. |
-| — | NEXT | §6 M0 is COMPLETE. Ladder continues at **M1.0** (pay the test-file line debt) → M1.1 (PyBOP gradient regression) → … — take the first unticked box, §0.3 protocol. The 2026-07-21 quality-pass backlog (60 verified findings) is a natural companion to **M12.0/M20.1 hardening**, or can be pulled forward as its own box. |
+| 2026-07-23 | PLAN extended with the MQ quality wave (Fable, on Volkan's clean/re-derive/hunt directive): milestone **MQ** inserted between M0 and M1 in ladder order — MQ.1 restore the Debug-AND-Release baseline (the 2026-07-21..23 landings were Debug-only), MQ.2 quality-backlog triage owner (all 68 survivors dispositioned: applied/REFUTED/deferred-with-owner; six named landmines may not be silently deferred), MQ.3 repo-hygiene sweep (tracked-tree audit + untracked deletion PROPOSAL, no self-serve deletion), MQ.4 derivation-inventory matrix `docs/derivations/INDEX.md`, MQ.5 independent re-derivation sweep (derive first, then diff against code; discrepancy = failing test first), MQ.6 fresh logic hunt loop-until-dry (gates are code too), MQ.7 structural-only performance hunt, MQ.8 closeout. This closes the previous NEXT row's open question — the quality backlog is pulled forward as MQ.2, not deferred to M12.0/M20.1. Standing operating contract split out to **`AGENTS.md`** at the repo root for autonomous Codex sessions (compression only — PLAN.md remains the single source of truth). | DONE (this revision) |
+| — | NEXT | Ladder continues at **MQ.1** (restore the Debug-AND-Release baseline) → MQ.2 (quality-backlog triage) → … → MQ.8, then **M1.0** (test-file line debt) → M1.1 (PyBOP gradient regression) → … — take the first unticked box, §0.3 protocol. |

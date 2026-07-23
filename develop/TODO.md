@@ -40,6 +40,16 @@
 > **Release and CUDA were not re-run for this pass.**
 >
 > **Stale build artifacts (found during M0.9, worth cleaning):** `build-release/bin/Release/` still holds `*_fast`/`*_ipo` probe binaries dated 2026-07-12 that are NOT in the current Ninja build graph. One of them fails an assertion. They are not evidence about current code — the live Release lane already compiles with `-ffast-math` and passes that test — but they will keep poisoning any glob-based measurement until the directory is reconfigured from scratch.
+>
+> **2026-07-23 — MQ quality wave inserted; AGENTS.md created.** PLAN.md now carries milestone **MQ**
+> between M0 and M1 (Volkan's clean/re-derive/hunt directive): MQ.1 restore the Debug-AND-Release
+> baseline, MQ.2 disposition all 68 quality-pass survivors (the "60 unapplied" above minus what landed
+> since: linear ladder detection in 452ce0c; `substeps` is now documented but its semantics DECISION is
+> still open — the report's landed list is authoritative), MQ.3 repo hygiene (the stale-build
+> note above becomes a deletion PROPOSAL there), MQ.4 derivation inventory `docs/derivations/INDEX.md`,
+> MQ.5 independent re-derivation of the mathematics, MQ.6 logic hunt, MQ.7 structural performance
+> hunt, MQ.8 closeout. `AGENTS.md` at the repo root is the standing operating contract for autonomous
+> Codex sessions; PLAN.md remains the single source of truth. Next unticked box: **MQ.1**.
 
 ---
 
