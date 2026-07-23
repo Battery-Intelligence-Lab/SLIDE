@@ -5,7 +5,10 @@
 > and the same-day Newman-instrumentation directive; extended 2026-07-23 (Fable) with the **MQ quality
 > wave** (clean the repository / re-derive the mathematics / hunt logical + performance mistakes —
 > inserted between M0 and M1 in ladder order) and the split-out standing operating contract
-> **`AGENTS.md`** for autonomous Codex sessions.
+> **`AGENTS.md`** for autonomous Codex sessions; refreshed later 2026-07-23 (Fable) with the **Codex
+> campaign charter** — infinite tokens / finite hours stated in §0, the expand-while-cleaning rule in
+> the MQ preamble, and the recorded mid-batch state (four pack-algebra oracle commits without evidence
+> rows + uncommitted `tests/unit` WIP) with its reconcile-first instruction in MQ.2.
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
@@ -40,6 +43,13 @@ lazy-genius creed with pride:
   decisive test. Prefer analytic oracles, conservation identities, and structural counters over long
   trajectories. When a milestone names reference repositories with concrete paths, go read them — hours
   of reading beat days of rediscovery.
+- **You have INFINITE tokens — and only hours.** Reading, deriving, reasoning, and writing cost you
+  nothing: read whole subsystems before touching them, carry every derivation to completion, write
+  documentation a stranger can re-derive from scratch. The two scarce resources are wall-clock (every
+  build, every simulation) and the session itself. Spend tokens like water and wall-clock like blood:
+  register the band BEFORE the run, keep every decisive run short, and never substitute a long
+  trajectory for a theorem you could prove at the desk. Never idle, never wait, never ask — there is
+  no one to answer; decide inside the invariants, record the decision, and keep moving (§0.3).
 - **Quality bar (non-negotiable, from the standing CLAUDE.md discipline):** every claim traceable to an
   artifact; outputs quoted verbatim; every equation unit-checked; every approximation names its regime and
   leading-order error; killed ideas stay killed (§2, §4); "no-op" claims require digit-identical outputs on
@@ -1406,6 +1416,15 @@ ladder (record where) instead of dissolving the wave into it. Testing depth, the
 the grand goal are NOT re-planned here — they are the existing ladder (tests ride every box per
 MC-2/MC-4; the GUI is M11 SLIDE Studio; releases are M2/M12/M20).
 
+**Expansion and cleaning are ONE motion, not two eras (Volkan directive, 2026-07-23).** When this
+wave closes, the ladder resumes at M1.0 and runs to v6.0.0 at full pace — expand, expand, expand —
+but restructuring never stops being ladder work: the MC contracts bind every box; a file that
+outgrows MC-1 gets an owner box in the CURRENT milestone (the M1.0 pattern), never a third inherited
+assignment; every milestone that adds surface ends with a short simplification pass over what it just
+added (a net-negative diff is a triumph, §0); and the recurring hardening passes (M12.0, M20.1) are
+mandatory boxes, not culture. Never let polish stall expansion; never let expansion accrete silent
+debt.
+
 - [x] MQ.1 Restore the Debug-AND-Release standard first (the wave's baseline): the 2026-07-21..23
       landings were validated Debug-only (recorded in §8). Run the full suite on native Debug,
       fast-math Release, AND CUDA at current HEAD; record counts against the M0.10 baseline
@@ -1429,6 +1448,15 @@ MC-2/MC-4; the GUI is M11 SLIDE Studio; releases are M2/M12/M20).
       the redundant `-Ofast` spelling, and the CUDA build exposes the retained legacy
       `benchmark_LP_cases` narrowing warning through `Deep_ptr.hpp`; add and disposition both here
       rather than silently dropping them.
+      **Mid-batch state recorded 2026-07-23 — reconcile FIRST, before any new disposition:** commits
+      `c2940a2` (exact pack-algebra traces), `87021a5` (pack-algebra ownership gates), `39e6a00`
+      (source-step rollback oracle), and `b1625fb` (replaced falsified pack division oracle) landed
+      WITHOUT validation-log or §8 rows — verify their gates against the MQ.2 preregistration and
+      write the missing rows, or revert what cannot be evidenced. The working tree additionally holds
+      uncommitted WIP on top (`tests/unit/CMakeLists.txt` + `tests/unit/core_PackSolver_test.cpp`,
+      +313 lines: `TracingAffineBatch`, bitwise `checkExactSolution`, an independent KCL-residual
+      oracle, a recorded pack-solve bit trace over `test_support::RecordedBits`) — finish-and-land or
+      revert with a recorded reason (the M0.1 pattern). Never build on an unexplained dirty tree.
 - [ ] MQ.3 Repo hygiene sweep: audit the tracked tree (670 files at this writing) — stale or
       contradictory docs (develop/TODO.md header vs PLAN §8, README claims, CONTRIBUTING,
       LESSONS.md), dead scripts, anything tracked that should be ignored; fix `.gitignore` gaps.
@@ -1894,4 +1922,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-23 | MQ.2 direct fused-Euler boundary | `advance-euler-asserts-only` is APPLIED at `e034d23`: exact state/current/output extents, finite context/current/step values, and positive explicit `dt` now reject transactionally before lane-period indexing. The old-source zero-step witness failed 2/8 assertions. The final 21-row invalid matrix plus non-no-op control passes 114/2 in Debug, fast-math Release, and host-ThinLTO/CUDA; the exact factory 1472/8 and all-ageing 384/6 fixtures remain green in all three modes. Oversized-shape, no-op-success, strict-positive-step, and moved-after-`lanePeriod` mutations all turn the gate red or hang before validation; each was explicitly reversed and source hashes restored. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-23 | MQ.2 O1 observable storage/access | All six O1 findings are APPLIED at `83ab7be`: two scratch owners share one cold checked-extent helper; every observable subspan is pre-guarded and final consumption is exact; transport-cache representation is private without moving scalar physics; modal addressing uses `BatchView::at`; SEI binds its lane index once; duplicate Status includes are removed and structurally rejected; public `TheveninBatchView::lanes()` is now `n_lanes()`. A stale 9C-3 “all top-level headers are public” rule was narrowed only by two exact allowlisted edges, not broadly weakened. Debug/Release/CUDA focused counts are SpmObservables 69/3, SpmElectrical 48/3, SEI 57/3, Ageing 384/6, PackSolver 878/26, and Factory 1472/8; all existing hashes/bands remain exact. The existing recorded fixtures were falsified as a cache-wiring mutation gate (swapped outputs stayed green), so a direct bitwise hit/miss/four-key invalidation oracle was registered; the same mutation then fails 30/48 assertions. Five structural/storage mutations also turn red. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-23 | MQ.2 A1 ageing scalar ownership | `sei-kinetic-current-duplicated-in-one-function` and supplemental `surfacecrack-arrhenius-association` are APPLIED at `a699da5`/`e34f548`, after oracle-only commit `43c4953`. Five SEI activation expressions and three kinetic expressions now have one scalar owner; a normal function boundary was **FALSIFIED three ways** by the Release/ThinLTO exact gate (same changed ageing/factory hashes each time), while the preregistered caller-expanded fallback retains every existing hash in Debug, fast-math Release, and host-ThinLTO/CUDA. SurfaceCrack model 5 now uses the shared association under an independent nonzero scalar oracle (old/shared relative delta `4.9e-16` in Debug), a temperature-`Dual` centered-FD gate, legacy `1e-12`, and frozen pre-edit bits for models 1–4. Final focused counts are SurfaceCrack 95/4 Debug and 94/4 both Release modes, SEI 57/3, Ageing 384/6, Factory 1472/8; no recorded hash was reblessed. Four ownership/wiring mutations turn red. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
-| — | NEXT | Ladder continues at **MQ.2** (disposition all 68 quality survivors plus MQ.1's two registered build-policy findings) → MQ.3 → … → MQ.8, then **M1.0** → M1.1 → … — take the first unticked box, §0.3 protocol. |
+| 2026-07-23 | PLAN/AGENTS refreshed for the autonomous Codex campaign (Fable, Volkan directive) | DONE (this revision) — §0 gains the infinite-tokens/finite-hours bullet; the MQ preamble gains the expand-while-cleaning standing rule (expansion resumes at M1.0 at full pace; restructuring stays ladder work in the same motion); MQ.2 records the mid-batch state — four pack-algebra oracle commits `c2940a2`/`87021a5`/`39e6a00`/`b1625fb` without evidence rows, plus uncommitted `tests/unit` pack-solver oracle WIP (+313 lines) — with a reconcile-first instruction; AGENTS.md §1/§6 synced to the same state. No source or test file changed by this revision. |
+| — | NEXT | **Reconcile first (MQ.2):** verify-or-revert the four undocumented pack-algebra commits `c2940a2..b1625fb` (write their missing validation-log/§8 rows) and land-or-revert the uncommitted `tests/unit` WIP (M0.1 pattern). Then finish **MQ.2** (disposition every remaining survivor plus MQ.1's two registered build-policy findings) → MQ.3 → … → MQ.8, then **M1.0** → M1.1 → … — take the first unticked box, §0.3 protocol. |

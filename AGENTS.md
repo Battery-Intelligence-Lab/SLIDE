@@ -9,6 +9,10 @@ background requirements live in `.claude/FABLE.md`.
 ## 1. The loop — you never idle, you never ask
 
 You run non-stop until your context or time is exhausted. There is no user to ask mid-run.
+**You have effectively INFINITE tokens** — read whole subsystems, carry derivations to completion,
+think at whatever length the science needs. The scarce resources are wall-clock (builds,
+simulations) and the session's hours: every decisive run is SHORT and its pass/fail band is
+registered before it starts. Spend tokens like water and wall-clock like blood.
 
 1. Take the **FIRST unticked box in PLAN.md §6** whose dependencies are ticked. Finish it, tick it,
    take the next. Milestone boundaries are not pauses.
@@ -98,12 +102,37 @@ You run non-stop until your context or time is exhausted. There is no user to as
 | Derivations (grows during MQ.4/MQ.5) | `docs/derivations/` |
 | Working TODO mirror (PLAN.md §8 is authoritative) | `develop/TODO.md` |
 
-## 6. The current campaign (2026-07-23)
+## 6. The current campaign (2026-07-23, refreshed)
 
-M0 is complete. The ladder stands at **MQ** — the quality wave: restore the Debug-AND-Release
-baseline (MQ.1), disposition all 68 verified quality-pass findings (MQ.2), repo hygiene (MQ.3),
-derivation inventory + independent re-derivation of the mathematics (MQ.4/MQ.5 — derive first,
-then diff against the code), a fresh logic hunt (MQ.6), a structural performance hunt (MQ.7),
-closeout (MQ.8). Then M1.0 onward: PyBOP suite, v4.0.0, expressiveness, parameters + citations,
-FVM, SPMe, DFN, 2+1D/3D thermal, regime advisor, WASM, SLIDE Studio (the GUI), v5.0.0, the breadth
-wave, Newman instrumentation, v6.0.0. One goal, many boxes, no stopping.
+M0 is complete. **MQ.1 is PASSED** (three-lane 58/58 baseline;
+`.claude/reports/mq1-baseline-validation-2026-07-23.md`). **MQ.2 is OPEN and mid-flight:** the
+68-survivor census and evidence plan are frozen in
+`.claude/reports/mq2-quality-backlog-preregistration-2026-07-23.md`; applied batches so far
+(validation log `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`) cover factory
+constants fan-out, fused-Euler input validation, the six O1 observable findings, and ageing scalar
+ownership including the SurfaceCrack Arrhenius association; `homogeneous-init-lane-loop` is
+FALSIFIED and deferred to MQ.7.
+
+**Reconcile first, before any new disposition (PLAN.md MQ.2 records this):**
+
+1. Commits `c2940a2` / `87021a5` / `39e6a00` / `b1625fb` (exact pack-algebra traces, ownership
+   gates, source-step rollback oracle, replaced falsified pack division oracle) landed WITHOUT
+   validation-log or §8 rows — verify their gates against the preregistration and write the
+   missing rows, or revert what cannot be evidenced.
+2. The working tree holds uncommitted WIP on top: `tests/unit/CMakeLists.txt` +
+   `tests/unit/core_PackSolver_test.cpp` (+313 lines — `TracingAffineBatch`, bitwise
+   `checkExactSolution`, an independent KCL-residual oracle, a recorded pack-solve bit trace).
+   Finish-and-land or revert with a recorded reason (M0.1 pattern). Never build on an
+   unexplained dirty tree.
+
+Then finish MQ.2 (every survivor dispositioned applied / REFUTED / deferred-with-owner — no
+silent drops; the six named landmines and MQ.1's two build-policy findings included) → MQ.3 repo
+hygiene → MQ.4 derivation inventory → MQ.5 independent re-derivation (derive FIRST, then diff
+against the code) → MQ.6 logic hunt (loop-until-dry; gates are code too) → MQ.7 structural
+performance hunt → MQ.8 closeout. Then expansion resumes at **M1.0** and runs the ladder to
+v6.0.0: PyBOP suite, v4.0.0, expressiveness, parameters + citations, FVM, SPMe, DFN, 2+1D/3D
+thermal, regime advisor, WASM, SLIDE Studio (the GUI), v5.0.0, the breadth wave, Newman
+instrumentation, v6.0.0. **Expansion and cleaning are one motion** (PLAN.md MQ preamble): MC
+contracts bind every box, oversized files get owner boxes in the current milestone, and each
+surface-adding milestone ends with a short simplification pass. One goal, many boxes, no
+stopping.
