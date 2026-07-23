@@ -7,7 +7,9 @@
  */
 
 #include "../../src/slide.hpp"
+#include "../../src/core/Dual.hpp"
 #include "../../src/core/SurfaceCrack.hpp"
+#include "../support/RecordedBits.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -17,6 +19,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 using namespace slide;
 
@@ -71,9 +74,114 @@ constexpr std::size_t core_index(slide::Domain domain)
   return core::domain_index(domain == pos ? core::Domain::pos : core::Domain::neg);
 }
 
+constexpr double model5_temperature = 310.0;
+constexpr double model5_current_density = -1.3;
+constexpr double model5_ocv_negative = 0.17;
+constexpr double model5_entropic_coefficient = 1.2e-4;
+constexpr double model5_overpotential = -0.04;
+constexpr double model5_sei_thickness = 1.5e-9;
+constexpr double model5_surface_stoichiometry = 0.1;
+
+core::SurfaceCrackParams model5Params()
+{
+  core::SurfaceCrackParams params;
+  params.model_mask = core::surface_crack_model_bit(5);
+  params.electrode_area = 0.1;
+  params.sei_resistivity_area = 2037.4;
+  params.model4_max_surface = 0.03;
+  return params;
+}
+
+template <class Real>
+Real model5CrackRateAt(Real temperature)
+{
+  constexpr int local_nch = 1;
+  core::BatchBuilder builder;
+  const auto layout = core::declareSpmState<local_nch>(builder);
+  const auto history_layout = core::declareStressHistory(builder);
+  auto geometry = builder.build(1);
+  const core::BatchShape shape = core::BatchShape::from(geometry);
+  std::vector<Real> storage(shape.storage_size());
+  core::BasicBatchView<Real> mutable_state{ shape, storage };
+  const auto neg_index = core::domain_index(core::Domain::neg);
+  mutable_state.at(layout.temperature, 0, 0) = temperature;
+  mutable_state.at(layout.sei_thickness, 0, 0) =
+    Real{ model5_sei_thickness };
+  mutable_state.at(layout.crack_surface, 0, 0) = Real{ 0.01 };
+  mutable_state.at(layout.electrode_thickness[neg_index], 0, 0) =
+    Real{ 75e-6 };
+  mutable_state.at(layout.specific_surface_area[neg_index], 0, 0) =
+    Real{ 4e4 };
+  const core::BasicBatchView<const Real> state{ shape, storage };
+
+  core::SpmObservableScratch<local_nch, Real> observable_scratch{ 1 };
+  auto observables = observable_scratch.view();
+  observables.surface_stoichiometry[neg_index][0] =
+    Real{ model5_surface_stoichiometry };
+  observables.electrode_ocv[neg_index][0] = Real{ model5_ocv_negative };
+  observables.negative_entropic_coefficient[0] =
+    Real{ model5_entropic_coefficient };
+  observables.overpotential[neg_index][0] = Real{ model5_overpotential };
+
+  core::SpmStressScratch<Real> stress_scratch{ 1 };
+  auto stress = stress_scratch.view();
+  const std::array<Real, 1> current_density{
+    Real{ model5_current_density }
+  };
+  const core::BasicStepCtx<Real> ctx{ .i_app = current_density };
+  core::SurfaceCrackScratch<Real> scratch{ 1 };
+  const auto output = scratch.view();
+  REQUIRE(core::computeSurfaceCrack(model5Params(),
+                                    state,
+                                    layout,
+                                    history_layout,
+                                    ctx,
+                                    observables,
+                                    stress,
+                                    output)
+          == Status::Success);
+  return output.crack_surface_rate[0];
+}
+
+double independentModel5CrackRate(double temperature,
+                                  bool shared_arrhenius_association)
+{
+  const auto params = model5Params();
+  const double reciprocal_delta =
+    1.0 / params.reference_temperature - 1.0 / temperature;
+  const double temperature_factor =
+    shared_arrhenius_association
+      ? std::exp(params.model5_k_activation
+                 * (reciprocal_delta / params.Rg))
+      : std::exp((params.model5_k_activation / params.Rg)
+                 * reciprocal_delta);
+  const double reaction_rate = 2.0 * params.model5_k * temperature_factor;
+  const double current = model5_current_density * params.electrode_area;
+  const double ocv_negative =
+    model5_ocv_negative
+    + (temperature - params.reference_temperature)
+        * model5_entropic_coefficient;
+  const double eta_sei =
+    ocv_negative + model5_overpotential
+    - params.sei_equilibrium_potential
+    + params.sei_resistivity_area * model5_sei_thickness * current;
+  return params.n_sei * params.F * reaction_rate
+         * std::exp(-params.alpha_sei * params.n_sei * params.F
+                    / (params.Rg * temperature) * eta_sei);
+}
+
+double relativeDelta(double actual, double expected)
+{
+  if (actual == 0.0 && expected == 0.0)
+    return 0.0;
+  return std::abs(actual - expected)
+         / std::max(std::abs(expected), 1e-30);
+}
+
 } // namespace
 
-TEST_CASE("Surface-crack mechanisms match legacy Cell_SPM", "[core][ageing][crack]")
+TEST_CASE("Surface-crack mechanisms match legacy Cell_SPM",
+          "[core][ageing][crack][recorded]")
 {
   constexpr int NCH = static_cast<int>(settings::nch);
   constexpr double ocv_negative = 0.17;
@@ -81,6 +189,7 @@ TEST_CASE("Surface-crack mechanisms match legacy Cell_SPM", "[core][ageing][crac
   constexpr double current_stress = 12.0;
   constexpr double previous_stress = 3.5;
   constexpr double interval = 60.0;
+  test_support::RecordedBits models_1_to_4;
 
   for (unsigned model_id = 1; model_id <= 5; ++model_id) {
     for (const bool reduce_diffusivity : { false, true }) {
@@ -140,6 +249,10 @@ TEST_CASE("Surface-crack mechanisms match legacy Cell_SPM", "[core][ageing][crac
               == Status::Success);
 
       const std::array actual{ output.sei_multiplier[0], output.crack_surface_rate[0], output.negative_diffusivity_rate[0] };
+      // A1.0 pre-source-edit order: model 1..4, diffusivity off/on, then
+      // [SEI multiplier, crack rate, negative-diffusivity rate].
+      if (model_id <= 4)
+        models_1_to_4.append(actual);
       for (int quantity = 0; quantity < 3; ++quantity) {
         const auto q = static_cast<std::size_t>(quantity);
         const double scale = std::max(std::abs(expected[q]), 1e-30);
@@ -164,6 +277,62 @@ TEST_CASE("Surface-crack mechanisms match legacy Cell_SPM", "[core][ageing][crac
       }
     }
   }
+
+  CAPTURE(models_1_to_4.values,
+          models_1_to_4.fnv1a,
+          models_1_to_4.mixed);
+  REQUIRE(models_1_to_4.values == 24);
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
+  // These are within-mode identity gates, not cross-optimisation comparisons.
+#if defined(SLIDE_TEST_RELEASE) && defined(SLIDE_TEST_IPO)
+  constexpr auto expected_fnv = UINT64_C(0xdc30ce9466aa1ae3);
+  constexpr auto expected_mixed = UINT64_C(0x699574956434b620);
+#elif defined(SLIDE_TEST_RELEASE)
+  constexpr auto expected_fnv = UINT64_C(0x4f691333ce8072a6);
+  constexpr auto expected_mixed = UINT64_C(0x823f0fffde2c3d18);
+#else
+  constexpr auto expected_fnv = UINT64_C(0x26095ff417f83ca0);
+  constexpr auto expected_mixed = UINT64_C(0xaf0313f19f95e3dc);
+#endif
+  CHECK(models_1_to_4.fnv1a == expected_fnv);
+  CHECK(models_1_to_4.mixed == expected_mixed);
+#endif
+}
+
+TEST_CASE("Surface-crack model 5 retains its scalar and Dual temperature oracles",
+          "[core][ageing][crack][dual]")
+{
+  // MQ.2 A1.0 registered before first run: at T=310 K model 5 is nonzero,
+  // its shared-Arrhenius scalar value differs from the private association by
+  // at most 1e-13 relative, and its unit temperature tangent matches a centered
+  // h=1e-4 K finite difference within 1e-8 relative.
+  constexpr double h = 1e-4;
+  const double double_rate = model5CrackRateAt(model5_temperature);
+  const double private_association_rate =
+    independentModel5CrackRate(model5_temperature, false);
+  const double shared_association_rate =
+    independentModel5CrackRate(model5_temperature, true);
+  CAPTURE(double_rate, private_association_rate, shared_association_rate);
+  REQUIRE(double_rate != 0.0);
+  REQUIRE(relativeDelta(private_association_rate, shared_association_rate)
+          <= 1e-13);
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS) && !defined(__FAST_MATH__)
+  REQUIRE(std::bit_cast<std::uint64_t>(private_association_rate)
+          != std::bit_cast<std::uint64_t>(shared_association_rate));
+#endif
+  REQUIRE(relativeDelta(double_rate, shared_association_rate) <= 1e-13);
+
+  const auto dual_rate =
+    model5CrackRateAt(core::Dual{ model5_temperature, 1.0 });
+  CAPTURE(dual_rate.value, double_rate);
+  REQUIRE(relativeDelta(dual_rate.value, double_rate) <= 1e-13);
+
+  const double below = model5CrackRateAt(model5_temperature - h);
+  const double above = model5CrackRateAt(model5_temperature + h);
+  const double finite_difference = (above - below) / (2.0 * h);
+  CAPTURE(dual_rate.derivative, finite_difference);
+  REQUIRE(std::abs(dual_rate.derivative - finite_difference)
+          <= 1e-8 * std::max(std::abs(finite_difference), 1e-30));
 }
 
 TEST_CASE("Surface-crack parameters classify masks and numeric bounds",

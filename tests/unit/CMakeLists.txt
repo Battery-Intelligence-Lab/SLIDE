@@ -93,6 +93,7 @@ target_link_libraries(unit_test_core_SpmStress PRIVATE slide_core)
 # Phase 1 ageing: surface cracking 1--5, extra SEI, and diffusivity coupling
 add_executable_with_coverage_and_test(unit_test_core_SurfaceCrack core_SurfaceCrack_test.cpp)
 target_link_libraries(unit_test_core_SurfaceCrack PRIVATE slide_core)
+slide_configure_recorded_scalar_fixture(unit_test_core_SurfaceCrack)
 
 # Phase 1 ageing: loss-of-active-material mechanisms 1--4
 add_executable_with_coverage_and_test(unit_test_core_Lam core_Lam_test.cpp)
