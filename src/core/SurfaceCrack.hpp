@@ -8,6 +8,7 @@
 
 #include "AgeingKernel.hpp"
 #include "Sei.hpp"
+#include "SpmScalarKernels.hpp"
 #include "SpmStress.hpp"
 #include "SurfaceCrackParams.hpp"
 
@@ -123,8 +124,12 @@ template <class Real>
         const Real z_negative = observables.surface_stoichiometry[neg][i];
         Real reaction_rate{};
         if (primal_value(current) <= 0.0) {
-          const Real temperature_factor = exp(p.model5_k_activation / p.Rg
-                                              * (Real{ 1 } / p.reference_temperature - Real{ 1 } / T));
+          const Real arrhenius = spm_scalar::arrheniusFactor(
+            static_cast<Real>(p.reference_temperature),
+            T,
+            static_cast<Real>(p.Rg));
+          const Real temperature_factor =
+            exp(p.model5_k_activation * arrhenius);
           if (primal_value(z_negative) < 0.3)
             reaction_rate = Real{ 2 } * p.model5_k * temperature_factor;
           else if (primal_value(z_negative) >= 0.7)

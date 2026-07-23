@@ -77,6 +77,7 @@ load_compact("src/core/SpectralDiffusion.hpp" spectral)
 load_compact("src/core/SpectralDiffusionLegacy.hpp" spectral_legacy)
 load_compact("src/core/SpmScalarKernels.hpp" scalar_kernels)
 load_compact("src/core/Sei.hpp" sei)
+load_compact("src/core/SurfaceCrack.hpp" surface_crack)
 
 foreach(consumer IN ITEMS pipeline observables dual cuda curves spectral)
   require_tokens("${consumer}" ${consumer} "#include\"SpmScalarKernels.hpp\"")
@@ -209,5 +210,15 @@ forbid_tokens("SEI private activation copies" sei_consumer
   "D_ref*exp(D_activation*arrhenius)")
 forbid_tokens("SEI private kinetic copies" sei_consumer
   "p.n_sei*p.F*kt*exp(")
+
+require_tokens("SurfaceCrack direct scalar owner" surface_crack
+  "#include\"SpmScalarKernels.hpp\""
+  "constRealarrhenius=spm_scalar::arrheniusFactor(static_cast<Real>(p.reference_temperature),T,static_cast<Real>(p.Rg));"
+  "constRealtemperature_factor=exp(p.model5_k_activation*arrhenius);")
+require_token_count(
+  "SurfaceCrack Arrhenius consumer" surface_crack
+  "spm_scalar::arrheniusFactor(" 1)
+forbid_tokens("SurfaceCrack private Arrhenius association" surface_crack
+  "p.model5_k_activation/p.Rg*(Real{1}/p.reference_temperature-Real{1}/T)")
 
 message(STATUS "PC-10 single-source structural gate passed")
