@@ -121,7 +121,8 @@ target_link_libraries(unit_test_core_SpectralModel PRIVATE slide_core)
 
 # Phase 1 D-02: runtime registry selects one concrete pipeline per homogeneous batch
 add_executable_with_coverage_and_test(unit_test_core_SpmFactory core_SpmFactory_test.cpp)
-target_link_libraries(unit_test_core_SpmFactory PRIVATE slide_core)
+target_link_libraries(unit_test_core_SpmFactory PRIVATE slide_core Boost::boost)
+slide_configure_recorded_scalar_fixture(unit_test_core_SpmFactory)
 
 # Phase 9C-4: shared caller-owned SPM test mechanics and independent self-test
 add_executable_with_coverage_and_test(unit_test_core_CoreSpmTestHarness core_CoreSpmTestHarness_test.cpp)
