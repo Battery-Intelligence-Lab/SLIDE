@@ -225,6 +225,61 @@ These bands are fixed before the corresponding test or source change.
   their existing unit binaries. Before the first edit, the touched binaries'
   assertion/test-case summaries are captured from the MQ.1 Debug and Release
   trees; after each batch, no pre-existing case or assertion may disappear.
+
+### P0 pack-algebra oracle addendum
+
+A read-only review fixed the following oracle inputs before the first P1/P2
+source edit. Traces A–C were specified before their first test run; this
+repository addendum makes that earlier registration durable. Trace D is
+registered here before its first build/run after adversarial review found that
+A–C use only dyadic resistances and therefore cannot freeze the
+`x/R` versus `x*(1/R)` fast-math seam.
+
+1. **Trace A — exact high-dynamic-range all-mode solve.** Compile
+   `parallel(4, affine)` with `H = 0x1p53`,
+   `E = {H, 1, H-1, -H}`, `R = {1,1,1,1}`, and applied current
+   `H-8`. Fresh sparse, ladder, and relaxation solvers each use tolerance
+   `1e-12`, maximum four iterations, and must finish in exactly two.
+   Terminal voltage is bitwise `2`, cell currents are bitwise
+   `{H-2,-1,H-3,-H-2}`, and node voltages are bitwise `{2,0}`.
+   An independent branch walk must produce exact positive-zero KCL residuals
+   at every node. Relaxation drift is positive zero and gain is exactly one.
+2. **Trace B — resistor arm.** Compile
+   `parallel(1, affine, link R=0.5)` with cell `E=2`, cell `R=0.5`,
+   and applied current `1`. A cold sparse solve takes two iterations and
+   publishes cell current `1`, terminal voltage `1`, and node voltages
+   `{1,0,1.5}` bitwise. Reusing that solution as a warm relaxation start with
+   gain one takes exactly one iteration, retains those bits, reports positive
+   zero drift and constraint bound bitwise `1e-12`, and satisfies independent
+   exact-zero KCL.
+3. **Trace C — sparse damping cadence.** Compile `parallel(2, affine)` with
+   `E={8,0}`, `R={1,1}`, and zero applied current. With tolerance `1e-12`
+   and maximum three iterations, sparse solve must take exactly three:
+   half damping, root, confirmation. It publishes voltage `4`, currents
+   `{4,-4}`, nodes `{4,0}`, and independent exact-zero KCL.
+4. **Trace D — non-dyadic callback and publication bits.** A test-only affine
+   adapter records every current span passed to `linearizeThevenin` before
+   copying its constant `E/R` outputs. First, fresh sparse, ladder, and
+   relaxation solvers run `parallel(4, affine)` with
+   `E={4,4.1,3.9,4.2}`, `R={0.1,0.2,0.15,0.3}`, applied current `2`,
+   tolerance `1e-12`, and maximum four iterations; each must take exactly two.
+   Second, a fresh damped sparse solver uses `parallel(2, affine)`,
+   `E={4,0}`, `R={0.3,0.7}`, zero applied current, the same tolerance, and
+   maximum three iterations; it must take exactly three. For each of the four
+   paths, two independent `RecordedBits` recurrences hash, in order, every
+   callback-current frame, final cell currents, final node voltages, and one
+   scalar frame containing terminal voltage, residual norm, constraint drift,
+   constraint bound, and relaxation gain. Expected hashes are captured
+   separately for Debug, fast-math Release/IPO-off, and
+   Release/ThinLTO/CUDA-host builds through deliberate zero placeholders
+   before any pack source edit. The all-mode records contain 19 doubles each;
+   the damped record contains 15. No hash may be reblessed during P1 or P2.
+
+Trace D is the decisive digit-identity gate for non-dyadic division at all
+four current-reconstruction sites: sparse undamped, sparse damped, ladder, and
+relaxation. A final solution-only hash is insufficient because a later
+iteration could wash out a changed reconstructed current; callback frame two
+is therefore part of the record.
 - Recording refactors retain byte-identical encoded headers, payloads, CRCs, and
   CSV text on the existing fixtures. Added CSV value tests parse every data cell
   and require `max_digits10` round-trip equality.
