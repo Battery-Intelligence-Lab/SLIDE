@@ -61,15 +61,17 @@
 > package/cross-platform claim is made. Report:
 > `.claude/reports/mq1-baseline-validation-2026-07-23.md`. Next unticked box: **MQ.2**.
 >
-> **2026-07-24 — MQ.2 P0/P1 reconciled and landed.** The four flagged commits were
+> **2026-07-24 — MQ.2 P0/P1/P2 reconciled and landed.** The four flagged commits were
 > registration-only. The
 > +313-line exact PackSolver oracle boundary landed at `6c7ab74`; Debug, fast-math Release, and
 > host-C++/CUDA-tree binaries each pass 949/30, and four division-site plus two oracle mutations
 > turn it red. P1's three pack-algebra findings are APPLIED at `8630207` under the unchanged
-> three-configuration exact gate and five adversarial mutations. Current evidence census over
-> 71 decisions: 20 APPLIED, 0 REFUTED, 8 named deferrals, 43 pending. Next is P2 Mode-C
-> relaxation-storage ownership. The PackSolver test-file debt is now 1,510 lines and remains
-> explicitly owned by M1.0.
+> three-configuration exact gate and five adversarial mutations. P2's Mode-C scratch finding is
+> APPLIED at `bf185dd`: seven roles, one transactional publication, six unchanged hot fills, and
+> six adversarial mutations. Current evidence census over 71 decisions: 21 APPLIED, 0 REFUTED,
+> 8 named deferrals, 42 pending. Next is S1 PackStepper ownership and the executable
+> `substeps * dt` contract. The PackSolver test-file debt is now 1,510 lines and remains explicitly
+> owned by M1.0.
 
 ---
 

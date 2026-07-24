@@ -61,6 +61,7 @@ This file records reusable findings from the v4 implementation and validation wo
 ## Iteration convergence requires the equation residual
 
 - A small update can mean convergence or merely a tiny relaxation gain. Mode C must gate on both current-update size and the KCL residual at every independent node; terminal KCL alone can be exactly zero while an internal node violates conservation.
+- Reusing one scratch vector sequentially for compensation, target, and residual hides semantic lifetimes without reducing hot traffic. Separate cold-sized roles, keep the same fill count, publish their aggregate only after allocation, and pin same-node sum/compensation associations—not just aggregate use counts.
 - Do not promote a one-unknown contraction identity into a theorem for a coupled graph. Keep the exact `(1-α)^k` oracle on the topology where it is derivable, and measure the governing residual directly elsewhere.
 - Fast-math may reassociate even a textbook compensated sum. A compensation kernel needs a scoped strict-FP implementation plus Debug/Release evidence; its roundoff diagnostic should be labelled an estimate, not a portable theorem.
 - A read-only diagnostics accessor must not also expose movable/reconfigurable solver ownership. Const public surfaces are a correctness boundary, not only an API-style preference.

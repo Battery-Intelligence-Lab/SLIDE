@@ -24,6 +24,7 @@ fixtures`). The completed boundaries recorded so far are:
 | `6c7ab74` | P0 pack-algebra oracles | oracle-only, before P1/P2 source edits |
 | `d4e1a2d` | A1 structural-anchor correction | test-gate baseline repair, no source change |
 | `8630207` | P1 pack-solver algebra | exact no-op plus executable ownership gate |
+| `bf185dd` | P2 Mode-C relaxation storage | exact no-op plus seven-role scratch ownership |
 
 The retained build trees are `build-mq1-debug` (Clang 21.1.8 Debug/ThinLTO),
 `build-mq1-release` (Clang 21.1.8 fast-math Release, IPO off), and
@@ -685,3 +686,104 @@ The restored Debug/Release/host-C++ trees each re-passed 949/30.
 `clang-format --dry-run --Werror` and `git diff --check` pass. No full-suite,
 timing, sanitizer, coverage, hosted-CI, installed-package, CUDA-device, Linux,
 or macOS claim is made for P1.
+
+## P2 — seven-role Mode-C relaxation storage
+
+### Pre-source structural RED
+
+The P2 gate was added and run before any production storage changed. Against
+P1 production it failed at the intended first owner:
+
+```text
+MQ.2 P2 exact relaxation scratch owner: expected 1 occurrences of
+structRelaxationScratch{...};RelaxationScratchrelaxation_{};
+found 0
+```
+
+The gate bounds the owner inside `PackSolver`'s private slice, bounds
+`solveRelaxation` through its unique return tail, scans every production
+`.hpp`/`.cpp`/`.cu` under `src/core` for the four retired names, and checks
+allocation/proof/publication order numerically before accepting the contiguous
+no-throw member-publication block.
+
+### Implementation and structural ownership
+
+Commit `bf185dd` applies `relaxation-target-triple-role`. One private
+`RelaxationScratch` now owns:
+
+| Role | Indexed uses in `solveRelaxation` |
+|---|---:|
+| `diagonal` | 4 |
+| `diagonal_compensation` | 2 |
+| `rhs` | 6 |
+| `rhs_compensation` | 4 |
+| `target` | 4 |
+| `residual` | 5 |
+| `residual_compensation` | 4 |
+
+`configure` constructs all seven node-sized vectors in one local aggregate
+before member publication, proves the aggregate nothrow-move-assignable, and
+publishes it once. This adds three cold vector allocations and objects. The
+hot solve still performs exactly six fills: four coefficient/RHS buffers at
+entry and two KCL-residual buffers immediately before assembly. `target` is
+assigned on every node and is never filled; no vector is constructed or
+resized in `solveRelaxation`.
+
+The structural gate pins every same-node sum/compensation pair, both terminal
+signs, the complete target loop, the two exact fill blocks, and the final
+residual read. It rejects alternate fill/copy/allocation APIs rather than
+counting only `std::fill`. The private two-space PackSolver anchor changes
+85→83 exactly because four members became one nested-struct declaration plus
+one aggregate member; its namespace anchor remains 16.
+
+### Exact three-configuration result
+
+No recorded constant moved:
+
+| Configuration | Complete PackSolver | Structural aggregate |
+|---|---:|---:|
+| Debug/ThinLTO | 949 assertions / 30 cases | 1/1 |
+| fast-math Release, IPO off | 949 / 30 | 1/1 |
+| Release/ThinLTO CUDA tree, host C++ | 949 / 30 | 1/1 |
+
+The existing Debug hot/cold boundaries also remain green:
+
+```text
+P4-G3 100k-cell Mode C is sub-GB and allocation-free: 7 assertions / 1 case
+PackSolver late allocation failure preserves prior configuration: 33 / 1
+```
+
+### Adversarial gate checks
+
+Six distinct mutations turned the registered boundary red:
+
+1. Reusing `target` as diagonal compensation made the indexed-role gate find
+   0/2 diagonal-compensation uses.
+2. Removing only the residual reset made the fill gate find 5/6 and made the
+   repeated relaxation record fail 2/71 assertions. Only Trace-D index 2
+   changed, from `3168649734a681a2 / 5e3b17711acbdbf4` to
+   `f44ba3fce50c5a12 / e5500e469212d7b6`.
+3. Swapping positive/negative diagonal-compensation indices preserved all
+   aggregate counts but failed the exact positive-node association.
+4. Moving the complete scratch candidate and nothrow proof below the intact
+   publication block failed: `all scratch allocation and its no-throw proof
+   must precede member publication`.
+5. Adding `std::ranges::fill(relaxation_.target, 0.0)` preserved the six
+   `std::fill` calls but failed the alternate-mutation prohibition.
+6. Restoring `relaxation_diagonal_` only in an unrelated production comment
+   in `PackSolverValidation.cpp` failed the production-wide legacy-name scan.
+
+Every mutation was reversed to exact hashes:
+
+```text
+PackSolver.hpp              D41F0B7E2E823B9729E7517069AA37925724CBD43D1A790652B595093E317586
+PackSolver.cpp              B532DFDFAAF90DEE495AA482C95A06D140BCC679FDB3A8C9A6C2CA124B77E8B6
+PackSolverIterative.cpp     1A8E3B40EC056D6D62B50333E858711AF4A05954D07B29F78AED015201446CDD
+p9c_architecture.cmake      5DBC885D9D76BB379630D51D28F5E582D1F5D527A28EFF19BFA0D9E54C273E7D
+p9c5_public_surface.cmake   EAFE6A20E500066FE93D2C71FE9A8820E050B1CA68D4AB98601126280BA60DBD
+```
+
+The restored three configurations each re-passed 949/30 and 1/1.
+`clang-format --dry-run --Werror` and `git diff --check` pass. No full-suite,
+timing, sanitizer, coverage, hosted-CI, installed-package, CUDA-device, Linux,
+or macOS claim is made for P2.

@@ -113,7 +113,7 @@ constants fan-out, fused-Euler input validation, the six O1 observable findings,
 ownership including the SurfaceCrack Arrhenius association; `homogeneous-init-lane-loop` is
 FALSIFIED and deferred to MQ.7.
 
-**Reconciliation and P1 completed 2026-07-24 (PLAN.md MQ.2 records the evidence):** commits
+**Reconciliation plus P1/P2 completed 2026-07-24 (PLAN.md MQ.2 records the evidence):** commits
 `c2940a2` / `87021a5` / `39e6a00` / `b1625fb` are preregistration-only, not implementation
 boundaries. The +313-line PackSolver P0 oracle WIP landed at `6c7ab74`; all three retained
 host configurations pass 949/30, and four division-site plus two oracle mutations turn it red.
@@ -121,8 +121,11 @@ No survivor was dispositioned by that oracle-only boundary. P1 then applied
 `cell-current-reconstruction-x4`, `branch-drop-and-kcl-current`, and
 `dead-usings-and-misplaced-comment` at `8630207`; the unchanged 949/30 exact gate and aggregate
 structural test pass in all three retained host configurations, and five algebra/gate mutations
-turn red. The first next batch is P2 Mode-C relaxation-storage ownership
-(`relaxation-target-triple-role`).
+turn red. P2 then applied `relaxation-target-triple-role` at `bf185dd`; seven named scratch roles
+are allocated transactionally and published once, hot traffic remains six fills, the same
+three-configuration 949/30 gate passes, and six adversarial storage/publication mutations turn
+red. The first next batch is S1 PackStepper gather/scatter, prefix uniqueness, and the executable
+`substeps * dt` contract.
 
 Then finish MQ.2 (every survivor dispositioned applied / REFUTED / deferred-with-owner — no
 silent drops; the six named landmines and MQ.1's two build-policy findings included) → MQ.3 repo
