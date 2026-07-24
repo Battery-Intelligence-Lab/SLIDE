@@ -8,7 +8,7 @@ MQ.2 remains open: this report records completed batch boundaries but does not
 yet claim the final 71-row census or the final three-lane gate.
 
 The registered source floor is commit `5481496` (`Freeze MQ.2 pre-edit
-fixtures`). The first three completed boundaries are:
+fixtures`). The completed boundaries recorded so far are:
 
 | Commit | Batch | Character |
 |---|---|---|
@@ -19,6 +19,9 @@ fixtures`). The first three completed boundaries are:
 | `43c4953` | A1.0 surface-crack oracles | oracle-only, before ageing source edits |
 | `a699da5` | A1.1 SEI scalar ownership | exact no-op; function-boundary hypothesis falsified |
 | `e34f548` | A1.2 SurfaceCrack Arrhenius | registered low-bit association correction |
+| `e034d23` | F1 direct fused-Euler validation | invalid-input behavior hardening |
+| `83ab7be` | O1 observable storage/access | exact no-op plus checked cold boundaries |
+| `6c7ab74` | P0 pack-algebra oracles | oracle-only, before P1/P2 source edits |
 
 The retained build trees are `build-mq1-debug` (Clang 21.1.8 Debug/ThinLTO),
 `build-mq1-release` (Clang 21.1.8 fast-math Release, IPO off), and
@@ -491,3 +494,82 @@ pc10_single_source.cmake     641AE57005A8BFFA3309F965E85B3182630F6B09574B0AFB706
 
 The final structural gate, changed-file formatting checks, and
 `git diff --check` pass.
+
+## P0 — pack-algebra oracle reconciliation
+
+### Registration-only commits and dirty-tree disposition
+
+The four commits called out by PLAN MQ.2 were audited against their exact
+diffs. They changed only this batch's preregistration report:
+
+| Commit | Durable registration | Disposition |
+|---|---|---|
+| `c2940a2` | exact pack-algebra Traces A–D | retained as P0/P1/P2 preregistration |
+| `87021a5` | P1/P2 helper, token, storage, fill, and mutation gates | retained as future P1/P2 preregistration |
+| `39e6a00` | scripted source-step rollback fixture | retained as future S2 preregistration |
+| `b1625fb` | D0 falsification and revised bit-separating Trace D | retained; D0 hashes remain non-acceptance evidence |
+
+They are therefore not implementation commits and apply no survivor
+disposition. The unexplained working tree was a coherent P0 oracle boundary:
+`tests/unit/CMakeLists.txt` enabled the established recorded-scalar fixture for
+PackSolver, and `tests/unit/core_PackSolver_test.cpp` added Traces A–D plus an
+independently coded KCL branch walk. It landed without production changes at
+`6c7ab74`.
+
+The tracked PackSolver test grew from 1,198 to 1,510 lines. This is recorded
+debt, not a new silent inheritance: PLAN M1.0 already owns the split and its
+source count is updated to the new floor. P0 is oracle-only; none of
+`cell-current-reconstruction-x4`, `branch-drop-and-kcl-current`,
+`dead-usings-and-misplaced-comment`, or `relaxation-target-triple-role` is
+called APPLIED here.
+
+### Three-configuration exact gate
+
+Before the first P1/P2 production edit, each retained build reported no work
+for the current source and the direct PackSolver binary passed:
+
+| Configuration | P0 `[MQ.2]` | Complete PackSolver |
+|---|---:|---:|
+| Debug/ThinLTO | 71 assertions / 4 cases | 949 / 30 |
+| fast-math Release, IPO off | 71 / 4 | 949 / 30 |
+| Release/ThinLTO CUDA tree, host C++ | 71 / 4 | 949 / 30 |
+
+The committed pre-P0 floor was 878/26, so the delta is exactly the four
+registered cases and 71 assertions. Trace D retained its registered value
+counts `{13,13,13,15}` and its two frozen recurrences in all three
+configurations. These bit records are regression provenance, not a portable
+mathematical oracle; Traces A–C and the independent KCL walk supply the
+analytic checks.
+
+### Adversarial sensitivity
+
+At clean commit `6c7ab74`, each of the four raw cell-current reconstruction
+sites was changed separately from direct division to reciprocal
+multiplication. The Debug Trace D case went red every time:
+
+| Mutated path | Trace index | Mutated FNV-1a / mixed | Result |
+|---|---:|---|---|
+| sparse undamped | 0 | `67674e77f46ba2b8` / `c61c787dcc8a9396` | 24/26 passed; both hashes failed |
+| sparse damped | 3 | `0664dfa152e6be22` / `5db2a6502d3dc5d2` | 24/26; both hashes failed |
+| ladder | 1 | `ea9ba4b556eddad4` / `80602aa74e05476d` | 24/26; both hashes failed |
+| relaxation | 2 | `2f3c710b8f14bdba` / `50827d75714062b9` | 24/26; both hashes failed |
+
+This overturns the D0 gate weakness without reusing or reblessing D0: revised
+Trace D observes the intermediate callback frame that the old dyadic fixture
+missed.
+
+Two oracle mutations were also red. Flipping the independent cell-branch KCL
+sign failed 3 of 71 assertions (68/71 passed), while omitting callback frame
+two changed the first record from 13 to 11 values and failed at 14/15 reached
+assertions. After every mutation, exact restoration was verified against:
+
+```text
+PackSolver.cpp             A5155224C2BAC572BF4CD785859988A3C8E23BCC5AB6CC097E4C214B32C088E6
+PackSolverIterative.cpp    382057BED8F21A95DD08F970C5210181341EA9CA43914D17425DA8E0BF8F8856
+core_PackSolver_test.cpp   19ED0074E61849B27CF5CB2650D1E027A2CC7A6D46EF205DF9C869A41883703F
+```
+
+The restored Debug binary passes 949/30. `clang-format --dry-run --Werror`,
+the shared-harness structural gate, and `git diff --check` pass. No full-suite,
+timing, sanitizer, coverage, hosted-CI, installed-package, device-code, Linux,
+or macOS claim is made at this oracle boundary.

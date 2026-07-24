@@ -6,9 +6,9 @@
 > wave** (clean the repository / re-derive the mathematics / hunt logical + performance mistakes —
 > inserted between M0 and M1 in ladder order) and the split-out standing operating contract
 > **`AGENTS.md`** for autonomous Codex sessions; refreshed later 2026-07-23 (Fable) with the **Codex
-> campaign charter** — infinite tokens / finite hours stated in §0, the expand-while-cleaning rule in
-> the MQ preamble, and the recorded mid-batch state (four pack-algebra oracle commits without evidence
-> rows + uncommitted `tests/unit` WIP) with its reconcile-first instruction in MQ.2.
+> campaign charter** — infinite tokens / finite hours stated in §0 and the expand-while-cleaning rule
+> in the MQ preamble; reconciled 2026-07-24 by classifying the four pack-algebra commits as
+> preregistration-only and landing the exact P0 oracle boundary at `6c7ab74` (MQ.2).
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
@@ -1448,15 +1448,14 @@ debt.
       the redundant `-Ofast` spelling, and the CUDA build exposes the retained legacy
       `benchmark_LP_cases` narrowing warning through `Deep_ptr.hpp`; add and disposition both here
       rather than silently dropping them.
-      **Mid-batch state recorded 2026-07-23 — reconcile FIRST, before any new disposition:** commits
-      `c2940a2` (exact pack-algebra traces), `87021a5` (pack-algebra ownership gates), `39e6a00`
-      (source-step rollback oracle), and `b1625fb` (replaced falsified pack division oracle) landed
-      WITHOUT validation-log or §8 rows — verify their gates against the MQ.2 preregistration and
-      write the missing rows, or revert what cannot be evidenced. The working tree additionally holds
-      uncommitted WIP on top (`tests/unit/CMakeLists.txt` + `tests/unit/core_PackSolver_test.cpp`,
-      +313 lines: `TracingAffineBatch`, bitwise `checkExactSolution`, an independent KCL-residual
-      oracle, a recorded pack-solve bit trace over `test_support::RecordedBits`) — finish-and-land or
-      revert with a recorded reason (the M0.1 pattern). Never build on an unexplained dirty tree.
+      **Mid-batch reconciliation completed 2026-07-24:** the four commits `c2940a2`,
+      `87021a5`, `39e6a00`, and `b1625fb` were confirmed to be preregistration-only, not
+      implementation boundaries. Their gates remain live for P1/P2/S2. The +313-line PackSolver
+      P0 oracle WIP landed at `6c7ab74`; Debug, fast-math Release, and host-C++/CUDA-tree binaries
+      each pass 949/30, and four separate reciprocal-multiplication mutations plus two oracle
+      mutations turn the gate red. No survivor is dispositioned by this oracle-only boundary.
+      Evidence: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. NEXT is P1
+      pack-solver algebra.
 - [ ] MQ.3 Repo hygiene sweep: audit the tracked tree (670 files at this writing) — stale or
       contradictory docs (develop/TODO.md header vs PLAN §8, README claims, CONTRIBUTING,
       LESSONS.md), dead scripts, anything tracked that should be ignored; fix `.gitignore` gaps.
@@ -1508,7 +1507,8 @@ Derive before running: identifiability and noise floors computed analytically FI
 the derivation, not from a trial fit.
 
 - [ ] M1.0 Pay the MC-1 TEST-file debt owed by M0.8/M0.10 (explicit owner box — do not inherit again):
-      split `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,198),
+      split `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,510 after
+      MQ.2's registered P0 pack-algebra oracles),
       `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118),
       `core_ParameterSet_test.cpp` (1,007) along fixture/subsystem boundaries; the SUM of
       successor-binary assertion/test-case counts must be ≥ each predecessor's frozen floor, and floors
@@ -1923,4 +1923,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-23 | MQ.2 O1 observable storage/access | All six O1 findings are APPLIED at `83ab7be`: two scratch owners share one cold checked-extent helper; every observable subspan is pre-guarded and final consumption is exact; transport-cache representation is private without moving scalar physics; modal addressing uses `BatchView::at`; SEI binds its lane index once; duplicate Status includes are removed and structurally rejected; public `TheveninBatchView::lanes()` is now `n_lanes()`. A stale 9C-3 “all top-level headers are public” rule was narrowed only by two exact allowlisted edges, not broadly weakened. Debug/Release/CUDA focused counts are SpmObservables 69/3, SpmElectrical 48/3, SEI 57/3, Ageing 384/6, PackSolver 878/26, and Factory 1472/8; all existing hashes/bands remain exact. The existing recorded fixtures were falsified as a cache-wiring mutation gate (swapped outputs stayed green), so a direct bitwise hit/miss/four-key invalidation oracle was registered; the same mutation then fails 30/48 assertions. Five structural/storage mutations also turn red. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-23 | MQ.2 A1 ageing scalar ownership | `sei-kinetic-current-duplicated-in-one-function` and supplemental `surfacecrack-arrhenius-association` are APPLIED at `a699da5`/`e34f548`, after oracle-only commit `43c4953`. Five SEI activation expressions and three kinetic expressions now have one scalar owner; a normal function boundary was **FALSIFIED three ways** by the Release/ThinLTO exact gate (same changed ageing/factory hashes each time), while the preregistered caller-expanded fallback retains every existing hash in Debug, fast-math Release, and host-ThinLTO/CUDA. SurfaceCrack model 5 now uses the shared association under an independent nonzero scalar oracle (old/shared relative delta `4.9e-16` in Debug), a temperature-`Dual` centered-FD gate, legacy `1e-12`, and frozen pre-edit bits for models 1–4. Final focused counts are SurfaceCrack 95/4 Debug and 94/4 both Release modes, SEI 57/3, Ageing 384/6, Factory 1472/8; no recorded hash was reblessed. Four ownership/wiring mutations turn red. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-23 | PLAN/AGENTS refreshed for the autonomous Codex campaign (Fable, Volkan directive) | DONE (this revision) — §0 gains the infinite-tokens/finite-hours bullet; the MQ preamble gains the expand-while-cleaning standing rule (expansion resumes at M1.0 at full pace; restructuring stays ladder work in the same motion); MQ.2 records the mid-batch state — four pack-algebra oracle commits `c2940a2`/`87021a5`/`39e6a00`/`b1625fb` without evidence rows, plus uncommitted `tests/unit` pack-solver oracle WIP (+313 lines) — with a reconcile-first instruction; AGENTS.md §1/§6 synced to the same state. No source or test file changed by this revision. |
-| — | NEXT | **Reconcile first (MQ.2):** verify-or-revert the four undocumented pack-algebra commits `c2940a2..b1625fb` (write their missing validation-log/§8 rows) and land-or-revert the uncommitted `tests/unit` WIP (M0.1 pattern). Then finish **MQ.2** (disposition every remaining survivor plus MQ.1's two registered build-policy findings) → MQ.3 → … → MQ.8, then **M1.0** → M1.1 → … — take the first unticked box, §0.3 protocol. |
+| 2026-07-24 | MQ.2 P0 pack-algebra oracle reconciliation | PASSED oracle-only at `6c7ab74` — the four flagged commits `c2940a2`/`87021a5`/`39e6a00`/`b1625fb` are confirmed preregistration-only and retained as P0/P1/P2/S2 gates, not misreported as implementation. The +313-line WIP landed coherently: Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree PackSolver binaries each pass 949 assertions / 30 cases, exactly 71/4 above the 878/26 floor. Revised Trace D is red under four separate `/R`→`*(1/R)` mutations (sparse undamped, sparse damped, ladder, relaxation); flipping the independent KCL sign fails 3/71 and dropping callback frame two fails its 13-value count. Exact source hashes restored and Debug 949/30 re-passed. No survivor is APPLIED by this oracle boundary; P1 remains first. `core_PackSolver_test.cpp` is now 1,510 lines and its existing M1.0 split owner is updated rather than silently inherited. No full-suite or device-code claim. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
+| — | NEXT | **MQ.2 P1 pack-solver algebra:** apply `cell-current-reconstruction-x4`, `branch-drop-and-kcl-current`, and `dead-usings-and-misplaced-comment` under the frozen P0 949/30 exact gate and registered structural token census; then P2 Mode-C storage and S2 rollback, followed by every remaining MQ.2 batch and the ladder. |

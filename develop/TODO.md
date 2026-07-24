@@ -44,8 +44,9 @@
 > **2026-07-23 — MQ quality wave inserted; AGENTS.md created.** PLAN.md now carries milestone **MQ**
 > between M0 and M1 (Volkan's clean/re-derive/hunt directive): MQ.1 restore the Debug-AND-Release
 > baseline, MQ.2 disposition all 68 quality-pass survivors (the "60 unapplied" above minus what landed
-> since: linear ladder detection in 452ce0c; `substeps` is now documented but its semantics DECISION is
-> still open — the report's landed list is authoritative), MQ.3 repo hygiene (the stale-build
+> since: linear ladder detection in 452ce0c; `substeps * dt` semantics are retained and documented,
+> with the executable equivalence gate still pending — the report's landed list is authoritative),
+> MQ.3 repo hygiene (the stale-build
 > note above becomes a deletion PROPOSAL there), MQ.4 derivation inventory `docs/derivations/INDEX.md`,
 > MQ.5 independent re-derivation of the mathematics, MQ.6 logic hunt, MQ.7 structural performance
 > hunt, MQ.8 closeout. `AGENTS.md` at the repo root is the standing operating contract for autonomous
@@ -59,6 +60,13 @@
 > and the two observed build-policy warnings pass to MQ.2; no performance/sanitizer/coverage/CI/
 > package/cross-platform claim is made. Report:
 > `.claude/reports/mq1-baseline-validation-2026-07-23.md`. Next unticked box: **MQ.2**.
+>
+> **2026-07-24 — MQ.2 P0 reconciled.** The four flagged commits were registration-only. The
+> +313-line exact PackSolver oracle boundary landed at `6c7ab74`; Debug, fast-math Release, and
+> host-C++/CUDA-tree binaries each pass 949/30, and four division-site plus two oracle mutations
+> turn it red. Current evidence census over 71 decisions: 17 APPLIED, 0 REFUTED, 8 named deferrals,
+> 46 pending. No survivor is applied by P0; next is P1 pack-solver algebra. The PackSolver test-file
+> debt is now 1,510 lines and remains explicitly owned by M1.0.
 
 ---
 
@@ -84,7 +92,7 @@
 ## Short-Term (This Quarter)
 
 ### Code Quality
-- [ ] **MC-1 test-file line debt — UNMET after two milestones, needs an explicit owner.** M0.8 shared the test *mechanics* (MC-4) but grew the files; M0.10 swept the production side and did not touch the test side. Still oversized: `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,198), `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118), `core_ParameterSet_test.cpp` (1,007). Any split must preserve assertion counts and exact-site coverage. Do not re-assign this by inheritance again — give it a box.
+- [ ] **MC-1 test-file line debt — explicitly owned by M1.0.** M0.8 shared the test *mechanics* (MC-4) but grew the files; M0.10 swept the production side and did not touch the test side. Still oversized: `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,510 after MQ.2 P0), `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118), `core_ParameterSet_test.cpp` (1,007). Any split must preserve assertion counts and exact-site coverage.
 - [x] M0.10 production-side line debt: done. `SpmFactory.cpp` 713 → 494 + `SpmBatch.cpp`; `PackSolver.cpp` 910 → 610 + `PackSolverIterative.cpp`; `AsyncRecorder.cpp` 890 → 396 + `AsyncRecordingCodec.cpp` + `detail/AsyncRecordingFormat.hpp`; `Recorder.cpp` 721 → 293 + `RecordingFormat.cpp`; `SpmPipeline.hpp` 783 → 745 + `SpmDiffusionRhs.hpp`; the 1,281-line coverage reporter → the `slide_coverage` package. `checkedAdd`/`checkedMultiply` were duplicated and now have one definition. Only `SpmPipeline.hpp` (745) and `CyclerV2.cpp` (771) exceed 700, both with written justifications. Core lines grew 17,363 → 17,595 (+1.3%) — predicted before the work; there was no dead code to delete.
 - [ ] Replace `assert()` with Catch2 `REQUIRE()` in tests
 - [ ] Convert `#define DATASTORE_BATT` to constexpr (settings.hpp)

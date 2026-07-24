@@ -102,7 +102,7 @@ registered before it starts. Spend tokens like water and wall-clock like blood.
 | Derivations (grows during MQ.4/MQ.5) | `docs/derivations/` |
 | Working TODO mirror (PLAN.md §8 is authoritative) | `develop/TODO.md` |
 
-## 6. The current campaign (2026-07-23, refreshed)
+## 6. The current campaign (2026-07-24, reconciled)
 
 M0 is complete. **MQ.1 is PASSED** (three-lane 58/58 baseline;
 `.claude/reports/mq1-baseline-validation-2026-07-23.md`). **MQ.2 is OPEN and mid-flight:** the
@@ -113,17 +113,13 @@ constants fan-out, fused-Euler input validation, the six O1 observable findings,
 ownership including the SurfaceCrack Arrhenius association; `homogeneous-init-lane-loop` is
 FALSIFIED and deferred to MQ.7.
 
-**Reconcile first, before any new disposition (PLAN.md MQ.2 records this):**
-
-1. Commits `c2940a2` / `87021a5` / `39e6a00` / `b1625fb` (exact pack-algebra traces, ownership
-   gates, source-step rollback oracle, replaced falsified pack division oracle) landed WITHOUT
-   validation-log or §8 rows — verify their gates against the preregistration and write the
-   missing rows, or revert what cannot be evidenced.
-2. The working tree holds uncommitted WIP on top: `tests/unit/CMakeLists.txt` +
-   `tests/unit/core_PackSolver_test.cpp` (+313 lines — `TracingAffineBatch`, bitwise
-   `checkExactSolution`, an independent KCL-residual oracle, a recorded pack-solve bit trace).
-   Finish-and-land or revert with a recorded reason (M0.1 pattern). Never build on an
-   unexplained dirty tree.
+**Reconciliation completed 2026-07-24 (PLAN.md MQ.2 records the evidence):** commits
+`c2940a2` / `87021a5` / `39e6a00` / `b1625fb` are preregistration-only, not implementation
+boundaries. The +313-line PackSolver P0 oracle WIP landed at `6c7ab74`; all three retained
+host configurations pass 949/30, and four division-site plus two oracle mutations turn it red.
+No survivor was dispositioned by that oracle-only boundary. The first next batch is P1
+pack-solver algebra (`cell-current-reconstruction-x4`, `branch-drop-and-kcl-current`,
+`dead-usings-and-misplaced-comment`) under the frozen exact and structural gates.
 
 Then finish MQ.2 (every survivor dispositioned applied / REFUTED / deferred-with-owner — no
 silent drops; the six named landmines and MQ.1's two build-policy findings included) → MQ.3 repo
