@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <cmath>
 #include <cstring>
 #include <type_traits>
 #include <utility>
@@ -92,6 +93,71 @@ TEST_CASE("compiled pack step couples thermal batches and restore invalidates th
   std::vector<double> repeated(stepper.checkpointSize());
   REQUIRE(stepper.checkpoint(repeated) == Status::Success);
   REQUIRE(std::memcmp(first_accepted.data(), repeated.data(), repeated.size() * sizeof(double))
+          == 0);
+}
+
+TEST_CASE("substeps are full-dt advances under one frozen pack solve",
+          "[core][pack][stepper][substeps][oracle][MQ.2][S1]")
+{
+  constexpr core::real_t applied_current = 8.0;
+  constexpr core::real_t dt = 0.125;
+  constexpr core::real_t current_tolerance = 1e-10;
+  constexpr int substeps = 4;
+
+  core::CompiledPackTopology topology;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::cell({ .archetype = "spm" }) }, topology)
+          == Status::Success);
+
+  const auto input =
+    test_support::make_legacy_kokam_input(0.55, 298.0, 298.0);
+  const core::SpmModelOptions options{ .nch = 5 };
+  core::SpmBatch batched;
+  core::SpmBatch repeated;
+  REQUIRE(core::buildSpmBatch(input, options, 1, batched)
+          == Status::Success);
+  REQUIRE(core::buildSpmBatch(input, options, 1, repeated)
+          == Status::Success);
+
+  std::array<core::SpmBatch *, 1> batched_view{ &batched };
+  core::PackStepper batched_stepper;
+  core::EulerLegacy repeated_stepper;
+  REQUIRE(batched_stepper.configure(topology, batched_view)
+          == Status::Success);
+  REQUIRE(repeated_stepper.configure(repeated) == Status::Success);
+
+  REQUIRE(batched_stepper.step(applied_current,
+                               0.0,
+                               dt,
+                               {},
+                               core::PackSolveMode::ladder,
+                               current_tolerance,
+                               substeps)
+          == Status::Success);
+  const auto frozen_current = batched_stepper.solution().cell_current;
+  REQUIRE(frozen_current.size() == 1);
+  const std::array frozen_current_density{
+    frozen_current[0] / repeated.electrode_area()
+  };
+  for (int step = 0; step < substeps; ++step)
+    REQUIRE(repeated_stepper.step(repeated,
+                                  frozen_current_density,
+                                  static_cast<core::real_t>(step) * dt,
+                                  dt)
+            == Status::Success);
+
+  REQUIRE(std::abs(frozen_current[0] - applied_current)
+          <= current_tolerance);
+  REQUIRE(batched.state().at(batched.layout().elapsed_time, 0, 0)
+          == 0.5);
+  REQUIRE(repeated.state().at(repeated.layout().elapsed_time, 0, 0)
+          == 0.5);
+  const auto batched_state = batched.state().raw();
+  const auto repeated_state = repeated.state().raw();
+  REQUIRE(batched_state.size() == repeated_state.size());
+  REQUIRE(std::memcmp(batched_state.data(),
+                      repeated_state.data(),
+                      batched_state.size_bytes())
           == 0);
 }
 

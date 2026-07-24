@@ -356,7 +356,10 @@ TEST_CASE("Thevenin adapters reject every malformed public shape",
   auto two_archetypes = compile(core::series(std::vector{
     core::cell({ .archetype = "a" }), core::cell({ .archetype = "b" }) }));
   two_archetypes.batch_archetypes[1] = two_archetypes.batch_archetypes[0];
-  const std::array two_views{ one_lane, two_lane };
+  for (auto &cell : two_archetypes.cells)
+    cell.archetype = two_archetypes.batch_archetypes[0];
+  const auto distinct_one_lane = core::TheveninBatchView::bind(first, 1);
+  const std::array two_views{ distinct_one_lane, one_lane };
   CHECK(system.configure(two_archetypes.cells,
                          two_archetypes.batch_archetypes,
                          two_views)
