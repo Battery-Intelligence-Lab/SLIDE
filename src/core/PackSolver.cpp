@@ -13,15 +13,18 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <cstring>
 #include <limits>
 #include <new>
 #include <stdexcept>
 #include <type_traits>
 
 namespace slide::core {
-using detail::addCompensatedFinite;
 using detail::addFinite;
+using detail::branchAffine;
+using detail::branchCurrentNumerator;
+using detail::branchCurrentOut;
+using detail::branchDrop;
+using detail::cellCurrentFromDrop;
 using detail::finiteCandidate;
 using detail::knownSolveMode;
 
@@ -434,20 +437,17 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
     return true;
   };
   for (const auto &branch : topology_.electrical.branches) {
-    const real_t voltage = candidate_node_voltage_[branch.node_positive]
-                           - candidate_node_voltage_[branch.node_negative];
+    const real_t voltage = branchDrop(branch, candidate_node_voltage_);
     // First use starts from zero; every successful kernel validates all branch
     // drops before publication, so a warm-start drop is finite here.
     assert(is_finite(voltage));
-    real_t branch_current{};
-    if (branch.kind == ElectricalBranchKind::cell) {
-      const real_t numerator = voltage - ocv_[branch.cell];
-      if (!is_finite(numerator))
-        return slide::Status::Invalid_states;
-      branch_current = numerator / resistance_[branch.cell];
-    } else {
-      branch_current = voltage / branch.resistance;
-    }
+    const auto affine = branchAffine(branch, ocv_, resistance_);
+    const real_t numerator =
+      branchCurrentNumerator(voltage, affine.source);
+    if (!is_finite(numerator))
+      return slide::Status::Invalid_states;
+    const real_t branch_current =
+      branchCurrentOut(numerator, affine.resistance);
     if (!is_finite(branch_current)
         || !addResidual(branch.node_positive, branch_current)
         || !addResidual(branch.node_negative, -branch_current))
@@ -495,13 +495,11 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
       return true;
     };
     for (const auto &branch : topology_.electrical.branches) {
-      const real_t resistance = branch.kind == ElectricalBranchKind::cell
-                                  ? resistance_[branch.cell]
-                                  : branch.resistance;
+      const auto affine = branchAffine(branch, ocv_, resistance_);
       // Linearization and netlist validation established this immediately
       // before entering the numeric kernel.
-      assert(is_finite(resistance) && resistance > 0.0);
-      const real_t conductance = 1.0 / resistance;
+      assert(is_finite(affine.resistance) && affine.resistance > 0.0);
+      const real_t conductance = 1.0 / affine.resistance;
       if (!is_strictly_positive_finite(conductance)
           || !stamp(branch.node_positive, branch.node_negative, conductance))
         return slide::Status::Invalid_states;
@@ -538,15 +536,15 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
   }
   for (const auto &branch : topology_.electrical.branches)
     if (branch.kind == ElectricalBranchKind::cell) {
-      const real_t voltage = candidate_node_voltage_[branch.node_positive]
-                             - candidate_node_voltage_[branch.node_negative];
-      const real_t numerator = ocv_[branch.cell] - voltage;
-      if (!is_finite(voltage) || !is_finite(numerator))
+      const real_t voltage = branchDrop(branch, candidate_node_voltage_);
+      if (!cellCurrentFromDrop(voltage,
+                               ocv_[branch.cell],
+                               resistance_[branch.cell],
+                               candidate_current_[branch.cell]))
         return slide::Status::Invalid_states;
-      candidate_current_[branch.cell] = numerator / resistance_[branch.cell];
       const real_t difference = candidate_current_[branch.cell]
                                 - current_guess_[branch.cell];
-      if (!is_finite(candidate_current_[branch.cell]) || !is_finite(difference))
+      if (!is_finite(difference))
         return slide::Status::Invalid_states;
       const real_t change = std::abs(difference);
       const real_t magnitude = std::max({ real_t{ 1.0 },
@@ -576,13 +574,11 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
     for (const auto &branch : topology_.electrical.branches)
       if (damped_candidate_valid
           && branch.kind == ElectricalBranchKind::cell) {
-        const real_t voltage = candidate_node_voltage_[branch.node_positive]
-                               - candidate_node_voltage_[branch.node_negative];
-        const real_t numerator = ocv_[branch.cell] - voltage;
-        if (is_finite(voltage) && is_finite(numerator))
-          candidate_current_[branch.cell] = numerator / resistance_[branch.cell];
-        if (!is_finite(voltage) || !is_finite(numerator)
-            || !is_finite(candidate_current_[branch.cell])) {
+        const real_t voltage = branchDrop(branch, candidate_node_voltage_);
+        if (!cellCurrentFromDrop(voltage,
+                                 ocv_[branch.cell],
+                                 resistance_[branch.cell],
+                                 candidate_current_[branch.cell])) {
           damped_candidate_valid = false;
           break;
         }
@@ -592,8 +588,7 @@ slide::Status PackSolver::solveSparse(real_t applied_current,
   }
   for (const auto &branch : topology_.electrical.branches)
     if (branch.kind == ElectricalBranchKind::resistor) {
-      const real_t voltage = candidate_node_voltage_[branch.node_positive]
-                             - candidate_node_voltage_[branch.node_negative];
+      const real_t voltage = branchDrop(branch, candidate_node_voltage_);
       const real_t current = voltage / branch.resistance;
       if (!is_finite(voltage) || !is_finite(current))
         return slide::Status::Invalid_states;

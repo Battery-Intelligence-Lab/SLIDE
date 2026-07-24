@@ -1,8 +1,9 @@
 /**
  * @file PackSolverInternal.hpp
  * @brief Internal numeric helpers shared only with focused solver tests.
- * @details Owns M0.3 diagnostic-bound saturation; hot, allocation-free, and
- *          deliberately excluded from the public PackSolver surface.
+ * @details Owns PLAN.md §3.4 affine branch/current algebra, checked hot
+ *          arithmetic, and M0.3 diagnostic-bound saturation; allocation-free
+ *          and deliberately excluded from the public PackSolver surface.
  * @surface internal
  */
 
@@ -20,9 +21,6 @@ namespace slide::core::detail {
                                                    real_t current_scale,
                                                    real_t operation_scale) noexcept;
 
-// Shared by the direct sparse solve and by the two matrix-free strategies. `addCompensatedFinite`
-// keeps its strict-FP pragmas with its definition: the Kahan evaluation order is the contract,
-// and the Release configuration's fast-math would otherwise reassociate it away.
 inline bool knownSolveMode(PackSolveMode mode)
 {
   switch (mode) {
@@ -32,6 +30,61 @@ inline bool knownSolveMode(PackSolveMode mode)
     return true;
   }
   return false;
+}
+
+[[nodiscard]] inline real_t branchDrop(
+  const CompiledElectricalBranch &branch,
+  std::span<const real_t>
+    node_voltage) noexcept
+{
+  return node_voltage[branch.node_positive]
+         - node_voltage[branch.node_negative];
+}
+
+struct BranchAffine
+{
+  real_t resistance{};
+  real_t source{};
+};
+
+[[nodiscard]] inline BranchAffine branchAffine(
+  const CompiledElectricalBranch &branch,
+  std::span<const real_t>
+    cell_ocv,
+  std::span<const real_t>
+    cell_resistance) noexcept
+{
+  if (branch.kind == ElectricalBranchKind::cell)
+    return { .resistance = cell_resistance[branch.cell],
+             .source = cell_ocv[branch.cell] };
+  return { .resistance = branch.resistance, .source = real_t{} };
+}
+
+[[nodiscard]] inline real_t branchCurrentNumerator(
+  const real_t &drop,
+  const real_t &source) noexcept
+{
+  return drop - source;
+}
+
+[[nodiscard]] inline real_t branchCurrentOut(
+  const real_t &numerator,
+  const real_t &resistance) noexcept
+{
+  return numerator / resistance;
+}
+
+[[nodiscard]] inline bool cellCurrentFromDrop(
+  const real_t &drop,
+  const real_t &ocv,
+  const real_t &resistance,
+  real_t &current) noexcept
+{
+  const real_t numerator = ocv - drop;
+  if (!is_finite(drop) || !is_finite(numerator))
+    return false;
+  current = numerator / resistance;
+  return is_finite(current);
 }
 
 inline bool addFinite(real_t &target, real_t increment)
@@ -45,6 +98,8 @@ inline bool addFinite(real_t &target, real_t increment)
   return true;
 }
 
+// Keep these strict-FP pragmas with the compensated finite sum: the Kahan
+// evaluation order is the contract, and fast math would reassociate it.
 #if defined(_MSC_VER) && !defined(__clang__)
 #pragma float_control(precise, on, push)
 #endif
@@ -76,9 +131,9 @@ inline bool addCompensatedFinite(real_t &sum, real_t &compensation, real_t value
 #endif
 
 inline bool finiteCandidate(std::span<const real_t> current,
-                     std::span<const real_t>
-                       node_voltage,
-                     real_t terminal_voltage)
+                            std::span<const real_t>
+                              node_voltage,
+                            real_t terminal_voltage)
 {
   if (!is_finite(terminal_voltage))
     return false;

@@ -21,8 +21,11 @@ namespace slide::core {
 
 using detail::addCompensatedFinite;
 using detail::addFinite;
-using detail::conservativePackRoundoffBound;
-using detail::finiteCandidate;
+using detail::branchAffine;
+using detail::branchCurrentNumerator;
+using detail::branchCurrentOut;
+using detail::branchDrop;
+using detail::cellCurrentFromDrop;
 
 slide::Status PackSolver::solveLadder(real_t applied_current)
 {
@@ -61,11 +64,10 @@ slide::Status PackSolver::solveLadder(real_t applied_current)
          i < netlist.ladder_offsets[layer + 1];
          ++i) {
       const auto cell = netlist.ladder_cells[i];
-      const real_t current_numerator = ocv_[cell] - layer_voltage_[layer];
-      if (!is_finite(current_numerator))
-        return slide::Status::Invalid_states;
-      candidate_current_[cell] = current_numerator / resistance_[cell];
-      if (!is_finite(candidate_current_[cell]))
+      if (!cellCurrentFromDrop(layer_voltage_[layer],
+                               ocv_[cell],
+                               resistance_[cell],
+                               candidate_current_[cell]))
         return slide::Status::Invalid_states;
     }
   }
@@ -84,12 +86,11 @@ slide::Status PackSolver::solveLadder(real_t applied_current)
 slide::Status PackSolver::solveRelaxation(real_t applied_current)
 {
   const auto &netlist = topology_.electrical;
-  const auto finite = [](const real_t &value) { return is_finite(value); };
   // configure() starts with zeros and only a fully finite candidate is ever
   // published for a warm start.
   assert(std::all_of(candidate_node_voltage_.begin(),
                      candidate_node_voltage_.end(),
-                     finite));
+                     [](const real_t &value) { return is_finite(value); }));
   std::fill(relaxation_diagonal_.begin(), relaxation_diagonal_.end(), 0.0);
   std::fill(relaxation_rhs_.begin(), relaxation_rhs_.end(), 0.0);
   std::fill(relaxation_target_.begin(), relaxation_target_.end(), 0.0);
@@ -124,12 +125,11 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
                                    negative_rhs);
   };
   for (const auto &branch : netlist.branches) {
-    const bool cell = branch.kind == ElectricalBranchKind::cell;
-    const real_t resistance = cell ? resistance_[branch.cell] : branch.resistance;
+    const auto affine = branchAffine(branch, ocv_, resistance_);
     // Linearization and netlist validation established this immediately
     // before entering the numeric kernel.
-    assert(is_finite(resistance) && resistance > 0.0);
-    if (!stamp(branch, resistance, cell ? ocv_[branch.cell] : 0.0))
+    assert(is_finite(affine.resistance) && affine.resistance > 0.0);
+    if (!stamp(branch, affine.resistance, affine.source))
       return slide::Status::Invalid_states;
   }
   if (!addCompensatedFinite(relaxation_rhs_[netlist.terminal_positive],
@@ -166,13 +166,11 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
 
   for (const auto &branch : netlist.branches)
     if (branch.kind == ElectricalBranchKind::cell) {
-      const real_t voltage = candidate_node_voltage_[branch.node_positive]
-                             - candidate_node_voltage_[branch.node_negative];
-      const real_t numerator = ocv_[branch.cell] - voltage;
-      if (!is_finite(voltage) || !is_finite(numerator))
-        return slide::Status::Invalid_states;
-      candidate_current_[branch.cell] = numerator / resistance_[branch.cell];
-      if (!is_finite(candidate_current_[branch.cell]))
+      const real_t voltage = branchDrop(branch, candidate_node_voltage_);
+      if (!cellCurrentFromDrop(voltage,
+                               ocv_[branch.cell],
+                               resistance_[branch.cell],
+                               candidate_current_[branch.cell]))
         return slide::Status::Invalid_states;
     }
   candidate_terminal_voltage_ = candidate_node_voltage_[netlist.terminal_positive]
@@ -188,34 +186,25 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
   real_t roundoff_operation_scale = std::abs(applied_current);
   real_t roundoff_current_scale = std::abs(applied_current);
   for (const auto &branch : netlist.branches) {
-    const real_t voltage = candidate_node_voltage_[branch.node_positive]
-                           - candidate_node_voltage_[branch.node_negative];
+    const real_t voltage = branchDrop(branch, candidate_node_voltage_);
     if (!is_finite(voltage))
       return slide::Status::Invalid_states;
-    real_t branch_current{};
-    if (branch.kind == ElectricalBranchKind::cell) {
-      const real_t numerator = voltage - ocv_[branch.cell];
-      // The opposite subtraction was validated above when reconstructing this
-      // cell current, and no node or OCV changed in between.
-      assert(is_finite(numerator));
-      branch_current = numerator / resistance_[branch.cell];
-    } else {
-      branch_current = voltage / branch.resistance;
-    }
-    const real_t resistance = branch.kind == ElectricalBranchKind::cell
-                                ? resistance_[branch.cell]
-                                : branch.resistance;
-    const real_t source = branch.kind == ElectricalBranchKind::cell
-                            ? ocv_[branch.cell]
-                            : 0.0;
+    const auto affine = branchAffine(branch, ocv_, resistance_);
+    const real_t numerator =
+      branchCurrentNumerator(voltage, affine.source);
+    // Cell drops used the opposite subtraction above, and resistor sources
+    // are positive zero; no node or source changed in between.
+    assert(is_finite(numerator));
+    const real_t branch_current =
+      branchCurrentOut(numerator, affine.resistance);
     real_t operation_scale{};
     if (!addFinite(operation_scale,
                    std::abs(candidate_node_voltage_[branch.node_positive]))
         || !addFinite(operation_scale,
                       std::abs(candidate_node_voltage_[branch.node_negative]))
-        || !addFinite(operation_scale, std::abs(source)))
+        || !addFinite(operation_scale, std::abs(affine.source)))
       return slide::Status::Invalid_states;
-    operation_scale /= resistance;
+    operation_scale /= affine.resistance;
     const real_t current_magnitude = std::abs(branch_current);
     if (!is_finite(branch_current) || !is_finite(operation_scale)
         || !is_finite(current_magnitude)
