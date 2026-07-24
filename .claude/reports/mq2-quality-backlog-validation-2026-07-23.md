@@ -22,6 +22,8 @@ fixtures`). The completed boundaries recorded so far are:
 | `e034d23` | F1 direct fused-Euler validation | invalid-input behavior hardening |
 | `83ab7be` | O1 observable storage/access | exact no-op plus checked cold boundaries |
 | `6c7ab74` | P0 pack-algebra oracles | oracle-only, before P1/P2 source edits |
+| `d4e1a2d` | A1 structural-anchor correction | test-gate baseline repair, no source change |
+| `8630207` | P1 pack-solver algebra | exact no-op plus executable ownership gate |
 
 The retained build trees are `build-mq1-debug` (Clang 21.1.8 Debug/ThinLTO),
 `build-mq1-release` (Clang 21.1.8 fast-math Release, IPO off), and
@@ -573,3 +575,113 @@ The restored Debug binary passes 949/30. `clang-format --dry-run --Werror`,
 the shared-harness structural gate, and `git diff --check` pass. No full-suite,
 timing, sanitizer, coverage, hosted-CI, installed-package, device-code, Linux,
 or macOS claim is made at this oracle boundary.
+
+## P1 — single-owner pack affine algebra
+
+### Pre-source structural RED and stale-gate repair
+
+The registered P1 gate was added before the production refactor. Its first
+aggregate run stopped on an older contradiction rather than the intended P1
+absence:
+
+```text
+9C-5 R4: SpmScalarKernels.hpp declares 123 member-level entities,
+the pinned surface has 122.
+```
+
+A1's registered `SLIDE_SPM_SEI_KINETIC_CURRENT` owner had added the one anchor,
+but `p9c5_public_surface.cmake` was never updated. Commit `d4e1a2d` changes
+only that exact 122→123 baseline. With the stale gate repaired, unchanged
+pre-P1 production then failed at the intended boundary:
+
+```text
+MQ.2 P1 cell-current owner: expected 1 occurrences of
+cellCurrentFromDrop(, found 0
+```
+
+This corrects the earlier broad “structural gate passed” wording for A1: its
+PC-10 gate passed, but the aggregate public-surface anchor was stale until
+`d4e1a2d`.
+
+### Implementation and structural ownership
+
+Commit `8630207` applies `cell-current-reconstruction-x4`,
+`branch-drop-and-kcl-current`, and `dead-usings-and-misplaced-comment`.
+`PackSolverInternal.hpp` now has five algebra owners, with floating inputs
+crossing the inline boundary by `const real_t &`:
+
+| Owner token | Header | Sparse TU | Iterative TU | Total |
+|---|---:|---:|---:|---:|
+| `cellCurrentFromDrop(` | 1 | 2 | 2 | 5 |
+| `branchDrop(` | 1 | 4 | 2 | 7 |
+| `branchAffine(` | 1 | 2 | 2 | 5 |
+| `branchCurrentNumerator(` | 1 | 1 | 1 | 3 |
+| `branchCurrentOut(` | 1 | 1 | 1 | 3 |
+
+`BranchAffine` branches on kind before touching the cell spans, uses designated
+field returns, and supplies a positive-zero resistor source. The gate pins each
+complete owner body, argument order, sparse runtime numerator rejection,
+relaxation's assertion policy, both sparse reconstruction slices, and broad
+absence of raw branch-current assignments/divisions. The dead `<cstring>` and
+three dead `using` declarations are absent. The compensated-sum explanation is
+checked in a raw-comment view immediately above its strict-FP pragmas; it no
+longer claims a nonexistent sparse consumer. The header's MC-3 contract now
+names its PLAN §3.4 affine-algebra ownership.
+
+The first fast-math build exposed one additional warning: a local `finite`
+lambda was used only inside `assert` and became unused in Release. The lambda
+now lives directly inside the assertion, preserving the Debug check without a
+Release declaration. Subsequent builds emit no such warning. The redundant
+`-Ofast` deprecation remains visible and deliberately owned by B1.
+
+### Exact three-configuration result
+
+No recorded constant moved:
+
+| Configuration | Complete PackSolver | Structural aggregate |
+|---|---:|---:|
+| Debug/ThinLTO | 949 assertions / 30 cases | 1/1 |
+| fast-math Release, IPO off | 949 / 30 | 1/1 |
+| Release/ThinLTO CUDA tree, host C++ | 949 / 30 | 1/1 |
+
+Trace B therefore covers the resistor's unified `drop - +0.0` path, and Trace D
+retains all four exact callback/publication records without reblessing. A final
+targeted build in each tree reported `ninja: no work to do`.
+
+### Adversarial gate checks
+
+At clean `8630207`, changing only the centralized cell-current division to
+reciprocal multiplication made the structural owner gate red and made every
+Trace D path fail: 18/26 assertions passed, with the eight hash comparisons
+failing at indices 0–3. The mutated hashes were the already derived
+bit-separating values:
+
+```text
+index 0  67674e77f46ba2b8 / c61c787dcc8a9396
+index 1  ea9ba4b556eddad4 / 80602aa74e05476d
+index 2  2f3c710b8f14bdba / 50827d75714062b9
+index 3  0664dfa152e6be22 / 5db2a6502d3dc5d2
+```
+
+Four structural-only mutations also turned red: making a scalar helper input
+by value, reversing the branch-drop subtraction, swapping the same-typed OCV
+and resistance spans at one call, and restoring a false sparse-consumer Kahan
+comment. During adversarial review, two initially vacuous gate designs were
+fixed before commit: comment-free compact input could not police the comment,
+and semicolon-rich bodies passed through variadic CMake lists did not prove
+contiguity. The final gate reads comments separately and uses fixed-arity exact
+block counts.
+
+Every mutation was reversed to exact hashes:
+
+```text
+PackSolverInternal.hpp      BE8E44AFE23F81A1B174B9113FEE77FB6EF3638AD7660FCACA87BEACE0322187
+PackSolver.cpp              8449CA29E593C585E2917A6F1F90E7B1A136EB8121AA25D74F30217CD1F44B3C
+PackSolverIterative.cpp     2F9D343527B4A8989FB54D4E406E392A6775FDE20C42DC39D5D987A45F431662
+p9c_architecture.cmake      20CEC02299F8437C5C98629D6596CCA97210A52BFC0F56C96827AF4F92F9880D
+```
+
+The restored Debug/Release/host-C++ trees each re-passed 949/30.
+`clang-format --dry-run --Werror` and `git diff --check` pass. No full-suite,
+timing, sanitizer, coverage, hosted-CI, installed-package, CUDA-device, Linux,
+or macOS claim is made for P1.
