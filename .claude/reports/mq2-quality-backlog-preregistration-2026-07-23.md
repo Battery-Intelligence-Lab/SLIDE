@@ -374,6 +374,81 @@ make the indexed-role gate red; removing the residual reset must make the
 six-fill gate red and the repeated relaxation record red. All mutations are
 reversed with exact source hashes before acceptance.
 
+### S1 PackStepper ownership and substeps addendum
+
+The following implementation shape, focused counts, and mutations are
+registered after read-only review and before the first S1 source or test edit.
+
+`substeps-name-contradicts-code` retains its already decided public meaning and
+name: `substeps=N` performs `N` full-`dt` advances at
+`time + substep * dt` under one electrical solve and one thermal assembly. It
+does not divide `dt`, rename the argument, or re-solve inside the loop.
+
+An exact SHORT test uses two independently built one-cell, one-lane,
+isothermal NCH=5 batches, binary-exact nonzero current `8.0 A`, `N=4`, and
+`dt=0.125 s`. One stepper receives one call with `substeps=4`; the other
+receives four calls with `substeps=1` at times `{0, 0.125, 0.25, 0.375}`.
+Both published single-cell currents must equal exactly `8.0`, both elapsed-time
+rows must equal exactly `0.5`, and the complete arenas must have equal size and
+be byte-identical. The case has exactly 16 assertions, so the frozen
+PackStepper floor becomes 230 assertions / 9 cases from 214/8. Dividing the
+inner `dt` by `substeps` must turn its elapsed-time and arena comparisons red.
+
+`unique-in-prefix-three-spellings` gets one cold owner in
+`PackTopologyInternal.hpp`:
+
+```cpp
+template <class Range, class Projection = std::identity>
+  requires std::ranges::random_access_range<const Range>
+        && std::ranges::sized_range<const Range>
+[[nodiscard]] constexpr bool firstOccurrence(
+  const Range &range, std::size_t index, Projection projection = {})
+```
+
+It returns false out of range, otherwise compares the projected current value
+only with `[begin, current)`. There is exactly one owner, two PackSolver
+consumers (archetype string and projected Thevenin identity), and one
+PackStepper pointer consumer. The duplicate-archetype unit fixture is
+strengthened so duplicate names are its only defect: both cells use that name
+and two distinct valid one-lane views are supplied. The existing aliased-view
+fixture independently covers the projected identity consumer. Making the
+owner always return true must turn both numerical gates red; removing only the
+PackStepper guard must turn the structural gate red because downstream
+validation otherwise masks it.
+
+`packstepper-gather-scatter` gets exactly two private owners:
+`gatherStates(std::span<real_t>) const` and
+`scatterStates(std::span<const real_t>)`. The former owns the one
+state-to-contiguous `memcpy` loop and the latter the inverse. Internal
+save/restore and public checkpoint/restore retain their current validation,
+solver-vector, diagnostic, heat, and invalidation behavior while calling these
+owners. Compacted `PackStepper.cpp` therefore contains three `gatherStates(`
+tokens, three `scatterStates(` tokens, and exactly two `std::memcpy(` tokens.
+Reversing either copy direction or wiring public checkpoint to the internal
+buffer must turn the exact helper/call gate red and the existing two-batch
+checkpoint oracle red.
+
+The structural gate additionally pins:
+
+- `firstOccurrence(` as owner 1 / PackSolver 2 / PackStepper 1, the three
+  negated rejection tokens, and absence of all three former prefix searches;
+- one gather and one scatter declaration in the private header slice, exact
+  helper bodies and all four caller arguments, and the 3/3/2 token census;
+- one `for(int substep...)` loop, two exact
+  `time + substep * dt, dt` call suffixes, and exactly one solver call and one
+  thermal assembly before the loop with zero of either inside it;
+- the raw public-header phrases ``substeps * dt`, NOT by `dt` `` and
+  `held frozen`.
+
+The two new private methods change the PackStepper two-space P9C5 member anchor
+33→35; its namespace/API anchor remains 4. The focused acceptance band in
+Debug, fast-math Release/IPO-off, and the host-C++ CUDA tree is PackStepper
+230/9, PackSolver 949/30, and the aggregate structural gate 1/1, with no
+recorded hash reblessed. The existing zero-accepted-step allocation binary
+must remain 14/2. This is a public-contract clarification without a signature
+or behavior change; add an Unreleased CHANGELOG entry because the executable
+contract was not recorded when the prose first landed.
+
 ### S2 source-step rollback exact fixture
 
 The following analytic fixture is fixed before its first test implementation
