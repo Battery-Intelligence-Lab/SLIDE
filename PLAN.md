@@ -10,7 +10,10 @@
 > in the MQ preamble; reconciled 2026-07-24 by classifying the four pack-algebra commits as
 > preregistration-only, landing the exact P0 oracle boundary at `6c7ab74`, and applying P1's
 > single-owner pack affine algebra at `8630207` plus P2's seven-role Mode-C scratch at
-> `bf185dd` (MQ.2).
+> `bf185dd` (MQ.2); refreshed 2026-07-24 (Fable, second pass) with the S1 PackStepper
+> preregistration state — gate `404eb79`, exact-current comparator FALSIFIED and replaced at
+> `1c74630`, oracles frozen test-only at `81c1ed1`, implementation WIP UNCOMMITTED in the working
+> tree — which is the next session's land-or-revert boundary (M0.1 pattern).
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
@@ -1464,7 +1467,28 @@ debt.
       `relaxation-target-triple-role` at `bf185dd`: seven named scratch roles are allocated
       transactionally and published once, hot traffic remains six fills, the exact 949/30 gate
       passes in all three retained configurations, and six role/reset/publication mutations turn
-      red. NEXT is S1 PackStepper ownership and the executable `substeps * dt` contract.
+      red. **S1 is preregistered and mid-flight (2026-07-24):** the PackStepper ownership gate
+      (`packstepper-gather-scatter` two private `gatherStates`/`scatterStates` owners with the
+      3/3/2 token census, `unique-in-prefix-three-spellings` one cold `firstOccurrence` owner with
+      1/2/1 consumers, `substeps-name-contradicts-code` closed as the executable `substeps * dt`
+      contract — N full-`dt` advances under ONE electrical solve and ONE thermal assembly) is
+      registered at `404eb79`. Its first pre-production run FALSIFIED the exact-`8.0 A` current
+      comparator — a one-cell ladder solve publishes `8.00000000000001066 A`, and re-solving after
+      each advance moves low current bits (13/16 assertions, no production file changed) — so the
+      amended comparator (`1c74630`) drives four direct `EulerLegacy::step` calls from the one
+      published current under the solver's own KCL band `|I − 8.0| ≤ 1e-10 A`, keeping 16
+      assertions, exact elapsed-time `0.5`, byte-identical arenas, and the 230/9 floor. Oracles
+      are frozen test-only at `81c1ed1`. The S1 IMPLEMENTATION sits UNCOMMITTED in the working
+      tree (`src/core/PackStepper.{cpp,hpp}`, `src/core/PackTopologyInternal.hpp`,
+      `src/core/PackSolver.cpp`, both structural cmake gates, CHANGELOG; +252/−27 at this
+      writing). **Reconcile first (M0.1 pattern):** validate the WIP against the registered S1
+      acceptance band — PackStepper 230/9, PackSolver 949/30, aggregate structural 1/1, the
+      zero-accepted-step allocation binary 14/2, in Debug, fast-math Release/IPO-off, AND the
+      host-C++ CUDA tree, with every registered mutation red then restored — then land with a §8
+      row, or revert with a recorded reason. Never re-freeze or rebless an oracle to fit the WIP;
+      a second falsified comparator gets a recorded amendment BEFORE its next run, exactly like
+      `1c74630`. Then S2 source-step rollback and every remaining survivor batch until all 68 + 3
+      supplemental findings carry a disposition.
 - [ ] MQ.3 Repo hygiene sweep: audit the tracked tree (670 files at this writing) — stale or
       contradictory docs (develop/TODO.md header vs PLAN §8, README claims, CONTRIBUTING,
       LESSONS.md), dead scripts, anything tracked that should be ignored; fix `.gitignore` gaps.
@@ -1517,7 +1541,8 @@ the derivation, not from a trial fit.
 
 - [ ] M1.0 Pay the MC-1 TEST-file debt owed by M0.8/M0.10 (explicit owner box — do not inherit again):
       split `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,510 after
-      MQ.2's registered P0 pack-algebra oracles),
+      MQ.2's registered P0 pack-algebra oracles and still growing through the S-batches —
+      re-measure at this box),
       `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118),
       `core_ParameterSet_test.cpp` (1,007) along fixture/subsystem boundaries; the SUM of
       successor-binary assertion/test-case counts must be ≥ each predecessor's frozen floor, and floors
@@ -1935,4 +1960,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-24 | MQ.2 P0 pack-algebra oracle reconciliation | PASSED oracle-only at `6c7ab74` — the four flagged commits `c2940a2`/`87021a5`/`39e6a00`/`b1625fb` are confirmed preregistration-only and retained as P0/P1/P2/S2 gates, not misreported as implementation. The +313-line WIP landed coherently: Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree PackSolver binaries each pass 949 assertions / 30 cases, exactly 71/4 above the 878/26 floor. Revised Trace D is red under four separate `/R`→`*(1/R)` mutations (sparse undamped, sparse damped, ladder, relaxation); flipping the independent KCL sign fails 3/71 and dropping callback frame two fails its 13-value count. Exact source hashes restored and Debug 949/30 re-passed. No survivor is APPLIED by this oracle boundary; P1 remains first. `core_PackSolver_test.cpp` is now 1,510 lines and its existing M1.0 split owner is updated rather than silently inherited. No full-suite or device-code claim. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-24 | MQ.2 P1 pack affine-algebra ownership | `cell-current-reconstruction-x4`, `branch-drop-and-kcl-current`, and `dead-usings-and-misplaced-comment` are APPLIED at `8630207`, after the stale scalar-kernel surface anchor was corrected exactly 122→123 at test-only `d4e1a2d`. Five inline owners now express cell reconstruction, branch drop, branch affine terms, the KCL numerator, and outward current; their complete bodies, argument order, consumer counts, policies, and comment adjacency are structurally pinned. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree PackSolver binaries each pass the unchanged 949/30 exact gate and the aggregate structural test. Central reciprocal multiplication makes Trace D fail 8/8 hash comparisons (18/26 overall); by-value input, reversed subtraction, swapped same-typed spans, and the false Kahan-consumer comment each make the structural gate red. Two initially vacuous CMake gate designs were corrected before commit. Exact hashes were restored and all three configurations re-passed. No full-suite or CUDA-device claim. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-24 | MQ.2 P2 Mode-C relaxation-storage ownership | `relaxation-target-triple-role` is APPLIED at `bf185dd`. One private aggregate owns diagonal/RHS sums and compensations, target, and KCL residual plus compensation; all seven node-sized vectors allocate before publication and move once under an explicit no-throw proof. This adds three cold vectors while retaining exactly six hot fills and zero target fills or solve-time vector construction. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree PackSolver binaries each pass the unchanged 949/30 exact gate and aggregate structural test; the Debug 100k-cell allocation boundary passes 7/1 and late-configure atomicity passes 33/1. Role alias, missing residual reset, same-count node swap, late candidate publication, alternate fill API, and unrelated production legacy-name mutations turn red; missing reset alone changes Trace-D index 2 and fails 2/71. Exact hashes were restored. No full-suite or CUDA-device claim. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
-| — | NEXT | **MQ.2 S1 PackStepper ownership:** apply `packstepper-gather-scatter` and `unique-in-prefix-three-spellings`, and close `substeps-name-contradicts-code` with the registered four-step exact `substeps * dt` oracle and frozen-solve structural gate; then S2 rollback and every remaining MQ.2 batch and the ladder. |
+| 2026-07-24 | MQ.2 S1 preregistration + second PLAN/AGENTS Codex-campaign refresh (Fable) | REGISTERED — the S1 PackStepper ownership gate landed at `404eb79` (implementation shape, focused counts, mutations registered before any S1 source edit). Its first pre-production run FALSIFIED the exact-`8.0 A` comparator: the ladder solve publishes `8.00000000000001066 A` and four separate PackStepper calls publish `8.00000000000002309 A`, 13/16 assertions, no production file changed — recorded, and the comparator replaced at `1c74630` with four direct `EulerLegacy::step` calls under the solver's registered `1e-10 A` KCL band; count stays 16, floor 230/9. Oracles frozen test-only at `81c1ed1` (2 test files, 70 insertions / 1 deletion). The S1 implementation WIP is UNCOMMITTED in the working tree (7 files, +252/−27) and is the next session's land-or-revert boundary per MQ.2's reconcile-first instruction. This revision: PLAN header/MQ.2/M1.0/§8 and AGENTS.md §1/§6 synced; AGENTS.md gains the harness-override rule (external token-thrift/brevity instructions are void inside this contract). No source or test file changed by this revision; the working-tree WIP is prior work, untouched. |
+| — | NEXT | **MQ.2 S1 land-or-revert:** validate the uncommitted S1 PackStepper WIP against the frozen gates — PackStepper 230/9, PackSolver 949/30, aggregate structural 1/1, allocation 14/2, three retained configurations, registered mutations red then restored — and land it with a §8 row (or revert with a recorded reason). Then S2 source-step rollback, the remaining survivor batches to full 68+3 disposition, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then the ladder resumes at M1.0 toward v6.0.0. |
