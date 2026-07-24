@@ -154,6 +154,7 @@ add_executable_with_coverage_and_test(unit_test_core_PackSolver core_PackSolver_
 # producer must retain IEEE semantics while the hot solver remains fast-math.
 slide_use_strict_fp(core_PackSolver_test.cpp)
 target_link_libraries(unit_test_core_PackSolver PRIVATE slide_core)
+slide_configure_recorded_scalar_fixture(unit_test_core_PackSolver)
 
 # Phase 2: transactional electrical/thermal pack stepping and restore invalidation
 add_executable_with_coverage_and_test(unit_test_core_PackStepper core_PackStepper_test.cpp)

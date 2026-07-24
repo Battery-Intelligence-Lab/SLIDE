@@ -7,6 +7,7 @@
 #include "../../src/core/PackSolverInternal.hpp"
 #include "../../src/core/EulerLegacy.hpp"
 #include "../support/KokamSpmFixture.hpp"
+#include "../support/RecordedBits.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -127,6 +128,30 @@ struct ScriptedAffineBatch
   }
 };
 
+struct TracingAffineBatch
+{
+  std::vector<double> ocv;
+  std::vector<double> resistance;
+  std::vector<std::vector<double>> callback_current;
+
+  Status linearizeThevenin(std::span<const double> current,
+                           std::span<double>
+                             output_ocv,
+                           std::span<double>
+                             output_resistance)
+  {
+    if (current.size() != ocv.size() || output_ocv.size() != ocv.size()
+        || output_resistance.size() != resistance.size())
+      return Status::Invalid_parameters;
+    callback_current.emplace_back(current.begin(), current.end());
+    std::copy(ocv.begin(), ocv.end(), output_ocv.begin());
+    std::copy(resistance.begin(),
+              resistance.end(),
+              output_resistance.begin());
+    return Status::Success;
+  }
+};
+
 struct AffineFailureCase
 {
   std::string_view name;
@@ -182,6 +207,92 @@ Status solveAffineOnce(const core::PackNode &root,
   core::PackSolver solver;
   REQUIRE(solver.configure(topology, views) == Status::Success);
   return solver.solve(applied_current, mode, tolerance, max_iterations);
+}
+
+[[nodiscard]] bool haveSameBits(std::span<const double> actual,
+                                std::span<const double> expected) noexcept
+{
+  return actual.size() == expected.size()
+         && std::equal(actual.begin(),
+                       actual.end(),
+                       expected.begin(),
+                       [](double lhs, double rhs) {
+                         return std::bit_cast<std::uint64_t>(lhs)
+                                == std::bit_cast<std::uint64_t>(rhs);
+                       });
+}
+
+template <std::size_t CurrentCount, std::size_t NodeCount>
+void checkExactSolution(
+  const core::PackSolution &solution,
+  double terminal_voltage,
+  const std::array<double, CurrentCount> &cell_current,
+  const std::array<double, NodeCount> &node_voltage)
+{
+  CHECK(std::bit_cast<std::uint64_t>(solution.terminal_voltage)
+        == std::bit_cast<std::uint64_t>(terminal_voltage));
+  CHECK(haveSameBits(solution.cell_current, cell_current));
+  CHECK(haveSameBits(solution.node_voltage, node_voltage));
+}
+
+[[nodiscard]] std::vector<double> independentKclResidual(
+  const core::CompiledElectricalNetlist &netlist,
+  const core::PackSolution &solution,
+  double applied_current)
+{
+  std::vector<double> residual(netlist.node_count);
+  for (const auto &branch : netlist.branches) {
+    const auto positive = static_cast<std::size_t>(branch.node_positive);
+    const auto negative = static_cast<std::size_t>(branch.node_negative);
+    const double branch_current =
+      branch.kind == core::ElectricalBranchKind::cell
+        ? -solution.cell_current[branch.cell]
+        : (solution.node_voltage[positive] - solution.node_voltage[negative])
+            / branch.resistance;
+    residual[positive] += branch_current;
+    residual[negative] -= branch_current;
+  }
+  residual[netlist.terminal_positive] += applied_current;
+  residual[netlist.terminal_negative] -= applied_current;
+  return residual;
+}
+
+test_support::RecordedBits recordedPackSolveTrace(
+  const core::CompiledPackTopology &topology,
+  std::vector<double>
+    ocv,
+  std::vector<double>
+    resistance,
+  double applied_current,
+  core::PackSolveMode mode,
+  int maximum_iterations,
+  int expected_iterations)
+{
+  TracingAffineBatch batch{ .ocv = std::move(ocv),
+                            .resistance = std::move(resistance) };
+  const auto lanes = static_cast<int>(batch.ocv.size());
+  const std::array views{ core::TheveninBatchView::bind(batch, lanes) };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, views) == Status::Success);
+  REQUIRE(solver.solve(
+            applied_current, mode, 1e-12, maximum_iterations)
+          == Status::Success);
+  REQUIRE(solver.diagnostics().iterations == expected_iterations);
+
+  test_support::RecordedBits recorded;
+  for (const auto &frame : batch.callback_current)
+    recorded.append(frame);
+  recorded.append(solver.solution().cell_current);
+  recorded.append(solver.solution().node_voltage);
+  const std::array scalar_frame{
+    solver.solution().terminal_voltage,
+    solver.diagnostics().residual_norm,
+    solver.diagnostics().constraint_drift,
+    solver.diagnostics().constraint_bound,
+    solver.diagnostics().relaxation_gain,
+  };
+  recorded.append(scalar_frame);
+  return recorded;
 }
 
 } // namespace
@@ -312,6 +423,207 @@ TEST_CASE("pack solver rejects invalid scalar controls and incompatible modes",
   REQUIRE(solver.configure(topology, batches) == Status::Success);
   CHECK(solver.solve(1.0, core::PackSolveMode::relaxation)
         == Status::Invalid_parameters);
+}
+
+TEST_CASE("all pack solve modes preserve exact high-dynamic-range affine digits",
+          "[core][pack][solver][oracle][MQ.2]")
+{
+  constexpr double high = 0x1p53;
+  constexpr double applied_current = high - 8.0;
+  constexpr std::array expected_current{
+    high - 2.0, -1.0, high - 3.0, -high - 2.0
+  };
+  constexpr std::array expected_voltage{ 2.0, 0.0 };
+  constexpr std::array zero_kcl{ 0.0, 0.0 };
+  const std::array modes{ core::PackSolveMode::sparse_newton,
+                          core::PackSolveMode::ladder,
+                          core::PackSolveMode::relaxation };
+
+  core::CompiledPackTopology topology;
+  const auto compile_status = core::compilePackDescription(
+    { .root = core::parallel(
+        4, core::cell({ .archetype = "affine" })) },
+    topology);
+  AffineBatch batch{ .ocv = { high, 1.0, high - 1.0, -high },
+                     .resistance = { 1.0, 1.0, 1.0, 1.0 } };
+  const std::array views{ core::TheveninBatchView::bind(batch, 4) };
+  std::array<bool, modes.size()> exact_kcl{};
+  for (std::size_t index = 0; index < modes.size(); ++index) {
+    core::PackSolver solver;
+    REQUIRE((compile_status == Status::Success
+             && solver.configure(topology, views) == Status::Success));
+    REQUIRE(solver.solve(applied_current, modes[index], 1e-12, 4)
+            == Status::Success);
+    checkExactSolution(
+      solver.solution(), 2.0, expected_current, expected_voltage);
+    CHECK(solver.diagnostics().iterations == 2);
+    exact_kcl[index] = haveSameBits(
+      independentKclResidual(
+        topology.electrical, solver.solution(), applied_current),
+      zero_kcl);
+    if (modes[index] == core::PackSolveMode::relaxation) {
+      CHECK(std::bit_cast<std::uint64_t>(
+              solver.diagnostics().constraint_drift)
+            == std::bit_cast<std::uint64_t>(0.0));
+      CHECK(std::bit_cast<std::uint64_t>(
+              solver.diagnostics().relaxation_gain)
+            == std::bit_cast<std::uint64_t>(1.0));
+    }
+  }
+  CHECK(std::all_of(exact_kcl.begin(), exact_kcl.end(), [](bool exact) {
+    return exact;
+  }));
+}
+
+TEST_CASE("pack resistor arm has an exact independent affine trace",
+          "[core][pack][solver][resistor][oracle][MQ.2]")
+{
+  constexpr std::array expected_current{ 1.0 };
+  constexpr std::array expected_voltage{ 1.0, 0.0, 1.5 };
+  constexpr std::array zero_kcl{ 0.0, 0.0, 0.0 };
+  core::CompiledPackTopology topology;
+  const auto compile_status = core::compilePackDescription(
+    { .root = core::parallel(
+        1,
+        core::cell({ .archetype = "affine" }),
+        { .resistance = 0.5 }) },
+    topology);
+  AffineBatch batch{ .ocv = { 2.0 }, .resistance = { 0.5 } };
+  const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+  core::PackSolver solver;
+  REQUIRE((compile_status == Status::Success
+           && solver.configure(topology, views) == Status::Success));
+
+  REQUIRE(solver.solve(
+            1.0, core::PackSolveMode::sparse_newton, 1e-12, 4)
+          == Status::Success);
+  checkExactSolution(
+    solver.solution(), 1.0, expected_current, expected_voltage);
+  CHECK(solver.diagnostics().iterations == 2);
+  CHECK(haveSameBits(
+    independentKclResidual(topology.electrical, solver.solution(), 1.0),
+    zero_kcl));
+
+  REQUIRE(solver.setRelaxationGain(1.0) == Status::Success);
+  REQUIRE(solver.solve(
+            1.0, core::PackSolveMode::relaxation, 1e-12, 4)
+          == Status::Success);
+  checkExactSolution(
+    solver.solution(), 1.0, expected_current, expected_voltage);
+  CHECK(solver.diagnostics().iterations == 1);
+  CHECK(std::bit_cast<std::uint64_t>(
+          solver.diagnostics().constraint_drift)
+        == std::bit_cast<std::uint64_t>(0.0));
+  CHECK(std::bit_cast<std::uint64_t>(
+          solver.diagnostics().constraint_bound)
+        == std::bit_cast<std::uint64_t>(1e-12));
+  CHECK(std::bit_cast<std::uint64_t>(
+          solver.diagnostics().relaxation_gain)
+        == std::bit_cast<std::uint64_t>(1.0));
+  CHECK(haveSameBits(
+    independentKclResidual(topology.electrical, solver.solution(), 1.0),
+    zero_kcl));
+}
+
+TEST_CASE("sparse pack solve preserves its exact damped iteration trace",
+          "[core][pack][solver][damping][oracle][MQ.2]")
+{
+  constexpr std::array expected_current{ 4.0, -4.0 };
+  constexpr std::array expected_voltage{ 4.0, 0.0 };
+  constexpr std::array zero_kcl{ 0.0, 0.0 };
+  core::CompiledPackTopology topology;
+  const auto compile_status = core::compilePackDescription(
+    { .root = core::parallel(
+        2, core::cell({ .archetype = "affine" })) },
+    topology);
+  AffineBatch batch{ .ocv = { 8.0, 0.0 },
+                     .resistance = { 1.0, 1.0 } };
+  const std::array views{ core::TheveninBatchView::bind(batch, 2) };
+  core::PackSolver solver;
+  REQUIRE((compile_status == Status::Success
+           && solver.configure(topology, views) == Status::Success));
+  REQUIRE(solver.solve(
+            0.0, core::PackSolveMode::sparse_newton, 1e-12, 3)
+          == Status::Success);
+  checkExactSolution(
+    solver.solution(), 4.0, expected_current, expected_voltage);
+  CHECK(solver.diagnostics().iterations == 3);
+  CHECK(haveSameBits(
+    independentKclResidual(topology.electrical, solver.solution(), 0.0),
+    zero_kcl));
+}
+
+TEST_CASE("non-dyadic pack solve paths retain callback and publication bits",
+          "[core][pack][solver][oracle][recorded][MQ.2]")
+{
+  const auto all_mode_topology = compile(core::parallel(
+    2, core::cell({ .archetype = "affine" })));
+  constexpr std::array all_mode_ocv{ 0.0, 0.0 };
+  constexpr std::array all_mode_resistance{ 0.1, 0.1 };
+  constexpr std::array modes{ core::PackSolveMode::sparse_newton,
+                              core::PackSolveMode::ladder,
+                              core::PackSolveMode::relaxation };
+  std::array<test_support::RecordedBits, 4> traces;
+  for (std::size_t index = 0; index < modes.size(); ++index) {
+    traces[index] = recordedPackSolveTrace(
+      all_mode_topology,
+      { all_mode_ocv.begin(), all_mode_ocv.end() },
+      { all_mode_resistance.begin(), all_mode_resistance.end() },
+      0.1,
+      modes[index],
+      4,
+      2);
+  }
+
+  const auto damped_topology = compile(core::parallel(
+    2, core::cell({ .archetype = "affine" })));
+  traces[3] = recordedPackSolveTrace(damped_topology,
+                                     { 0.5, 0.0 },
+                                     { 0.1, 0.1 },
+                                     0.0,
+                                     core::PackSolveMode::sparse_newton,
+                                     3,
+                                     3);
+
+  constexpr std::array<std::size_t, 4> expected_values{ 13, 13, 13, 15 };
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
+#if defined(SLIDE_TEST_RELEASE) && defined(SLIDE_TEST_IPO)
+  constexpr std::array expected_fnv{ UINT64_C(0xe23683484d703894),
+                                     UINT64_C(0xd645bb8d493fb31c),
+                                     UINT64_C(0x3168649734a681a2),
+                                     UINT64_C(0xd288c3ed5d07b427) };
+  constexpr std::array expected_mixed{ UINT64_C(0xa9434a138b0616b0),
+                                       UINT64_C(0xd7ade2e7849420f1),
+                                       UINT64_C(0x5e3b17711acbdbf4),
+                                       UINT64_C(0x65c29e2fca265041) };
+#elif defined(SLIDE_TEST_RELEASE)
+  constexpr std::array expected_fnv{ UINT64_C(0xe23683484d703894),
+                                     UINT64_C(0xd645bb8d493fb31c),
+                                     UINT64_C(0x3168649734a681a2),
+                                     UINT64_C(0xd288c3ed5d07b427) };
+  constexpr std::array expected_mixed{ UINT64_C(0xa9434a138b0616b0),
+                                       UINT64_C(0xd7ade2e7849420f1),
+                                       UINT64_C(0x5e3b17711acbdbf4),
+                                       UINT64_C(0x65c29e2fca265041) };
+#else
+  constexpr std::array expected_fnv{ UINT64_C(0xe23683484d703894),
+                                     UINT64_C(0xd645bb8d493fb31c),
+                                     UINT64_C(0x3168649734a681a2),
+                                     UINT64_C(0xd288c3ed5d07b427) };
+  constexpr std::array expected_mixed{ UINT64_C(0xa9434a138b0616b0),
+                                       UINT64_C(0xd7ade2e7849420f1),
+                                       UINT64_C(0x5e3b17711acbdbf4),
+                                       UINT64_C(0x65c29e2fca265041) };
+#endif
+#endif
+  for (std::size_t index = 0; index < traces.size(); ++index) {
+    CAPTURE(index, traces[index].values, traces[index].fnv1a, traces[index].mixed);
+    REQUIRE(traces[index].values == expected_values[index]);
+#if defined(SLIDE_TEST_HAS_RECORDED_SCALAR_BITS)
+    CHECK(traces[index].fnv1a == expected_fnv[index]);
+    CHECK(traces[index].mixed == expected_mixed[index]);
+#endif
+  }
 }
 
 TEST_CASE("Mode A solves heterogeneous affine parallel cells and reuses factorization",
