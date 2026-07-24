@@ -247,16 +247,22 @@ slide::Status PackSolver::configure(const CompiledPackTopology &topology,
     std::vector<real_t> layer_voltage(layers, 0.0);
     std::vector<real_t> rollback_cell_current(cells, 0.0);
     std::vector<real_t> rollback_node_voltage(nodes, 0.0);
-    std::vector<real_t> relaxation_diagonal(nodes, 0.0);
-    std::vector<real_t> relaxation_rhs(nodes, 0.0);
-    std::vector<real_t> relaxation_target(nodes, 0.0);
-    std::vector<real_t> relaxation_compensation(nodes, 0.0);
+    RelaxationScratch relaxation{
+      .diagonal = std::vector<real_t>(nodes, 0.0),
+      .diagonal_compensation = std::vector<real_t>(nodes, 0.0),
+      .rhs = std::vector<real_t>(nodes, 0.0),
+      .rhs_compensation = std::vector<real_t>(nodes, 0.0),
+      .target = std::vector<real_t>(nodes, 0.0),
+      .residual = std::vector<real_t>(nodes, 0.0),
+      .residual_compensation = std::vector<real_t>(nodes, 0.0)
+    };
 
     static_assert(std::is_nothrow_move_assignable_v<CompiledPackTopology>);
     static_assert(std::is_nothrow_move_assignable_v<PackTheveninSystem>);
     static_assert(std::is_nothrow_move_assignable_v<BatchExecutor>);
     static_assert(std::is_nothrow_move_assignable_v<SolverWorkspace>);
     static_assert(std::is_nothrow_move_assignable_v<PackSolution>);
+    static_assert(std::is_nothrow_move_assignable_v<RelaxationScratch>);
     static_assert(std::is_nothrow_move_assignable_v<std::vector<real_t>>);
 
     // Every fallible operation is complete. Publish the candidate state only
@@ -274,10 +280,7 @@ slide::Status PackSolver::configure(const CompiledPackTopology &topology,
     layer_voltage_ = std::move(layer_voltage);
     rollback_cell_current_ = std::move(rollback_cell_current);
     rollback_node_voltage_ = std::move(rollback_node_voltage);
-    relaxation_diagonal_ = std::move(relaxation_diagonal);
-    relaxation_rhs_ = std::move(relaxation_rhs);
-    relaxation_target_ = std::move(relaxation_target);
-    relaxation_compensation_ = std::move(relaxation_compensation);
+    relaxation_ = std::move(relaxation);
     candidate_terminal_voltage_ = 0.0;
     residual_norm_ = 0.0;
     configured_ = true;

@@ -123,6 +123,7 @@ require_token_count("MQ.2 transport flux ownership"
 # caller elsewhere, while the body slices keep both sparse reconstruction paths
 # independently pinned.
 load_compact("src/core/PackSolverInternal.hpp" mq2_pack_internal)
+load_compact("src/core/PackSolver.hpp" mq2_pack_header)
 load_compact("src/core/PackSolver.cpp" mq2_pack_sparse)
 load_compact("src/core/PackSolverIterative.cpp" mq2_pack_iterative)
 
@@ -318,5 +319,212 @@ forbid_tokens("MQ.2 P1 false compensated-sum consumers"
   mq2_pack_internal_with_comments
   "directsparsesolve"
   "matrix-freestrategies")
+
+# MQ.2 P2: Mode-C relaxation storage has seven named roles rather than
+# reusing target/compensation for coefficient and KCL state. All allocation
+# remains in configure(), publication is one no-throw aggregate move, and the
+# solve retains exactly its six cold-sized fills.
+set(mq2_pack_private_begin
+  "private:[[nodiscard]]slide::StatussolveImpl(")
+set(mq2_pack_private_end "friendclassPackStepper;};")
+require_token_count("MQ.2 P2 PackSolver private-slice begin"
+  mq2_pack_header "${mq2_pack_private_begin}" 1)
+require_token_count("MQ.2 P2 PackSolver private-slice end"
+  mq2_pack_header "${mq2_pack_private_end}" 1)
+string(FIND "${mq2_pack_header}" "${mq2_pack_private_begin}"
+  mq2_pack_private_begin_position)
+string(FIND "${mq2_pack_header}" "${mq2_pack_private_end}"
+  mq2_pack_private_end_position)
+if(mq2_pack_private_begin_position EQUAL -1
+   OR mq2_pack_private_end_position EQUAL -1
+   OR mq2_pack_private_end_position LESS_EQUAL mq2_pack_private_begin_position)
+  message(FATAL_ERROR "MQ.2 P2 PackSolver private slice is missing")
+endif()
+string(LENGTH "${mq2_pack_private_end}" mq2_pack_private_end_length)
+math(EXPR mq2_pack_private_length
+  "${mq2_pack_private_end_position} - ${mq2_pack_private_begin_position} + ${mq2_pack_private_end_length}")
+string(SUBSTRING "${mq2_pack_header}"
+  ${mq2_pack_private_begin_position}
+  ${mq2_pack_private_length}
+  mq2_pack_private)
+require_token_count("MQ.2 P2 exact relaxation scratch owner"
+  mq2_pack_private
+  "structRelaxationScratch{std::vector<real_t>diagonal{};std::vector<real_t>diagonal_compensation{};std::vector<real_t>rhs{};std::vector<real_t>rhs_compensation{};std::vector<real_t>target{};std::vector<real_t>residual{};std::vector<real_t>residual_compensation{};};RelaxationScratchrelaxation_{};"
+  1)
+
+set(mq2_relaxation_candidate
+  "RelaxationScratchrelaxation{.diagonal=std::vector<real_t>(nodes,0.0),.diagonal_compensation=std::vector<real_t>(nodes,0.0),.rhs=std::vector<real_t>(nodes,0.0),.rhs_compensation=std::vector<real_t>(nodes,0.0),.target=std::vector<real_t>(nodes,0.0),.residual=std::vector<real_t>(nodes,0.0),.residual_compensation=std::vector<real_t>(nodes,0.0)};")
+set(mq2_relaxation_nothrow
+  "static_assert(std::is_nothrow_move_assignable_v<RelaxationScratch>);")
+set(mq2_relaxation_publication
+  "topology_=std::move(candidate_topology);thevenin_=std::move(thevenin);batch_executor_=std::move(batch_executor);workspace_=std::move(workspace);solution_=std::move(solution);current_guess_=std::move(current_guess);candidate_current_=std::move(candidate_current);ocv_=std::move(ocv);resistance_=std::move(resistance);candidate_node_voltage_=std::move(candidate_node_voltage);layer_voltage_=std::move(layer_voltage);rollback_cell_current_=std::move(rollback_cell_current);rollback_node_voltage_=std::move(rollback_node_voltage);relaxation_=std::move(relaxation);")
+require_token_count("MQ.2 P2 exact relaxation scratch candidate"
+  mq2_pack_sparse "${mq2_relaxation_candidate}" 1)
+require_token_count("MQ.2 P2 no-throw scratch publication"
+  mq2_pack_sparse "${mq2_relaxation_nothrow}" 1)
+require_token_count("MQ.2 P2 contiguous no-throw publication block"
+  mq2_pack_sparse "${mq2_relaxation_publication}" 1)
+require_token_count("MQ.2 P2 single scratch publication"
+  mq2_pack_sparse "relaxation_=std::move(relaxation);" 1)
+require_token_count("MQ.2 P2 no other scratch publication"
+  mq2_pack_sparse "relaxation_=" 1)
+
+string(FIND "${mq2_pack_sparse}" "${mq2_relaxation_candidate}"
+  mq2_relaxation_candidate_position)
+string(FIND "${mq2_pack_sparse}" "${mq2_relaxation_nothrow}"
+  mq2_relaxation_nothrow_position)
+string(FIND "${mq2_pack_sparse}" "topology_=std::move(candidate_topology);"
+  mq2_first_publication_position)
+if(mq2_relaxation_candidate_position EQUAL -1
+   OR mq2_relaxation_nothrow_position EQUAL -1
+   OR mq2_first_publication_position EQUAL -1
+   OR NOT mq2_relaxation_candidate_position LESS mq2_relaxation_nothrow_position
+   OR NOT mq2_relaxation_nothrow_position LESS mq2_first_publication_position)
+  message(FATAL_ERROR
+    "MQ.2 P2 all scratch allocation and its no-throw proof must precede member publication")
+endif()
+
+file(GLOB_RECURSE mq2_core_production_sources
+  LIST_DIRECTORIES false
+  "${SLIDE_SOURCE_DIR}/src/core/*.cpp"
+  "${SLIDE_SOURCE_DIR}/src/core/*.cu"
+  "${SLIDE_SOURCE_DIR}/src/core/*.hpp")
+foreach(mq2_old_relaxation_member IN ITEMS
+        relaxation_diagonal_
+        relaxation_rhs_
+        relaxation_target_
+        relaxation_compensation_)
+  foreach(mq2_core_production_source IN LISTS mq2_core_production_sources)
+    file(READ "${mq2_core_production_source}" mq2_core_production_content)
+    string(FIND "${mq2_core_production_content}"
+      "${mq2_old_relaxation_member}" mq2_old_relaxation_member_position)
+    if(NOT mq2_old_relaxation_member_position EQUAL -1)
+      file(RELATIVE_PATH mq2_core_production_relative
+        "${SLIDE_SOURCE_DIR}" "${mq2_core_production_source}")
+      message(FATAL_ERROR
+        "MQ.2 P2 old relaxation member ${mq2_old_relaxation_member} remains in production file ${mq2_core_production_relative}")
+    endif()
+  endforeach()
+endforeach()
+
+set(mq2_relaxation_solve_begin
+  "slide::StatusPackSolver::solveRelaxation(real_tapplied_current)")
+set(mq2_relaxation_solve_end
+  "diagnostics_.constraint_drift=drift;returnslide::Status::Success;}")
+require_token_count("MQ.2 P2 relaxation solve owner"
+  mq2_pack_iterative "${mq2_relaxation_solve_begin}" 1)
+require_token_count("MQ.2 P2 relaxation solve tail"
+  mq2_pack_iterative "${mq2_relaxation_solve_end}" 1)
+string(FIND "${mq2_pack_iterative}" "${mq2_relaxation_solve_begin}"
+  mq2_relaxation_solve_begin_position)
+string(FIND "${mq2_pack_iterative}" "${mq2_relaxation_solve_end}"
+  mq2_relaxation_solve_end_position)
+if(mq2_relaxation_solve_begin_position EQUAL -1
+   OR mq2_relaxation_solve_end_position EQUAL -1
+   OR mq2_relaxation_solve_end_position LESS_EQUAL mq2_relaxation_solve_begin_position)
+  message(FATAL_ERROR "MQ.2 P2 relaxation solve slice is missing")
+endif()
+string(LENGTH "${mq2_relaxation_solve_end}"
+  mq2_relaxation_solve_end_length)
+math(EXPR mq2_relaxation_solve_length
+  "${mq2_relaxation_solve_end_position} - ${mq2_relaxation_solve_begin_position} + ${mq2_relaxation_solve_end_length}")
+string(SUBSTRING "${mq2_pack_iterative}"
+  ${mq2_relaxation_solve_begin_position}
+  ${mq2_relaxation_solve_length}
+  mq2_relaxation_solve)
+
+require_token_count("MQ.2 P2 relaxation diagonal uses"
+  mq2_relaxation_solve "relaxation_.diagonal[" 4)
+require_token_count("MQ.2 P2 relaxation diagonal-compensation uses"
+  mq2_relaxation_solve "relaxation_.diagonal_compensation[" 2)
+require_token_count("MQ.2 P2 relaxation rhs uses"
+  mq2_relaxation_solve "relaxation_.rhs[" 6)
+require_token_count("MQ.2 P2 relaxation rhs-compensation uses"
+  mq2_relaxation_solve "relaxation_.rhs_compensation[" 4)
+require_token_count("MQ.2 P2 relaxation target uses"
+  mq2_relaxation_solve "relaxation_.target[" 4)
+require_token_count("MQ.2 P2 relaxation residual uses"
+  mq2_relaxation_solve "relaxation_.residual[" 5)
+require_token_count("MQ.2 P2 relaxation residual-compensation uses"
+  mq2_relaxation_solve "relaxation_.residual_compensation[" 4)
+require_token_count("MQ.2 P2 six relaxation fills"
+  mq2_relaxation_solve "std::fill(" 6)
+require_token_count("MQ.2 P2 target is assigned, never filled"
+  mq2_relaxation_solve "std::fill(relaxation_.target.begin()" 0)
+require_token_count("MQ.2 P2 solve constructs no vector"
+  mq2_relaxation_solve "std::vector<real_t>" 0)
+foreach(mq2_forbidden_relaxation_mutator IN ITEMS
+        "std::ranges::fill"
+        "std::fill_n"
+        ".assign("
+        ".resize("
+        ".clear("
+        ".reserve("
+        ".push_back("
+        ".emplace_back("
+        ".swap("
+        "std::swap("
+        "std::exchange("
+        "std::copy"
+        "memset(")
+  require_token_count("MQ.2 P2 alternate scratch mutation is forbidden"
+    mq2_relaxation_solve "${mq2_forbidden_relaxation_mutator}" 0)
+endforeach()
+require_token_count("MQ.2 P2 exact coefficient reset"
+  mq2_relaxation_solve
+  "std::fill(relaxation_.diagonal.begin(),relaxation_.diagonal.end(),0.0);std::fill(relaxation_.diagonal_compensation.begin(),relaxation_.diagonal_compensation.end(),0.0);std::fill(relaxation_.rhs.begin(),relaxation_.rhs.end(),0.0);std::fill(relaxation_.rhs_compensation.begin(),relaxation_.rhs_compensation.end(),0.0);autostamp="
+  1)
+require_token_count("MQ.2 P2 positive diagonal association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.diagonal[p],relaxation_.diagonal_compensation[p],conductance)"
+  1)
+require_token_count("MQ.2 P2 negative diagonal association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.diagonal[n],relaxation_.diagonal_compensation[n],conductance)"
+  1)
+require_token_count("MQ.2 P2 positive rhs association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.rhs[p],relaxation_.rhs_compensation[p],positive_rhs)"
+  1)
+require_token_count("MQ.2 P2 negative rhs association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.rhs[n],relaxation_.rhs_compensation[n],negative_rhs)"
+  1)
+require_token_count("MQ.2 P2 positive terminal rhs association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.rhs[netlist.terminal_positive],relaxation_.rhs_compensation[netlist.terminal_positive],-applied_current)"
+  1)
+require_token_count("MQ.2 P2 negative terminal rhs association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.rhs[netlist.terminal_negative],relaxation_.rhs_compensation[netlist.terminal_negative],applied_current)"
+  1)
+require_token_count("MQ.2 P2 every node receives one target"
+  mq2_relaxation_solve
+  "for(std::uint32_tnode=0;node<netlist.node_count;++node){if(node==netlist.terminal_negative){relaxation_.target[node]=real_t{};continue;}if(!(is_strictly_positive_finite(relaxation_.diagonal[node])&&is_finite(relaxation_.rhs[node])))returnslide::Status::Numerical_failure;relaxation_.target[node]=relaxation_.rhs[node]/relaxation_.diagonal[node];if(!is_finite(relaxation_.target[node]))returnslide::Status::Invalid_states;}"
+  1)
+require_token_count("MQ.2 P2 exact KCL reset immediately before assembly"
+  mq2_relaxation_solve
+  "std::fill(relaxation_.residual.begin(),relaxation_.residual.end(),0.0);std::fill(relaxation_.residual_compensation.begin(),relaxation_.residual_compensation.end(),0.0);real_troundoff_operation_scale="
+  1)
+require_token_count("MQ.2 P2 positive branch residual association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.residual[branch.node_positive],relaxation_.residual_compensation[branch.node_positive],branch_current)"
+  1)
+require_token_count("MQ.2 P2 negative branch residual association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.residual[branch.node_negative],relaxation_.residual_compensation[branch.node_negative],-branch_current)"
+  1)
+require_token_count("MQ.2 P2 positive terminal residual association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.residual[netlist.terminal_positive],relaxation_.residual_compensation[netlist.terminal_positive],applied_current)"
+  1)
+require_token_count("MQ.2 P2 negative terminal residual association"
+  mq2_relaxation_solve
+  "addCompensatedFinite(relaxation_.residual[netlist.terminal_negative],relaxation_.residual_compensation[netlist.terminal_negative],-applied_current)"
+  1)
+require_token_count("MQ.2 P2 residual diagnostic reads residual owner"
+  mq2_relaxation_solve
+  "constreal_tresidual=relaxation_.residual[node];"
+  1)
 
 message(STATUS "9C architecture aggregate structural gate passed")

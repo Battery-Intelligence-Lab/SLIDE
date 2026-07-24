@@ -174,10 +174,17 @@ private:
   std::vector<real_t> layer_voltage_{};
   std::vector<real_t> rollback_cell_current_{};
   std::vector<real_t> rollback_node_voltage_{};
-  std::vector<real_t> relaxation_diagonal_{};
-  std::vector<real_t> relaxation_rhs_{};
-  std::vector<real_t> relaxation_target_{};
-  std::vector<real_t> relaxation_compensation_{};
+  struct RelaxationScratch
+  {
+    std::vector<real_t> diagonal{};
+    std::vector<real_t> diagonal_compensation{};
+    std::vector<real_t> rhs{};
+    std::vector<real_t> rhs_compensation{};
+    std::vector<real_t> target{};
+    std::vector<real_t> residual{};
+    std::vector<real_t> residual_compensation{};
+  };
+  RelaxationScratch relaxation_{};
   real_t candidate_terminal_voltage_{};
   real_t residual_norm_{};
   real_t relaxation_alpha_{ 2.0 / 3.0 };

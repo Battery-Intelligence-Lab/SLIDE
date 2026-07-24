@@ -91,11 +91,13 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
   assert(std::all_of(candidate_node_voltage_.begin(),
                      candidate_node_voltage_.end(),
                      [](const real_t &value) { return is_finite(value); }));
-  std::fill(relaxation_diagonal_.begin(), relaxation_diagonal_.end(), 0.0);
-  std::fill(relaxation_rhs_.begin(), relaxation_rhs_.end(), 0.0);
-  std::fill(relaxation_target_.begin(), relaxation_target_.end(), 0.0);
-  std::fill(relaxation_compensation_.begin(),
-            relaxation_compensation_.end(),
+  std::fill(relaxation_.diagonal.begin(), relaxation_.diagonal.end(), 0.0);
+  std::fill(relaxation_.diagonal_compensation.begin(),
+            relaxation_.diagonal_compensation.end(),
+            0.0);
+  std::fill(relaxation_.rhs.begin(), relaxation_.rhs.end(), 0.0);
+  std::fill(relaxation_.rhs_compensation.begin(),
+            relaxation_.rhs_compensation.end(),
             0.0);
   auto stamp = [&](const CompiledElectricalBranch &branch, real_t resistance, real_t source) {
     const real_t conductance = 1.0 / resistance;
@@ -111,17 +113,17 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
     const real_t positive_rhs = conductance * positive_source;
     const real_t negative_rhs = conductance * negative_source;
     return is_finite(positive_rhs) && is_finite(negative_rhs)
-           && addCompensatedFinite(relaxation_diagonal_[p],
-                                   relaxation_target_[p],
+           && addCompensatedFinite(relaxation_.diagonal[p],
+                                   relaxation_.diagonal_compensation[p],
                                    conductance)
-           && addCompensatedFinite(relaxation_diagonal_[n],
-                                   relaxation_target_[n],
+           && addCompensatedFinite(relaxation_.diagonal[n],
+                                   relaxation_.diagonal_compensation[n],
                                    conductance)
-           && addCompensatedFinite(relaxation_rhs_[p],
-                                   relaxation_compensation_[p],
+           && addCompensatedFinite(relaxation_.rhs[p],
+                                   relaxation_.rhs_compensation[p],
                                    positive_rhs)
-           && addCompensatedFinite(relaxation_rhs_[n],
-                                   relaxation_compensation_[n],
+           && addCompensatedFinite(relaxation_.rhs[n],
+                                   relaxation_.rhs_compensation[n],
                                    negative_rhs);
   };
   for (const auto &branch : netlist.branches) {
@@ -132,31 +134,31 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
     if (!stamp(branch, affine.resistance, affine.source))
       return slide::Status::Invalid_states;
   }
-  if (!addCompensatedFinite(relaxation_rhs_[netlist.terminal_positive],
-                            relaxation_compensation_[netlist.terminal_positive],
+  if (!addCompensatedFinite(relaxation_.rhs[netlist.terminal_positive],
+                            relaxation_.rhs_compensation[netlist.terminal_positive],
                             -applied_current)
       || !addCompensatedFinite(
-        relaxation_rhs_[netlist.terminal_negative],
-        relaxation_compensation_[netlist.terminal_negative],
+        relaxation_.rhs[netlist.terminal_negative],
+        relaxation_.rhs_compensation[netlist.terminal_negative],
         applied_current))
     return slide::Status::Invalid_states;
 
   for (std::uint32_t node = 0; node < netlist.node_count; ++node) {
     if (node == netlist.terminal_negative) {
-      relaxation_target_[node] = 0.0;
+      relaxation_.target[node] = real_t{};
       continue;
     }
-    if (!(is_strictly_positive_finite(relaxation_diagonal_[node])
-          && is_finite(relaxation_rhs_[node])))
+    if (!(is_strictly_positive_finite(relaxation_.diagonal[node])
+          && is_finite(relaxation_.rhs[node])))
       return slide::Status::Numerical_failure;
-    relaxation_target_[node] = relaxation_rhs_[node]
-                               / relaxation_diagonal_[node];
-    if (!is_finite(relaxation_target_[node]))
+    relaxation_.target[node] = relaxation_.rhs[node]
+                               / relaxation_.diagonal[node];
+    if (!is_finite(relaxation_.target[node]))
       return slide::Status::Invalid_states;
   }
   for (std::uint32_t node = 0; node < netlist.node_count; ++node)
     if (node != netlist.terminal_negative) {
-      const real_t difference = relaxation_target_[node]
+      const real_t difference = relaxation_.target[node]
                                 - candidate_node_voltage_[node];
       const real_t correction = relaxation_alpha_ * difference;
       if (!is_finite(difference) || !is_finite(correction)
@@ -179,9 +181,9 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
   assert(candidate_node_voltage_[netlist.terminal_negative] == 0.0);
   assert(is_finite(candidate_terminal_voltage_));
 
-  std::fill(relaxation_target_.begin(), relaxation_target_.end(), 0.0);
-  std::fill(relaxation_compensation_.begin(),
-            relaxation_compensation_.end(),
+  std::fill(relaxation_.residual.begin(), relaxation_.residual.end(), 0.0);
+  std::fill(relaxation_.residual_compensation.begin(),
+            relaxation_.residual_compensation.end(),
             0.0);
   real_t roundoff_operation_scale = std::abs(applied_current);
   real_t roundoff_current_scale = std::abs(applied_current);
@@ -211,29 +213,29 @@ slide::Status PackSolver::solveRelaxation(real_t applied_current)
         || !addFinite(roundoff_operation_scale, operation_scale)
         || !addFinite(roundoff_current_scale, current_magnitude)
         || !addCompensatedFinite(
-          relaxation_target_[branch.node_positive],
-          relaxation_compensation_[branch.node_positive],
+          relaxation_.residual[branch.node_positive],
+          relaxation_.residual_compensation[branch.node_positive],
           branch_current)
         || !addCompensatedFinite(
-          relaxation_target_[branch.node_negative],
-          relaxation_compensation_[branch.node_negative],
+          relaxation_.residual[branch.node_negative],
+          relaxation_.residual_compensation[branch.node_negative],
           -branch_current))
       return slide::Status::Invalid_states;
   }
   if (!addCompensatedFinite(
-        relaxation_target_[netlist.terminal_positive],
-        relaxation_compensation_[netlist.terminal_positive],
+        relaxation_.residual[netlist.terminal_positive],
+        relaxation_.residual_compensation[netlist.terminal_positive],
         applied_current)
       || !addCompensatedFinite(
-        relaxation_target_[netlist.terminal_negative],
-        relaxation_compensation_[netlist.terminal_negative],
+        relaxation_.residual[netlist.terminal_negative],
+        relaxation_.residual_compensation[netlist.terminal_negative],
         -applied_current))
     return slide::Status::Invalid_states;
   real_t drift{};
   for (std::uint32_t node = 0; node < netlist.node_count; ++node) {
     if (node == netlist.terminal_negative)
       continue;
-    const real_t residual = relaxation_target_[node];
+    const real_t residual = relaxation_.residual[node];
     const real_t magnitude = std::abs(residual);
     assert(is_finite(magnitude)); // abs preserves finiteness
     drift = std::max(drift, magnitude);
