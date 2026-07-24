@@ -40,7 +40,7 @@ set(P9C5_MEMBERS
   "SpmFactory=90" "ThreadPool=54"
   "AgeingModelMask=6" "BatchBuilder=14" "BatchView=28" "CompiledCurve=27" "LamParams=21"
   "LithiumPlatingParams=27" "Numeric=18" "SeiParams=37" "SpmBatchLayout=25"
-  "SpmScalarKernels=122" "StateArena=56" "SurfaceCrackParams=25")
+  "SpmScalarKernels=123" "StateArena=56" "SurfaceCrackParams=25")
 
 # Public types each api header must still declare (removal is as much a surface change as
 # addition, and an aggregate count alone cannot see a swap).
