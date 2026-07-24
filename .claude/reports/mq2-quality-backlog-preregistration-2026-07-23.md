@@ -449,6 +449,32 @@ must remain 14/2. This is a public-contract clarification without a signature
 or behavior change; add an Unreleased CHANGELOG entry because the executable
 contract was not recorded when the prose first landed.
 
+#### S1 oracle amendment after the exact-current comparator was falsified
+
+The first pre-production run falsified two overstrong assumptions in the
+original 16-assertion shape. A one-cell ladder solve published
+`8.00000000000001066 A`, not exact `8.0 A`; after four separate PackStepper
+calls the comparator published `8.00000000000002309 A`. Re-solving after each
+state advance therefore changed low current bits and the full-arena `memcmp`
+returned 1. The run passed 13/16 assertions. No production file had changed.
+
+The public semantics and exact arena criterion remain registered; only the
+comparator is corrected before its next run. The replacement compares one
+PackStepper `substeps=4` call with four direct `EulerLegacy::step` calls on the
+independently built batch, using the PackStepper's one published current
+divided by electrode area as the frozen current-density input. This directly
+isolates the inner-loop contract without introducing four additional
+electrical solves. The published current vector must contain exactly one
+value, and KCL conservation must satisfy the already supplied solver band
+`abs(I_cell - 8.0 A) <= current_tolerance = 1e-10 A`; no post-hoc tighter band
+is introduced. Both elapsed-time rows remain exact `0.5`, and equal arena size
+plus byte identity remain decisive. One PackStepper configure assertion is
+replaced by one EulerLegacy configure assertion, while the two exact-current
+assertions become size and KCL-band assertions, so the registered count stays
+16 and the accepted PackStepper floor remains 230/9. Dividing the direct or
+inner full `dt` by `substeps` must still turn elapsed time and arena identity
+red.
+
 ### S2 source-step rollback exact fixture
 
 The following analytic fixture is fixed before its first test implementation
