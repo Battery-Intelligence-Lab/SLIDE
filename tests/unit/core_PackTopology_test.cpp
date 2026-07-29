@@ -51,6 +51,84 @@ TEST_CASE("nested pack combinators compile to one flat netlist", "[core][pack][c
   }
 }
 
+TEST_CASE("topology derivation preserves exact graph and batch ordering",
+          "[core][pack][compile][topology][MQ.2][T1]")
+{
+  const auto description = core::series(std::vector{
+    core::cell({ .archetype = "zeta" }),
+    core::parallel(std::vector{
+      core::cell({ .archetype = "alpha", .thermal = true }),
+      core::cell({ .archetype = "zeta" }),
+    }),
+  });
+  core::CompiledPackTopology pack;
+  REQUIRE(core::compilePackDescription({ .root = description }, pack)
+          == Status::Success);
+
+  const auto &cells = pack.cells;
+  REQUIRE((cells.size() == 3
+           && cells[0].path == "s00"
+           && cells[0].archetype == "zeta"
+           && cells[0].location.batch == 1
+           && cells[0].location.lane == 0
+           && !cells[0].thermal
+           && cells[1].path == "s01.p00"
+           && cells[1].archetype == "alpha"
+           && cells[1].location.batch == 0
+           && cells[1].location.lane == 0
+           && cells[1].thermal
+           && cells[2].path == "s01.p01"
+           && cells[2].archetype == "zeta"
+           && cells[2].location.batch == 1
+           && cells[2].location.lane == 1
+           && !cells[2].thermal));
+  REQUIRE(pack.batch_archetypes
+          == std::vector<std::string>{ "alpha", "zeta" });
+
+  const auto &netlist = pack.electrical;
+  REQUIRE((netlist.node_count == 3
+           && netlist.terminal_positive == 0
+           && netlist.terminal_negative == 1
+           && netlist.connected
+           && netlist.index1_candidate
+           && netlist.series_parallel_ladder));
+  const auto &branches = netlist.branches;
+  REQUIRE((branches.size() == 3
+           && branches[0].node_positive == 0
+           && branches[0].node_negative == 2
+           && branches[0].kind == core::ElectricalBranchKind::cell
+           && branches[0].cell == 0
+           && branches[0].resistance == 0.0
+           && branches[1].node_positive == 2
+           && branches[1].node_negative == 1
+           && branches[1].kind == core::ElectricalBranchKind::cell
+           && branches[1].cell == 1
+           && branches[1].resistance == 0.0
+           && branches[2].node_positive == 2
+           && branches[2].node_negative == 1
+           && branches[2].kind == core::ElectricalBranchKind::cell
+           && branches[2].cell == 2
+           && branches[2].resistance == 0.0));
+  const std::vector<std::pair<std::uint32_t, std::uint32_t>>
+    expected_sparsity{ { 0, 0 }, { 0, 2 }, { 1, 1 }, { 1, 2 }, { 2, 2 } };
+  REQUIRE(netlist.nodal_sparsity == expected_sparsity);
+  REQUIRE((netlist.ladder_offsets == std::vector<std::uint32_t>{ 0, 1, 3 }
+           && netlist.ladder_cells == std::vector<std::uint32_t>{ 0, 1, 2 }
+           && netlist.ladder_nodes == std::vector<std::uint32_t>{ 0, 2, 1 }));
+
+  const auto &thermal = pack.thermal;
+  REQUIRE((thermal.cell_count == 3
+           && thermal.boundary_count == 0
+           && thermal.edges.empty()
+           && thermal.incidents.empty()
+           && thermal.edge_flux.empty()
+           && thermal.trial_edge_flux.empty()
+           && thermal.trial_edge_incidence.empty()
+           && thermal.offsets == std::vector<std::uint32_t>{ 0, 0, 0, 0 }
+           && thermal.trial_endpoint_heat
+                == std::vector<core::real_t>{ 0.0, 0.0, 0.0 }));
+}
+
 TEST_CASE("pack links flatten to explicit resistor branches", "[core][pack][compile]")
 {
   const auto leaf = core::cell({ .archetype = "ecm" });
@@ -264,6 +342,12 @@ TEST_CASE("electrical validator rejects independently corrupted metadata",
           == Status::Invalid_parameters);
   }
 
+  auto hostile_endpoint = base.electrical;
+  hostile_endpoint.branches[0].node_positive = hostile_endpoint.node_count;
+  CHECK(core::detail::validateElectricalNetlist(
+          hostile_endpoint, base.cells.size())
+        == Status::Invalid_parameters);
+
   auto resistor = base.electrical;
   resistor.branches.push_back({ .node_positive = 0,
                                 .node_negative = 1,
@@ -333,6 +417,26 @@ TEST_CASE("imported topology finalization validates names, endpoints, and batch 
     CHECK(core::detail::finalizeImportedPackTopology(candidate, node_count)
           == Status::Invalid_parameters);
   }
+}
+
+TEST_CASE("import finalization clears every ladder vector after an orientation mismatch",
+          "[core][pack][import][ladder][rollback][MQ.2][T1]")
+{
+  core::CompiledPackTopology pack;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::series(2, core::cell()) }, pack)
+          == Status::Success);
+  REQUIRE(pack.electrical.series_parallel_ladder);
+
+  std::swap(pack.electrical.branches[1].node_positive,
+            pack.electrical.branches[1].node_negative);
+  REQUIRE(core::detail::finalizeImportedPackTopology(
+            pack, pack.electrical.node_count)
+          == Status::Success);
+  REQUIRE(!pack.electrical.series_parallel_ladder);
+  REQUIRE(pack.electrical.ladder_offsets.empty());
+  REQUIRE(pack.electrical.ladder_cells.empty());
+  REQUIRE(pack.electrical.ladder_nodes.empty());
 }
 
 TEST_CASE("thermal assembly rejects every independently corrupted graph field",

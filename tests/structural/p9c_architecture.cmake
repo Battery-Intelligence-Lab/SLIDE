@@ -530,6 +530,7 @@ require_token_count("MQ.2 P2 residual diagnostic reads residual owner"
 # MQ.2 S1: one cold prefix-uniqueness owner, two exact arena-copy
 # directions, and the public N*dt/frozen-solve semantics are executable.
 load_compact("src/core/PackTopologyInternal.hpp" mq2_pack_topology_internal)
+load_compact("src/core/PackTopology.cpp" mq2_pack_topology)
 load_compact("src/core/PackStepper.hpp" mq2_pack_stepper_header)
 load_compact("src/core/PackStepper.cpp" mq2_pack_stepper)
 load_compact("src/core/PackSolverOwnership.cpp" mq2_pack_ownership)
@@ -760,5 +761,151 @@ require_token_count("MQ.2 S1 full-dt substep calls"
   mq2_substeps_loop
   "time+static_cast<real_t>(substep)*dt,dt)"
   2)
+
+# MQ.2 T1: one cold owner derives branch adjacency/sparsity for both generated
+# and imported topologies, and one sorted slot record owns all archetype batch
+# metadata. The validator ordering keeps the P9-B18 allocation bound and every
+# endpoint guard ahead of graph construction.
+set(mq2_batch_locations_begin
+  "boolassignBatchLocations(CompiledPackTopology&pack){")
+set(mq2_batch_locations_end
+  "voidcompileElectricalMetadata(CompiledPackTopology&pack,std::uint32_tnode_count){")
+require_token_count("MQ.2 T1 batch-location slice begin"
+  mq2_pack_topology "${mq2_batch_locations_begin}" 1)
+require_token_count("MQ.2 T1 batch-location slice end"
+  mq2_pack_topology "${mq2_batch_locations_end}" 1)
+string(FIND "${mq2_pack_topology}" "${mq2_batch_locations_begin}"
+  mq2_batch_locations_begin_position)
+string(FIND "${mq2_pack_topology}" "${mq2_batch_locations_end}"
+  mq2_batch_locations_end_position)
+if(mq2_batch_locations_begin_position EQUAL -1
+   OR mq2_batch_locations_end_position EQUAL -1
+   OR mq2_batch_locations_end_position LESS_EQUAL mq2_batch_locations_begin_position)
+  message(FATAL_ERROR "MQ.2 T1 batch-location slice is missing")
+endif()
+math(EXPR mq2_batch_locations_length
+  "${mq2_batch_locations_end_position} - ${mq2_batch_locations_begin_position}")
+string(SUBSTRING "${mq2_pack_topology}"
+  ${mq2_batch_locations_begin_position}
+  ${mq2_batch_locations_length}
+  mq2_batch_locations)
+
+require_token_count("MQ.2 T1 one BatchSlot record"
+  mq2_batch_locations
+  "structBatchSlot{std::uint32_tbatch{};std::uint32_tnext_lane{};boolthermal{};};"
+  1)
+require_token_count("MQ.2 T1 one archetype map"
+  mq2_batch_locations "std::map<" 1)
+require_token_count("MQ.2 T1 exact slot map"
+  mq2_batch_locations "std::map<std::string,BatchSlot>slots;" 1)
+require_token_count("MQ.2 T1 one slot insertion"
+  mq2_batch_locations
+  "slots.try_emplace(cell.archetype,BatchSlot{.thermal=cell.thermal})"
+  1)
+require_token_count("MQ.2 T1 one checked slot lookup"
+  mq2_batch_locations "slots.at(cell.archetype)" 1)
+require_token_count("MQ.2 T1 one post-increment lane publication"
+  mq2_batch_locations
+  "cell.location={.batch=slot.batch,.lane=slot.next_lane++};"
+  1)
+require_token_count("MQ.2 T1 old integer maps removed"
+  mq2_batch_locations "std::map<std::string,std::uint32_t>" 0)
+require_token_count("MQ.2 T1 old thermal map removed"
+  mq2_batch_locations "std::map<std::string,bool>" 0)
+require_ordered_tokens("MQ.2 T1 validate before batch publication"
+  mq2_batch_locations
+  "slots.try_emplace(cell.archetype,BatchSlot{.thermal=cell.thermal})"
+  "if(!inserted&&it->second.thermal!=cell.thermal)"
+  "for(auto&[name,slot]:slots)"
+  "slots.at(cell.archetype)"
+  "cell.location={.batch=slot.batch,.lane=slot.next_lane++};")
+
+require_token_count("MQ.2 T1 BranchGraph owner"
+  mq2_pack_topology "BranchGraphbuildBranchGraph(" 1)
+require_token_count("MQ.2 T1 BranchGraph owner and consumers"
+  mq2_pack_topology "buildBranchGraph(" 3)
+require_token_count("MQ.2 T1 connectivity owner"
+  mq2_pack_topology "boolisConnectedFrom(" 1)
+require_token_count("MQ.2 T1 connectivity owner and consumers"
+  mq2_pack_topology "isConnectedFrom(" 3)
+require_token_count("MQ.2 T1 exact connectivity consumers"
+  mq2_pack_topology
+  "isConnectedFrom(graph.adjacency,netlist.terminal_positive)"
+  2)
+require_token_count("MQ.2 T1 positive adjacency owner"
+  mq2_pack_topology
+  "graph.adjacency[branch.node_positive].push_back(branch.node_negative);"
+  1)
+require_token_count("MQ.2 T1 negative adjacency owner"
+  mq2_pack_topology
+  "graph.adjacency[branch.node_negative].push_back(branch.node_positive);"
+  1)
+require_token_count("MQ.2 T1 one graph traversal queue"
+  mq2_pack_topology "std::queue<std::uint32_t>pending;" 1)
+require_token_count("MQ.2 T1 one sparsity overflow proof"
+  mq2_pack_topology "sizeof(CompiledElectricalBranch)>3" 1)
+require_token_count("MQ.2 T1 one sparsity reserve"
+  mq2_pack_topology "graph.sparsity.reserve(branches.size()*3);" 1)
+require_token_count("MQ.2 T1 old validator sparsity owner removed"
+  mq2_pack_topology "expected_sparsity" 0)
+
+set(mq2_branch_graph_begin "BranchGraphbuildBranchGraph(")
+set(mq2_branch_graph_end "boolisConnectedFrom(")
+string(FIND "${mq2_pack_topology}" "${mq2_branch_graph_begin}"
+  mq2_branch_graph_begin_position)
+string(FIND "${mq2_pack_topology}" "${mq2_branch_graph_end}"
+  mq2_branch_graph_end_position)
+if(mq2_branch_graph_begin_position EQUAL -1
+   OR mq2_branch_graph_end_position EQUAL -1
+   OR mq2_branch_graph_end_position LESS_EQUAL mq2_branch_graph_begin_position)
+  message(FATAL_ERROR "MQ.2 T1 BranchGraph owner slice is missing")
+endif()
+math(EXPR mq2_branch_graph_length
+  "${mq2_branch_graph_end_position} - ${mq2_branch_graph_begin_position}")
+string(SUBSTRING "${mq2_pack_topology}"
+  ${mq2_branch_graph_begin_position}
+  ${mq2_branch_graph_length}
+  mq2_branch_graph)
+require_token_count("MQ.2 T1 positive adjacency lives in graph owner"
+  mq2_branch_graph
+  "graph.adjacency[branch.node_positive].push_back(branch.node_negative);"
+  1)
+require_token_count("MQ.2 T1 negative adjacency lives in graph owner"
+  mq2_branch_graph
+  "graph.adjacency[branch.node_negative].push_back(branch.node_positive);"
+  1)
+require_token_count("MQ.2 T1 three sparsity contributions live in graph owner"
+  mq2_branch_graph "graph.sparsity.emplace_back(" 3)
+
+set(mq2_netlist_validator_begin
+  "slide::Statusdetail::validateElectricalNetlist(")
+set(mq2_netlist_validator_end
+  "slide::Statusdetail::finalizeImportedPackTopology(")
+string(FIND "${mq2_pack_topology}" "${mq2_netlist_validator_begin}"
+  mq2_netlist_validator_begin_position)
+string(FIND "${mq2_pack_topology}" "${mq2_netlist_validator_end}"
+  mq2_netlist_validator_end_position)
+if(mq2_netlist_validator_begin_position EQUAL -1
+   OR mq2_netlist_validator_end_position EQUAL -1
+   OR mq2_netlist_validator_end_position
+      LESS_EQUAL mq2_netlist_validator_begin_position)
+  message(FATAL_ERROR "MQ.2 T1 electrical-validator slice is missing")
+endif()
+math(EXPR mq2_netlist_validator_length
+  "${mq2_netlist_validator_end_position} - ${mq2_netlist_validator_begin_position}")
+string(SUBSTRING "${mq2_pack_topology}"
+  ${mq2_netlist_validator_begin_position}
+  ${mq2_netlist_validator_length}
+  mq2_netlist_validator)
+require_ordered_tokens("MQ.2 T1 guarded validator graph construction"
+  mq2_netlist_validator
+  "static_cast<std::size_t>(netlist.node_count-1)>netlist.branches.size()"
+  "netlist.terminal_positive>=netlist.node_count"
+  "for(constauto&branch:netlist.branches){"
+  "if(branch.node_positive>=netlist.node_count||branch.node_negative>=netlist.node_count||branch.node_positive==branch.node_negative)"
+  "if(cell_branches!=cell_count||std::any_of(seen_cell.begin(),seen_cell.end(),[](unsignedcharseen){returnseen==0;}))"
+  "constautograph=buildBranchGraph(netlist.branches,netlist.node_count);"
+  "if(netlist.nodal_sparsity!=graph.sparsity)"
+  "if(!isConnectedFrom(graph.adjacency,netlist.terminal_positive))")
 
 message(STATUS "9C architecture aggregate structural gate passed")
