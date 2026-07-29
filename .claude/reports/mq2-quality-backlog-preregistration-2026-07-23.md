@@ -500,6 +500,10 @@ changing count:
 | `thermal-assembly-placement-oracle-gap` | structural placement had no heterogeneous numerical cadence oracle | APPLIED test-only by S1.1; analytic recurrence mutation red |
 | `prefix-duplicate-adjacency-oracle-gap` | prefix fixtures covered only adjacent duplicates | APPLIED test-only by S1.1; non-adjacent/OOB mutation red |
 | `eigen-strong-inline-redefinition-warning` | a fresh Debug build reports the pre-existing Eigen macro-redefinition diagnostic | DEFERRED with explicit owner MQ.2 B1 build diagnostics |
+| `recorder-schema-default-vector-debug-oom-terminates` | R1's initially frozen bare schema-vector constructor allocates a Debug iterator proxy inside a `noexcept` constructor | OPEN — owned by R1 acceptance; corrected implementation is committed at `5a462b6` |
+| `recording-owner-contract-comments-stale` | R1 moved CRC ownership but two leading production comments still attribute all CRC ownership/co-location to `RecordingFormat.cpp` | OPEN — owned by R1 adversarial closeout |
+| `r1-self-containment-gate-overclaim` | 9C-5 compiler evidence was described as proving every direct standard include rather than only load-bearing standalone dependencies | OPEN — owned by R1 adversarial closeout |
+| `r1-helper-internal-linkage-gate-gap` | exact helper bodies were pinned but their required anonymous-namespace linkage was not | OPEN — owned by R1 adversarial closeout |
 
 This post-baseline registry is append-only during MQ.2. A new finding must
 receive a stable ID here before any disposition claim. At wave closeout, the
@@ -1862,15 +1866,47 @@ interactive CRT abort, not a bounded Catch failure. The already-frozen
 allocation test is the behavioral acceptance oracle for the safe owner.
 Only after all R1 gates pass is
 `recorder-schema-default-vector-debug-oom-terminates` APPLIED. It is outside
-the original 71-ID census and grows the combined registry from 76 to 77 IDs.
+the original 71-ID census. The post-mutation adversarial review registered
+three further R1 IDs below, growing the combined registry from 76 to 80 IDs.
 
 The R1 self-containment requirement is also made persistent rather than
 satisfied by one-off commands. 9C-5 keeps its 28-header api/support
 classification unchanged and compiles
 `detail/RecordingFormatCommon.hpp` and `detail/SnapshotIndexing.hpp` in a
-separate two-header internal list. Removing a direct standard/project include
-from either new header must make that compiler gate red; the headers are not
-reclassified as public.
+separate two-header internal list. Removing either new header's load-bearing
+project dependency (`types/Status.hpp` or `Recorder.hpp`) must make that
+compiler gate red; the headers are not reclassified as public. Exact direct
+standard-include ownership remains a lexical architecture assertion, because
+a standalone compiler cannot distinguish a direct include from one supplied
+transitively by another header.
+
+#### Post-mutation adversarial hardening registration
+
+An independent read-only audit of committed implementation `5a462b6` was
+performed after the first 13 mutation families and before the changes in this
+subsection. It found no format, CRC, schema, eager-index, Status, include-cycle,
+or initializer-list defect. It did find three bounded quality/gate issues,
+assigned stable IDs in the append-only registry above:
+
+1. `Recorder.cpp` still says the binary format's header, CRC, and mmap all
+   live in `RecordingFormat.cpp`, and `RecordingFormat.cpp` still says its
+   co-location avoids a CRC seam. The comments must instead distinguish its
+   packed-header/layout/mapping owner from `RecordingFormatCommon.hpp`'s
+   shared CRC/endian/allocation facts.
+2. The 9C-5 claim is narrowed to the load-bearing project include, as stated
+   above; the already-executed mutation removed `SnapshotIndexing.hpp`'s
+   `Recorder.hpp` include and failed standalone compilation with
+   `unknown type name 'SnapshotView'`.
+3. The architecture gate must pin `recorderColumnNames` and `snapshotRow`
+   inside the one anonymous namespace immediately preceding
+   `Recorder::configure`. Exact bodies alone do not prevent those helpers
+   acquiring external linkage.
+
+These are no-op comment/test corrections. Before final acceptance, remove the
+anonymous-namespace open/close around the two helpers as controlled mutation
+14; the new linkage assertion must turn red. Restore the exact final gate and
+source hashes, then rerun the full focused and three-lane gates. No runtime
+oracle, Status count, output byte, or census baseline is reblessed.
 
 The same anonymous namespace owns one:
 
@@ -1972,8 +2008,12 @@ these mutation families:
 12. replace the schema owner's initializer-list prefix with a bare default
     `std::vector<std::string>` construction. The architecture gate must turn
     red; do not execute the known interactive-abort path as mutation evidence.
-13. remove one direct dependency include from either new internal header.
-    The separate 9C-5 internal standalone-compilation loop must turn red.
+13. remove one load-bearing project dependency include from either new
+    internal header. The separate 9C-5 internal standalone-compilation loop
+    must turn red.
+14. remove the anonymous namespace around `recorderColumnNames` and
+    `snapshotRow`. The architecture linkage assertion must turn red even
+    though exact bodies and runtime outputs are unchanged.
 
 Every touched source/header/test/gate file is SHA-256 anchored at the clean
 implementation commit. Each mutation is inverse-patched individually; exact
@@ -2000,11 +2040,11 @@ is also mandatory after implementation. Its registered census is:
 Numerical_failure 63; every other Status count unchanged
 ```
 
-Only after those gates are green do the six original R1 IDs and the new
-Debug-iterator-proxy supplemental finding become APPLIED. That would
+Only after those gates are green do the six original R1 IDs and the four new
+R1 supplemental findings become APPLIED. That would
 move the original census from 34 APPLIED / 0 REFUTED / 8 named deferrals /
 29 pending to 40 / 0 / 8 / 23, and the combined 76-ID census from
-38 / 0 / 9 / 29 to a 77-ID census of 45 / 0 / 9 / 23. `CHANGELOG.md`,
+38 / 0 / 9 / 29 to an 80-ID census of 48 / 0 / 9 / 23. `CHANGELOG.md`,
 PLAN section 8, the
 validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
 census only at closeout.
