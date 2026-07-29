@@ -1285,3 +1285,96 @@ confirmed against the pre-extraction implementation. No expected value was
 derived from the future owner, and no production file changed. No Release,
 CUDA, full-suite, mutation, sanitizer, coverage, timing, allocation-attempt,
 or performance claim is made by this test-only boundary.
+
+### T1 implementation, mutation sensitivity, and acceptance
+
+Production commit `ad6d785` replaces the three parallel archetype maps with
+one local `BatchSlot` map and replaces the two branch adjacency/sparsity/BFS
+derivations with one file-local `BranchGraph` builder and one connectivity
+traversal. Gate-hardening commit `30464e4` adds whole-file adjacency and
+sparsity censuses after an adversarial duplicate with a different variable
+prefix exposed that the first owner-slice-only gate could still pass.
+Formatting-only commit `479f55f` fixes the graph-precondition `assert` layout;
+all final lanes below were rebuilt and rerun after that source-hash change.
+
+The validator retains, in order, the signed node bound, the P9-B18
+`node_count - 1 <= branches.size()` allocation-amplification bound, terminal
+checks, the complete endpoint/kind/resistance/cell loop, and the complete-cell
+bijection before graph construction. Stored sparsity is compared before
+connectivity as before. Generated and imported valid topology values remain
+exact; no public type, status, numerical expression, or hot path changed.
+`PackTopology.cpp` grows 658 to 673 physical lines (+15) because the shared
+owners name their preconditions and representation; it remains below MC-1's
+approximately-700-line review threshold.
+
+Nine independent mutations were run at the clean committed implementation
+boundary:
+
+| Mutation | Registered red result |
+|---|---|
+| reintroduce a second undirected adjacency derivation in `compileElectricalMetadata` | structural global positive-adjacency census found 2, expected 1 |
+| make `isConnectedFrom` return true unconditionally | PackTopology 163/164; the direct disconnected-netlist validator check returned `Success` |
+| remove the canonical off-diagonal sparsity contribution | structural sparsity census found 2, expected 3; the exact fixture stopped at 161/162 reached assertions with 3 stored pairs versus 5 expected |
+| move validator graph construction above its endpoint loop | ordered structural gate could not find the graph call after the complete-cell guard; no unsafe binary was run |
+| publish `++slot.next_lane` instead of `slot.next_lane++` | structural post-increment owner absent; legacy and new batch/lane cases both failed (142/144 reached assertions) |
+| remove mixed-thermal composition rejection | structural validation-order token absent; PackTopology 163/164 because `mixed batch physics` returned `Success` |
+| omit only `ladder_offsets.clear()` | targeted rollback case 4/5; offsets remained nonempty |
+| omit only `ladder_cells.clear()` | targeted rollback case 5/6; cells remained nonempty |
+| omit only `ladder_nodes.clear()` | targeted rollback case 6/7; nodes remained nonempty |
+
+Every mutation was inverse-patched before the next. The first inverse of the
+connectivity mutation matched the earlier `assignBatchLocations` `return true`
+rather than the intended helper. The immediate SHA-256 mismatch and
+`git diff` exposed both wrong sites before a build or test; a function-scoped
+inverse restored the exact implementation hash. All later inverses were
+hash-checked individually. The mutation-boundary anchor was:
+
+```text
+A9142B0EC6139AE02612EA8CD79EA2529550A88E48E77D284044328DC1F0B835  src/core/PackTopology.cpp
+```
+
+The later formatting-only commit changed no mutation site. Its final accepted
+anchors are:
+
+```text
+5FB6D458A271989B91FCEC76DBF7EF7BAF1B9558918EA1215E095C3F364E8BE1  src/core/PackTopology.cpp
+35DA8CCFE0EA1C01CD83FDF2CCDA3FB0EC7AD9D60A0FFF72714525C22852B3E0  tests/unit/core_PackTopology_test.cpp
+6B2ACA8537E9D55909ADD7EE50651B88D1A2D93CCB92FC17DC35352A6E3C3BFF  tests/structural/p9c_architecture.cmake
+694CA42BC69B8E3ACC3D61338BD1BC54B68BBB34465B8974CD8BA4C47F940CA9  CHANGELOG.md
+```
+
+The final focused commands used the same exact regex in Debug,
+fast-math Release/IPO-off, and the host-C++ CUDA tree (the CUDA commands were
+wrapped in the complete VS 18 x64 `vcvars64.bat` environment):
+
+```powershell
+ctest --test-dir build-mq1-debug -V --no-tests=error -j1 -R '^(unit_test_core_PackSolver|unit_test_core_PackStepper|unit_test_core_PackTopology|unit_test_core_P2G1_allocation|structural_test_core_9C2AgeingKernel)$'
+ctest --test-dir build-mq1-release -V --no-tests=error -j1 -R '^(unit_test_core_PackSolver|unit_test_core_PackStepper|unit_test_core_PackTopology|unit_test_core_P2G1_allocation|structural_test_core_9C2AgeingKernel)$'
+cmd.exe /d /s /c 'call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && ctest --test-dir build-mq1-cuda-vsenv -V --no-tests=error -j1 -R "^(unit_test_core_PackSolver|unit_test_core_PackStepper|unit_test_core_PackTopology|unit_test_core_P2G1_allocation|structural_test_core_9C2AgeingKernel)$"'
+```
+
+The final focused results were exact:
+
+| Configuration | PackTopology | PackSolver | PackStepper | P2-G1 allocation | Structural aggregate |
+|---|---:|---:|---:|---:|---:|
+| Debug/ThinLTO | 164 assertions / 11 cases | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+| fast-math Release, IPO off | 164 / 11 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+| Release/ThinLTO CUDA tree, host C++ | 164 / 11 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+
+All three unfiltered suites then passed **58/58**. The CUDA suite executed
+`unit_test_core_CudaSpmBatch`; the CPU lanes selected `CudaDisabled`.
+Immediate builds in all three trees afterward reported `ninja: no work to
+do.` `clang-format --dry-run --Werror` passed for both changed C++ files,
+`git diff --check` passed, and the porcelain status was empty.
+
+Release and CUDA recompilation emitted only the already registered
+`-Ofast is deprecated` diagnostic; B1 remains its owner. No new build
+finding and no allocation-count, wall-clock performance, sanitizer, coverage,
+hosted-CI, installed-package, Linux, or macOS claim is made.
+
+`branch-graph-derived-twice`, `three-parallel-archetype-maps`, and
+`test-gap-ladder-rollback` are APPLIED. The original census is now
+29 APPLIED, 0 REFUTED, 8 named deferrals, and 34 pending. With the unchanged
+post-baseline registry, the combined 76-ID census is 33 APPLIED, 0 REFUTED,
+9 named deferrals, and 34 pending. MQ.2 remains open; T2 thermal topology is
+next.

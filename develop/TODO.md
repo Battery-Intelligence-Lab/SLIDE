@@ -97,7 +97,15 @@
 > 994/33 and all companion focused gates in Debug, fast-math Release/IPO-off, and host-C++ CUDA;
 > every restored tree passes 58/58. Three independent restore mutations turn separate assertions
 > red at 9/10. Original census: 26 APPLIED / 37 pending / 8 deferrals; combined 76-ID registry:
-> 30 APPLIED / 37 pending / 9 deferrals. Next is T1 topology derivation.
+> 30 APPLIED / 37 pending / 9 deferrals.
+>
+> **2026-07-29 — MQ.2 T1 topology ownership landed.** Commit `ad6d785` plus structural
+> hardening `30464e4` and formatting `479f55f` replaces three archetype maps with one sorted
+> slot record and both branch-graph/BFS derivations with one guarded owner. PackTopology 164/11
+> and all companion focused gates pass in Debug, fast-math Release/IPO-off, and host-C++ CUDA;
+> all three final trees pass 58/58 and no-op rebuilds. Nine mutations turn red and exact hashes
+> are recorded. Original census: 29 APPLIED / 34 pending / 8 deferrals; combined 76-ID registry:
+> 33 APPLIED / 34 pending / 9 deferrals. Next is T2 thermal topology.
 
 ---
 
