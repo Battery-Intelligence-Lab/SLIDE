@@ -1378,3 +1378,61 @@ hosted-CI, installed-package, Linux, or macOS claim is made.
 post-baseline registry, the combined 76-ID census is 33 APPLIED, 0 REFUTED,
 9 named deferrals, and 34 pending. MQ.2 remains open; T2 thermal topology is
 next.
+
+### T2 frozen old-production boundary
+
+T2 was preregistered at `9b99f62` before any T2 production, unit-test, or
+structural-gate edit and before any T2 binary run. Oracle-only commit
+`b2c2f80` adds the registered six-assertion isothermal case and future
+signature/comment structural checks; it changes no production file.
+
+The new case compiles the registered three-cell, two-boundary, five-edge
+triangle graph. Its grouped shape check confirms degree-three endpoint
+offsets `{0,3,5,8,9,10}`. Before assembly it poisons cell/boundary outputs,
+published and trial edge flux, trial endpoint heat, and incidence bytes with
+nonzero sentinels. Uniform finite `300.0 K` input must overwrite every output
+with exact zero. The old production implementation passes the complete
+PackTopology gate exactly:
+
+```text
+All tests passed (170 assertions in 12 test cases)
+```
+
+Command:
+
+```powershell
+cmake --build build-mq1-debug --target unit_test_core_PackTopology
+ctest --test-dir build-mq1-debug -V --no-tests=error -j1 -R '^unit_test_core_PackTopology$'
+```
+
+The same unchanged production makes the future aggregate structural gate red
+at its first preregistered T2 check, after every included prior structural
+suite passes:
+
+```text
+9C-2 MQ.2 T2 noexcept declaration: expected 1 occurrences of
+[[nodiscard]]slide::Statusassemble(std::span<constreal_t>cell_temperature,std::span<constreal_t>boundary_temperature,std::span<real_t>q_ext,std::span<real_t>boundary_heat)noexcept;,
+found 0
+```
+
+Command:
+
+```powershell
+ctest --test-dir build-mq1-debug -V --no-tests=error -j1 -R '^structural_test_core_9C2AgeingKernel$'
+```
+
+The frozen anchors are:
+
+```text
+5FB6D458A271989B91FCEC76DBF7EF7BAF1B9558918EA1215E095C3F364E8BE1  src/core/PackTopology.cpp
+BE843268A37E58340095DB4F512D6F3A45B2CE52C8D2AA68454240DEC2125911  src/core/PackTopology.hpp
+0F644EBB708191F334FDCC5EC422EBD329E22E51A2BCB1DD7E02015CD9E37E7A  tests/unit/core_PackTopology_test.cpp
+174672EBC74CFF194367804F6A6D52CC896B8120901C0E8E8C4EEEC1FDF4B016  tests/structural/p9c_architecture.cmake
+```
+
+`clang-format --dry-run --Werror` passes the changed C++ test and
+`git diff --check` passes. This boundary makes no Release, CUDA, full-suite,
+mutation, allocation, timing, sanitizer, coverage, hosted-CI, installed
+package, Linux, or macOS claim. Both T2 findings remain open pending the
+paired production exception specifications, leading contract comment,
+registered mutations, and three-lane acceptance.
