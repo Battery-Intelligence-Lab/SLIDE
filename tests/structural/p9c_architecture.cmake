@@ -975,4 +975,283 @@ require_ordered_tokens("MQ.2 T2 leading contract placement"
   "Cold:descriptionauthoringandcompilePackDescription()."
   "Hot:CompiledThermalGraph::assemble(),atmostonceperPackStepperstepattempt.")
 
+# MQ.2 C1: NetlistCsv retains one source for each limit diagnostic, one
+# ASCII-only digit scanner, and one Status-returning semantic-failure owner.
+# Exact cursor/status/grammar slices keep the behavior-preserving extraction
+# from widening the accepted grammar or changing first-failure diagnostics.
+load_compact("src/core/NetlistCsv.cpp" mq2_netlist_csv)
+load_compact("src/core/NetlistCsv.hpp" mq2_netlist_csv_header)
+file(READ "${SLIDE_SOURCE_DIR}/src/core/NetlistCsv.cpp"
+  mq2_netlist_csv_with_comments)
+string(REGEX REPLACE "[ \t\r\n]" ""
+  mq2_netlist_csv_with_comments
+  "${mq2_netlist_csv_with_comments}")
+file(READ "${SLIDE_SOURCE_DIR}/src/core/NetlistCsv.hpp"
+  mq2_netlist_csv_header_with_comments)
+string(REGEX REPLACE "[ \t\r\n]" ""
+  mq2_netlist_csv_header_with_comments
+  "${mq2_netlist_csv_header_with_comments}")
+
+require_token_count("MQ.2 C1 msg_too_large owner"
+  mq2_netlist_csv
+  "constexprstd::string_viewmsg_too_large=\"liionpackCSVexceeds4194304bytes\";"
+  1)
+require_token_count("MQ.2 C1 msg_too_wide owner"
+  mq2_netlist_csv
+  "constexprstd::string_viewmsg_too_wide=\"CSVrowexceeds32columns\";"
+  1)
+require_token_count("MQ.2 C1 msg_field_large owner"
+  mq2_netlist_csv
+  "constexprstd::string_viewmsg_field_large=\"CSVfieldexceeds65536bytes\";"
+  1)
+require_token_count("MQ.2 C1 msg_too_many_rows owner"
+  mq2_netlist_csv
+  "constexprstd::string_viewmsg_too_many_rows=\"liionpackCSVexceeds100000rows\";"
+  1)
+require_token_count("MQ.2 C1 numeric limit/message pin"
+  mq2_netlist_csv
+  "static_assert(max_csv_bytes==4194304U&&max_csv_rows==100000U&&max_csv_columns==32U&&max_csv_field_bytes==65536U,\"diagnosticmessagetextquotestheselimitsverbatim\");"
+  1)
+
+require_token_count("MQ.2 C1 too-large literal owner"
+  mq2_netlist_csv "\"liionpackCSVexceeds4194304bytes\"" 1)
+require_token_count("MQ.2 C1 too-wide literal owner"
+  mq2_netlist_csv "\"CSVrowexceeds32columns\"" 1)
+require_token_count("MQ.2 C1 field-large literal owner"
+  mq2_netlist_csv "\"CSVfieldexceeds65536bytes\"" 1)
+require_token_count("MQ.2 C1 too-many-rows literal owner"
+  mq2_netlist_csv "\"liionpackCSVexceeds100000rows\"" 1)
+require_token_count("MQ.2 C1 too-large owner and consumers"
+  mq2_netlist_csv "msg_too_large" 3)
+require_token_count("MQ.2 C1 too-wide owner and consumer"
+  mq2_netlist_csv "msg_too_wide" 2)
+require_token_count("MQ.2 C1 field-large owner and consumers"
+  mq2_netlist_csv "msg_field_large" 3)
+require_token_count("MQ.2 C1 too-many-rows owner and consumer"
+  mq2_netlist_csv "msg_too_many_rows" 2)
+
+require_token_count("MQ.2 C1 direct too-large consumer"
+  mq2_netlist_csv "diagnostic.message=msg_too_large;" 1)
+require_token_count("MQ.2 C1 load too-large consumer"
+  mq2_netlist_csv
+  "diagnostic={.message=std::string{msg_too_large}};"
+  1)
+require_token_count("MQ.2 C1 too-wide consumer"
+  mq2_netlist_csv "returnfail(msg_too_wide);" 1)
+require_token_count("MQ.2 C1 quoted and unquoted field consumers"
+  mq2_netlist_csv "returnfail(msg_field_large);" 2)
+require_token_count("MQ.2 C1 too-many-rows consumer"
+  mq2_netlist_csv "diagnostic.message=msg_too_many_rows;" 1)
+
+require_token_count("MQ.2 C1 exact column guard"
+  mq2_netlist_csv
+  "if(fields.size()>=max_csv_columns)returnfail(msg_too_wide);"
+  1)
+require_token_count("MQ.2 C1 exact field guards"
+  mq2_netlist_csv
+  "if(field.size()>max_csv_field_bytes)returnfail(msg_field_large);"
+  2)
+require_token_count("MQ.2 C1 exact direct-size guard"
+  mq2_netlist_csv
+  "if(csv.size()>max_csv_bytes){diagnostic.message=msg_too_large;returnslide::Status::Invalid_parameters;}"
+  1)
+require_token_count("MQ.2 C1 exact data-row guard"
+  mq2_netlist_csv
+  "if(data_rows>max_csv_rows){diagnostic.row=reader.row()-1;diagnostic.message=msg_too_many_rows;returnslide::Status::Invalid_parameters;}"
+  1)
+
+set(mq2_netlist_parse_entry_begin
+  "slide::StatusparseLiionpackNetlistCsv(")
+set(mq2_netlist_parse_entry_end "CsvReaderreader{csv,diagnostic};")
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_parse_entry_begin}"
+  mq2_netlist_parse_entry_begin_position)
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_parse_entry_end}"
+  mq2_netlist_parse_entry_end_position)
+if(mq2_netlist_parse_entry_begin_position EQUAL -1
+   OR mq2_netlist_parse_entry_end_position EQUAL -1
+   OR mq2_netlist_parse_entry_end_position
+      LESS_EQUAL mq2_netlist_parse_entry_begin_position)
+  message(FATAL_ERROR "MQ.2 C1 parse-entry slice is missing")
+endif()
+math(EXPR mq2_netlist_parse_entry_length
+  "${mq2_netlist_parse_entry_end_position} - ${mq2_netlist_parse_entry_begin_position}")
+string(SUBSTRING "${mq2_netlist_csv}"
+  ${mq2_netlist_parse_entry_begin_position}
+  ${mq2_netlist_parse_entry_length}
+  mq2_netlist_parse_entry)
+require_ordered_tokens("MQ.2 C1 diagnostic reset precedes direct limit"
+  mq2_netlist_parse_entry
+  "try{diagnostic={};"
+  "if(csv.empty())"
+  "if(csv.size()>max_csv_bytes)"
+  "diagnostic.message=msg_too_large;")
+
+require_token_count("MQ.2 C1 non-reader offset reset census"
+  mq2_netlist_csv "diagnostic.offset" 1)
+require_token_count("MQ.2 C1 reader offset publication census"
+  mq2_netlist_csv "diagnostic_.offset" 1)
+require_token_count("MQ.2 C1 exact allocation-failure diagnostic owner"
+  mq2_netlist_csv
+  "slide::StatusallocationFailure(NetlistCsvDiagnostic&diagnostic,std::string_viewmessage)noexcept{diagnostic.row=0;diagnostic.offset=0;assignDiagnosticNoThrow(diagnostic.message,message);returnslide::Status::Numerical_failure;}"
+  1)
+require_token_count("MQ.2 C1 exact reader failure owner"
+  mq2_netlist_csv
+  "boolfail(std::string_viewmessage){diagnostic_.row=row_;diagnostic_.offset=cursor_;diagnostic_.message.assign(message);returnfalse;}"
+  1)
+
+set(mq2_netlist_quoted_begin "if(source_[cursor_]=='\"'){")
+set(mq2_netlist_unquoted_begin
+  "}else{while(cursor_<source_.size()")
+set(mq2_netlist_fields_publish "fields.push_back(std::move(field));")
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_quoted_begin}"
+  mq2_netlist_quoted_begin_position)
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_unquoted_begin}"
+  mq2_netlist_unquoted_begin_position)
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_fields_publish}"
+  mq2_netlist_fields_publish_position)
+if(mq2_netlist_quoted_begin_position EQUAL -1
+   OR mq2_netlist_unquoted_begin_position EQUAL -1
+   OR mq2_netlist_fields_publish_position EQUAL -1
+   OR mq2_netlist_unquoted_begin_position
+      LESS_EQUAL mq2_netlist_quoted_begin_position
+   OR mq2_netlist_fields_publish_position
+      LESS_EQUAL mq2_netlist_unquoted_begin_position)
+  message(FATAL_ERROR "MQ.2 C1 quoted/unquoted reader slices are missing")
+endif()
+math(EXPR mq2_netlist_quoted_length
+  "${mq2_netlist_unquoted_begin_position} - ${mq2_netlist_quoted_begin_position}")
+math(EXPR mq2_netlist_unquoted_length
+  "${mq2_netlist_fields_publish_position} - ${mq2_netlist_unquoted_begin_position}")
+string(SUBSTRING "${mq2_netlist_csv}"
+  ${mq2_netlist_quoted_begin_position}
+  ${mq2_netlist_quoted_length}
+  mq2_netlist_quoted)
+string(SUBSTRING "${mq2_netlist_csv}"
+  ${mq2_netlist_unquoted_begin_position}
+  ${mq2_netlist_unquoted_length}
+  mq2_netlist_unquoted)
+require_token_count("MQ.2 C1 quoted field-limit consumer"
+  mq2_netlist_quoted
+  "if(field.size()>max_csv_field_bytes)returnfail(msg_field_large);"
+  1)
+require_token_count("MQ.2 C1 unquoted field-limit consumer"
+  mq2_netlist_unquoted
+  "if(field.size()>max_csv_field_bytes)returnfail(msg_field_large);"
+  1)
+
+require_token_count("MQ.2 C1 exact ASCII digit owner"
+  mq2_netlist_csv
+  "[[nodiscard]]constexprboolisAsciiDigit(charvalue)noexcept{returnvalue>='0'&&value<='9';}"
+  1)
+require_token_count("MQ.2 C1 exact digit scanner owner"
+  mq2_netlist_csv
+  "constexprstd::size_tscanDigits(std::string_viewtext,std::size_t&cursor)noexcept{conststd::size_tbegin=cursor;while(cursor<text.size()&&isAsciiDigit(text[cursor]))++cursor;returncursor-begin;}"
+  1)
+require_token_count("MQ.2 C1 digit predicate census"
+  mq2_netlist_csv "isAsciiDigit(" 4)
+require_token_count("MQ.2 C1 digit scanner census"
+  mq2_netlist_csv "scanDigits(" 4)
+require_token_count("MQ.2 C1 scanner return may be discarded"
+  mq2_netlist_csv
+  "[[nodiscard]]constexprstd::size_tscanDigits(" 0)
+require_token_count("MQ.2 C1 no raw zero-to-nine cursor tests"
+  mq2_netlist_csv
+  "text[cursor]>='0'&&text[cursor]<='9'" 0)
+require_token_count("MQ.2 C1 locale-independent digit rationale"
+  mq2_netlist_csv_with_comments
+  "//std::isdigitislocale-sensitiveandrequiresanunsigned-chardomain.[[nodiscard]]constexprboolisAsciiDigit"
+  1)
+require_token_count("MQ.2 C1 explicit descriptor digit conversion"
+  mq2_netlist_csv "isAsciiDigit(static_cast<char>(value))" 1)
+
+set(mq2_netlist_descriptor_begin "boolvalidDescriptor(")
+set(mq2_netlist_descriptor_end "failSemantic(")
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_descriptor_begin}"
+  mq2_netlist_descriptor_begin_position)
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_descriptor_end}"
+  mq2_netlist_descriptor_end_position)
+if(mq2_netlist_descriptor_begin_position EQUAL -1
+   OR mq2_netlist_descriptor_end_position EQUAL -1
+   OR mq2_netlist_descriptor_end_position
+      LESS_EQUAL mq2_netlist_descriptor_begin_position)
+  message(FATAL_ERROR "MQ.2 C1 validDescriptor slice is missing")
+endif()
+math(EXPR mq2_netlist_descriptor_length
+  "${mq2_netlist_descriptor_end_position} - ${mq2_netlist_descriptor_begin_position}")
+string(SUBSTRING "${mq2_netlist_csv}"
+  ${mq2_netlist_descriptor_begin_position}
+  ${mq2_netlist_descriptor_length}
+  mq2_netlist_descriptor)
+require_token_count("MQ.2 C1 descriptor digit consumer"
+  mq2_netlist_descriptor
+  "isAsciiDigit(static_cast<char>(value))" 1)
+require_token_count("MQ.2 C1 descriptor raw digit test removed"
+  mq2_netlist_descriptor
+  "value>='0'&&value<='9'" 0)
+
+set(mq2_netlist_value_begin "boolparseValue(")
+set(mq2_netlist_value_end "boolvalidDescriptor(")
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_value_begin}"
+  mq2_netlist_value_begin_position)
+string(FIND "${mq2_netlist_csv}" "${mq2_netlist_value_end}"
+  mq2_netlist_value_end_position)
+if(mq2_netlist_value_begin_position EQUAL -1
+   OR mq2_netlist_value_end_position EQUAL -1
+   OR mq2_netlist_value_end_position LESS_EQUAL mq2_netlist_value_begin_position)
+  message(FATAL_ERROR "MQ.2 C1 parseValue slice is missing")
+endif()
+math(EXPR mq2_netlist_value_length
+  "${mq2_netlist_value_end_position} - ${mq2_netlist_value_begin_position}")
+string(SUBSTRING "${mq2_netlist_csv}"
+  ${mq2_netlist_value_begin_position}
+  ${mq2_netlist_value_length}
+  mq2_netlist_value)
+require_token_count("MQ.2 C1 parseValue scanner consumers"
+  mq2_netlist_value "scanDigits(" 3)
+require_token_count("MQ.2 C1 parseValue direct digit consumer"
+  mq2_netlist_value "isAsciiDigit(" 1)
+require_token_count("MQ.2 C1 minus-only leading sign"
+  mq2_netlist_value
+  "if(text[cursor]=='-'&&++cursor==text.size())returnfalse;" 1)
+require_token_count("MQ.2 C1 plus sign remains exponent-only"
+  mq2_netlist_value "'+'" 1)
+require_token_count("MQ.2 C1 zero integer branch"
+  mq2_netlist_value "if(text[cursor]=='0'){" 1)
+require_token_count("MQ.2 C1 no-leading-zero rejection"
+  mq2_netlist_value
+  "if(cursor<text.size()&&isAsciiDigit(text[cursor]))returnfalse;" 1)
+require_token_count("MQ.2 C1 nonzero integer branch"
+  mq2_netlist_value
+  "elseif(text[cursor]>='1'&&text[cursor]<='9'){" 1)
+require_token_count("MQ.2 C1 known-nonzero digit scan"
+  mq2_netlist_value "scanDigits(text,cursor);" 1)
+require_token_count("MQ.2 C1 nonempty fraction/exponent scans"
+  mq2_netlist_value
+  "if(scanDigits(text,cursor)==0)returnfalse;" 2)
+require_token_count("MQ.2 C1 complete value consumption"
+  mq2_netlist_value "if(cursor!=text.size())returnfalse;" 1)
+
+require_token_count("MQ.2 C1 exact semantic Status owner"
+  mq2_netlist_csv
+  "[[nodiscard]]slide::StatusfailSemantic(NetlistCsvDiagnostic&diagnostic,std::size_trow,std::string_viewmessage){diagnostic.row=row;diagnostic.message.assign(message);returnslide::Status::Invalid_parameters;}"
+  1)
+require_token_count("MQ.2 C1 semantic owner and consumers"
+  mq2_netlist_csv "failSemantic(" 9)
+require_token_count("MQ.2 C1 direct semantic returns"
+  mq2_netlist_csv "returnfailSemantic(" 8)
+require_token_count("MQ.2 C1 row semantic returns"
+  mq2_netlist_csv "returnfailSemantic(diagnostic,row," 7)
+require_token_count("MQ.2 C1 element-row semantic return"
+  mq2_netlist_csv "returnfailSemantic(diagnostic,element.row," 1)
+require_token_count("MQ.2 C1 direct Invalid-parameters census"
+  mq2_netlist_csv "returnslide::Status::Invalid_parameters;" 12)
+
+require_token_count("MQ.2 C1 offset-member contract"
+  mq2_netlist_csv_header_with_comments
+  "std::size_toffset{};//!<sourcecursorat/immediatelyafterareader-detected//!<syntax/limitfailure;zerowhenunavailablestd::stringmessage{};"
+  1)
+require_token_count("MQ.2 C1 stale unrestricted offset removed"
+  mq2_netlist_csv_header_with_comments
+  "sourcebyteatorimmediatelyafterthefailure" 0)
+
 message(STATUS "9C architecture aggregate structural gate passed")

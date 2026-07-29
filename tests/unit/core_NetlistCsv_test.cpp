@@ -128,9 +128,9 @@ TEST_CASE("liionpack CSV parses scientific-notation values exactly",
   constexpr std::string_view csv =
     "desc,node1,node2,value\n"
     "V0,2,1,4.2\n"
-    "R0,3,2,1e-05\n"    //!< numpy's default small-float spelling
-    "R1,4,3,1.5E+03\n"  //!< uppercase E and an explicit + sign
-    "R2,5,4,2.5e2\n"    //!< exponent with no sign at all
+    "R0,3,2,1e-05\n"   //!< numpy's default small-float spelling
+    "R1,4,3,1.5E+03\n" //!< uppercase E and an explicit + sign
+    "R2,5,4,2.5e2\n"   //!< exponent with no sign at all
     "I0,5,1,80\n";
   core::CompiledPackTopology topology;
   core::NetlistCsvDiagnostic diagnostic;
@@ -152,12 +152,11 @@ TEST_CASE("liionpack CSV parses scientific-notation values exactly",
   CHECK(resistances[2] == 1500.0);
 }
 
-TEST_CASE("liionpack CSV rejects truncated exponents rather than guessing",
+TEST_CASE("liionpack CSV rejects noncanonical values rather than guessing",
           "[core][pack][netlist][csv]")
 {
-  //!< The exponent branch returns false when no digit follows `e`/`E` or its sign.
-  //!< Without these, a parser that silently accepted "1e" as 1.0 would pass every
-  //!< other test in this file.
+  //!< Pin the complete strict grammar, including exponent digits, the
+  //!< minus-only leading sign, no leading zeros, and nonempty integer/fraction.
   const auto rejects = [](std::string_view value) {
     std::string csv = "desc,node1,node2,value\nV0,2,1,4.2\nR0,3,2,";
     csv += value;
@@ -169,13 +168,138 @@ TEST_CASE("liionpack CSV rejects truncated exponents rather than guessing",
     //!< Rejection must also be atomic: nothing published on the way out.
     CHECK(topology.cells.empty());
     CHECK(topology.electrical.branches.empty());
-    return status != Status::Success;
+    return status == Status::Invalid_parameters;
   };
   CHECK(rejects("1e"));
   CHECK(rejects("1e+"));
   CHECK(rejects("1e-"));
   CHECK(rejects("1e+x"));
   CHECK(rejects("1.e5e5"));
+  CHECK(rejects("+4.2"));
+  CHECK(rejects("01"));
+  CHECK(rejects(".5"));
+  CHECK(rejects("1."));
+}
+
+TEST_CASE("liionpack CSV reports exact first-failure diagnostics",
+          "[core][pack][netlist][csv][diagnostic][MQ.2][C1]")
+{
+  struct ExactFailure
+  {
+    std::string_view name;
+    std::string csv;
+    std::size_t row;
+    std::size_t offset;
+    std::string_view message;
+  };
+
+  std::vector<ExactFailure> failures;
+  failures.reserve(12);
+  failures.push_back(
+    { "row width",
+      "desc,node1,node2,value\nV0,1,0\n",
+      2,
+      0,
+      "liionpack CSV row width differs from header" });
+  failures.push_back(
+    { "unsupported descriptor",
+      "desc,node1,node2,value\nX0,1,0,4.2\n",
+      2,
+      0,
+      "unsupported liionpack descriptor" });
+  failures.push_back(
+    { "duplicate descriptor",
+      "desc,node1,node2,value\nV0,1,0,4.2\nV0,2,0,4.2\n",
+      3,
+      0,
+      "duplicate liionpack descriptor" });
+  failures.push_back(
+    { "invalid node",
+      "desc,node1,node2,value\nV0,+1,0,4.2\n",
+      2,
+      0,
+      "invalid liionpack node label" });
+  failures.push_back(
+    { "identical endpoints",
+      "desc,node1,node2,value\nV0,1,1,4.2\n",
+      2,
+      0,
+      "liionpack element has identical endpoints" });
+  failures.push_back(
+    { "invalid value",
+      "desc,node1,node2,value\nV0,1,0,+4.2\n",
+      2,
+      0,
+      "invalid liionpack element value" });
+  failures.push_back(
+    { "negative resistance",
+      "desc,node1,node2,value\nV0,1,0,4.2\nR0,2,1,-0.1\n",
+      3,
+      0,
+      "liionpack resistance must be non-negative" });
+  failures.push_back(
+    { "ideal wire short",
+      "desc,node1,node2,value\n"
+      "V0,1,0,4.2\n"
+      "R0,2,1,0\n"
+      "I0,2,1,1\n",
+      4,
+      0,
+      "liionpack ideal wire shorts an element or terminal source" });
+
+  std::string wide_header;
+  wide_header.reserve(66);
+  for (std::size_t column = 0; column < 33; ++column) {
+    if (column != 0)
+      wide_header.push_back(',');
+    wide_header.push_back('x');
+  }
+  wide_header.push_back('\n');
+  failures.push_back(
+    { "column limit",
+      std::move(wide_header),
+      1,
+      64,
+      "CSV row exceeds 32 columns" });
+
+  std::string unquoted_field(65'537, 'x');
+  failures.push_back(
+    { "unquoted field limit",
+      std::move(unquoted_field),
+      1,
+      65'537,
+      "CSV field exceeds 65536 bytes" });
+
+  std::string quoted_field{ "\"" };
+  quoted_field.append(65'537, 'x');
+  failures.push_back(
+    { "quoted field limit",
+      std::move(quoted_field),
+      1,
+      65'538,
+      "CSV field exceeds 65536 bytes" });
+  failures.push_back(
+    { "quote inside unquoted field",
+      "desc,node1,node2,value\nV0,1,0,4\"2\n",
+      2,
+      31,
+      "quote inside unquoted CSV field" });
+
+  for (const auto &failure : failures) {
+    CAPTURE(failure.name);
+    core::CompiledPackTopology topology;
+    core::NetlistCsvDiagnostic diagnostic{
+      .row = 777,
+      .offset = 888,
+      .message = "poison",
+    };
+    CHECK(core::parseLiionpackNetlistCsv(
+            failure.csv, topology, diagnostic)
+          == Status::Invalid_parameters);
+    CHECK(diagnostic.row == failure.row);
+    CHECK(diagnostic.offset == failure.offset);
+    CHECK(diagnostic.message == failure.message);
+  }
 }
 
 TEST_CASE("liionpack CSV contracts ideal wires and remaps sparse node labels",
@@ -330,8 +454,12 @@ TEST_CASE("liionpack CSV file reads are bounded and exact",
     output.put('x');
     REQUIRE(output.good());
   }
+  diagnostic = { .row = 777, .offset = 888, .message = "poison" };
   CHECK(core::loadLiionpackNetlistCsv(path, topology, diagnostic)
         == Status::Invalid_parameters);
+  CHECK(diagnostic.row == 0);
+  CHECK(diagnostic.offset == 0);
+  CHECK(diagnostic.message == "liionpack CSV exceeds 4194304 bytes");
   requireSentinel(topology);
   std::filesystem::remove(path, ignored);
 
@@ -382,11 +510,17 @@ TEST_CASE("liionpack CSV enforces row and retained archetype budgets",
   for (std::size_t row = 0; row <= 100'000; ++row)
     too_many_rows += "V" + std::to_string(row) + ",1,0,4.2\n";
   core::CompiledPackTopology topology = sentinelTopology();
-  core::NetlistCsvDiagnostic diagnostic;
+  core::NetlistCsvDiagnostic diagnostic{
+    .row = 777,
+    .offset = 888,
+    .message = "poison",
+  };
   CHECK(core::parseLiionpackNetlistCsv(
           too_many_rows, topology, diagnostic)
         == Status::Invalid_parameters);
-  CHECK(diagnostic.message.find("100000 rows") != std::string::npos);
+  CHECK(diagnostic.row == 100'002);
+  CHECK(diagnostic.offset == 0);
+  CHECK(diagnostic.message == "liionpack CSV exceeds 100000 rows");
   requireSentinel(topology);
 
   std::string retained{ "desc,node1,node2,value\n" };
