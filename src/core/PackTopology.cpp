@@ -151,48 +151,87 @@ namespace {
 
   bool assignBatchLocations(CompiledPackTopology &pack)
   {
-    std::map<std::string, std::uint32_t> batches;
-    std::map<std::string, bool> thermal;
-    std::map<std::string, std::uint32_t> next_lane;
+    struct BatchSlot
+    {
+      std::uint32_t batch{};
+      std::uint32_t next_lane{};
+      bool thermal{};
+    };
+    std::map<std::string, BatchSlot> slots;
     for (const auto &cell : pack.cells) {
-      batches.emplace(cell.archetype, 0);
-      const auto [it, inserted] = thermal.emplace(cell.archetype, cell.thermal);
-      if (!inserted && it->second != cell.thermal)
+      const auto [it, inserted] =
+        slots.try_emplace(cell.archetype,
+                          BatchSlot{ .thermal = cell.thermal });
+      // One archetype is one model composition: all of its lanes must agree
+      // on whether the state contains the thermal fields.
+      if (!inserted && it->second.thermal != cell.thermal)
         return false;
     }
     std::uint32_t batch{};
-    for (auto &[name, index] : batches) {
-      index = batch++;
+    for (auto &[name, slot] : slots) {
+      slot.batch = batch++;
       pack.batch_archetypes.push_back(name);
     }
-    for (auto &cell : pack.cells)
-      cell.location = { .batch = batches.at(cell.archetype),
-                        .lane = next_lane[cell.archetype]++ };
+    for (auto &cell : pack.cells) {
+      auto &slot = slots.at(cell.archetype);
+      cell.location = { .batch = slot.batch,
+                        .lane = slot.next_lane++ };
+    }
     return true;
   }
 
-  void compileElectricalMetadata(CompiledPackTopology &pack, std::uint32_t node_count)
+  struct BranchGraph
   {
-    auto &netlist = pack.electrical;
-    netlist.node_count = node_count;
-    std::vector<std::vector<std::uint32_t>> adjacency(node_count);
-    std::vector<std::pair<std::uint32_t, std::uint32_t>> sparsity;
-    for (const auto &branch : netlist.branches) {
-      adjacency[branch.node_positive].push_back(branch.node_negative);
-      adjacency[branch.node_negative].push_back(branch.node_positive);
-      sparsity.emplace_back(branch.node_positive, branch.node_positive);
-      sparsity.emplace_back(branch.node_negative, branch.node_negative);
-      sparsity.emplace_back(std::min(branch.node_positive, branch.node_negative),
-                            std::max(branch.node_positive, branch.node_negative));
-    }
-    std::sort(sparsity.begin(), sparsity.end());
-    sparsity.erase(std::unique(sparsity.begin(), sparsity.end()), sparsity.end());
-    netlist.nodal_sparsity = std::move(sparsity);
+    std::vector<std::vector<std::uint32_t>> adjacency{};
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> sparsity{};
+  };
 
-    std::vector<unsigned char> seen(node_count);
+  // Preconditions: node_count has passed the hostile-dimension guards and
+  // every branch endpoint is strictly smaller than node_count.
+  [[nodiscard]] BranchGraph buildBranchGraph(
+    std::span<const CompiledElectricalBranch> branches,
+    std::uint32_t node_count)
+  {
+    assert(std::all_of(branches.begin(), branches.end(),
+                       [node_count](const auto &branch) {
+                         return branch.node_positive < node_count
+                                && branch.node_negative < node_count;
+                       }));
+    BranchGraph graph;
+    graph.adjacency.resize(node_count);
+    static_assert(sizeof(CompiledElectricalBranch) > 3,
+                  "branch storage must bound the three-entry sparsity product");
+    // A vector of branches cannot contain enough elements for 3 * size() to
+    // overflow size_t because its own element size is greater than 3 bytes.
+    graph.sparsity.reserve(branches.size() * 3);
+    for (const auto &branch : branches) {
+      graph.adjacency[branch.node_positive].push_back(branch.node_negative);
+      graph.adjacency[branch.node_negative].push_back(branch.node_positive);
+      graph.sparsity.emplace_back(branch.node_positive,
+                                  branch.node_positive);
+      graph.sparsity.emplace_back(branch.node_negative,
+                                  branch.node_negative);
+      graph.sparsity.emplace_back(
+        std::min(branch.node_positive, branch.node_negative),
+        std::max(branch.node_positive, branch.node_negative));
+    }
+    std::sort(graph.sparsity.begin(), graph.sparsity.end());
+    graph.sparsity.erase(
+      std::unique(graph.sparsity.begin(), graph.sparsity.end()),
+      graph.sparsity.end());
+    return graph;
+  }
+
+  // Precondition: source is a valid adjacency index.
+  [[nodiscard]] bool isConnectedFrom(
+    const std::vector<std::vector<std::uint32_t>> &adjacency,
+    std::uint32_t source)
+  {
+    assert(source < adjacency.size());
+    std::vector<unsigned char> seen(adjacency.size());
     std::queue<std::uint32_t> pending;
-    pending.push(netlist.terminal_positive);
-    seen[netlist.terminal_positive] = 1;
+    pending.push(source);
+    seen[source] = 1;
     while (!pending.empty()) {
       const auto node = pending.front();
       pending.pop();
@@ -202,9 +241,19 @@ namespace {
           pending.push(next);
         }
     }
-    netlist.connected = std::all_of(seen.begin(), seen.end(), [](unsigned char value) {
+    return std::all_of(seen.begin(), seen.end(), [](unsigned char value) {
       return value != 0;
     });
+  }
+
+  void compileElectricalMetadata(CompiledPackTopology &pack, std::uint32_t node_count)
+  {
+    auto &netlist = pack.electrical;
+    netlist.node_count = node_count;
+    auto graph = buildBranchGraph(netlist.branches, node_count);
+    netlist.nodal_sparsity = std::move(graph.sparsity);
+    netlist.connected =
+      isConnectedFrom(graph.adjacency, netlist.terminal_positive);
     netlist.index1_candidate = netlist.connected;
 
     netlist.series_parallel_ladder = false;
@@ -378,14 +427,6 @@ slide::Status detail::validateElectricalNetlist(
   std::vector<std::pair<std::uint32_t, std::uint32_t>> cell_endpoints(
     cell_count, { unused_node, unused_node });
   std::vector<unsigned char> seen_cell(cell_count);
-  std::vector<std::vector<std::uint32_t>> adjacency(netlist.node_count);
-  std::vector<std::pair<std::uint32_t, std::uint32_t>> expected_sparsity;
-  static_assert(sizeof(CompiledElectricalBranch) > 3,
-                "branch storage must bound the three-entry sparsity product");
-  // sizeof(CompiledElectricalBranch) is greater than three bytes, so a
-  // std::vector of branches cannot contain enough elements for 3 * size() to
-  // overflow size_t. Its own max_size() is the tighter bound.
-  expected_sparsity.reserve(netlist.branches.size() * 3);
   std::size_t cell_branches{};
   for (const auto &branch : netlist.branches) {
     if (branch.node_positive >= netlist.node_count
@@ -408,14 +449,6 @@ slide::Status detail::validateElectricalNetlist(
     default:
       return slide::Status::Invalid_parameters;
     }
-    adjacency[branch.node_positive].push_back(branch.node_negative);
-    adjacency[branch.node_negative].push_back(branch.node_positive);
-    expected_sparsity.emplace_back(branch.node_positive, branch.node_positive);
-    expected_sparsity.emplace_back(branch.node_negative, branch.node_negative);
-    expected_sparsity.emplace_back(std::min(branch.node_positive,
-                                            branch.node_negative),
-                                   std::max(branch.node_positive,
-                                            branch.node_negative));
   }
   if (cell_branches != cell_count
       || std::any_of(seen_cell.begin(), seen_cell.end(), [](unsigned char seen) {
@@ -423,29 +456,11 @@ slide::Status detail::validateElectricalNetlist(
          }))
     return slide::Status::Invalid_parameters;
 
-  std::sort(expected_sparsity.begin(), expected_sparsity.end());
-  expected_sparsity.erase(
-    std::unique(expected_sparsity.begin(), expected_sparsity.end()),
-    expected_sparsity.end());
-  if (netlist.nodal_sparsity != expected_sparsity)
+  const auto graph = buildBranchGraph(
+    netlist.branches, netlist.node_count);
+  if (netlist.nodal_sparsity != graph.sparsity)
     return slide::Status::Invalid_parameters;
-
-  std::vector<unsigned char> visited(netlist.node_count);
-  std::queue<std::uint32_t> pending;
-  pending.push(netlist.terminal_positive);
-  visited[netlist.terminal_positive] = 1;
-  while (!pending.empty()) {
-    const auto node = pending.front();
-    pending.pop();
-    for (const auto next : adjacency[node])
-      if (visited[next] == 0) {
-        visited[next] = 1;
-        pending.push(next);
-      }
-  }
-  if (std::any_of(visited.begin(), visited.end(), [](unsigned char seen) {
-        return seen == 0;
-      }))
+  if (!isConnectedFrom(graph.adjacency, netlist.terminal_positive))
     return slide::Status::Invalid_parameters;
 
   if (!netlist.series_parallel_ladder)
