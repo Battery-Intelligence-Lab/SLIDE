@@ -504,6 +504,10 @@ changing count:
 | `recording-owner-contract-comments-stale` | R1 moved CRC ownership but two leading production comments still attribute all CRC ownership/co-location to `RecordingFormat.cpp` | OPEN — owned by R1 adversarial closeout |
 | `r1-self-containment-gate-overclaim` | 9C-5 compiler evidence was described as proving every direct standard include rather than only load-bearing standalone dependencies | OPEN — owned by R1 adversarial closeout |
 | `r1-helper-internal-linkage-gate-gap` | exact helper bodies were pinned but their required anonymous-namespace linkage was not | OPEN — owned by R1 adversarial closeout |
+| `r1-linux-debug-byte-oracle-unregistered` | R1's complete byte oracle treated every non-Release build as the registered Windows Debug fixture, so the fresh Linux/Clang 18 coverage build selected the wrong exact tuple | OPEN — owned by R1 coverage acceptance and the old-production proof below |
+| `p9c5-script-policy-unset` | the aggregate `cmake -P` gate uses `IN_LIST` without setting CMP0057, which the fresh retained Linux CMake 3.31.10 invocation rejects before 9C-5 evaluation | OPEN — owned by R1 coverage acceptance |
+| `status-exception-manifest-stale-after-packsolver-split` | the exact Status exception manifest retains six pre-S1.1/S2 PackSolver/SpectralModel source identities, so the authoritative reporter refuses to evaluate complete fresh profiles | OPEN — owned by R1 coverage acceptance |
+| `instrumented-workflow-test-count-stale` | both hosted instrumented workflows still require 57 discovered test commands after the committed suite reached 58 | DEFERRED with explicit owner MQ.2 B1 build diagnostics; hosted workflows are not claimed run |
 
 This post-baseline registry is append-only during MQ.2. A new finding must
 receive a stable ID here before any disposition claim. At wave closeout, the
@@ -988,7 +992,15 @@ or behavior contract. It is registered before the first macro build/run.
   checkpoint-roundtrip-oracle-symmetry-gap,
   thermal-assembly-placement-oracle-gap,
   prefix-duplicate-adjacency-oracle-gap,
-  eigen-strong-inline-redefinition-warning}` at this boundary and must grow by
+  eigen-strong-inline-redefinition-warning,
+  recorder-schema-default-vector-debug-oom-terminates,
+  recording-owner-contract-comments-stale,
+  r1-self-containment-gate-overclaim,
+  r1-helper-internal-linkage-gate-gap,
+  r1-linux-debug-byte-oracle-unregistered,
+  p9c5-script-policy-unset,
+  status-exception-manifest-stale-after-packsolver-split,
+  instrumented-workflow-test-count-stale}` at this boundary and must grow by
   explicit registry amendment, never by count alone. Every state parses as
   one of the three allowed forms and every deferral names its registered PLAN
   owner.
@@ -1490,6 +1502,116 @@ move the original census from 31 APPLIED / 0 REFUTED / 8 named deferrals /
 35 / 0 / 9 / 32 to 38 / 0 / 9 / 29. `CHANGELOG.md`, PLAN section 8, the
 validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
 census only at closeout.
+
+## R1 post-acceptance Linux coverage hardening (registered 2026-07-29)
+
+This amendment is registered at clean `a7a4236` after all fourteen R1
+mutation families and all three retained native acceptance lanes passed, but
+before any response to the first fresh WSL coverage run. It does not change
+an R1 production file, format byte, CRC policy, schema, Status arm, or any of
+the three previously frozen Windows tuples.
+
+The first WSL Clang/LLVM 18.1.3 Debug coverage build was fresh and complete:
+272/272 build actions, 55 measured test binaries plus one production anchor,
+and an immediate no-op rebuild. Its unfiltered CTest was deliberately not
+accepted at 56/58:
+
+1. Recorder reached 268/275 assertions. File sizes, canonical header,
+   endian, independently recomputed file/block/raw/payload CRCs, distinct
+   raw-versus-payload CRCs, eager metadata/current/state, reader open, and
+   dimensions were green. Exactly the seven Windows-Debug tuple assertions
+   were red. The observed candidate Linux tuple is:
+
+   ```text
+   CSV    (4072,   580175175469508733,  8482670618437841473)
+   SLREC  (3904, 16236475239795828522, 17177906431584795385)
+   SLCMP  (3936, 17797356430432497358, 14598319551377944930)
+   block CRCs (raw,payload):
+     (4273982167, 2835542638), (2456069782, 2077085578)
+   ```
+
+2. The aggregate structural test passed 9C-2, 9C-3, and 9C-4, then CMake
+   script mode rejected `stem IN_LIST P9C5_API` at
+   `p9c5_public_surface.cmake:104`: CMP0057 was unset and the old-policy
+   parser reported `Unknown arguments specified`. The separate compiler
+   self-containment test passed.
+3. All 55 expected nonempty `.profraw` groups exist, but the authoritative
+   reporter stopped before export with
+   `stale exception site:
+   src/core/PackSolver.cpp:351:27:Invalid_parameters`. No coverage result is
+   claimed from those profiles.
+4. A read-only workflow audit found exact `57`-command checks in
+   `.github/workflows/core-status-coverage.yml` and
+   `.github/workflows/core-sanitizers.yml`; the fresh discovery artifact has
+   58 commands. This is separately deferred to B1 and is not part of the
+   local R1 repair.
+
+Before adding a Linux tuple, prove it against the unchanged old R1
+production at oracle commit `ad700ca`. Materialize only that commit's four
+recording `.cpp` files and `detail/AsyncRecordingFormat.hpp` under the
+already ignored `build-r1-coverage` tree, compile them with the exact
+coverage-tree Clang 18 Debug command, replace those four members in a copy of
+the current `libslide_core.a`, and relink a separate copy of the current
+Recorder test objects. `git diff --name-only ad700ca..a7a4236` confirms that
+no other fixture-producing production source changed during R1. The
+old-production sentinel must reach exactly 268/275 and fail only the same
+seven tuple assertions while printing every candidate value above. Any
+different byte, CRC, assertion count, or failure site falsifies the proposed
+Linux branch; do not bless the current output.
+
+Only after that proof, add a compile-time Linux Debug tuple branch before the
+existing Windows Debug fallback. Release and IPO branches remain first and
+unchanged. The branch must select exactly the old-production tuple above and
+restore Recorder to 275/9 under WSL Clang 18 without changing its count or
+any native result. Restoring the prior all-Debug fallback is a registered
+mutation and must reproduce 268/275 with the same seven failures.
+
+The aggregate script must establish its policy contract with
+`cmake_minimum_required(VERSION 3.31)` before including 9C-5. The focused WSL
+aggregate must then pass 1/1; removing that line must reproduce the CMP0057
+red result. The minimum matches the repository's existing top-level minimum
+and does not weaken a structural assertion.
+
+Refresh the six exception identities without changing their classes,
+reasons, statement hashes, or exception count:
+
+```text
+PackSolver.cpp:351 -> PackSolver.cpp:329  Invalid_parameters
+PackSolver.cpp:588 -> PackSolver.cpp:563  Numerical_failure
+PackSolver.cpp:652 -> PackSolver.cpp:625  Invalid_states
+PackSolver.cpp:796 -> PackSolverIterative.cpp:153  Numerical_failure
+PackSolver.cpp:887 -> PackSolverIterative.cpp:233  Invalid_states
+SpectralModel.hpp:314 -> SpectralModel.hpp:315  Numerical_failure
+```
+
+The first three and SpectralModel retain their exact context hashes. The two
+cross-file moves take current scanner context hashes
+`9f4768e915b52c3effd0107d19fe39c049b73777a1ee98fab992b23dd1c9fdec`
+and
+`f081f954b131b5760033986c39739261085f98c12700a9d1a0c5c5f06096fe66`.
+Restoring any stale identity must make the reporter refuse the manifest,
+rather than silently reducing coverage.
+
+After the three local corrections, rebuild the complete coverage target,
+require an immediate no-work dry run, rerun the scanner self-test and exact
+359/329 census, prepare a new session, run unfiltered CTest at 58/58, and
+run the reporter at exactly:
+
+```text
+359 lexical = 343 direct + 16 conditional
+329 active = 323 measured + 6 structural exceptions
+30 inactive; zero uncovered and zero unmapped
+Numerical_failure 63; every other Status count unchanged
+```
+
+The compiled-test change invalidates the first profile session; no old
+profile is reused for final evidence. Native Debug, fast-math Release/IPO
+off, and retained host-C++ CUDA focused gates plus 58/58 are rerun after the
+test/gate change. The three new local IDs become APPLIED only after all of
+those gates are green. With the workflow ID deferred to B1, R1 closeout then
+has the unchanged original census 40 APPLIED / 0 REFUTED / 8 named deferrals
+/ 23 pending and a combined 84-ID census of 51 APPLIED / 0 REFUTED /
+10 named deferrals / 23 pending.
 
 ## R1 recording-common amendment (registered 2026-07-29)
 
@@ -2040,11 +2162,13 @@ is also mandatory after implementation. Its registered census is:
 Numerical_failure 63; every other Status count unchanged
 ```
 
-Only after those gates are green do the six original R1 IDs and the four new
-R1 supplemental findings become APPLIED. That would
+Only after those gates are green do the six original R1 IDs, the four
+earlier R1 supplemental findings, and the three local coverage-hardening IDs
+become APPLIED. That would
 move the original census from 34 APPLIED / 0 REFUTED / 8 named deferrals /
 29 pending to 40 / 0 / 8 / 23, and the combined 76-ID census from
-38 / 0 / 9 / 29 to an 80-ID census of 48 / 0 / 9 / 23. `CHANGELOG.md`,
+38 / 0 / 9 / 29 to an 84-ID census of 51 / 0 / 10 / 23. The fourth new
+coverage-audit ID remains explicitly deferred to B1. `CHANGELOG.md`,
 PLAN section 8, the
 validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
 census only at closeout.
