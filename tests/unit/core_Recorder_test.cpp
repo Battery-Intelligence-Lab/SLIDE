@@ -12,6 +12,7 @@
 
 #include <array>
 #include <bit>
+#include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -19,8 +20,10 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -115,6 +118,90 @@ void writeBytes(const std::filesystem::path &path,
   output.write(reinterpret_cast<const char *>(bytes.data()),
                static_cast<std::streamsize>(bytes.size()));
   REQUIRE(output.good());
+}
+
+constexpr std::size_t csv_real_fields = 63;
+struct CsvRow
+{
+  std::uint64_t accepted_step{};
+  std::array<core::real_t, csv_real_fields> values{};
+};
+bool takeField(std::string_view &row, std::string_view &field)
+{
+  const auto delimiter = row.find(',');
+  field = row.substr(0, delimiter);
+  row = delimiter == std::string_view::npos
+          ? std::string_view{}
+          : row.substr(delimiter + 1);
+  return !field.empty();
+}
+template <class T>
+bool parseField(std::string_view field, T &value)
+{
+  const auto result = std::from_chars(field.data(), field.data() + field.size(), value);
+  return result.ec == std::errc{} && result.ptr == field.data() + field.size();
+}
+template <>
+bool parseField(std::string_view field, core::real_t &value)
+{
+  const auto result = std::from_chars(
+    field.data(), field.data() + field.size(), value, std::chars_format::scientific);
+  return result.ec == std::errc{} && result.ptr == field.data() + field.size()
+         && core::is_finite(value);
+}
+std::optional<std::array<CsvRow, 3>> parseRecorderCsv(std::string_view text)
+{
+  if (text.empty() || text.back() != '\n'
+      || !text.starts_with("accepted_step,time_s,"))
+    return std::nullopt;
+  const auto header_end = text.find('\n');
+  if (header_end == std::string_view::npos)
+    return std::nullopt;
+  text.remove_prefix(header_end + 1);
+  std::array<CsvRow, 3> rows{};
+  for (auto &row : rows) {
+    const auto row_end = text.find('\n');
+    if (row_end == std::string_view::npos)
+      return std::nullopt;
+    auto remaining = text.substr(0, row_end);
+    text.remove_prefix(row_end + 1);
+    std::string_view field;
+    if (!takeField(remaining, field)
+        || !parseField(field, row.accepted_step))
+      return std::nullopt;
+    for (auto &value : row.values)
+      if (!takeField(remaining, field) || !parseField(field, value))
+        return std::nullopt;
+    if (!remaining.empty())
+      return std::nullopt;
+  }
+  return text.empty() ? std::optional{ rows } : std::nullopt;
+}
+constexpr std::string_view zero_crc_header_hex =
+  "534c4944455245430100000004030201400000000000000070000000c7000000"
+  "87030000000000004000000000000000000e000000000000000e000000000000";
+
+unsigned hexDigit(char value)
+{
+  return value <= '9' ? static_cast<unsigned>(value - '0')
+                      : static_cast<unsigned>(value - 'a' + 10);
+}
+std::vector<std::byte> zeroCrcRecording()
+{
+  std::vector<std::byte> bytes(3584);
+  for (std::size_t index = 0; index < 64; ++index)
+    bytes[index] = static_cast<std::byte>(
+      (hexDigit(zero_crc_header_hex[index * 2]) << 4U)
+      | hexDigit(zero_crc_header_hex[index * 2 + 1]));
+  bytes[65] = std::byte{ 0x0e }; // little-endian uint64_t{3584} at byte 64
+  return bytes;
+}
+std::uint32_t testHeaderCrc(std::span<const std::byte> bytes)
+{
+  std::array<std::byte, 64> header{};
+  std::copy_n(bytes.begin(), header.size(), header.begin());
+  std::fill_n(header.begin() + 20, sizeof(std::uint32_t), std::byte{});
+  return testCrc32(header);
 }
 
 } // namespace
@@ -389,10 +476,29 @@ TEST_CASE("P6-G1 CSV and mmap recordings preserve snapshots",
   const std::array current{ 8.0, -4.0 };
   const std::array density{ current[0] / batch.electrode_area(),
                             current[1] / batch.electrode_area() };
-  for (std::uint64_t step = 0; step < 3; ++step) {
-    REQUIRE(recorder.record(step, current) == Status::Success);
-    if (step + 1 < 3)
-      REQUIRE(stepper.step(batch, density, static_cast<double>(step), 1.0)
+  REQUIRE((batch.state().n_rows() == 29 && batch.state().n_lanes() == 2
+           && batch.state().stride() == 8));
+  constexpr std::array<std::uint64_t, 3> accepted_steps{ 7, 11, 19 };
+  std::array<CsvRow, 3> expected_csv{};
+  for (std::size_t index = 0; index < accepted_steps.size(); ++index) {
+    auto &expected = expected_csv[index];
+    expected.accepted_step = accepted_steps[index];
+    expected.values[0] = static_cast<core::real_t>(index);
+    for (std::size_t lane = 0; lane < density.size(); ++lane)
+      expected.values[1 + lane] = density[lane];
+    for (int row = 0; row < batch.state().n_rows(); ++row)
+      for (int lane = 0; lane < batch.state().n_lanes(); ++lane)
+        expected.values[3 + static_cast<std::size_t>(row * 2 + lane)] =
+          batch.state().row(row)[static_cast<std::size_t>(lane)];
+    test_support::requireTerminalVoltage(
+      batch,
+      test_support::CurrentDensityApm2{
+        std::span<const core::real_t>{ density } },
+      0.0,
+      std::span{ expected.values }.subspan(61, 2));
+    REQUIRE(recorder.record(accepted_steps[index], current) == Status::Success);
+    if (index + 1 < accepted_steps.size())
+      REQUIRE(stepper.step(batch, density, static_cast<double>(index), 1.0)
               == Status::Success);
   }
 
@@ -408,6 +514,18 @@ TEST_CASE("P6-G1 CSV and mmap recordings preserve snapshots",
   CHECK(contents.find("terminal_voltage_lane1_V") != std::string::npos);
   CHECK(static_cast<std::size_t>(std::count(contents.begin(), contents.end(), '\n'))
         == recorder.size() + 1);
+  const auto parsed_csv = parseRecorderCsv(contents);
+  REQUIRE(parsed_csv.has_value());
+  for (std::size_t index = 0; index < expected_csv.size(); ++index) {
+    CHECK((*parsed_csv)[index].accepted_step
+          == expected_csv[index].accepted_step);
+    for (std::size_t value = 0;
+         value < expected_csv[index].values.size();
+         ++value)
+      CHECK(std::bit_cast<std::uint64_t>((*parsed_csv)[index].values[value])
+            == std::bit_cast<std::uint64_t>(
+              expected_csv[index].values[value]));
+  }
 
   REQUIRE(recorder.writeBinary(binary_path) == Status::Success);
   core::BinaryRecording mapped;
@@ -428,6 +546,34 @@ TEST_CASE("P6-G1 CSV and mmap recordings preserve snapshots",
   mapped.close();
   std::filesystem::remove(csv_path, ignored);
   std::filesystem::remove(binary_path, ignored);
+}
+
+TEST_CASE("P6-G1 mmap accepts a correct zero CRC and still recomputes it",
+          "[core][recorder][mmap][hardened][MQ2-R2]")
+{
+  const auto valid_path = temporary("zero_crc.slrec");
+  const auto corrupt_path = temporary("zero_crc_corrupt.slrec");
+  std::error_code ignored;
+  std::filesystem::remove(valid_path, ignored);
+  std::filesystem::remove(corrupt_path, ignored);
+  const auto valid = zeroCrcRecording();
+  auto corrupt = valid;
+  corrupt[20] = std::byte{ 1 };
+  CHECK(testCrc32(std::span{ valid }.first(64)) == 0U);
+  CHECK((corrupt[20] == std::byte{ 1 } && testHeaderCrc(corrupt) == 0U));
+  writeBytes(valid_path, valid);
+  writeBytes(corrupt_path, corrupt);
+  core::BinaryRecording recording;
+  REQUIRE(recording.open(valid_path) == Status::Success);
+  CHECK(recording.valid());
+  CHECK(recording.size() == 0);
+  CHECK(recording.n_rows() == 112);
+  CHECK(recording.n_lanes() == 199);
+  CHECK(recording.stride() == 903);
+  CHECK(recording.open(corrupt_path) == Status::Invalid_parameters);
+  CHECK(recording.valid());
+  std::filesystem::remove(valid_path, ignored);
+  std::filesystem::remove(corrupt_path, ignored);
 }
 
 TEST_CASE("P6-G1 mmap open rejects truncated CRC and offset corruption",

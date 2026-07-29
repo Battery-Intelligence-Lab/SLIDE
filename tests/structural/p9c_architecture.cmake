@@ -1456,8 +1456,14 @@ require_token_count("MQ.2 R1 synchronous minor comparison"
   mq2_r1_recording_format "header.minor>format_minor" 1)
 require_token_count("MQ.2 R1 async minor comparison"
   mq2_r1_async_codec "header.minor!=format_minor" 1)
-require_token_count("MQ.2 R1 synchronous zero-CRC guard"
-  mq2_r1_recording_format "header.header_crc32==0" 1)
+require_token_count("MQ.2 R2 legal zero CRC has no stored-value guard"
+  mq2_r1_recording_format "header.header_crc32==0" 0)
+forbid_tokens("MQ.2 R2 no alternate zero-valued CRC special case"
+  mq2_r1_recording_format
+  "0==header.header_crc32"
+  "!header.header_crc32"
+  "headerCrc(header)==0"
+  "headerCrc(header)!=0")
 require_token_count("MQ.2 R1 synchronous writer header CRC"
   mq2_r1_recording_format
   "header.header_crc32=headerCrc(header);" 1)
@@ -1787,5 +1793,59 @@ require_ordered_tokens("MQ.2 R1 snapshot leading contract"
   "Owns:`snapshotView`.ImplementsPLAN.mdsection3.7."
   "Cold:allocation-freeeager-readerindexingonly."
   "@surfaceinternal*/")
+
+# MQ.2 R2: the test-side oracle is itself pinned to three complete rows, an
+# independent locale-free parser, the precomputed legal-zero vector, and a
+# CRC-field-only corruption. Exact production roles remain in the R1 block.
+load_compact("tests/unit/core_Recorder_test.cpp" mq2_r2_recorder_test)
+require_token_count("MQ.2 R2 exact real-field count"
+  mq2_r2_recorder_test "constexprstd::size_tcsv_real_fields=63;" 1)
+require_token_count("MQ.2 R2 parser owner"
+  mq2_r2_recorder_test
+  "std::optional<std::array<CsvRow,3>>parseRecorderCsv(std::string_viewtext)"
+  1)
+require_token_count("MQ.2 R2 locale-free numeric parser calls"
+  mq2_r2_recorder_test "std::from_chars(" 2)
+require_token_count("MQ.2 R2 scientific real parser"
+  mq2_r2_recorder_test "std::chars_format::scientific" 1)
+forbid_tokens("MQ.2 R2 parser has no locale or throwing numeric fallback"
+  mq2_r2_recorder_test "std::stod(" "std::stringstream")
+require_token_count("MQ.2 R2 nondegenerate accepted steps"
+  mq2_r2_recorder_test
+  "constexprstd::array<std::uint64_t,3>accepted_steps{7,11,19};"
+  1)
+require_token_count("MQ.2 R2 independent live-row expectation"
+  mq2_r2_recorder_test
+  "batch.state().row(row)[static_cast<std::size_t>(lane)]" 1)
+require_token_count("MQ.2 R2 independent voltage destination"
+  mq2_r2_recorder_test
+  "std::span{expected.values}.subspan(61,2)" 1)
+require_token_count("MQ.2 R2 all live rows captured"
+  mq2_r2_recorder_test
+  "for(std::size_tindex=0;index<accepted_steps.size();++index)" 1)
+require_token_count("MQ.2 R2 all expected rows compared"
+  mq2_r2_recorder_test
+  "for(std::size_tindex=0;index<expected_csv.size();++index)" 1)
+require_token_count("MQ.2 R2 all real fields compared"
+  mq2_r2_recorder_test
+  "value<expected_csv[index].values.size()" 1)
+require_token_count("MQ.2 R2 exact zero-CRC header owner"
+  mq2_r2_recorder_test "zero_crc_header_hex=" 1)
+require_token_count("MQ.2 R2 frozen zero-CRC header prefix"
+  mq2_r2_recorder_test
+  "534c4944455245430100000004030201400000000000000070000000c7000000"
+  1)
+require_token_count("MQ.2 R2 frozen zero-CRC header suffix"
+  mq2_r2_recorder_test
+  "87030000000000004000000000000000000e000000000000000e000000000000"
+  1)
+require_token_count("MQ.2 R2 CRC-field-only corruption"
+  mq2_r2_recorder_test "corrupt[20]=std::byte{1};" 1)
+require_token_count("MQ.2 R2 independent header CRC owner and witness"
+  mq2_r2_recorder_test "testHeaderCrc(" 2)
+require_token_count("MQ.2 R2 failed-open atomicity witness"
+  mq2_r2_recorder_test
+  "CHECK(recording.open(corrupt_path)==Status::Invalid_parameters);CHECK(recording.valid());"
+  1)
 
 message(STATUS "9C architecture aggregate structural gate passed")

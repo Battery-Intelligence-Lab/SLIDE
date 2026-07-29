@@ -1999,3 +1999,114 @@ The original 71-ID census is now 40 APPLIED / 0 REFUTED /
 8 named deferrals / 23 pending. The combined 84-ID census is
 51 APPLIED / 0 REFUTED / 10 named deferrals / 23 pending. MQ.2 remains
 open; R2 recording semantics/tests is next.
+
+## R2 frozen old-production boundary
+
+R2 was registered at docs-only commit `30afab7` before either oracle file
+changed and before any R2 binary ran. The oracle WIP then changed only
+`tests/unit/core_Recorder_test.cpp` and
+`tests/structural/p9c_architecture.cmake`; all four registered production
+hashes stayed exact:
+
+```text
+24E0B5FA53E0F4AC9D61F612DA549C0BDA2C47F52FD1E9CA9E7A7840D9730A03 436 src/core/RecordingFormat.cpp
+10CEA3E821121549879670A4BE8D42D231D2BB16A8D753A88F9297D073F600DB 323 src/core/Recorder.cpp
+D60BD14655C6E6321B26602305FB406E2344F54D73FD7317DE2D1542A080E1FB 391 src/core/AsyncRecorder.cpp
+79BABE5E9E7E0EB8E322BB670105C5E48A42838DC10A4895D24EAE0635846D3D 619 src/core/CudaSpmBatch.cpp
+```
+
+The frozen oracle/gate anchors are:
+
+```text
+098BA33A05FEBC1A97652C100B848343BE20D33B3F720865C5AE46F47EB12445  697 tests/unit/core_Recorder_test.cpp
+BC39F178BF20EC075FCF30B98EAD4B7E23AE390842EA836D596CE814C63A1148 1851 tests/structural/p9c_architecture.cmake
+```
+
+Clang 21.1.8 formatted the test source; `clang-format --dry-run --Werror`
+and `git diff --check` pass. The test remains below the MC-1 review threshold
+at 697 physical lines.
+
+### Independent CSV semantics are old-production green
+
+The exact-name Catch filter:
+
+```powershell
+.\build-mq1-debug\bin\Debug\unit_test_core_Recorder.exe `
+  "P6-G1 CSV and mmap recordings preserve snapshots"
+```
+
+passes every independently parsed field:
+
+```text
+All tests passed (258 assertions in 1 test case)
+```
+
+The first execution exposed a preregistration subtotal error, not an oracle
+failure: the existing case had 31 assertions rather than 30. The R2 increment
+remains exactly 227 (geometry 1 + independent voltage observations 33 +
+complete parse 1 + three times 64 field comparisons 192). Therefore the
+correct isolated total is 258/1. The whole-target registered counts,
+expected failure position, fixture values, and pass/fail decision did not
+move; the arithmetic correction is recorded in the preregistration report
+and PLAN before any production edit.
+
+The oracle uses steps `{7,11,19}`, two unequal densities, all 58 live
+row/lane values at each of three states, and independently observed voltage
+bits. It never obtains an expected CSV value from `Recorder::snapshot`,
+`Recorder::terminalVoltage`, or the production CSV/schema helpers.
+`std::from_chars` consumes every token and all parsed reals compare bitwise.
+
+### Correct zero CRC is the sole old-production behavior failure
+
+The complete unchanged-production binary reports exactly:
+
+```text
+test cases:  10 |   9 passed | 1 failed
+assertions: 509 | 508 passed | 1 failed
+```
+
+The only failure is:
+
+```text
+P6-G1 mmap accepts a correct zero CRC and still recomputes it
+core_Recorder_test.cpp:567:
+REQUIRE( recording.open(valid_path) == Status::Success )
+with expansion:
+  'x' == 0
+```
+
+This is the seventh new assertion, after the independent legal-zero and
+CRC-field-only corruption facts and both complete file writes. The five
+success-metadata assertions and corrupt-open atomicity checks remain frozen
+after that fatal assertion for the post-fix run. No snapshot count was
+forged and no runtime CRC search occurred.
+
+The aggregate structural command passes 9C-2, 9C-3, 9C-4, and 9C-5, then
+fails only at the registered policy supersession:
+
+```text
+9C-2 MQ.2 R2 legal zero CRC has no stored-value guard: expected 0
+occurrences of header.header_crc32==0, found 1
+```
+
+An independent compact-token count also confirms every later R2 test-source
+assertion is present at its registered count: 63 real fields; two
+`from_chars` calls; one scientific parser; zero `stod`/`stringstream`;
+one `{7,11,19}` sequence; one live-row read; one independent voltage
+destination; one three-row capture and comparison loop; both exact header
+halves; one byte-20 CRC-field mutation; two independent header-CRC
+owner/uses; and one adjacent failed-open/validity witness.
+
+The unchanged Debug companions pass exactly:
+
+```text
+AsyncRecorder            471 assertions / 12 cases
+RecorderAllocation        33 assertions / 3 cases
+AsyncRecorderAllocation   60 assertions / 4 cases
+```
+
+No Release, CUDA, full-suite, coverage, sanitizer, timing, hosted-CI,
+installed-package, or production-fix claim is made at this boundary.
+`crc-zero-rejected`, `csv-values-untested`, and
+`enqueuesnapshot-success-untested` remain pending until implementation,
+mutations, and final acceptance.

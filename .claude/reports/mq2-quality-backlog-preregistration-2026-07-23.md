@@ -1649,9 +1649,22 @@ registered mutation because 17 significant digits may still round-trip.
 The CSV delta is exactly 227 assertions and zero cases: one grouped geometry
 assertion, three 11-assertion independent voltage observations, one complete
 parser assertion, and the 192 comparisons above. The existing case therefore
-passes exactly 257 assertions / 1 case, and Recorder rises from 275/9 to
+passes exactly 258 assertions / 1 case, and Recorder rises from 275/9 to
 502/9 before the zero-CRC case. With that 14/1 case included, final Recorder
 is exactly **516 assertions / 10 cases**.
+
+#### Pre-production assertion-arithmetic correction
+
+The first unchanged-production execution caught one arithmetic error in the
+per-case subtotal: the pre-R2 CSV/mmap case has 31 assertions, not 30. Its
+one build, one configure, three record, two step, one CSV, one disabled
+Parquet, three text-shape, one binary-write, three mapped-open/valid/size
+requirements, three dimension, and twelve mapped-value assertions total 31.
+The independently derived R2 increment is unchanged at 227, so the correct
+isolated total is **258/1**. The registered whole-target bands are also
+unchanged: 275 + 227 + 7 reached = 509 on old production, and
+275 + 227 + 14 = 516 after the fix. No test, expected value, pass/fail
+decision, or production source was changed to fit this observation.
 
 ### Existing CUDA seam and attempted refutation
 
@@ -1699,7 +1712,7 @@ The oracle-only boundary may change only
 hashes above remain exact. Unchanged production must report:
 
 ```text
-CSV case:       257 assertions / 1 case, all pass
+CSV case:       258 assertions / 1 case, all pass
 Recorder:       509 reached assertions / 10 cases,
                 508 pass / 1 fail; 9 cases pass / 1 fails
 zero-CRC case:  7 reached assertions, the valid-open requirement alone fails
