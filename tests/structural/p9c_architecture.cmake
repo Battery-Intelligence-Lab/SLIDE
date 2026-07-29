@@ -1589,8 +1589,10 @@ require_token_count("MQ.2 R1 schema owner"
   1)
 require_token_count("MQ.2 R1 exact canonical schema owner"
   mq2_r1_recorder
-  "[[nodiscard]]std::vector<std::string>recorderColumnNames(introws,intlanes){std::vector<std::string>names;names.emplace_back(\"accepted_step\");names.emplace_back(\"time_s\");for(intlane=0;lane<lanes;++lane)names.push_back(\"current_density_lane\"+std::to_string(lane)+\"_A_m2\");for(introw=0;row<rows;++row)for(intlane=0;lane<lanes;++lane)names.push_back(\"state_r\"+std::to_string(row)+\"_lane\"+std::to_string(lane));for(intlane=0;lane<lanes;++lane)names.push_back(\"terminal_voltage_lane\"+std::to_string(lane)+\"_V\");returnnames;}"
+  "[[nodiscard]]std::vector<std::string>recorderColumnNames(introws,intlanes){std::vector<std::string>names{\"accepted_step\",\"time_s\"};for(intlane=0;lane<lanes;++lane)names.push_back(\"current_density_lane\"+std::to_string(lane)+\"_A_m2\");for(introw=0;row<rows;++row)for(intlane=0;lane<lanes;++lane)names.push_back(\"state_r\"+std::to_string(row)+\"_lane\"+std::to_string(lane));for(intlane=0;lane<lanes;++lane)names.push_back(\"terminal_voltage_lane\"+std::to_string(lane)+\"_V\");returnnames;}"
   1)
+require_token_count("MQ.2 R1 no noexcept default schema vector"
+  mq2_r1_recorder "std::vector<std::string>names;" 0)
 require_token_count("MQ.2 R1 schema owner and consumers"
   mq2_r1_recorder "recorderColumnNames(" 3)
 require_token_count("MQ.2 R1 exact schema call arguments"
@@ -1604,8 +1606,7 @@ foreach(token IN ITEMS
 endforeach()
 require_ordered_tokens("MQ.2 R1 canonical schema order"
   mq2_r1_recorder
-  "names.emplace_back(\"accepted_step\")"
-  "names.emplace_back(\"time_s\")"
+  "std::vector<std::string>names{\"accepted_step\",\"time_s\"}"
   "\"current_density_lane\"+std::to_string(lane)+\"_A_m2\""
   "\"state_r\"+std::to_string(row)+\"_lane\"+std::to_string(lane)"
   "\"terminal_voltage_lane\"+std::to_string(lane)+\"_V\"")
