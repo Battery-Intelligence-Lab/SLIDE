@@ -760,6 +760,157 @@ They must make assertions 7, 8, and 9 red respectively, with inverse patches
 and exact source-hash restoration before the three-configuration acceptance
 run.
 
+### T1 topology derivation exact fixtures and structural ownership
+
+This amendment is registered on 2026-07-29 before the first T1 test/source
+edit and before any T1 binary run. It owns exactly
+`branch-graph-derived-twice`, `three-parallel-archetype-maps`, and
+`test-gap-ladder-rollback`.
+
+The no-op oracle compiles this exact description:
+
+```text
+series({
+  cell({archetype="zeta", thermal=false}),
+  parallel({
+    cell({archetype="alpha", thermal=true}),
+    cell({archetype="zeta", thermal=false})
+  })
+})
+```
+
+One test named `topology derivation preserves exact graph and batch ordering`
+with tags `[core][pack][compile][topology][MQ.2][T1]` has exactly eight
+assertions / one case:
+
+1. compilation succeeds;
+2. the three complete cell records are exactly
+   `{s00,zeta,batch=1,lane=0,false}`,
+   `{s01.p00,alpha,batch=0,lane=0,true}`, and
+   `{s01.p01,zeta,batch=1,lane=1,false}`;
+3. `batch_archetypes` is exactly `{"alpha","zeta"}`;
+4. electrical scalars are exactly `node_count=3`, terminals `0/1`,
+   `connected=true`, `index1_candidate=true`, and
+   `series_parallel_ladder=true`;
+5. the complete ordered branch records are exactly
+   `{0,2,cell,cell=0,R=0}`, `{2,1,cell,cell=1,R=0}`, and
+   `{2,1,cell,cell=2,R=0}`;
+6. nodal sparsity is exactly
+   `{(0,0),(0,2),(1,1),(1,2),(2,2)}`;
+7. ladder metadata is exactly offsets `{0,1,3}`, cells `{0,1,2}`, and
+   nodes `{0,2,1}`; and
+8. the empty thermal graph has exactly `cell_count=3`, `boundary_count=0`,
+   no edges/incidents/edge scratch, offsets `{0,0,0,0}`, and three zero
+   endpoint-scratch values.
+
+Every scalar and sequence is equality-tested directly; no implementation
+helper or derived expectation is shared with production. This fixture must
+pass against the old production source before extraction, and remain
+digit-identical afterward.
+
+One test named `import finalization clears every ladder vector after an
+orientation mismatch` with tags
+`[core][pack][import][ladder][rollback][MQ.2][T1]` has exactly seven
+assertions / one case. It compiles a two-cell series ladder, checks the
+initial ladder flag, reverses only the second branch, requires imported
+finalization to succeed as a connected non-ladder, requires the final ladder
+flag false, and independently requires each of `ladder_offsets`,
+`ladder_cells`, and `ladder_nodes` empty. The test is always enabled; it is
+not hidden behind `assert`, Debug-only configuration, or an exceptional path.
+
+The existing `electrical validator rejects independently corrupted metadata`
+case gains exactly one direct validator assertion: setting the first branch's
+positive endpoint to `node_count` returns `Invalid_parameters`. This is
+deliberately separate from `finalizeImportedPackTopology`, whose own endpoint
+precheck otherwise masks whether the shared graph builder is called too soon.
+
+The current PackTopology floor is 148 assertions / 9 cases. These additions
+are exactly +16 assertions / +2 cases, so the frozen T1 floor is
+**164 / 11**. In Debug, fast-math Release/IPO-off, and the retained host-C++
+CUDA tree, the final focused acceptance set is PackTopology 164/11,
+PackSolver 994/33, PackStepper 333/13, P2-G1 allocation 14/2, and aggregate
+structural 1/1, followed by unfiltered 58/58 in all three trees.
+
+The production extraction is file-local and preserves all public types and
+statuses:
+
+- exactly one `BranchGraph` owns adjacency and sorted/unique nodal sparsity;
+- exactly one `buildBranchGraph(` definition serves the compiler and direct
+  validator, for three name tokens total, and its body owns exactly the two
+  undirected adjacency `push_back` statements; the builder documents/asserts
+  its already-validated endpoint precondition and retains the existing
+  `sizeof(CompiledElectricalBranch) > 3` reserve-overflow proof;
+- exactly one `isConnectedFrom(` definition serves those same two callers,
+  also for three name tokens total;
+- the validator retains its initial node/terminal/branch-count allocation
+  guards (including `node_count - 1 <= branches.size()`), then all endpoint,
+  kind, resistance, and cell-identity checks in its original branch loop,
+  completes that loop and the complete cell census, and only then calls
+  `buildBranchGraph`; sparsity comparison still precedes connectivity
+  comparison;
+- exactly one `BatchSlot` record owns batch index, next lane, and thermal
+  composition, and `assignBatchLocations` uses exactly one sorted
+  `std::map<std::string, BatchSlot>` with one `try_emplace`, one `at`, and one
+  post-increment of `next_lane`;
+- the three former parallel maps for `batches`, `thermal`, and `next_lane`
+  have zero definitions; and
+- mixed thermal composition for one archetype remains rejected before any
+  locations are published, while lexicographic batch order and encounter-order
+  lanes remain unchanged.
+
+`tests/structural/p9c_architecture.cmake` loads compacted
+`src/core/PackTopology.cpp`, counts the owners/callers and one-map vocabulary,
+forbids all three old map declarations, slices `buildBranchGraph` to prove
+both adjacency insertions live there, and slices
+`validateElectricalNetlist` to require this order:
+
+```text
+branch loop -> endpoint guard -> complete-cell guard -> buildBranchGraph
+            -> sparsity comparison -> isConnectedFrom
+```
+
+The validator slice also proves the initial size-amplification guard precedes
+the branch loop. This preserves the P9-B18 fix: neither an input-sized graph
+allocation nor adjacency indexing occurs before its respective hostile-input
+bound has been established. The extraction claims published-value identity,
+not allocation-attempt identity; moving the reserve into the shared cold
+builder may change allocation scheduling.
+
+The same gate slices `assignBatchLocations`, requires exactly one
+`std::map<` token in that slice, and requires this order:
+
+```text
+try_emplace -> mixed-thermal rejection -> sorted batch publication
+            -> slots.at -> location assignment with next_lane++
+```
+
+This structurally proves the validation pass completes before any batch/lane
+location is published; the existing mixed-composition behavior case proves
+the rejection remains live.
+
+The test-only boundary deliberately leaves this future structural gate red
+against old production while the 164/11 behavior gate is green. No structural
+expectation is weakened or reblessed to fit the implementation.
+
+At the clean production boundary, at least these independent mutations are
+required before final acceptance:
+
+1. reintroduce either former adjacency/sparsity derivation outside
+   `buildBranchGraph` (structural owner/count gate red);
+2. make `isConnectedFrom` accept the disconnected direct-validator fixture;
+3. drop or alter a sparsity contribution (exact fixture or validator red);
+4. move the validator's graph call before its endpoint loop (ordering gate
+   red before any unsafe binary run);
+5. change `next_lane++` to `++next_lane` (exact location fixture red);
+6. accept mixed thermal composition for one archetype (existing imported
+   topology case red); and
+7. omit each of the three orientation-failure ladder clears in turn (the
+   corresponding independent rollback assertion red).
+
+Every mutation is inverse-patched to the exact registered source/test hashes,
+then `git diff --exit-code HEAD -- <touched-files>` and an empty porcelain
+status prove restoration before the three-configuration acceptance run.
+
 - Recording refactors retain byte-identical encoded headers, payloads, CRCs, and
   CSV text on the existing fixtures. Added CSV value tests parse every data cell
   and require `max_digits10` round-trip equality.
