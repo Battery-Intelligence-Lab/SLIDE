@@ -1605,6 +1605,23 @@ An initial run with deliberately impossible digest sentinels is explicitly
 counts and recurrences. Those nine values (CSV, `.slrec`, and `.slcmp`) are
 then written into this amendment and the test, committed test-only, and rerun
 against unchanged production.
+
+A pre-freeze adversarial audit identified one configuration-sensitivity risk:
+the complete CSV includes production terminal voltages formatted at
+`max_digits10`, and the retained Release/CUDA-host configurations use
+fast-math. Therefore the sentinel capture sequence is run against unchanged
+production in Debug, fast-math Release/IPO-off, and the host-C++ CUDA tree
+before any constant is frozen. Each exploratory run must compile, execute
+exactly 275 assertions / 9 cases, fail exactly 7 assertions solely at the
+one grouped CSV and six binary fingerprint sentinels, and leave both block
+CRC/data-CRC checks green. It also prints each block's independently checked
+stored raw/payload CRC pair, which must be unequal. If any of the nine
+fingerprint values differ between configurations, the test freezes one exact
+tuple for each active `NDEBUG`/`SLIDE_WITH_CUDA` configuration branch; it
+must not accept an unordered set of known values. A non-asserting CRC
+`CAPTURE` addition and these repeated sentinel runs remain exploration, not
+evidence.
+
 No production or structural-gate edit may begin until the frozen
 old-production run passes exactly 275/9 and all five production source hashes
 still match the anchors above.
