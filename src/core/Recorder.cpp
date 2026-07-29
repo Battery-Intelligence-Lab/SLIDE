@@ -3,8 +3,9 @@
  * @brief The snapshot recorder and its text/columnar sinks.
  *
  * Owns: `Recorder`'s configuration, snapshot capture, lazy voltage, and the CSV and Parquet
- * sinks. Implements PLAN.md §3.7. The binary recording format -- header, CRC, mmap, and the
- * `BinaryRecording` reader -- lives in `RecordingFormat.cpp`.
+ * sinks. Implements PLAN.md §3.7. The synchronous packed header, layout, mmap boundary, and
+ * `BinaryRecording` reader live in `RecordingFormat.cpp`; shared format facts live in
+ * `detail/RecordingFormatCommon.hpp`.
  * @surface internal
  */
 

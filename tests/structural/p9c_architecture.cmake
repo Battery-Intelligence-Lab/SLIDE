@@ -1583,6 +1583,14 @@ require_token_count("MQ.2 R1 mapped snapshot typed views retained"
 # The schema has one canonical order. CSV joins it directly; the optional
 # Parquet branch advances one monotone cursor through the same five append
 # families and proves that every name was consumed.
+require_token_count("MQ.2 R1 helper anonymous namespace opening"
+  mq2_r1_recorder
+  "namespace{[[nodiscard]]std::vector<std::string>recorderColumnNames"
+  1)
+require_token_count("MQ.2 R1 helper anonymous namespace closing"
+  mq2_r1_recorder
+  "static_cast<std::size_t>(lanes));}}slide::StatusRecorder::configure("
+  1)
 require_token_count("MQ.2 R1 schema owner"
   mq2_r1_recorder
   "[[nodiscard]]std::vector<std::string>recorderColumnNames(introws,intlanes)"

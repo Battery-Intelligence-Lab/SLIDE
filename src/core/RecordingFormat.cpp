@@ -2,11 +2,11 @@
  * @file RecordingFormat.cpp
  * @brief The CRC-hardened binary recording format: layout, mmap, writer, and reader.
  *
- * Owns: `detail::binaryRecordingLayout`, the on-disk header, the platform mmap
+ * Owns: `detail::binaryRecordingLayout`, the synchronous on-disk header, the platform mmap
  * boundary, `Recorder::writeBinary`, and every `BinaryRecording` member. Implements PLAN.md §3.7.
- * Cold: file I/O only. Writer and reader live together because they share one format -- splitting
- * them would put the header struct, the CRC, and the checked arithmetic behind a seam that exists
- * only to satisfy a line count.
+ * Cold: file I/O only. Writer and reader live together because they share one packed-header,
+ * layout, and mapping contract. Checksum, byte-order, and allocation-failure facts are shared
+ * with compressed recording through `detail/RecordingFormatCommon.hpp`.
  * @surface internal
  */
 
