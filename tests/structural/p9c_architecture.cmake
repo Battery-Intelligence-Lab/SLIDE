@@ -961,7 +961,7 @@ require_token_count("MQ.2 T2 cold boundary"
   1)
 require_token_count("MQ.2 T2 hot boundary"
   mq2_pack_topology_header_with_comments
-  "Hot:CompiledThermalGraph::assemble(),onceperPackStepperstepattempt."
+  "Hot:CompiledThermalGraph::assemble(),atmostonceperPackStepperstepattempt."
   1)
 require_token_count("MQ.2 T2 stale all-cold brief removed"
   mq2_pack_topology_header_with_comments
@@ -973,6 +973,6 @@ require_ordered_tokens("MQ.2 T2 leading contract placement"
   "OwnsD-19packauthoring/compilationpluscanonicalelectricalandD-21thermaloutputs."
   "ImplementsPLAN.mdsection3.4(D-19andD-21)."
   "Cold:descriptionauthoringandcompilePackDescription()."
-  "Hot:CompiledThermalGraph::assemble(),onceperPackStepperstepattempt.")
+  "Hot:CompiledThermalGraph::assemble(),atmostonceperPackStepperstepattempt.")
 
 message(STATUS "9C architecture aggregate structural gate passed")

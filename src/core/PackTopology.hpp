@@ -4,7 +4,7 @@
  * Owns D-19 pack authoring/compilation plus canonical electrical and D-21 thermal outputs.
  * Implements PLAN.md section 3.4 (D-19 and D-21).
  * Cold: description authoring and compilePackDescription().
- * Hot: CompiledThermalGraph::assemble(), once per PackStepper step attempt.
+ * Hot: CompiledThermalGraph::assemble(), at most once per PackStepper step attempt.
  * @surface api
  */
 
