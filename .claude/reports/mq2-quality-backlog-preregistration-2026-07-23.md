@@ -711,6 +711,55 @@ POD diagnostics snapshot beside the existing rollback snapshot and its restore
 before workspace invalidation; no allocation or header/member change is
 authorized.
 
+#### S2 executable count and acceptance amendment
+
+This count amendment is registered on 2026-07-29 before the first S2 test
+edit and before any S2 binary run. It changes none of the analytic values or
+production limits above.
+
+One test named `failed source stepping restores caller-attempt diagnostics`
+with tags `[core][pack][solver][source-stepping][rollback][MQ.2][S2]` has
+exactly ten assertions / one case:
+
+1. the existing `compile(...)` helper requires successful compilation of the
+   two-parallel-cell topology;
+2. solver configuration succeeds;
+3. the initial zero-current, two-iteration ladder solve succeeds;
+4. all three initially accepted solution fields bit-match
+   `{cell_current={1,-1}, node_voltage={1,0}, terminal_voltage=1}`;
+5. after `invalidate()`, the caller's `I=8`, one-iteration solve returns
+   `Numerical_failure`;
+6. the scripted callback count is exactly six;
+7. all three published solution fields still bit-match the accepted snapshot;
+8. all nine diagnostics fields bit-match the registered failed direct attempt,
+   including `iterations=1`, `source_steps=0`, and `residual_norm=4`;
+9. a final zero-current, one-iteration solve succeeds; and
+10. the callback count is exactly seven.
+
+The last successful status is the independent warm-flag discriminator: if
+rollback leaves `has_solution_` true, the seventh `{0,0}` row begins from
+`{1,-1}`, changes by `1 > 0.5`, and cannot converge in one iteration.
+
+The current PackSolver floor is 984 assertions / 32 cases, so the S2 floor is
+exactly **994 / 33**. In Debug, fast-math Release/IPO-off, and the retained
+host-C++ CUDA tree, the focused acceptance set is PackTopology 148/9,
+PackSolver 994/33, PackStepper 333/13, P2-G1 allocation 14/2, and structural
+aggregate 1/1. The restored implementation must also pass the unfiltered
+58/58 CTest suite in all three trees.
+
+The frozen old-production run is expected to reach 9/10 assertions and fail
+only the exact diagnostics comparison with residual `2.5` instead of `4`.
+No oracle is reblessed if another assertion fails. After the local
+snapshot/restore fix is committed, three independent mutations remove only:
+
+- the three solution-field restores;
+- `diagnostics_ = rollback_diagnostics`; and
+- `has_solution_ = rollback_has_solution`.
+
+They must make assertions 7, 8, and 9 red respectively, with inverse patches
+and exact source-hash restoration before the three-configuration acceptance
+run.
+
 - Recording refactors retain byte-identical encoded headers, payloads, CRCs, and
   CSV text on the existing fixtures. Added CSV value tests parse every data cell
   and require `max_digits10` round-trip equality.
