@@ -167,9 +167,17 @@ rebuilds. Nine mutations turn red and final hashes are recorded. Original census
 29 APPLIED / 34 pending / 8 deferrals; combined 76-ID registry: 33 APPLIED / 34 pending /
 9 deferrals.
 
-Your first action is T2 thermal topology: preregister the exact `noexcept`/cold-contract structural
-delta and always-on isothermal exact-zero assembly oracle before any T2 test/source edit or run.
-Then apply both T2 findings and continue through every remaining survivor batch
+**T2 PASSED locally at `72368f2` plus `0f564ce`/`db1b067` (2026-07-29):** paired
+`noexcept` specifications and a prefix-sliced PackTopology owner/PLAN/hot/cold contract leave
+the poisoned five-edge isothermal oracle exact at PackTopology 170/12. Every companion focused
+gate passes in Debug, fast-math Release/IPO-off, and host-C++ CUDA; all three final trees pass
+58/58 and no-op rebuilds. Eight mutations turn red and final hashes are recorded. Original
+census: 31 APPLIED / 32 pending / 8 deferrals; combined 76-ID registry:
+35 APPLIED / 32 pending / 9 deferrals.
+
+Your first action is C1 netlist parsing: preregister exact grammar/status/rejection-offset fixtures
+and the structural owner delta for the three named C1 findings before any C1 test/source/gate edit
+or run. Then apply C1 and continue through every remaining survivor batch
 until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
 supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
 six named landmines and MQ.1's build-policy findings included. Then →

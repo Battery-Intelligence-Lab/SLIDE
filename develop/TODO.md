@@ -106,6 +106,15 @@
 > all three final trees pass 58/58 and no-op rebuilds. Nine mutations turn red and exact hashes
 > are recorded. Original census: 29 APPLIED / 34 pending / 8 deferrals; combined 76-ID registry:
 > 33 APPLIED / 34 pending / 9 deferrals. Next is T2 thermal topology.
+>
+> **2026-07-29 — MQ.2 T2 thermal contract landed.** Commit `72368f2` plus leading-contract
+> hardening `0f564ce`/`db1b067` adds paired `CompiledThermalGraph::assemble` `noexcept`
+> specifications and a prefix-sliced PackTopology owner/PLAN/hot/cold contract. The poisoned
+> five-edge isothermal oracle passes exactly at PackTopology 170/12, every companion focused
+> gate passes in Debug, fast-math Release/IPO-off, and host-C++ CUDA, and all three final trees
+> pass 58/58 plus no-op rebuilds. Eight mutations turn red and exact hashes are restored.
+> Original census: 31 APPLIED / 32 pending / 8 deferrals; combined 76-ID registry:
+> 35 APPLIED / 32 pending / 9 deferrals. Next is C1 netlist parsing.
 
 ---
 

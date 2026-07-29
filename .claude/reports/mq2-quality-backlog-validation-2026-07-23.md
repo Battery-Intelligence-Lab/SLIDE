@@ -1436,3 +1436,90 @@ mutation, allocation, timing, sanitizer, coverage, hosted-CI, installed
 package, Linux, or macOS claim. Both T2 findings remain open pending the
 paired production exception specifications, leading contract comment,
 registered mutations, and three-lane acceptance.
+
+### T2 implementation, mutation sensitivity, and acceptance
+
+Production commit `72368f2` adds `noexcept` to both the declaration and
+definition of `CompiledThermalGraph::assemble` and replaces PackTopology's
+stale all-cold brief with the registered owner/PLAN/hot/cold contract.
+Adversarial audit then found that whole-header comment counts did not prove
+the text was leading: moving a required line below `#pragma once` remained
+green. Gate-hardening commit `0f564ce` slices the opening prefix, and
+precision/hardening commit `db1b067` states the literal cadence as **at most**
+once per step attempt (invalid input or an electrical failure calls it zero
+times) and pins that exact leading order. `CHANGELOG.md` records the public
+exception specification and new exact oracle. The assembly body,
+expressions, traversal order, storage, statuses, and call placement are
+unchanged. `PackTopology.cpp` remains 673 physical lines,
+`PackTopology.hpp` is 157, and its unit test is 581; this batch creates no
+new MC-1-sized C++ file.
+
+Eight independent mutations were run from clean committed boundaries:
+
+| Mutation | Registered red result |
+|---|---|
+| remove both declaration and definition `noexcept` | production rebuilt and PackTopology remained green at 170/12, while structure reported declaration count 0 versus 1 |
+| remove only the definition `noexcept` | Clang stopped compilation with `'assemble' is missing exception specification 'noexcept'`; structure independently reported definition count 0 versus 1 |
+| change the leading `Hot:` contract token to `Warm:` | raw-header structural gate reported the hot-boundary token 0 versus 1 |
+| move the otherwise exact hot-contract line below `#pragma once` | whole-header exact counts remained satisfied, but the hardened leading-prefix gate rejected the missing ordered token |
+| add `+1.0` to every edge temperature difference | the filtered T2 case reached 3/6 assertions; cell heat, boundary heat, and edge flux were all nonzero |
+| omit trial-to-published `edge_flux` copy | the filtered T2 case reached 5/6; only the published edge-flux exact-zero assertion was red |
+| omit cell-heat publication | the filtered T2 case reached 5/6; only the poisoned `q_ext` exact-zero assertion was red |
+| omit boundary-heat publication | the filtered T2 case reached 5/6; only the poisoned boundary-heat exact-zero assertion was red |
+
+The one-sided exception-specification compiler diagnostic was:
+
+```text
+C:/D/git/SLIDE/src/core/PackTopology.cpp:558:37: error: 'assemble' is missing exception specification 'noexcept'
+```
+
+Every mutation was inverse-patched before the next. Each inverse restored the
+relevant SHA-256 anchor, `git diff --exit-code HEAD -- <touched-files>`
+returned zero, and the porcelain status was empty. No expected value, token,
+or hash was reblessed.
+
+The final accepted anchors are:
+
+```text
+16879E015BB05657AB142190A92123A0372641DB586C4FC58795600835F83DF2  src/core/PackTopology.cpp
+FB6F6259B17B22DC377CFFDA9A2A521B0EF4800D7E2B9DCA43E4A1D56E1DCF72  src/core/PackTopology.hpp
+0F644EBB708191F334FDCC5EC422EBD329E22E51A2BCB1DD7E02015CD9E37E7A  tests/unit/core_PackTopology_test.cpp
+07B30AF084297B59DA1952699CD4F79F0A27452AE87E20654313A89CD7AC0004  tests/structural/p9c_architecture.cmake
+D5CB24F681A62E4FCE0A14C531F235773405CBD6079EA23DDFE33B3E5115745B  CHANGELOG.md
+```
+
+After the final mutation restoration, all three retained trees were rebuilt
+from the committed implementation. The focused commands used the exact set:
+
+```powershell
+ctest --test-dir build-mq1-debug -V --no-tests=error -j1 -R '^(unit_test_core_PackSolver|unit_test_core_PackStepper|unit_test_core_PackTopology|unit_test_core_P2G1_allocation|structural_test_core_9C2AgeingKernel)$'
+ctest --test-dir build-mq1-release -V --no-tests=error -j1 -R '^(unit_test_core_PackSolver|unit_test_core_PackStepper|unit_test_core_PackTopology|unit_test_core_P2G1_allocation|structural_test_core_9C2AgeingKernel)$'
+cmd.exe /d /s /c 'call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && ctest --test-dir build-mq1-cuda-vsenv -V --no-tests=error -j1 -R "^(unit_test_core_PackSolver|unit_test_core_PackStepper|unit_test_core_PackTopology|unit_test_core_P2G1_allocation|structural_test_core_9C2AgeingKernel)$"'
+```
+
+The final focused results were exact:
+
+| Configuration | PackTopology | PackSolver | PackStepper | P2-G1 allocation | Structural aggregate |
+|---|---:|---:|---:|---:|---:|
+| Debug/ThinLTO | 170 assertions / 12 cases | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+| fast-math Release, IPO off | 170 / 12 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+| Release/ThinLTO CUDA tree, host C++ | 170 / 12 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+
+The unfiltered Debug, fast-math Release/IPO-off, and host-C++ CUDA suites then
+passed **58/58** serially. The CUDA suite executed
+`unit_test_core_CudaSpmBatch`; both CPU suites selected
+`unit_test_core_CudaDisabled`. Immediate builds in all three trees afterward
+reported `ninja: no work to do.`
+
+`clang-format --dry-run --Werror` passes the changed source, header, and unit
+test; `git diff --check` passes; and the committed pre-closeout porcelain
+status was empty. Release and CUDA recompilation emitted only the already
+registered `-Ofast is deprecated` diagnostic; B1 remains its owner. No new
+build finding and no wall-clock performance, sanitizer, coverage, hosted-CI,
+installed-package, Linux, macOS, or device-LTO claim is made.
+
+`assemble-noexcept-and-stale-cold-brief` and `test-gap-isothermal-zero` are
+APPLIED. The original census is now 31 APPLIED, 0 REFUTED, 8 named
+deferrals, and 32 pending. With the unchanged post-baseline registry, the
+combined 76-ID census is 35 APPLIED, 0 REFUTED, 9 named deferrals, and
+32 pending. MQ.2 remains open; C1 netlist parsing is next.
