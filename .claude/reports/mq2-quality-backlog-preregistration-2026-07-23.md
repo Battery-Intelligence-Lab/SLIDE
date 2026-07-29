@@ -1517,9 +1517,10 @@ contract. In particular:
   allocation-failure owners;
 - `BinaryRecording::snapshot`, which indexes mapped interleaved records,
   remains separate from the two eager SoA readers; and
-- R2 still owns CSV data-value coverage and the disposition of
-  `enqueuesnapshot-success-untested`. R1 adds no data row to its CSV fixture
-  and does not call `enqueueSnapshot`.
+- R2 still owns independent per-field CSV semantic parsing/coverage and the
+  disposition of `enqueuesnapshot-success-untested`. R1 treats its two data
+  rows only as an opaque whole-file byte-identity oracle needed to execute
+  `snapshotRow`, and does not call `enqueueSnapshot`.
 
 The old-source anchors are:
 
@@ -1563,16 +1564,18 @@ AsyncRecorderAllocation remains **60/4**.
 The first case adds exactly 25 assertions:
 
 1. configure a two-lane Recorder of capacity two;
-2. before recording any row, write CSV and compare every byte with an
-   independent test-side construction of the canonical header. The fixture
-   deliberately contains no data row, so it freezes R1 schema text/order
-   without taking R2's CSV-value owner;
-3. for two snapshots, fill every padded arena value with exact finite integer
-   doubles, set distinct exact-quarter elapsed times, and use total currents
-   equal to `{1,-2}` then `{3,-4}` times the exact electrode area;
-4. directly require each public snapshot's accepted step, time, current
+2. for two snapshots, retain the factory's physically valid live state,
+   poison every padding slot with distinct exact finite integer doubles, set
+   distinct exact-quarter elapsed times, and use total currents equal to
+   `{1,-2}` then `{3,-4}` times the exact electrode area;
+3. directly require each public snapshot's accepted step, time, current
    density, and complete padded state against the independently retained
    inputs; and
+4. write the complete two-row CSV, require its bytes to begin with an
+   independently constructed canonical header, and freeze its exact byte
+   count plus both recurrences in one grouped assertion. This executes both
+   `snapshotRow` calls while remaining an opaque byte-identity check; R2
+   retains independent parsing and per-field semantic ownership; and
 5. write the synchronous binary file, require its exact byte count and two
    independent whole-file 64-bit recurrences, require the literal endian
    marker, and recompute the stored header CRC with the test-side CRC owner.
@@ -1599,10 +1602,11 @@ The byte fingerprint records the exact byte count plus:
 
 An initial run with deliberately impossible digest sentinels is explicitly
 **exploration**, not evidence. It may only print the old-production byte
-count and recurrences. Those six values are then written into this amendment
-and the test, committed test-only, and rerun against unchanged production.
+counts and recurrences. Those nine values (CSV, `.slrec`, and `.slcmp`) are
+then written into this amendment and the test, committed test-only, and rerun
+against unchanged production.
 No production or structural-gate edit may begin until the frozen
-old-production run passes exactly 275/9 and both production source hashes
+old-production run passes exactly 275/9 and all five production source hashes
 still match the anchors above.
 
 ### One format-fact owner
@@ -1768,8 +1772,12 @@ It asserts `0 <= row && row < rows && 0 < lanes && lanes <= stride`, then
 returns a live-lane subspan beginning at
 `static_cast<std::size_t>(row) * static_cast<std::size_t>(stride)`.
 CSV iterates that span; Parquet indexes its live lane after the helper.
-The exact `snapshotRow(` census is three, and Recorder.cpp contains zero
-instances of a cast applied after `row * stride_` or `row * stride_ + lane`.
+The exact `snapshotRow(` census is three. The structural gate pins both
+ordered calls exactly as
+`snapshotRow(recorded, row, rows_, stride_, lanes_)` and
+`snapshotRow(snapshot(i), row, rows_, stride_, lanes_)`, and Recorder.cpp
+contains zero instances of a cast applied after `row * stride_` or
+`row * stride_ + lane`.
 
 ### Dead-using boundary and future structural gate
 
@@ -1800,8 +1808,8 @@ The final gate pins:
   ordered seven-argument calls, and the untouched mapped reader;
 - one schema owner, once-only literals, 3 owner/caller tokens, exact CSV join,
   monotonically consumed Parquet cursor, and final size assertion;
-- one widened `snapshotRow` owner, two consumers, and zero late-cast old
-  index spellings; and
+- one widened `snapshotRow` owner, the two exact ordered five-argument
+  consumers, and zero late-cast old index spellings; and
 - absence of the three dead AsyncRecorder usings/include while the
   corresponding AsyncRecordingCodec dependencies remain.
 
@@ -1828,7 +1836,8 @@ these mutation families:
 4. make the shared allocation mapper return a different Status;
 5. change one schema fragment/order or make either sink bypass the common
    names/cursor;
-6. change `snapshotRow` to multiply in `int`, use `lanes` as its stride, or
+6. change `snapshotRow` to multiply in `int`, use `lanes` as its stride,
+   swap the same-typed `stride_`/`lanes_` arguments at either consumer, or
    reintroduce either old late-cast index;
 7. damage the shared `snapshotView` offset/extent body;
 8. swap one same-typed eager-reader argument or make either caller bypass
