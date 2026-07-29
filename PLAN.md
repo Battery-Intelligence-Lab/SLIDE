@@ -1,38 +1,22 @@
 # SLIDE — THE GOAL: the superior battery-simulation stack (living contract)
 
 > **Status:** ACTIVE. Rewritten 2026-07-11 (Fable) around a SINGLE GOAL with one milestone ladder (§6);
-> extended 2026-07-14 (Fable) with the breadth wave (goals 15–24, M13–M20) from Volkan's 16-point directive
-> and the same-day Newman-instrumentation directive; extended 2026-07-23 (Fable) with the **MQ quality
-> wave** (clean the repository / re-derive the mathematics / hunt logical + performance mistakes —
-> inserted between M0 and M1 in ladder order) and the split-out standing operating contract
-> **`AGENTS.md`** for autonomous Codex sessions; refreshed later 2026-07-23 (Fable) with the **Codex
-> campaign charter** — infinite tokens / finite hours stated in §0 and the expand-while-cleaning rule
-> in the MQ preamble; reconciled 2026-07-24 by classifying the four pack-algebra commits as
-> preregistration-only, landing the exact P0 oracle boundary at `6c7ab74`, and applying P1's
-> single-owner pack affine algebra at `8630207` plus P2's seven-role Mode-C scratch at
-> `bf185dd` (MQ.2); refreshed 2026-07-24 (Fable, second pass) with the S1 PackStepper
-> preregistration state — gate `404eb79`, exact-current comparator FALSIFIED and replaced at
-> `1c74630`, and oracles frozen test-only at `81c1ed1`; reconciled 2026-07-29 by landing the S1
-> ownership/full-`dt` implementation at `62f1587` after three-lane focused and 58/58 full-suite
-> gates plus nine red mutations. S1.1's explicit moved-owner and independent-oracle contract then
-> landed at `574cfaf`: its frozen 984/32 and 333/13 gates pass in all three retained configurations,
-> all three restored trees pass 58/58, and eight ownership/oracle mutations turn red. S2 source-step
-> rollback landed at `7b3fd14`: PackSolver 994/33 plus all companion gates and 58/58 pass in all
-> three retained configurations, and three restoration mutations turn red. T1 topology landed at
-> `ad6d785` plus gate/format commits `30464e4`/`479f55f`: exact 164/11 and companion gates plus
-> 58/58 pass in all three retained configurations, and nine mutations turn red. T2's exact-zero
-> and hot/no-throw contract landed at `72368f2` plus leading-gate hardening `0f564ce`/`db1b067`:
-> all focused gates and 58/58 pass in all three retained configurations, and eight
-> signature/comment/placement/numerical mutations turn red. C1 landed at
-> `bd1c2ed` plus gate hardening `6ef3f33`: exact grammar/diagnostics pass
-> 886/10, all companion gates and 58/58 pass in all three retained
-> configurations, and fourteen ownership/grammar/diagnostic mutations turn red.
-> R1 recording ownership landed at `5a462b6` plus `a7a4236`/`7b8b1f8`:
-> exact focused gates and 58/58 pass in the three native configurations and
-> fresh WSL coverage, 17 mutation families turn red, and Status coverage is
-> 359 lexical / 329 active with zero uncovered/unmapped.
-> The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
-> Everything before this rewrite is archived VERBATIM at
+> extended 2026-07-14 (breadth wave, goals 15–24, M13–M20, plus Newman instrumentation); extended
+> 2026-07-23 (the **MQ quality wave** between M0 and M1; the split-out **`AGENTS.md`** standing
+> contract; the **Codex campaign charter** — infinite tokens / finite hours in §0,
+> expand-while-cleaning in the MQ preamble); restructured 2026-07-29 (Fable): this header no longer
+> duplicates per-batch evidence — **§8 is the authoritative running record** and the MQ.2 box carries
+> the batch-by-batch detail (the evidence sentences formerly here are preserved verbatim in §8 rows
+> and in git history of this file).
+> **Current position (2026-07-29):** v4 core COMPLETE through Phase 9A (Phase 9B absorbed into M0,
+> complete); MQ.1 PASSED. MQ.2 OPEN and mid-flight — pack algebra (P0–P2), stepper and move ownership
+> (S1/S1.1), rollback (S2), topology (T1/T2), netlist (C1), and recording ownership (R1) all PASSED
+> locally with three-lane gates, full 58/58 suites, and red mutations. **R2 recording semantics is
+> mid-flight:** oracle frozen old-production-red at `aae42dc`, one-line legal-zero-CRC implementation
+> at `612d841`, comparison-direction gate hardening at `543e553`; the real-CUDA discriminator and
+> final three-lane/coverage acceptance remain (§8 NEXT row). Census: original 40 APPLIED / 23 pending
+> / 8 deferrals; combined 84-ID registry 51 / 23 / 10.
+> Everything before the 2026-07-11 rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
 > `.claude/summaries/plan-archive-2026-07-10-phases0-8.md`) and in git history.
 > **How to use this document:** single source of truth. (`AGENTS.md` at the repo root compresses the
@@ -1444,8 +1428,11 @@ but restructuring never stops being ladder work: the MC contracts bind every box
 outgrows MC-1 gets an owner box in the CURRENT milestone (the M1.0 pattern), never a third inherited
 assignment; every milestone that adds surface ends with a short simplification pass over what it just
 added (a net-negative diff is a triumph, §0); and the recurring hardening passes (M12.0, M20.1) are
-mandatory boxes, not culture. Never let polish stall expansion; never let expansion accrete silent
-debt.
+mandatory boxes, not culture. **Tightened 2026-07-29 (Volkan directive):** cleaning is a per-BOX tick
+condition, not only per-milestone — every box's tick includes a micro-hygiene pass over what it
+touched (dead code, stray temporary artifacts, duplicated facts, MC-1 overgrowth, stale doc claims);
+the repository must never re-bloat between waves. Never let polish stall expansion; never let
+expansion accrete silent debt.
 
 - [x] MQ.1 Restore the Debug-AND-Release standard first (the wave's baseline): the 2026-07-21..23
       landings were validated Debug-only (recorded in §8). Run the full suite on native Debug,
@@ -1553,12 +1540,36 @@ debt.
       the stale 57-test hosted-workflow pin is DEFERRED to B1. Original
       census: 40 APPLIED / 23 pending / 8 deferrals; combined 84-ID registry:
       51 APPLIED / 23 pending / 10 deferrals.
-      **Next is R2 recording semantics/tests:** preregister an exact
-      old-production-red zero-CRC fixture, independent per-field CSV parsing,
-      and the enqueueSnapshot CUDA mutation before any R2 edit/run; retain the
-      already-applied shuffle oracle and every killed design. Then continue
-      every remaining survivor batch until all original 68 + 3 findings plus
-      every append-only supplemental finding carry a disposition.
+      **R2 recording semantics is MID-FLIGHT (2026-07-29):** registration
+      (`30afab7`), the frozen old-production boundary (`aae42dc` — old
+      production passes 508 of 509 and goes red only at the seventh new
+      zero-CRC assertion, plus the structural stored-zero-guard count), the
+      one-line implementation deleting the `|| header.header_crc32 == 0`
+      guard (`612d841`, Recorder 516/10), and comparison-direction gate
+      hardening (`eab4ff6`/`543e553`) are all committed. All ten Debug
+      CRC/CSV mutations turn red; both preregistered actual→expected
+      self-comparisons first reproduced their exact 516/10 + structural 1/1
+      false green and are now pinned by two compact direction pins that keep
+      516/10 but turn structure red. **Remaining to close R2:** the
+      real-CUDA `enqueueSnapshot(true→false)` discriminator (registered
+      band: exactly 433,665 pass / 6 fail, then restore 433,671/4;
+      `enqueuesnapshot-success-untested` is REFUTED only if its six density
+      assertions turn red), then focused + full 58/58 gates in Debug,
+      fast-math Release/IPO-off, and host-C++ CUDA, no-op rebuilds, fresh
+      WSL coverage, formatting, a final adversarial review, and the closing
+      census/§8 rows. **Then continue batch-by-batch through the frozen
+      queue** (preregistration report, batch table): Q1 parameter
+      lexicons/helpers, Q2 parameter bugs/API, E1 experiment parser/control
+      constants, E2 drive-cycle alignment, E3 simulation contract, G1 CUDA
+      cleanup/tests, B1 build diagnostics (owner of the deferred
+      `eigen-strong-inline-redefinition-warning` and
+      `instrumented-workflow-test-count-stale` IDs plus MQ.1's two
+      build-policy findings) — keeping the established evidence pattern
+      (preregister bands → freeze the old-production-red boundary →
+      implement → mutate until every gate is proven load-bearing →
+      three-lane + coverage acceptance) — until all original 68 + 3 findings
+      plus every append-only supplemental finding carry a disposition
+      applied / REFUTED / deferred-with-owner. No silent drops.
 - [ ] MQ.3 Repo hygiene sweep: audit the tracked tree (670 files at this writing) — stale or
       contradictory docs (develop/TODO.md header vs PLAN §8, README claims, CONTRIBUTING,
       LESSONS.md), dead scripts, anything tracked that should be ignored; fix `.gitignore` gaps.

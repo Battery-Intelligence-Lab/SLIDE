@@ -26,7 +26,10 @@ re-derivable artifacts are the deliverable, not a cost.
    take the next. Milestone boundaries are not pauses.
 2. A box is ticked only when: its gates are green (Debug AND Release, plus CUDA where the change
    touches it), `CHANGELOG.md` (Unreleased) is updated for user-visible changes, a §8 row is added,
-   and small reviewable commits are made on branch **`Claude`**.
+   small reviewable commits are made on branch **`Claude`**, AND a micro-hygiene pass has run over
+   what the box touched — dead code, stray temporary artifacts, duplicated facts, MC-1 overgrowth,
+   stale doc claims (Volkan directive 2026-07-29: cleaning is a per-box tick condition; the
+   repository must never re-bloat). A net-negative diff is a triumph.
 3. Gate stays red after **three genuinely different attempts** (different hypotheses, not retries)?
    Record FALSIFIED/BLOCKED in §8 with the numbers, leave the box unticked, move to the next
    unblocked box. A falsified registered hypothesis is a deliverable, not a failure.
@@ -110,105 +113,57 @@ re-derivable artifacts are the deliverable, not a cost.
 | Derivations (grows during MQ.4/MQ.5) | `docs/derivations/` |
 | Working TODO mirror (PLAN.md §8 is authoritative) | `develop/TODO.md` |
 
-## 6. The current campaign (2026-07-29, reconciled)
+## 6. The current campaign (2026-07-29, reconciled mid-R2)
 
-M0 is complete. **MQ.1 is PASSED** (three-lane 58/58 baseline;
-`.claude/reports/mq1-baseline-validation-2026-07-23.md`). **MQ.2 is OPEN and mid-flight:** the
+M0 and MQ.1 are complete (three-lane 58/58 baseline;
+`.claude/reports/mq1-baseline-validation-2026-07-23.md`). **MQ.2 is OPEN and mid-flight.** The
 68-survivor census and evidence plan are frozen in
-`.claude/reports/mq2-quality-backlog-preregistration-2026-07-23.md`; applied batches so far
-(validation log `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`) cover factory
-constants fan-out, fused-Euler input validation, the six O1 observable findings, and ageing scalar
-ownership including the SurfaceCrack Arrhenius association; `homogeneous-init-lane-loop` is
-FALSIFIED and deferred to MQ.7.
+`.claude/reports/mq2-quality-backlog-preregistration-2026-07-23.md`; the running validation log
+is `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. This section is a POSITION
+SUMMARY only — PLAN.md's MQ.2 box and §8 rows are the authoritative per-batch evidence (exact
+gate counts, mutation censuses, hashes); do not duplicate them here again. Batches PASSED
+locally so far, each with three-lane focused gates, full 58/58 suites, and red mutations:
+P0–P2 pack affine algebra + Mode-C scratch roles, S1 PackStepper ownership + full-`dt`
+semantics, S1.1 moved-owner no-throw contract, S2 diagnostics rollback, T1/T2 topology
+ownership + no-throw thermal assembly, C1 netlist grammar/diagnostics ownership, and R1
+recording-format ownership with exact Status coverage (359 lexical / 329 active, zero
+uncovered/unmapped). Census after R1: original 40 APPLIED / 23 pending / 8 deferrals;
+combined 84-ID registry 51 / 23 / 10.
 
-**Reconciliation plus P1/P2 completed 2026-07-24 (PLAN.md MQ.2 records the evidence):** commits
-`c2940a2` / `87021a5` / `39e6a00` / `b1625fb` are preregistration-only, not implementation
-boundaries. The +313-line PackSolver P0 oracle WIP landed at `6c7ab74`; all three retained
-host configurations pass 949/30, and four division-site plus two oracle mutations turn it red.
-No survivor was dispositioned by that oracle-only boundary. P1 then applied
-`cell-current-reconstruction-x4`, `branch-drop-and-kcl-current`, and
-`dead-usings-and-misplaced-comment` at `8630207`; the unchanged 949/30 exact gate and aggregate
-structural test pass in all three retained host configurations, and five algebra/gate mutations
-turn red. P2 then applied `relaxation-target-triple-role` at `bf185dd`; seven named scratch roles
-are allocated transactionally and published once, hot traffic remains six fills, the same
-three-configuration 949/30 gate passes, and six adversarial storage/publication mutations turn
-red.
+**R2 recording semantics is MID-FLIGHT:** registration `30afab7`, frozen old-production-red
+boundary `aae42dc`, the one-line legal-zero-CRC implementation `612d841` (Recorder 516/10), and
+comparison-direction gate hardening `eab4ff6`/`543e553` are committed; all ten Debug CRC/CSV
+mutations turn red and both preregistered self-comparison false-greens are demonstrated and
+pinned (§8 rows of 2026-07-29).
 
-**S1 PASSED locally at `62f1587` (2026-07-29):** the PackStepper gather/scatter owners,
-`firstOccurrence` prefix owner, and executable `substeps * dt` contract pass PackStepper 230/9,
-PackSolver 949/30, aggregate structural 1/1, and allocation 14/2 in Debug, fast-math
-Release/IPO-off, and the host-C++ CUDA tree. The restored commit also passes the full 58/58 suite
-in all three trees; nine controlled mutations turn red and exact source hashes are restored.
-The original exact-current comparator remains FALSIFIED at 13/16; the frozen
-EulerLegacy-direct comparator at `1c74630` was not reblessed.
+**Your first action — close R2:** run the real-CUDA `enqueueSnapshot(true→false)` discriminator
+(registered band: exactly 433,665 pass / 6 fail; restore 433,671/4;
+`enqueuesnapshot-success-untested` is REFUTED only if its six density assertions turn red), then
+focused + full 58/58 gates in Debug, fast-math Release/IPO-off, and host-C++ CUDA, no-op
+rebuilds, fresh WSL coverage, formatting, a final adversarial review, and the closing census/§8
+rows.
 
-**S1.1 PASSED locally at `574cfaf` (2026-07-29):** exhaustive no-throw, self-guarded moves for
-`SolverWorkspace`, `PackSolver`, and `PackStepper` leave moved sources safely unconfigured and
-preserve exact destination continuation. PackTopology 148/9, PackSolver 984/32, PackStepper
-333/13, allocation 14/2, and structural 1/1 pass in Debug, fast-math Release/IPO-off, and the
-host-C++ CUDA tree; all three restored trees pass 58/58. Eight controlled mutations turn red and
-exact hashes are restored. The original census remains 24 APPLIED / 39 pending / 8 deferrals;
-the append-only post-baseline registry has four S1.1 IDs APPLIED and
-`eigen-strong-inline-redefinition-warning` DEFERRED to B1. Combined: 28 APPLIED / 39 pending /
-9 deferrals across 76 stable IDs.
+**Then continue batch-by-batch through the frozen queue** (preregistration report batch table):
+Q1 parameter lexicons/helpers → Q2 parameter bugs/API → E1 experiment parser/control constants →
+E2 drive-cycle alignment → E3 simulation contract → G1 CUDA cleanup/tests → B1 build diagnostics
+(owner of the deferred `eigen-strong-inline-redefinition-warning` and
+`instrumented-workflow-test-count-stale` IDs plus MQ.1's two build-policy findings) — keeping
+the established evidence pattern
+(preregister bands → freeze the old-production-red boundary → implement → mutate until every
+gate is proven load-bearing → three-lane + coverage acceptance) — until MQ.2 is dry: all
+original 68 + 3 supplemental findings plus every newly discovered supplemental finding
+dispositioned applied / REFUTED / deferred-with-owner; the six named landmines and MQ.1's
+build-policy findings included; no silent drops.
 
-**S2 PASSED locally at `7b3fd14` (2026-07-29):** the local POD diagnostics snapshot/restore
-passes PackSolver 994/33 and all companion focused gates in Debug, fast-math Release/IPO-off,
-and host-C++ CUDA; all three trees pass 58/58. Independent solution/diagnostics/warm-flag
-mutations turn separate assertions red at 9/10 and exact hashes are restored. Original census:
-26 APPLIED / 37 pending / 8 deferrals; combined 76-ID registry: 30 APPLIED / 37 pending /
-9 deferrals.
-
-**T1 PASSED locally at `ad6d785` plus `30464e4`/`479f55f` (2026-07-29):** one guarded
-branch-graph/BFS derivation serves generated and imported metadata, and one sorted archetype-slot map
-owns batch/lane/thermal bookkeeping. PackTopology 164/11 and every companion focused gate pass in
-Debug, fast-math Release/IPO-off, and host-C++ CUDA; all three final trees pass 58/58 and no-op
-rebuilds. Nine mutations turn red and final hashes are recorded. Original census:
-29 APPLIED / 34 pending / 8 deferrals; combined 76-ID registry: 33 APPLIED / 34 pending /
-9 deferrals.
-
-**T2 PASSED locally at `72368f2` plus `0f564ce`/`db1b067` (2026-07-29):** paired
-`noexcept` specifications and a prefix-sliced PackTopology owner/PLAN/hot/cold contract leave
-the poisoned five-edge isothermal oracle exact at PackTopology 170/12. Every companion focused
-gate passes in Debug, fast-math Release/IPO-off, and host-C++ CUDA; all three final trees pass
-58/58 and no-op rebuilds. Eight mutations turn red and final hashes are recorded. Original
-census: 31 APPLIED / 32 pending / 8 deferrals; combined 76-ID registry:
-35 APPLIED / 32 pending / 9 deferrals.
-
-**C1 PASSED locally at `bd1c2ed` plus `6ef3f33` (2026-07-29):** four exact limit-message
-owners, one locale-independent ASCII scanner, direct Status-returning semantic failures, and
-truthful reader-cursor offset documentation retain the poisoned NetlistCsv 886/10 oracle.
-ParserAllocation 1143/13 and every pack/structural companion gate pass in Debug, fast-math
-Release/IPO-off, and host-C++ CUDA; all three restored trees pass 58/58 and no-op rebuilds.
-Fourteen mutations turn red and exact hashes are restored. Original census:
-34 APPLIED / 29 pending / 8 deferrals; combined 76-ID registry:
-38 APPLIED / 29 pending / 9 deferrals.
-
-**R1 PASSED locally at `5a462b6` plus `a7a4236`/`7b8b1f8` (2026-07-29):** shared
-recording-format facts, eager indexing, schema order, and widened row addressing pass Recorder
-275/9, AsyncRecorder 471/12, allocations 33/3 and 60/4, aggregate structural 1/1, and 9C-5
-self-containment 1/1 in Debug, fast-math Release/IPO-off, host-C++ CUDA, and WSL Clang 18
-coverage. All four pass 58/58; CUDA executes 433,671/4; native rebuilds are no-op. Fourteen R1
-plus three coverage-hardening mutations turn red. Exact Status coverage is 359 lexical /
-329 active = 323 measured + 6 exceptions, with 30 inactive and zero uncovered/unmapped. The six
-R1 survivors plus seven supplemental findings are APPLIED; the stale hosted 57-test pin is
-DEFERRED to B1. Original census: 40 APPLIED / 23 pending / 8 deferrals; combined 84-ID registry:
-51 APPLIED / 23 pending / 10 deferrals.
-
-Your first action is R2 evidence-first registration: freeze the old-production-red legal-zero-CRC
-fixture, old-production-green independent per-field CSV oracle, and real-CUDA
-`enqueueSnapshot(true→false)` discriminator before any R2 edit or decisive run. Preserve the
-already-applied shuffle oracle and the preregistered killed alternatives. Then continue through
-every remaining survivor batch
-until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
-supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
-six named landmines and MQ.1's build-policy findings included. Then →
-MQ.3 repo hygiene → MQ.4 derivation inventory → MQ.5 independent re-derivation (derive FIRST,
-then diff against the code) → MQ.6 logic hunt (loop-until-dry; gates are code too) → MQ.7
-structural performance hunt → MQ.8 closeout. Then expansion resumes at **M1.0** and runs the
-ladder to v6.0.0: PyBOP suite, v4.0.0, expressiveness, parameters + citations, FVM, SPMe, DFN,
-2+1D/3D thermal, regime advisor, WASM, SLIDE Studio (the GUI), v5.0.0, the breadth wave, Newman
-instrumentation, v6.0.0. **Expansion and cleaning are one motion** (PLAN.md MQ preamble): MC
-contracts bind every box, oversized files get owner boxes in the current milestone, and each
-surface-adding milestone ends with a short simplification pass. One goal, many boxes, no
-stopping.
+Then → MQ.3 repo hygiene (includes the untracked-debris deletion PROPOSAL — the ~40 stale
+`build-*` trees, stray `build-*.log` files, the root file literally named `nul` — proposals
+only; never delete untracked files yourself) → MQ.4 derivation inventory → MQ.5 independent
+re-derivation (derive FIRST, then diff against the code) → MQ.6 logic hunt (loop-until-dry;
+gates are code too) → MQ.7 structural performance hunt → MQ.8 closeout. Then expansion resumes
+at **M1.0** and runs the ladder to v6.0.0: PyBOP suite, v4.0.0, expressiveness, parameters +
+citations, FVM, SPMe, DFN, 2+1D/3D thermal, regime advisor, WASM, SLIDE Studio (the GUI),
+v5.0.0, the breadth wave, Newman instrumentation, v6.0.0. **Expansion and cleaning are one
+motion** (PLAN.md MQ preamble, tightened 2026-07-29): MC contracts bind every box; every box's
+tick includes a micro-hygiene pass over what it touched; oversized files get owner boxes in the
+CURRENT milestone; each surface-adding milestone ends with a short simplification pass — a
+net-negative diff is a triumph. One goal, many boxes, no stopping.
