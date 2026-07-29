@@ -1811,6 +1811,67 @@ runtime is available in the retained configurations, so R1 claims exact CSV
 runtime bytes and structurally proves Parquet name/order consumption; it
 does not claim a Parquet runtime.
 
+#### Post-freeze Debug iterator-proxy correction
+
+The first production-WIP Debug run exposed one new supplemental finding,
+`recorder-schema-default-vector-debug-oom-terminates`, before any R1
+implementation commit. It is a real public-boundary exception-safety defect
+in the initially frozen schema-owner spelling, not a reason to weaken the
+existing allocation oracle:
+
+- `RecorderAllocation`'s first two cases passed independently at 5/1 and
+  15/1. The third, already-frozen public-I/O case reached the fail-next
+  allocation after `writeBinary` and then opened a hidden Microsoft Visual
+  C++ Runtime abort dialog. Command timeouts that left orphaned dialog
+  processes are exploration and are not evidence.
+- A disposable, allocation-free diagnostic mutation established that the
+  failing allocation was the 16-byte MSVC Debug iterator proxy created by
+  `std::vector<std::string>`'s default constructor. The diagnostic test file
+  was restored byte-for-byte to SHA-256
+  `D8FA21C68BA93468F1194C15E5F1AD40167898BF0A9354BF0F724F226639AC01`
+  and is not part of the implementation.
+- [confirmed] In the installed VS 18 STL, `_DEBUG` selects
+  `_ITERATOR_DEBUG_LEVEL == 2` (`yvals.h`), `vector()` is conditionally
+  `noexcept` on the nothrow-default-constructible allocator and calls
+  `_Alloc_proxy` (`vector`), and that proxy allocates one object when iterator
+  debugging is enabled (`xmemory`). `std::allocator`'s default constructor is
+  `noexcept`. Therefore a `bad_alloc` from this proxy cannot reach
+  `Recorder::writeCsv`'s catch. The pre-R1 code did not have this site: its
+  first product vector used a non-`noexcept` count constructor.
+
+The corrected schema owner starts with the explicit canonical prefix:
+
+```cpp
+std::vector<std::string> names{ "accepted_step", "time_s" };
+```
+
+The initializer-list constructor is not `noexcept`; a storage or Debug-proxy
+allocation failure therefore propagates to the unchanged public catch.
+`reserve()` after a default construction is forbidden because the unsafe
+proxy allocation has already happened. The architecture gate must require
+this exact prefix constructor and reject a bare default constructor. This
+changes no successful CSV/Parquet byte, name, order, Status, or allocation-free
+hot path. The decisive band remains RecorderAllocation **33/3**, including
+`matching_failure_triggered == true`, no escaped exception, and
+`Status::Numerical_failure` for the CSV failure. Recorder remains **275/9**
+with all five old-production fingerprints exact.
+
+The bare-default-constructor mutation is structural-red and is not executed
+as a behavioral mutation on Windows because its expected behavior is an
+interactive CRT abort, not a bounded Catch failure. The already-frozen
+allocation test is the behavioral acceptance oracle for the safe owner.
+Only after all R1 gates pass is
+`recorder-schema-default-vector-debug-oom-terminates` APPLIED. It is outside
+the original 71-ID census and grows the combined registry from 76 to 77 IDs.
+
+The R1 self-containment requirement is also made persistent rather than
+satisfied by one-off commands. 9C-5 keeps its 28-header api/support
+classification unchanged and compiles
+`detail/RecordingFormatCommon.hpp` and `detail/SnapshotIndexing.hpp` in a
+separate two-header internal list. Removing a direct standard/project include
+from either new header must make that compiler gate red; the headers are not
+reclassified as public.
+
 The same anonymous namespace owns one:
 
 ```cpp
@@ -1908,6 +1969,11 @@ these mutation families:
 11. remove or weaken the synchronous zero-CRC guard or alter either minor
     comparison. This mutation is structural-red; R1 must not execute or
     reclassify R2's behavior change.
+12. replace the schema owner's initializer-list prefix with a bare default
+    `std::vector<std::string>` construction. The architecture gate must turn
+    red; do not execute the known interactive-abort path as mutation evidence.
+13. remove one direct dependency include from either new internal header.
+    The separate 9C-5 internal standalone-compilation loop must turn red.
 
 Every touched source/header/test/gate file is SHA-256 anchored at the clean
 implementation commit. Each mutation is inverse-patched individually; exact
@@ -1934,9 +2000,11 @@ is also mandatory after implementation. Its registered census is:
 Numerical_failure 63; every other Status count unchanged
 ```
 
-Only after those gates are green do the six R1 IDs become APPLIED. That would
+Only after those gates are green do the six original R1 IDs and the new
+Debug-iterator-proxy supplemental finding become APPLIED. That would
 move the original census from 34 APPLIED / 0 REFUTED / 8 named deferrals /
 29 pending to 40 / 0 / 8 / 23, and the combined 76-ID census from
-38 / 0 / 9 / 29 to 44 / 0 / 9 / 23. `CHANGELOG.md`, PLAN section 8, the
+38 / 0 / 9 / 29 to a 77-ID census of 45 / 0 / 9 / 23. `CHANGELOG.md`,
+PLAN section 8, the
 validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
 census only at closeout.

@@ -1534,10 +1534,16 @@ debt.
       38 APPLIED / 29 pending / 9 deferrals. R1's two deterministic
       whole-file/schema/eager-index cases (+53 assertions / +2 cases in the
       existing Recorder binary), separate format-fact and snapshot-index
-      owners, exact structural censuses, ten mutation families, three-lane
+      owners, exact structural censuses, thirteen mutation families, three-lane
       gates, and 359/329 Status-coverage target are registered at clean
-      `1b40b84` before any R1 edit or binary run. Freeze the old-production
-      byte fingerprints, then continue every remaining survivor batch until
+      `1b40b84` before any R1 edit or binary run. The first implementation-WIP
+      Debug allocation run additionally exposed and preregistered the
+      `recorder-schema-default-vector-debug-oom-terminates` supplemental
+      finding: the final schema owner must use a throwing initializer-list
+      constructor, retain RecorderAllocation 33/3, and add both new internal
+      headers to a separate 9C-5 standalone-compilation list without
+      reclassifying them as public. Freeze the old-production byte
+      fingerprints, then continue every remaining survivor batch until
       all 68 + 3 original
       supplemental findings plus every new
       supplemental finding carry a disposition.
