@@ -23,9 +23,10 @@
 > 58/58 pass in all three retained configurations, and nine mutations turn red. T2's exact-zero
 > and hot/no-throw contract landed at `72368f2` plus leading-gate hardening `0f564ce`/`db1b067`:
 > all focused gates and 58/58 pass in all three retained configurations, and eight
-> signature/comment/placement/numerical mutations turn red. C1's old-production
-> boundary is frozen at `35a43ce`: exact grammar/diagnostics pass 886/10 while
-> structure is red first at the registered absent message owner.
+> signature/comment/placement/numerical mutations turn red. C1 landed at
+> `bd1c2ed` plus gate hardening `6ef3f33`: exact grammar/diagnostics pass
+> 886/10, all companion gates and 58/58 pass in all three retained
+> configurations, and fourteen ownership/grammar/diagnostic mutations turn red.
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
@@ -1519,12 +1520,19 @@ debt.
       PackTopology 170/12; all companion focused gates and 58/58 pass in all three
       retained configurations, and eight mutations turn red.
       Original census: 31 APPLIED / 32 pending / 8 deferrals; combined registry:
-      35 APPLIED / 32 pending / 9 deferrals. C1's poisoned exact-diagnostic matrix,
-      strict grammar fixtures, message/helper/Status ownership gate, eleven mutation
-      families, and final 886/10 floor are registered before any C1 test/source/gate
-      edit or binary run. Old production passes the frozen oracle exactly at
-      886/10 and fails structure first at `msg_too_large` 0/1 at oracle-only
-      `35a43ce`. Apply C1, then continue every remaining survivor batch until
+      35 APPLIED / 32 pending / 9 deferrals. C1 PASSED locally at `bd1c2ed`
+      plus structural hardening `6ef3f33`: four exact limit-message owners,
+      one locale-independent ASCII scanner, eight direct Status-returning
+      semantic exits, and truthful reader-cursor offset documentation retain
+      the poisoned 886/10 grammar/diagnostic oracle exactly. NetlistCsv 886/10,
+      ParserAllocation 1143/13, PackTopology 170/12, PackSolver 994/33,
+      PackStepper 333/13, allocation 14/2, and structural 1/1 pass in Debug,
+      fast-math Release/IPO-off, and host-C++ CUDA; all three restored trees
+      pass 58/58 and no-op rebuilds. Fourteen limit/message/grammar/status/
+      diagnostic-contract mutations turn red and exact hashes are restored.
+      Original census: 34 APPLIED / 29 pending / 8 deferrals; combined registry:
+      38 APPLIED / 29 pending / 9 deferrals. Continue with R1 and every remaining
+      survivor batch until
       all 68 + 3 original
       supplemental findings plus every new
       supplemental finding carry a disposition.
@@ -2015,4 +2023,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-29 | MQ.2 T2 thermal hot/no-throw contract | PASSED locally at `72368f2` plus gate hardening `0f564ce`/`db1b067` — `CompiledThermalGraph::assemble` has paired `noexcept` specifications and PackTopology's prefix-sliced leading contract names D-19/D-21 ownership plus the cold authoring/compile and at-most-once-per-step-attempt hot assembly boundary; the assembly body is unchanged. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree focused gates each pass PackTopology 170/12, PackSolver 994/33, PackStepper 333/13, allocation 14/2, and structural 1/1; all three restored trees pass 58/58, including real CUDA, then no-op rebuild. Eight exception-specification, comment, leading-placement, arithmetic, and independently poisoned publication mutations turn red; exact hashes are restored. Both T2 IDs are APPLIED: original census 31 APPLIED / 32 pending / 8 deferrals; combined census 35 APPLIED / 32 pending / 9 deferrals across 76 IDs. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-29 | MQ.2 C1 netlist executable contract | REGISTERED at clean `e5e0b9d` before any C1 test/source/gate edit or binary run — four strict value spellings add 12 assertions, one poisoned twelve-fixture matrix pins all eight semantic exits plus three reader limits and the ordinary quote failure at absolute byte 31 for 48 assertions, and existing file/row limits gain five exact assertions. The frozen floor is NetlistCsv 821/9→886/10. The future structural gate pins one owner for each limit message, every exact limit-guard operator and the entry reset, exact ASCII scanner/grammar bodies, all eight direct Status-returning semantic exits, and the truthful zero-when-unavailable offset contract. Old production must pass 886/10 while structure fails first at absent `msg_too_large` owner 0/1. Eleven mutation families and the retained three-lane focused/full gates are registered in `.claude/reports/mq2-quality-backlog-preregistration-2026-07-23.md`. | REGISTERED; C1 remains open |
 | 2026-07-29 | MQ.2 C1 frozen old-production boundary | PASSED behavior / RED structure exactly as registered at oracle-only `35a43ce`: unchanged production hashes pass NetlistCsv 886/10, including all poisoned semantic-zero and reader-cursor diagnostics, while the aggregate structural test passes all prior included suites and fails first at exact `msg_too_large` owner count 0 versus 1. Static adversarial review hardened raw-comment adjacency, allocation offset ownership, separate quoted/unquoted consumers, descriptor locality, and the exponent-only `+` literal before freeze. No Release/CUDA/full-suite or production claim. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | FROZEN; implementation required |
-| — | NEXT | **MQ.2 C1 netlist implementation:** edit only `NetlistCsv.cpp`, `NetlistCsv.hpp`, and `CHANGELOG.md` to add the four registered message owners/numeric pin, exact ASCII scanner extraction, direct Status-returning semantic owner, and truthful zero-when-unavailable offset documentation. Do not change the frozen oracle, grammar, status, row, offset, message bytes, accepted topology, or limits. Require NetlistCsv 886/10 and structural 1/1, run all eleven registered mutation families with exact restoration, then pass retained Debug/Release/CUDA focused plus 58/58 gates before dispositioning the three IDs. Proceed through every remaining survivor batch to complete original 68+3 plus post-baseline registry disposition, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then M1.0 toward v6.0.0. |
+| 2026-07-29 | MQ.2 C1 netlist parsing ownership | PASSED locally at `bd1c2ed` plus gate hardening `6ef3f33` — four compile-time limit-message owners remain tied to the unchanged numeric bounds, one locale-independent ASCII scanner preserves the strict value grammar, all eight semantic failures directly return their Status owner, and the public offset contract distinguishes reader-cursor failures from zero-without-cursor diagnostics. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree focused gates each pass NetlistCsv 886/10, ParserAllocation 1143/13, PackTopology 170/12, PackSolver 994/33, PackStepper 333/13, allocation 14/2, and structural 1/1; all three restored trees pass 58/58, including real CUDA, then no-op rebuild. Fourteen limit/message/scanner/grammar/status/offset/contract mutations turn red and exact hashes are restored. The three C1 IDs are APPLIED: original census 34 APPLIED / 29 pending / 8 deferrals; combined census 38 APPLIED / 29 pending / 9 deferrals across 76 IDs. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
+| — | NEXT | **MQ.2 R1 recording common/core:** preregister the exact byte-identical recording fixtures, structural ownership delta, and mutation/restoration bands for `crc32-twice`, `header-crc-helper`, `csv-parquet-schema-twice`, `state-index-int-arith`, `snapshotview-twice`, and `dead-usings-copy-pasted` before any R1 test/source/gate edit or decisive run. Then freeze old production, apply R1, and proceed through every remaining survivor batch to complete original 68+3 plus post-baseline registry disposition, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then M1.0 toward v6.0.0. |

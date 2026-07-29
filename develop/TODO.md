@@ -115,6 +115,16 @@
 > pass 58/58 plus no-op rebuilds. Eight mutations turn red and exact hashes are restored.
 > Original census: 31 APPLIED / 32 pending / 8 deferrals; combined 76-ID registry:
 > 35 APPLIED / 32 pending / 9 deferrals. Next is C1 netlist parsing.
+>
+> **2026-07-29 — MQ.2 C1 netlist ownership landed.** Commit `bd1c2ed` plus structural
+> hardening `6ef3f33` gives each unchanged CSV limit message one compile-time owner, extracts
+> one locale-independent ASCII scanner without widening the value grammar, directly returns all
+> eight semantic Status failures, and makes the public reader-offset contract truthful. NetlistCsv
+> 886/10, ParserAllocation 1143/13, and every pack/structural companion gate pass in Debug,
+> fast-math Release/IPO-off, and host-C++ CUDA; all three restored trees pass 58/58 plus no-op
+> rebuilds. Fourteen mutations turn red and exact hashes are restored. Original census:
+> 34 APPLIED / 29 pending / 8 deferrals; combined 76-ID registry:
+> 38 APPLIED / 29 pending / 9 deferrals. Next is R1 recording common/core.
 
 ---
 

@@ -1587,3 +1587,102 @@ allocation, timing, sanitizer, coverage, hosted-CI, installed-package,
 Linux, or macOS claim is made at this boundary. All three C1 survivor IDs
 remain pending until the production implementation, registered mutations,
 and three-lane acceptance are complete.
+
+### C1 implementation, mutation sensitivity, and acceptance
+
+Production commit `bd1c2ed` implements the frozen ownership shape without
+changing the accepted grammar or any recorded diagnostic. Four adjacent
+file-local `constexpr std::string_view` values own the unchanged limit
+messages, with one numeric `static_assert` tying their decimal spellings to
+4,194,304 bytes, 100,000 rows, 32 columns, and 65,536 bytes per field.
+`isAsciiDigit` and `scanDigits` now own the locale-independent ASCII scan
+without widening the strict value grammar. `failSemantic` returns the
+`Invalid_parameters` `Status` directly and all eight callers directly return
+it. The public `offset` contract now says exactly when a reader cursor is
+available and when the value remains zero. `CHANGELOG.md` records the
+user-visible diagnostic/grammar contract.
+
+The final compact structural census is exact:
+
+```text
+limit-message owner-plus-consumer counts               3 / 2 / 3 / 2
+isAsciiDigit / scanDigits tokens                       4 / 4
+failSemantic total / direct-return / row / element.row 9 / 8 / 7 / 1
+direct Invalid_parameters returns                      12
+diagnostic.offset / diagnostic_.offset writes          1 / 1
+```
+
+Adversarial review found two initially unpinned but registered contracts:
+the public four-limit prose could drift, and the bounded-file loader could
+pass a different byte bound while the separate owner/guard checks stayed
+green. Hardening commit `6ef3f33` adds exact checks for
+`detail::readBoundedFile(path, max_csv_bytes, contents)` and the public
+`4 MiB, 100,000 rows, 32 columns, and 65,536 bytes/field` sentence. It does
+not change production or the frozen unit oracle.
+
+Fourteen independent mutations were run from clean committed boundaries:
+
+| Mutation | Registered red result |
+|---|---|
+| change `max_csv_columns` from 32 to 33 | compilation stopped at the numeric owner with an exact `33 == 32` failed static assertion |
+| change the last byte of `msg_too_wide` | the exact diagnostic matrix reached 47/48; only the column-message byte comparison failed |
+| remove the quoted-field limit guard | the matrix reached 47/48; the 65,537-byte quoted payload instead reported `unterminated quoted CSV field` |
+| remove the unquoted-field limit guard | the matrix reached 46/48; its cursor offset became zero and the later missing-columns message replaced the field-limit message |
+| change the lower ASCII digit bound from `'0'` to `'1'` | the existing accepted scientific-notation case failed fatally at 1/1 |
+| advance `scanDigits` by two bytes | complete NetlistCsv execution reached 805 assertions with 14 failures across seven cases |
+| admit a leading plus before the frozen parser branches | structure rejected two `'+'` tokens versus the exact one-token exponent-sign contract |
+| make `failSemantic` return `Success` | the diagnostic matrix reached 40/48; all eight exact status assertions failed |
+| synthesize `diagnostic.offset = 1` in `failSemantic` | the matrix reached 40/48; all eight poisoned semantic-zero offsets failed |
+| reintroduce one discarded two-line semantic caller | structure rejected seven direct returns versus eight |
+| restore the stale unrestricted header offset sentence | structure rejected the missing truthful offset-member contract |
+| change the independently derived ordinary-quote expectation 31 to 32 | the matrix reached 47/48 and reported the actual cursor 31 |
+| spell the public byte limit as `four MiB` | the hardened public-limit contract reported zero occurrences versus one |
+| call the bounded loader with `max_csv_bytes - 1` | the hardened loader-bound contract reported zero occurrences versus one |
+
+Every mutation was inverse-patched before the next. Each inverse restored all
+applicable SHA-256 anchors, `git diff --exit-code HEAD -- <touched-files>`
+returned zero, and the porcelain status was empty. No oracle count, status,
+row, offset, message byte, grammar spelling, or source hash was reblessed.
+
+The final accepted anchors at `6ef3f33` are:
+
+```text
+A0531B4FA199A032D45112E4B6B5175FFA4F41B54F4CE948EA71D287839D65BA  522  src/core/NetlistCsv.cpp
+381387F62C37F3E0E508204843D67C4F05580EA3C4B4B8DCCC685C4259832D94   55  src/core/NetlistCsv.hpp
+EA2667A57F5F603622B3EF416C351B24179A1AA300BBF6E24F76A672DD349316  539  tests/unit/core_NetlistCsv_test.cpp
+B0C595C7BB0F9080C54420AD08BB491BC4CD604966949B7210D5A115F8A55143 1265  tests/structural/p9c_architecture.cmake
+86532D4C48AC8367D6428766B44670996CB944444DD9D2BA32E2882954E5299E  326  CHANGELOG.md
+```
+
+After the final restoration, all three retained trees were rebuilt from clean
+HEAD. The focused command selected exactly NetlistCsv, ParserAllocation,
+PackTopology, PackSolver, PackStepper, P2-G1 allocation, and the aggregate
+structural test. Results were exact:
+
+| Configuration | NetlistCsv | ParserAllocation | PackTopology | PackSolver | PackStepper | P2-G1 allocation | Structural aggregate |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Debug/ThinLTO | 886 assertions / 10 cases | 1143 / 13 | 170 / 12 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+| fast-math Release, IPO off | 886 / 10 | 1143 / 13 | 170 / 12 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+| Release/ThinLTO CUDA tree, host C++ | 886 / 10 | 1143 / 13 | 170 / 12 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+
+The unfiltered Debug, fast-math Release/IPO-off, and host-C++ CUDA suites then
+passed **58/58** serially. `build-mq1-debug/Testing/Temporary/LastTest.log` and
+`build-mq1-release/Testing/Temporary/LastTest.log` select
+`unit_test_core_CudaDisabled`; the CUDA log selects the real
+`unit_test_core_CudaSpmBatch`. Immediate builds in all three trees reported
+`ninja: no work to do.` The CUDA build and tests inherited the complete
+VS 18 x64 `vcvars64.bat` environment.
+
+`clang-format --dry-run --Werror` passes the changed source, header, and unit
+test; `git diff --check` passes; and the committed pre-closeout porcelain
+status was empty. Release and CUDA compilation emitted only the already
+registered `-Ofast is deprecated` diagnostic; B1 remains its owner. No new
+build finding and no allocation, timing, sanitizer, coverage, hosted-CI,
+installed-package, Linux, macOS, or device-LTO claim is made.
+
+`csv-limits-restated-in-prose`, `ascii-digit-scan-helper`, and
+`failsemantic-returns-unused-bool` are APPLIED. The original census is now
+34 APPLIED, 0 REFUTED, 8 named deferrals, and 29 pending. With the unchanged
+post-baseline registry, the combined 76-ID census is 38 APPLIED, 0 REFUTED,
+9 named deferrals, and 29 pending. MQ.2 remains open; R1 recording
+common/core is next.

@@ -110,7 +110,7 @@ re-derivable artifacts are the deliverable, not a cost.
 | Derivations (grows during MQ.4/MQ.5) | `docs/derivations/` |
 | Working TODO mirror (PLAN.md §8 is authoritative) | `develop/TODO.md` |
 
-## 6. The current campaign (2026-07-24, reconciled)
+## 6. The current campaign (2026-07-29, reconciled)
 
 M0 is complete. **MQ.1 is PASSED** (three-lane 58/58 baseline;
 `.claude/reports/mq1-baseline-validation-2026-07-23.md`). **MQ.2 is OPEN and mid-flight:** the
@@ -175,9 +175,19 @@ gate passes in Debug, fast-math Release/IPO-off, and host-C++ CUDA; all three fi
 census: 31 APPLIED / 32 pending / 8 deferrals; combined 76-ID registry:
 35 APPLIED / 32 pending / 9 deferrals.
 
-Your first action is C1 netlist parsing: preregister exact grammar/status/rejection-offset fixtures
-and the structural owner delta for the three named C1 findings before any C1 test/source/gate edit
-or run. Then apply C1 and continue through every remaining survivor batch
+**C1 PASSED locally at `bd1c2ed` plus `6ef3f33` (2026-07-29):** four exact limit-message
+owners, one locale-independent ASCII scanner, direct Status-returning semantic failures, and
+truthful reader-cursor offset documentation retain the poisoned NetlistCsv 886/10 oracle.
+ParserAllocation 1143/13 and every pack/structural companion gate pass in Debug, fast-math
+Release/IPO-off, and host-C++ CUDA; all three restored trees pass 58/58 and no-op rebuilds.
+Fourteen mutations turn red and exact hashes are restored. Original census:
+34 APPLIED / 29 pending / 8 deferrals; combined 76-ID registry:
+38 APPLIED / 29 pending / 9 deferrals.
+
+Your first action is R1 recording common/core: preregister the exact byte-identical fixtures,
+structural owner delta, mutations, and restoration bands for its six named findings before any
+R1 test/source/gate edit or decisive run. Then freeze old production, apply R1, and continue
+through every remaining survivor batch
 until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
 supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
 six named landmines and MQ.1's build-policy findings included. Then →
