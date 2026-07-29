@@ -25,6 +25,7 @@ fixtures`). The completed boundaries recorded so far are:
 | `d4e1a2d` | A1 structural-anchor correction | test-gate baseline repair, no source change |
 | `8630207` | P1 pack-solver algebra | exact no-op plus executable ownership gate |
 | `bf185dd` | P2 Mode-C relaxation storage | exact no-op plus seven-role scratch ownership |
+| `62f1587` | S1 PackStepper ownership | exact no-op plus executable full-`dt`/frozen-solve contract |
 
 The retained build trees are `build-mq1-debug` (Clang 21.1.8 Debug/ThinLTO),
 `build-mq1-release` (Clang 21.1.8 fast-math Release, IPO off), and
@@ -787,3 +788,121 @@ The restored three configurations each re-passed 949/30 and 1/1.
 `clang-format --dry-run --Werror` and `git diff --check` pass. No full-suite,
 timing, sanitizer, coverage, hosted-CI, installed-package, CUDA-device, Linux,
 or macOS claim is made for P2.
+
+## S1 — PackStepper ownership and executable substeps contract
+
+### Reconciliation and implementation
+
+The seven-file WIP named by PLAN was first audited without editing either
+frozen unit oracle. The refactor is behavior-preserving by direct
+correspondence:
+
+- the three old prefix searches become one cold
+  `detail::firstOccurrence` owner with the same prefix, equality, and
+  short-circuit semantics;
+- the four state-copy loops become one state-to-contiguous
+  `gatherStates` owner and one contiguous-to-state `scatterStates` owner,
+  retaining their original offsets, copy order, validation, invalidation,
+  solver snapshot, diagnostics, and heat transactions; and
+- `stepImpl` retains one electrical solve and one thermal assembly before
+  `substeps` full-`dt` advances. The public spelling remains `substeps`
+  because its documented meaning is the established multirate window, not
+  `dt` subdivision.
+
+Independent adversarial review found no S1 blocker. Commit `62f1587` applies
+`packstepper-gather-scatter`, `unique-in-prefix-three-spellings`, and
+`substeps-name-contradicts-code`. The compact source census is exactly the
+registered one: `firstOccurrence(` owner/PackSolver/PackStepper = 1/2/1,
+`gatherStates(`/`scatterStates(`/`std::memcpy(` = 3/3/2, and the
+PackStepper private-member anchor is 35 while its namespace/API anchor stays
+4. No numerical oracle or recorded hash was changed or reblessed.
+
+### Positive three-configuration and full-suite gates
+
+Before the implementation commit and again after all mutations were
+reversed, the focused gate passed without a count delta:
+
+| Configuration | PackStepper | PackSolver | P2-G1 allocation | Structural aggregate |
+|---|---:|---:|---:|---:|
+| Debug/ThinLTO | 230 assertions / 9 cases | 949 / 30 | 14 / 2 | 1 / 1 |
+| fast-math Release, IPO off | 230 / 9 | 949 / 30 | 14 / 2 | 1 / 1 |
+| Release/ThinLTO CUDA tree, host C++ | 230 / 9 | 949 / 30 | 14 / 2 | 1 / 1 |
+
+The amended 16-assertion S1 case therefore proves the registered contract:
+one `substeps=4`, `dt=0.125 s` call publishes one current within
+`1e-10 A` of `8 A`; four independent direct `EulerLegacy::step` calls use
+that same frozen current density; both elapsed-time rows are exactly
+`0.5 s`; and the complete arenas are byte-identical.
+
+As an additive gate beyond the focused registration, restored commit
+`62f1587` passed the unfiltered CTest suite **58/58** in all three retained
+trees. The CUDA tree was built under the complete VS 18 x64 developer
+environment and its suite included the real `unit_test_core_CudaSpmBatch`,
+not the disabled shim. This makes no timing claim: reported durations are
+discarded under D-27.
+
+### Adversarial mutation sensitivity
+
+Nine controlled Debug mutations ran only after the implementation was a
+clean committed boundary. Every one turned its registered gate red:
+
+| Mutation | Numerical result | Structural result |
+|---|---|---|
+| divide both production inner steps by `substeps` | S1 stopped at 12/13 reached assertions; elapsed time was `0.125`, expected `0.5` | full-`dt` token count 0/2 |
+| divide only the independent direct-Euler comparator by `substeps` | S1 stopped at 13/14; comparator elapsed time was `0.125`, expected `0.5` | not applicable; this is an oracle mutation |
+| make `firstOccurrence` always true | duplicate archetype 17/18, aliased Thevenin 1/2, aliased PackStepper 2/3 | exact owner absent |
+| remove only the PackStepper prefix guard | downstream PackSolver validation may mask it, as registered | PackStepper consumer count 0/1 |
+| reverse gather direction | two-batch P2-G1 stopped at 6/7 | exact gather owner absent |
+| reverse scatter direction | P2-G1 stopped at 14/15; repeated current changed from `{8.93033154179052069, 11.06966845820940115}` to `{8.93475168745069226, 11.06524831254933616}` | exact scatter owner absent |
+| make public `checkpoint` gather into the internal buffer | P2-G1 stopped at 13/14 | public gather call absent |
+| add an unreachable electrical solve inside the substep loop | not run; structural placement is the registered arbiter | solve count 2/1 |
+| add an unreachable thermal assembly inside the substep loop | not run; structural placement is the registered arbiter | assembly count 2/1 |
+
+The production-`dt`, gather, scatter, and public-buffer mutations also make
+the exact helper/body gate red, so neither numerical nor structural
+sensitivity is being inferred from the other.
+
+After every inverse patch, the touched file matched its pre-mutation hash.
+The final restoration anchors were:
+
+```text
+473E690A73D3575B683FB424223236A2B51FDE05C3C615E28C98FB8C16677A07  src/core/PackTopologyInternal.hpp
+A870C40AA4043E82AA30A0A3CA1969C38DD68AB0E470E9FEFC2A2B536D31DD22  src/core/PackSolver.cpp
+DBAB230FE124ECE13967A21B56861CF1996EEB3D2BA7E3FCBC45D2EB6EC9B553  src/core/PackStepper.hpp
+A9B72A22A7E723C3A17AAC7FDC8B386313EFF396C8472F44CE7292E6F8F916B3  src/core/PackStepper.cpp
+2D2A678801A4DA84368116DC2FDDF19F2A389308F5D49B537F34A8FAD4C5159A  tests/unit/core_PackStepper_test.cpp
+A2B8971BC4D803C6307BDAD75A4CEC0BA37F6D49D3234B4328C6C69911B79C0E  tests/structural/p9c_architecture.cmake
+```
+
+At the clean restoration observation, `git diff --exit-code HEAD --` over
+all touched files returned zero, `git status --porcelain` was empty,
+`clang-format --dry-run --Werror` passed on the four changed C++ files, and
+`git diff --check` passed.
+
+### Adversarial findings carried forward
+
+The review also found a separate, pre-existing high-severity ownership bug:
+implicit moves leave `PackSolver::configured_`/`has_solution_` and
+`PackStepper::configured_` true in objects whose vectors and workspace were
+moved away. A moved-from `PackStepper::solveElectrical` can consequently
+reach a null moved-from solver workspace. No prior PLAN, ledger, survivor,
+or refutation row owns it. It is not misreported as an S1 regression or
+silently fixed without a failing test; the next supplemental boundary will
+preregister explicit no-throw move invariants, moved-from rejection, and
+destination-continuity oracles before editing production code.
+
+Three test-strength observations are also retained rather than hidden by the
+green gate: add an independent checkpoint-layout oracle (the existing
+round-trip is symmetric), a numerical heterogeneous-thermal frozen-assembly
+oracle (the present S1 case is isothermal), and non-adjacent `[a,b,a]`
+prefix-duplicate cases (the exact structural owner currently supplies the
+stronger proof). A fresh full Debug rebuild additionally exposed the
+pre-existing `EIGEN_STRONG_INLINE` redefinition warning; B1's later
+build-diagnostics batch must disposition it alongside the already registered
+`-Ofast` and legacy narrowing warnings.
+
+No sanitizer, coverage, hosted-CI, installed-package, Linux, macOS, or
+performance claim is made for S1. MQ.2 remains open; the three S1 survivor
+IDs are APPLIED, taking the running census from 21 to 24 APPLIED and leaving
+39 of the original 71 decisions pending before newly discovered supplemental
+work.

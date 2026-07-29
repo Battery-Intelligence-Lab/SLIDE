@@ -134,21 +134,21 @@ are allocated transactionally and published once, hot traffic remains six fills,
 three-configuration 949/30 gate passes, and six adversarial storage/publication mutations turn
 red.
 
-**S1 is preregistered and MID-FLIGHT — your first action is its land-or-revert (M0.1 pattern):**
-the PackStepper ownership gate (gather/scatter owners, `firstOccurrence` prefix owner, the
-executable `substeps * dt` contract) is registered at `404eb79`; its exact-current comparator was
-FALSIFIED by a 13/16 pre-production run and replaced at `1c74630` (EulerLegacy-direct comparator
-under the solver's `1e-10 A` KCL band; floor 230/9); the oracles are frozen test-only at
-`81c1ed1`. The S1 IMPLEMENTATION sits UNCOMMITTED in the working tree
-(`src/core/PackStepper.{cpp,hpp}`, `src/core/PackTopologyInternal.hpp`, `src/core/PackSolver.cpp`,
-both structural cmake gates, CHANGELOG). Validate it against the registered band — PackStepper
-230/9, PackSolver 949/30, aggregate structural 1/1, allocation 14/2, in Debug, fast-math
-Release/IPO-off, and the host-C++ CUDA tree, registered mutations red then restored — then land
-with a §8 row, or revert with a recorded reason. Never rebless an oracle to fit the WIP.
+**S1 PASSED locally at `62f1587` (2026-07-29):** the PackStepper gather/scatter owners,
+`firstOccurrence` prefix owner, and executable `substeps * dt` contract pass PackStepper 230/9,
+PackSolver 949/30, aggregate structural 1/1, and allocation 14/2 in Debug, fast-math
+Release/IPO-off, and the host-C++ CUDA tree. The restored commit also passes the full 58/58 suite
+in all three trees; nine controlled mutations turn red and exact source hashes are restored.
+The original exact-current comparator remains FALSIFIED at 13/16; the frozen
+EulerLegacy-direct comparator at `1c74630` was not reblessed.
 
-After S1: S2 source-step rollback, then every remaining survivor batch until MQ.2 closes with
-all 68 + 3 supplemental findings dispositioned applied / REFUTED / deferred-with-owner — no
-silent drops; the six named landmines and MQ.1's two build-policy findings included. Then →
+**Your first action is S1.1 adversarial ownership hardening:** preregister and implement SHORT
+moved-from `PackSolver`/`PackStepper` rejection and destination-continuity tests plus independent
+checkpoint-layout, heterogeneous-thermal frozen-assembly, and non-adjacent prefix oracles. The
+move bug must fail before its fix. Then S2 source-step rollback and every remaining survivor batch
+until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
+supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
+six named landmines and MQ.1's build-policy findings included. Then →
 MQ.3 repo hygiene → MQ.4 derivation inventory → MQ.5 independent re-derivation (derive FIRST,
 then diff against the code) → MQ.6 logic hunt (loop-until-dry; gates are code too) → MQ.7
 structural performance hunt → MQ.8 closeout. Then expansion resumes at **M1.0** and runs the

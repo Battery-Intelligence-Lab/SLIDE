@@ -69,9 +69,17 @@
 > three-configuration exact gate and five adversarial mutations. P2's Mode-C scratch finding is
 > APPLIED at `bf185dd`: seven roles, one transactional publication, six unchanged hot fills, and
 > six adversarial mutations. Current evidence census over 71 decisions: 21 APPLIED, 0 REFUTED,
-> 8 named deferrals, 42 pending. Next is S1 PackStepper ownership and the executable
-> `substeps * dt` contract. The PackSolver test-file debt is now 1,510 lines and remains explicitly
-> owned by M1.0.
+> 8 named deferrals, 42 pending. The PackSolver test-file debt is now 1,510 lines and remains
+> explicitly owned by M1.0.
+>
+> **2026-07-29 — MQ.2 S1 PackStepper ownership landed.** Commit `62f1587` applies the shared
+> gather/scatter and prefix-uniqueness owners and pins `substeps=N` as N full-`dt` advances under
+> one frozen electrical solve and thermal assembly. Focused Debug, fast-math Release, and
+> host-C++/CUDA-tree gates pass PackStepper 230/9, PackSolver 949/30, allocation 14/2, and
+> structural 1/1; all three restored trees also pass the full 58/58 suite. Nine mutations turn
+> red and exact hashes were restored. Census: 24 APPLIED, 0 REFUTED, 8 named deferrals, 39 pending
+> among the original 71. Next is S1.1 failing-test-first moved-from ownership and independent
+> behavioral-oracle hardening, then S2 source-step rollback.
 
 ---
 
