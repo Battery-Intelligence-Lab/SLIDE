@@ -533,6 +533,19 @@ load_compact("src/core/PackTopologyInternal.hpp" mq2_pack_topology_internal)
 load_compact("src/core/PackStepper.hpp" mq2_pack_stepper_header)
 load_compact("src/core/PackStepper.cpp" mq2_pack_stepper)
 
+require_token_count("MQ.2 S1.1 PackSolver explicit move contract"
+  mq2_pack_header
+  "PackSolver()=default;PackSolver(constPackSolver&)=delete;PackSolver&operator=(constPackSolver&)=delete;PackSolver(PackSolver&&other)noexcept;PackSolver&operator=(PackSolver&&other)noexcept;"
+  1)
+require_token_count("MQ.2 S1.1 PackStepper explicit move contract"
+  mq2_pack_stepper_header
+  "PackStepper()=default;PackStepper(constPackStepper&)=delete;PackStepper&operator=(constPackStepper&)=delete;PackStepper(PackStepper&&other)noexcept;PackStepper&operator=(PackStepper&&other)noexcept;"
+  1)
+require_token_count("MQ.2 S1.1 PackSolver direct utility include"
+  mq2_pack_sparse "#include<utility>" 1)
+require_token_count("MQ.2 S1.1 PackStepper direct utility include"
+  mq2_pack_stepper "#include<utility>" 1)
+
 require_token_count("MQ.2 S1 exact prefix-uniqueness owner"
   mq2_pack_topology_internal
   "template<classRange,classProjection=std::identity>requiresstd::ranges::random_access_range<constRange>&&std::ranges::sized_range<constRange>[[nodiscard]]constexprboolfirstOccurrence(constRange&range,std::size_tindex,Projectionprojection={}){if(index>=std::ranges::size(range))returnfalse;constautofirst=std::ranges::begin(range);constautocurrent=first+static_cast<std::ranges::range_difference_t<constRange>>(index);returnstd::ranges::find(first,current,std::invoke(projection,*current),projection)==current;}"

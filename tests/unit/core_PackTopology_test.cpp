@@ -20,6 +20,14 @@
 
 using namespace slide;
 
+static_assert([] {
+  constexpr std::array values{ 7, 11, 7 };
+  return core::detail::firstOccurrence(values, 0)
+         && core::detail::firstOccurrence(values, 1)
+         && !core::detail::firstOccurrence(values, 2)
+         && !core::detail::firstOccurrence(values, 3);
+}());
+
 TEST_CASE("nested pack combinators compile to one flat netlist", "[core][pack][compile]")
 {
   const auto leaf = core::cell({ .archetype = "spm", .thermal = true });

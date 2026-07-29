@@ -39,6 +39,14 @@ static_assert(std::is_same_v<
                 decltype(std::declval<core::PackSolver &>().workspace()),
                 const core::SolverWorkspace &>,
               "PackSolver must not expose mutable workspace ownership");
+static_assert(std::is_nothrow_move_constructible_v<core::SolverWorkspace>);
+static_assert(std::is_nothrow_move_assignable_v<core::SolverWorkspace>);
+static_assert(!std::is_copy_constructible_v<core::SolverWorkspace>);
+static_assert(!std::is_copy_assignable_v<core::SolverWorkspace>);
+static_assert(std::is_nothrow_move_constructible_v<core::PackSolver>);
+static_assert(std::is_nothrow_move_assignable_v<core::PackSolver>);
+static_assert(!std::is_copy_constructible_v<core::PackSolver>);
+static_assert(!std::is_copy_assignable_v<core::PackSolver>);
 
 namespace {
 
@@ -222,6 +230,98 @@ Status solveAffineOnce(const core::PackNode &root,
                        });
 }
 
+[[nodiscard]] bool haveSameBits(double actual, double expected) noexcept
+{
+  return std::bit_cast<std::uint64_t>(actual)
+         == std::bit_cast<std::uint64_t>(expected);
+}
+
+[[nodiscard]] bool haveSameSolutionBits(
+  const core::PackSolution &actual,
+  const core::PackSolution &expected) noexcept
+{
+  return haveSameBits(actual.cell_current, expected.cell_current)
+         && haveSameBits(actual.node_voltage, expected.node_voltage)
+         && haveSameBits(actual.terminal_voltage, expected.terminal_voltage);
+}
+
+[[nodiscard]] bool haveSameDiagnostics(
+  const core::PackSolveDiagnostics &actual,
+  const core::PackSolveDiagnostics &expected) noexcept
+{
+  return actual.iterations == expected.iterations
+         && actual.numeric_factorizations == expected.numeric_factorizations
+         && actual.symbolic_factorizations == expected.symbolic_factorizations
+         && actual.jacobian_refreshes == expected.jacobian_refreshes
+         && actual.source_steps == expected.source_steps
+         && haveSameBits(actual.residual_norm, expected.residual_norm)
+         && haveSameBits(actual.constraint_drift, expected.constraint_drift)
+         && haveSameBits(actual.constraint_bound, expected.constraint_bound)
+         && haveSameBits(actual.relaxation_gain, expected.relaxation_gain);
+}
+
+struct WorkspaceObservation
+{
+  bool valid{};
+  int age{};
+  int numeric_factorizations{};
+  int symbolic_factorizations{};
+};
+
+[[nodiscard]] WorkspaceObservation observeWorkspace(
+  const core::SolverWorkspace &workspace) noexcept
+{
+  return { .valid = workspace.valid(),
+           .age = workspace.age(),
+           .numeric_factorizations = workspace.numericFactorizations(),
+           .symbolic_factorizations = workspace.symbolicFactorizations() };
+}
+
+[[nodiscard]] bool hasSameWorkspace(
+  const core::SolverWorkspace &actual,
+  const WorkspaceObservation &expected) noexcept
+{
+  return actual.valid() == expected.valid && actual.age() == expected.age
+         && actual.numericFactorizations() == expected.numeric_factorizations
+         && actual.symbolicFactorizations()
+              == expected.symbolic_factorizations;
+}
+
+struct SolverObservation
+{
+  core::PackSolution solution{};
+  core::PackSolveDiagnostics diagnostics{};
+  WorkspaceObservation workspace{};
+  unsigned workers{};
+};
+
+[[nodiscard]] SolverObservation observeSolver(const core::PackSolver &solver)
+{
+  return { .solution = solver.solution(),
+           .diagnostics = solver.diagnostics(),
+           .workspace = observeWorkspace(solver.workspace()),
+           .workers = solver.batchWorkerCount() };
+}
+
+[[nodiscard]] bool isDefaultSolution(
+  const core::PackSolution &solution) noexcept
+{
+  return solution.cell_current.empty() && solution.node_voltage.empty()
+         && haveSameBits(solution.terminal_voltage, 0.0);
+}
+
+[[nodiscard]] bool isDefaultDiagnostics(
+  const core::PackSolveDiagnostics &diagnostics) noexcept
+{
+  return haveSameDiagnostics(diagnostics, {});
+}
+
+[[nodiscard]] bool isDefaultWorkspace(
+  const core::SolverWorkspace &workspace) noexcept
+{
+  return hasSameWorkspace(workspace, {});
+}
+
 template <std::size_t CurrentCount, std::size_t NodeCount>
 void checkExactSolution(
   const core::PackSolution &solution,
@@ -353,16 +453,28 @@ TEST_CASE("Thevenin adapters reject every malformed public shape",
   CHECK(system.configure(topology.cells, topology.batch_archetypes, wrong_lanes)
         == Status::Invalid_parameters);
 
-  auto two_archetypes = compile(core::series(std::vector{
-    core::cell({ .archetype = "a" }), core::cell({ .archetype = "b" }) }));
-  two_archetypes.batch_archetypes[1] = two_archetypes.batch_archetypes[0];
-  for (auto &cell : two_archetypes.cells)
-    cell.archetype = two_archetypes.batch_archetypes[0];
-  const auto distinct_one_lane = core::TheveninBatchView::bind(first, 1);
-  const std::array two_views{ distinct_one_lane, one_lane };
-  CHECK(system.configure(two_archetypes.cells,
-                         two_archetypes.batch_archetypes,
-                         two_views)
+  auto three_archetypes = compile(core::series(std::vector{
+    core::cell({ .archetype = "a" }),
+    core::cell({ .archetype = "b" }),
+    core::cell({ .archetype = "c" }) }));
+  three_archetypes.batch_archetypes[2] =
+    three_archetypes.batch_archetypes[0];
+  three_archetypes.cells[2].archetype =
+    three_archetypes.batch_archetypes[0];
+  AffineBatch duplicate_first{ .ocv = { 4.0 },
+                               .resistance = { 0.2 } };
+  AffineBatch duplicate_middle{ .ocv = { 4.1 },
+                                .resistance = { 0.3 } };
+  AffineBatch duplicate_last{ .ocv = { 4.2 },
+                              .resistance = { 0.4 } };
+  const std::array three_views{
+    core::TheveninBatchView::bind(duplicate_first, 1),
+    core::TheveninBatchView::bind(duplicate_middle, 1),
+    core::TheveninBatchView::bind(duplicate_last, 1)
+  };
+  CHECK(system.configure(three_archetypes.cells,
+                         three_archetypes.batch_archetypes,
+                         three_views)
         == Status::Invalid_parameters);
 
   REQUIRE(system.configure(topology.cells, topology.batch_archetypes, one_view)
@@ -426,6 +538,106 @@ TEST_CASE("pack solver rejects invalid scalar controls and incompatible modes",
   REQUIRE(solver.configure(topology, batches) == Status::Success);
   CHECK(solver.solve(1.0, core::PackSolveMode::relaxation)
         == Status::Invalid_parameters);
+}
+
+TEST_CASE("move-constructed pack solver rejects its source and continues exactly",
+          "[core][pack][solver][move][MQ.2][S1.1]")
+{
+  constexpr double applied_current = 2.0;
+  constexpr double tolerance = 1e-12;
+  constexpr int maximum_iterations = 2;
+  const auto mode = core::PackSolveMode::sparse_newton;
+  const auto topology = compile(core::cell({ .archetype = "source" }));
+  AffineBatch batch{ .ocv = { 4.0 }, .resistance = { 0.25 } };
+  const std::array views{ core::TheveninBatchView::bind(batch, 1) };
+
+  core::PackSolver source;
+  REQUIRE(source.configure(topology, views, 1) == Status::Success);
+  REQUIRE(source.solve(applied_current, mode, tolerance, maximum_iterations)
+          == Status::Success);
+  const auto expected = observeSolver(source);
+
+  core::PackSolver destination{ std::move(source) };
+  CHECK(haveSameSolutionBits(destination.solution(), expected.solution));
+  CHECK(haveSameDiagnostics(destination.diagnostics(), expected.diagnostics));
+  CHECK(hasSameWorkspace(destination.workspace(), expected.workspace));
+  CHECK(destination.batchWorkerCount() == expected.workers);
+
+  REQUIRE(source.setRelaxationGain(0.5) == Status::Invalid_parameters);
+  CHECK(source.solve(applied_current, mode, tolerance, maximum_iterations)
+        == Status::Invalid_parameters);
+  CHECK(isDefaultSolution(source.solution()));
+  CHECK(isDefaultDiagnostics(source.diagnostics()));
+  CHECK(isDefaultWorkspace(source.workspace()));
+  CHECK(source.batchWorkerCount() == 0);
+
+  REQUIRE(destination.solve(
+            applied_current, mode, tolerance, maximum_iterations)
+          == Status::Success);
+  CHECK(haveSameSolutionBits(destination.solution(), expected.solution));
+}
+
+TEST_CASE("move-assigned pack solver replaces a configured destination exactly",
+          "[core][pack][solver][move][assignment][MQ.2][S1.1]")
+{
+  constexpr double source_current = 2.0;
+  constexpr double destination_current = 1.0;
+  constexpr double tolerance = 1e-12;
+  constexpr int maximum_iterations = 2;
+  const auto mode = core::PackSolveMode::sparse_newton;
+  const auto source_topology =
+    compile(core::cell({ .archetype = "source" }));
+  const auto destination_topology = compile(core::parallel(
+    2, core::cell({ .archetype = "destination" })));
+
+  AffineBatch source_batch{ .ocv = { 4.0 },
+                            .resistance = { 0.25 } };
+  AffineBatch old_destination_batch{ .ocv = { 3.5, 4.5 },
+                                     .resistance = { 0.5, 1.0 } };
+  const std::array source_views{
+    core::TheveninBatchView::bind(source_batch, 1)
+  };
+  const std::array old_destination_views{
+    core::TheveninBatchView::bind(old_destination_batch, 2)
+  };
+
+  core::PackSolver source;
+  core::PackSolver destination;
+  REQUIRE(source.configure(source_topology, source_views, 1)
+          == Status::Success);
+  REQUIRE(source.solve(
+            source_current, mode, tolerance, maximum_iterations)
+          == Status::Success);
+  REQUIRE(destination.configure(
+            destination_topology, old_destination_views, 1)
+          == Status::Success);
+  REQUIRE(destination.solve(
+            destination_current, mode, tolerance, maximum_iterations)
+          == Status::Success);
+  const auto expected = observeSolver(source);
+  const int source_calls = source_batch.calls;
+  const int old_destination_calls = old_destination_batch.calls;
+
+  destination = std::move(source);
+  CHECK(haveSameSolutionBits(destination.solution(), expected.solution));
+  CHECK(haveSameDiagnostics(destination.diagnostics(), expected.diagnostics));
+  CHECK(hasSameWorkspace(destination.workspace(), expected.workspace));
+  CHECK(destination.batchWorkerCount() == expected.workers);
+
+  REQUIRE(source.setRelaxationGain(0.5) == Status::Invalid_parameters);
+  CHECK(source.solve(source_current, mode, tolerance, maximum_iterations)
+        == Status::Invalid_parameters);
+  CHECK(isDefaultSolution(source.solution()));
+  CHECK(isDefaultDiagnostics(source.diagnostics()));
+  CHECK(isDefaultWorkspace(source.workspace()));
+  CHECK(source.batchWorkerCount() == 0);
+
+  REQUIRE(destination.solve(
+            source_current, mode, tolerance, maximum_iterations)
+          == Status::Success);
+  CHECK(haveSameSolutionBits(destination.solution(), expected.solution));
+  CHECK(old_destination_batch.calls == old_destination_calls);
+  CHECK(source_batch.calls == source_calls + 1);
 }
 
 TEST_CASE("all pack solve modes preserve exact high-dynamic-range affine digits",
@@ -748,10 +960,13 @@ TEST_CASE("parallel Thevenin configuration rejects aliased batch objects",
 {
   const auto topology = compile(core::parallel(std::vector{
     core::cell({ .archetype = "a" }),
-    core::cell({ .archetype = "b" }) }));
+    core::cell({ .archetype = "b" }),
+    core::cell({ .archetype = "c" }) }));
   AffineBatch shared{ .ocv = { 4.0 }, .resistance = { 0.1 } };
-  const std::array<core::TheveninBatchView, 2> views{
+  AffineBatch distinct{ .ocv = { 4.1 }, .resistance = { 0.2 } };
+  const std::array<core::TheveninBatchView, 3> views{
     core::TheveninBatchView::bind(shared, 1),
+    core::TheveninBatchView::bind(distinct, 1),
     core::TheveninBatchView::bind(shared, 1)
   };
   core::PackSolver solver;

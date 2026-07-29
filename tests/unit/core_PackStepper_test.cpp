@@ -23,6 +23,10 @@ static_assert(std::is_same_v<
                 decltype(std::declval<core::PackStepper &>().solver()),
                 const core::PackSolver &>,
               "PackStepper must not expose mutable solver ownership");
+static_assert(std::is_nothrow_move_constructible_v<core::PackStepper>);
+static_assert(std::is_nothrow_move_assignable_v<core::PackStepper>);
+static_assert(!std::is_copy_constructible_v<core::PackStepper>);
+static_assert(!std::is_copy_assignable_v<core::PackStepper>);
 
 core::SpmFactoryInput thermalKokam(double temperature)
 {
@@ -39,18 +43,313 @@ core::SpmFactoryInput thermalKokam(double temperature)
 bool sameDiagnostics(const core::PackSolveDiagnostics &a,
                      const core::PackSolveDiagnostics &b)
 {
+  const auto same_scalar = [](double lhs, double rhs) {
+    return std::memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
+  };
   return a.iterations == b.iterations
          && a.numeric_factorizations == b.numeric_factorizations
          && a.symbolic_factorizations == b.symbolic_factorizations
          && a.jacobian_refreshes == b.jacobian_refreshes
          && a.source_steps == b.source_steps
-         && a.residual_norm == b.residual_norm
-         && a.constraint_drift == b.constraint_drift
-         && a.constraint_bound == b.constraint_bound
-         && a.relaxation_gain == b.relaxation_gain;
+         && same_scalar(a.residual_norm, b.residual_norm)
+         && same_scalar(a.constraint_drift, b.constraint_drift)
+         && same_scalar(a.constraint_bound, b.constraint_bound)
+         && same_scalar(a.relaxation_gain, b.relaxation_gain);
 }
 
+bool sameBits(std::span<const double> a, std::span<const double> b)
+{
+  return a.size() == b.size()
+         && (a.empty()
+             || std::memcmp(a.data(), b.data(), a.size_bytes()) == 0);
+}
+
+bool sameSolution(const core::PackSolution &a, const core::PackSolution &b)
+{
+  return sameBits(a.cell_current, b.cell_current)
+         && sameBits(a.node_voltage, b.node_voltage)
+         && std::memcmp(&a.terminal_voltage,
+                        &b.terminal_voltage,
+                        sizeof(a.terminal_voltage))
+              == 0;
+}
+
+struct StepperSnapshot
+{
+  std::size_t checkpoint_size{};
+  std::vector<double> checkpoint{};
+  core::PackSolution solution{};
+  core::PackSolveDiagnostics diagnostics{};
+  std::vector<double> cell_heat{};
+  std::vector<double> boundary_heat{};
+  bool workspace_valid{};
+  int workspace_age{};
+  int numeric_factorizations{};
+  int symbolic_factorizations{};
+  unsigned workers{};
+};
+
+Status capture(const core::PackStepper &stepper, StepperSnapshot &snapshot)
+{
+  snapshot.checkpoint_size = stepper.checkpointSize();
+  snapshot.checkpoint.resize(snapshot.checkpoint_size);
+  const auto status = stepper.checkpoint(snapshot.checkpoint);
+  if (status != Status::Success)
+    return status;
+  snapshot.solution = stepper.solution();
+  snapshot.diagnostics = stepper.diagnostics();
+  snapshot.cell_heat.assign(
+    stepper.cellExternalHeat().begin(), stepper.cellExternalHeat().end());
+  snapshot.boundary_heat.assign(
+    stepper.boundaryHeat().begin(), stepper.boundaryHeat().end());
+  const auto &workspace = stepper.solver().workspace();
+  snapshot.workspace_valid = workspace.valid();
+  snapshot.workspace_age = workspace.age();
+  snapshot.numeric_factorizations = workspace.numericFactorizations();
+  snapshot.symbolic_factorizations = workspace.symbolicFactorizations();
+  snapshot.workers = stepper.batchWorkerCount();
+  return Status::Success;
+}
+
+bool sameSnapshot(const StepperSnapshot &a, const StepperSnapshot &b)
+{
+  return a.checkpoint_size == b.checkpoint_size
+         && sameBits(a.checkpoint, b.checkpoint)
+         && sameSolution(a.solution, b.solution)
+         && sameDiagnostics(a.diagnostics, b.diagnostics)
+         && sameBits(a.cell_heat, b.cell_heat)
+         && sameBits(a.boundary_heat, b.boundary_heat)
+         && a.workspace_valid == b.workspace_valid
+         && a.workspace_age == b.workspace_age
+         && a.numeric_factorizations == b.numeric_factorizations
+         && a.symbolic_factorizations == b.symbolic_factorizations
+         && a.workers == b.workers;
+}
+
+bool defaultSolution(const core::PackSolution &solution)
+{
+  const double zero{};
+  return solution.cell_current.empty() && solution.node_voltage.empty()
+         && std::memcmp(
+              &solution.terminal_voltage, &zero, sizeof(zero))
+              == 0;
+}
+
+struct HeterogeneousThermalPack
+{
+  core::CompiledPackTopology topology{};
+  core::SpmBatch cold{};
+  core::SpmBatch hot{};
+  std::array<core::SpmBatch *, 2> batches{ &cold, &hot };
+  core::PackStepper stepper{};
+
+  Status configure()
+  {
+    const auto root = core::parallel(std::vector{
+      core::cell({ .archetype = "cold", .thermal = true }),
+      core::cell({ .archetype = "hot", .thermal = true }) });
+    auto status = core::compilePackDescription(
+      { .root = root,
+        .thermal_boundaries = { { "coolant" } },
+        .thermal_links = { { "p00", "p01", 2.0 },
+                           { "p01", "coolant", 0.5 } } },
+      topology);
+    if (status != Status::Success)
+      return status;
+    const core::SpmModelOptions options{ .nch = 5, .thermal = true };
+    status = core::buildSpmBatch(thermalKokam(300.0), options, 1, cold);
+    if (status != Status::Success)
+      return status;
+    status = core::buildSpmBatch(thermalKokam(310.0), options, 1, hot);
+    if (status != Status::Success)
+      return status;
+    return stepper.configure(topology, batches, 2);
+  }
+
+  Status advance(double time)
+  {
+    constexpr std::array boundary{ 295.0 };
+    return stepper.step(
+      20.0, time, 0.1, boundary, core::PackSolveMode::ladder);
+  }
+};
+
+struct OneCellPack
+{
+  core::CompiledPackTopology topology{};
+  core::SpmBatch batch{};
+  std::array<core::SpmBatch *, 1> batches{ &batch };
+  core::PackStepper stepper{};
+
+  Status configure()
+  {
+    auto status = core::compilePackDescription(
+      { .root = core::cell({ .archetype = "old" }) }, topology);
+    if (status != Status::Success)
+      return status;
+    status = core::buildSpmBatch(
+      test_support::make_legacy_kokam_input(0.55, 298.0, 298.0),
+      { .nch = 5 },
+      1,
+      batch);
+    if (status != Status::Success)
+      return status;
+    return stepper.configure(topology, batches);
+  }
+
+  Status advance()
+  {
+    return stepper.step(3.0, 0.0, 0.05, {}, core::PackSolveMode::ladder);
+  }
+};
+
 } // namespace
+
+TEST_CASE("PackStepper move construction resets the source and preserves continuation",
+          "[core][pack][move][ownership][MQ.2][S1.1]")
+{
+  HeterogeneousThermalPack source;
+  HeterogeneousThermalPack control;
+  REQUIRE(source.configure() == Status::Success);
+  REQUIRE(control.configure() == Status::Success);
+  REQUIRE(source.advance(0.0) == Status::Success);
+  REQUIRE(control.advance(0.0) == Status::Success);
+  StepperSnapshot before;
+  StepperSnapshot control_before;
+  REQUIRE(capture(source.stepper, before) == Status::Success);
+  REQUIRE(capture(control.stepper, control_before) == Status::Success);
+  CHECK(sameSnapshot(before, control_before));
+
+  core::PackStepper destination{ std::move(source.stepper) };
+  StepperSnapshot moved;
+  REQUIRE(capture(destination, moved) == Status::Success);
+  CHECK(moved.checkpoint_size == before.checkpoint_size);
+  CHECK(sameBits(moved.checkpoint, before.checkpoint));
+  CHECK(sameSolution(moved.solution, before.solution));
+  CHECK(sameDiagnostics(moved.diagnostics, before.diagnostics));
+  CHECK(sameBits(moved.cell_heat, before.cell_heat));
+  CHECK(sameBits(moved.boundary_heat, before.boundary_heat));
+  CHECK(moved.workspace_valid == before.workspace_valid);
+  CHECK(moved.workspace_age == before.workspace_age);
+  CHECK(moved.numeric_factorizations == before.numeric_factorizations);
+  CHECK(moved.symbolic_factorizations == before.symbolic_factorizations);
+  CHECK(moved.workers == before.workers);
+
+  CHECK(source.stepper.checkpointSize() == 0);
+  CHECK(source.stepper.batchWorkerCount() == 0);
+  CHECK(defaultSolution(source.stepper.solution()));
+  CHECK(sameDiagnostics(source.stepper.diagnostics(), {}));
+  CHECK(source.stepper.cellExternalHeat().empty()
+        && source.stepper.boundaryHeat().empty());
+  CHECK_FALSE(source.stepper.solver().workspace().valid());
+  CHECK(source.stepper.solver().workspace().age() == 0);
+  CHECK(source.stepper.solver().workspace().numericFactorizations() == 0);
+  CHECK(source.stepper.solver().workspace().symbolicFactorizations() == 0);
+
+  std::vector<double> empty_checkpoint(source.stepper.checkpointSize());
+  REQUIRE(source.stepper.checkpoint(empty_checkpoint)
+          == Status::Invalid_parameters);
+  CHECK(source.stepper.restore(empty_checkpoint) == Status::Invalid_parameters);
+  CHECK(source.stepper.solveElectrical(0.0, core::PackSolveMode::ladder)
+        == Status::Invalid_parameters);
+  CHECK(source.stepper.step(0.0, 0.1, 0.1) == Status::Invalid_parameters);
+  CHECK(source.stepper.stepExponential(0.0, 0.1, 0.1)
+        == Status::Invalid_parameters);
+
+  REQUIRE(destination.step(
+            20.0,
+            0.1,
+            0.1,
+            std::array{ 295.0 },
+            core::PackSolveMode::ladder)
+          == Status::Success);
+  REQUIRE(control.advance(0.1) == Status::Success);
+  StepperSnapshot continued;
+  StepperSnapshot control_continued;
+  REQUIRE(capture(destination, continued) == Status::Success);
+  REQUIRE(capture(control.stepper, control_continued) == Status::Success);
+  CHECK(sameSnapshot(continued, control_continued));
+}
+
+TEST_CASE("PackStepper move assignment replaces ownership without touching old arenas",
+          "[core][pack][move][ownership][MQ.2][S1.1]")
+{
+  HeterogeneousThermalPack source;
+  HeterogeneousThermalPack control;
+  REQUIRE(source.configure() == Status::Success);
+  REQUIRE(control.configure() == Status::Success);
+  REQUIRE(source.advance(0.0) == Status::Success);
+  REQUIRE(control.advance(0.0) == Status::Success);
+  StepperSnapshot before;
+  StepperSnapshot control_before;
+  REQUIRE(capture(source.stepper, before) == Status::Success);
+  REQUIRE(capture(control.stepper, control_before) == Status::Success);
+
+  OneCellPack old;
+  REQUIRE(old.configure() == Status::Success);
+  REQUIRE(old.advance() == Status::Success);
+  const std::vector<double> old_arena(
+    old.batch.state().raw().begin(), old.batch.state().raw().end());
+
+  old.stepper = std::move(source.stepper);
+  StepperSnapshot moved;
+  REQUIRE(capture(old.stepper, moved) == Status::Success);
+  CHECK(moved.checkpoint_size == before.checkpoint_size);
+  CHECK(sameBits(moved.checkpoint, before.checkpoint));
+  CHECK(sameSolution(moved.solution, before.solution));
+  CHECK(sameDiagnostics(moved.diagnostics, before.diagnostics));
+  CHECK(sameBits(moved.cell_heat, before.cell_heat));
+  CHECK(sameBits(moved.boundary_heat, before.boundary_heat));
+  CHECK(moved.workspace_valid == before.workspace_valid);
+  CHECK(moved.workspace_age == before.workspace_age);
+  CHECK(moved.numeric_factorizations == before.numeric_factorizations);
+  CHECK(moved.symbolic_factorizations == before.symbolic_factorizations);
+  CHECK(moved.workers == before.workers);
+  CHECK(sameBits(old.batch.state().raw(), old_arena));
+
+  CHECK(source.stepper.checkpointSize() == 0);
+  CHECK(source.stepper.batchWorkerCount() == 0);
+  CHECK(defaultSolution(source.stepper.solution()));
+  CHECK(sameDiagnostics(source.stepper.diagnostics(), {}));
+  CHECK(source.stepper.cellExternalHeat().empty()
+        && source.stepper.boundaryHeat().empty());
+  CHECK_FALSE(source.stepper.solver().workspace().valid());
+  CHECK(source.stepper.solver().workspace().age() == 0);
+  CHECK(source.stepper.solver().workspace().numericFactorizations() == 0);
+  CHECK(source.stepper.solver().workspace().symbolicFactorizations() == 0);
+
+  std::vector<double> empty_checkpoint(source.stepper.checkpointSize());
+  REQUIRE(source.stepper.checkpoint(empty_checkpoint)
+          == Status::Invalid_parameters);
+  CHECK(source.stepper.restore(empty_checkpoint) == Status::Invalid_parameters);
+  CHECK(source.stepper.solveElectrical(0.0, core::PackSolveMode::ladder)
+        == Status::Invalid_parameters);
+  CHECK(source.stepper.step(0.0, 0.1, 0.1) == Status::Invalid_parameters);
+  CHECK(source.stepper.stepExponential(0.0, 0.1, 0.1)
+        == Status::Invalid_parameters);
+
+  old.stepper = std::move(old.stepper);
+  StepperSnapshot self_moved;
+  REQUIRE(capture(old.stepper, self_moved) == Status::Success);
+  CHECK(sameSnapshot(self_moved, moved));
+  REQUIRE(source.stepper.configure(old.topology, old.batches)
+          == Status::Success);
+
+  REQUIRE(old.stepper.step(
+            20.0,
+            0.1,
+            0.1,
+            std::array{ 295.0 },
+            core::PackSolveMode::ladder)
+          == Status::Success);
+  REQUIRE(control.advance(0.1) == Status::Success);
+  StepperSnapshot continued;
+  StepperSnapshot control_continued;
+  REQUIRE(capture(old.stepper, continued) == Status::Success);
+  REQUIRE(capture(control.stepper, control_continued) == Status::Success);
+  CHECK(sameSnapshot(continued, control_continued));
+  CHECK(sameBits(old.batch.state().raw(), old_arena));
+}
 
 TEST_CASE("compiled pack step couples thermal batches and restore invalidates the solve",
           "[core][pack][thermal][rollback][P2-G1]")
@@ -159,6 +458,132 @@ TEST_CASE("substeps are full-dt advances under one frozen pack solve",
                       repeated_state.data(),
                       batched_state.size_bytes())
           == 0);
+}
+
+TEST_CASE("pack checkpoints serialize batch slices in caller order",
+          "[core][pack][checkpoint][layout][oracle][MQ.2][S1.1]")
+{
+  core::CompiledPackTopology topology;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::series(std::vector{
+                core::cell({ .archetype = "first" }),
+                core::cell({ .archetype = "second", .thermal = true }) }) },
+            topology)
+          == Status::Success);
+
+  core::SpmBatch first;
+  core::SpmBatch second;
+  REQUIRE(core::buildSpmBatch(
+            test_support::make_legacy_kokam_input(0.55, 298.0, 298.0),
+            { .nch = 5 },
+            1,
+            first)
+          == Status::Success);
+  REQUIRE(core::buildSpmBatch(
+            thermalKokam(303.0),
+            { .nch = 12, .thermal = true },
+            1,
+            second)
+          == Status::Success);
+  std::array<core::SpmBatch *, 2> batches{ &first, &second };
+  core::PackStepper stepper;
+  REQUIRE(stepper.configure(topology, batches) == Status::Success);
+
+  auto first_state = first.state().raw();
+  auto second_state = second.state().raw();
+  REQUIRE(first_state.size() != second_state.size());
+  REQUIRE(stepper.checkpointSize()
+          == first_state.size() + second_state.size());
+  for (std::size_t i = 0; i < first_state.size(); ++i)
+    first_state[i] = 1'000.0 + static_cast<double>(i);
+  for (std::size_t i = 0; i < second_state.size(); ++i)
+    second_state[i] = 2'000.0 + static_cast<double>(i);
+  std::vector<double> expected;
+  expected.reserve(first_state.size() + second_state.size());
+  expected.insert(expected.end(), first_state.begin(), first_state.end());
+  expected.insert(expected.end(), second_state.begin(), second_state.end());
+
+  std::vector<double> serialized(stepper.checkpointSize());
+  REQUIRE(stepper.checkpoint(serialized) == Status::Success);
+  CHECK(sameBits(serialized, expected));
+
+  std::vector<double> wire(stepper.checkpointSize());
+  for (std::size_t i = 0; i < wire.size(); ++i)
+    wire[i] = 10'000.0 + static_cast<double>(i);
+  REQUIRE(stepper.restore(wire) == Status::Success);
+  CHECK(sameBits(first.state().raw(),
+                 std::span<const double>{ wire }.first(first_state.size())));
+  CHECK(sameBits(
+    second.state().raw(),
+    std::span<const double>{ wire }.subspan(first_state.size())));
+}
+
+TEST_CASE("heterogeneous thermal substeps hold the initial assembly frozen",
+          "[core][pack][thermal][substeps][oracle][MQ.2][S1.1]")
+{
+  constexpr double cold_initial = 300.0;
+  constexpr double hot_initial = 310.0;
+  constexpr double conductance = 2.0;
+  constexpr double dt = 0.25;
+  constexpr int substeps = 4;
+  constexpr double capacity = 1626.0 * 750.0 * 1.0e-4;
+  constexpr double heat = conductance * (hot_initial - cold_initial);
+  constexpr double temperature_change =
+    static_cast<double>(substeps) * dt * heat / capacity;
+
+  core::CompiledPackTopology topology;
+  REQUIRE(core::compilePackDescription(
+            { .root = core::series(
+                2, core::cell({ .archetype = "thermal", .thermal = true })),
+              .thermal_links = { { "s00", "s01", conductance } } },
+            topology)
+          == Status::Success);
+
+  auto input = thermalKokam(cold_initial);
+  const core::OCVCurve zero_ocv{
+    .stoichiometry = { 0.0, 1.0 },
+    .value = { 0.0, 0.0 }
+  };
+  for (const auto domain : core::domains)
+    core::domain_value(input.design.electrode, domain).active_material.ocv =
+      zero_ocv;
+  input.total_entropic_coefficient = {};
+  input.negative_entropic_coefficient = {};
+  core::SpmBatch batch;
+  REQUIRE(core::buildSpmBatch(
+            input, { .nch = 5, .thermal = true }, 2, batch)
+          == Status::Success);
+  batch.state().at(batch.layout().spm.temperature, 0, 1) = hot_initial;
+  std::array<core::SpmBatch *, 1> batches{ &batch };
+  core::PackStepper stepper;
+  REQUIRE(stepper.configure(topology, batches) == Status::Success);
+  REQUIRE(stepper.step(0.0,
+                       0.0,
+                       dt,
+                       {},
+                       core::PackSolveMode::ladder,
+                       1e-10,
+                       substeps)
+          == Status::Success);
+
+  CHECK(stepper.solution().cell_current[0] == 0.0
+        && stepper.solution().cell_current[1] == 0.0);
+  CHECK(stepper.cellExternalHeat()[0] == heat
+        && stepper.cellExternalHeat()[1] == -heat);
+  CHECK(batch.state().at(
+          batch.layout().thermal.generated_heat_energy, 0, 0)
+          == 0.0
+        && batch.state().at(
+             batch.layout().thermal.generated_heat_energy, 0, 1)
+             == 0.0);
+  CHECK(std::abs(batch.state().at(
+                   batch.layout().spm.temperature, 0, 0)
+                 - (cold_initial + temperature_change))
+        <= 1e-10);
+  CHECK(std::abs(batch.state().at(
+                   batch.layout().spm.temperature, 0, 1)
+                 - (hot_initial - temperature_change))
+        <= 1e-10);
 }
 
 TEST_CASE("real multi-archetype pack steps are bit-repeatable across worker counts",
@@ -289,21 +714,28 @@ TEST_CASE("pack stepper rejects malformed public calls before touching batch sta
 TEST_CASE("parallel pack step configuration rejects aliased batch arenas",
           "[core][pack][thread-pool][alias][P9-B36]")
 {
-  core::SpmBatch shared;
+  core::SpmBatch shared, middle;
   REQUIRE(core::buildSpmBatch(
             test_support::make_legacy_kokam_input(0.55, 298.0, 298.0),
             { .nch = 5 },
             1,
             shared)
           == Status::Success);
+  REQUIRE(core::buildSpmBatch(
+            test_support::make_legacy_kokam_input(0.55, 298.0, 298.0),
+            { .nch = 5 },
+            1,
+            middle)
+          == Status::Success);
   core::CompiledPackTopology topology;
   REQUIRE(core::compilePackDescription(
             { .root = core::series(std::vector{
                 core::cell({ .archetype = "a" }),
-                core::cell({ .archetype = "b" }) }) },
+                core::cell({ .archetype = "b" }),
+                core::cell({ .archetype = "c" }) }) },
             topology)
           == Status::Success);
-  std::array<core::SpmBatch *, 2> batches{ &shared, &shared };
+  std::array<core::SpmBatch *, 3> batches{ &shared, &middle, &shared };
   core::PackStepper stepper;
   CHECK(stepper.configure(topology, batches, 2)
         == Status::Invalid_parameters);
