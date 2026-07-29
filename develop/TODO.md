@@ -87,7 +87,12 @@
 > trees pass 58/58. Eight mutations turn red and exact hashes were restored. The original census
 > remains 24 APPLIED / 39 pending / 8 deferrals. The post-baseline registry has four S1.1 IDs
 > APPLIED and the Eigen warning DEFERRED to B1; combined: 28 APPLIED / 39 pending / 9 deferrals
-> across 76 stable IDs. Next is S2 source-step rollback.
+> across 76 stable IDs.
+>
+> **2026-07-29 — MQ.2 S2 old-production boundary frozen.** The exact ten-assertion scripted case
+> at `4a9d29a` plus capture `d94a0ba` reaches 9/10 against unchanged production and prints the
+> abandoned hidden-step residual `2.5`; solution and warm-state restoration pass. Next is only the
+> registered local diagnostics snapshot/restore, then three mutations and the retained lane gates.
 
 ---
 

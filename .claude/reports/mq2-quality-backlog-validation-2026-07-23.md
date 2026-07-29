@@ -1105,3 +1105,45 @@ combined working census is therefore 76 stable IDs: 28 APPLIED, 0 REFUTED,
 9 named deferrals, and 39 pending. The closeout gate compares the original
 and post-baseline ID sets independently. MQ.2 remains open; S2 source-step
 rollback is next.
+
+## S2 — source-step rollback
+
+### Frozen old-production RED
+
+The exact 10-assertion / 1-case count amendment was committed at `181a41a`
+before the first S2 test edit or run. Commit `4a9d29a` then froze only the
+scripted rollback oracle. Its first run reached the registered 9/10 boundary;
+test-only commit `d94a0ba` added a zero-assertion Catch2 `CAPTURE` so the
+observed residual would be printed rather than supported only by derivation.
+No expected value or assertion changed.
+
+Production remained exactly at the accepted S1.1 hash:
+
+```text
+470B50C0E6BFBCDD0970C615236AA5B95E0C4A99957E10B3B1185BE3DAFA1F7E  src/core/PackSolver.cpp
+5B33D2A0A7CBB43D1559E45E808947F4E306CE6D6496D42D6BE19F4B4E70B713  tests/unit/core_PackSolver_test.cpp
+```
+
+The exact Debug command was:
+
+```powershell
+cmake --build build-mq1-debug --parallel 2 --target unit_test_core_PackSolver
+.\build-mq1-debug\bin\Debug\unit_test_core_PackSolver.exe 'failed source stepping restores caller-attempt diagnostics'
+```
+
+It failed only the nonfatal diagnostics comparison:
+
+```text
+solver.diagnostics().residual_norm := 2.5
+test cases:  1 | 1 failed
+assertions: 10 | 9 passed | 1 failed
+```
+
+The initial exact solution, six-callback boundary, restored solution, final
+one-iteration cold solve, and seventh callback all passed. Thus unchanged
+production already restores the solution fields and false warm-state flag;
+only `diagnostics_` leaks the abandoned hidden step's residual `2.5` instead
+of describing the caller-requested direct attempt at residual `4`.
+
+No Release, CUDA, full-suite, mutation, sanitizer, coverage, timing, or
+performance claim is made by this failing-test-first boundary.

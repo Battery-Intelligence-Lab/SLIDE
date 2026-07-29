@@ -152,9 +152,11 @@ the append-only post-baseline registry has four S1.1 IDs APPLIED and
 `eigen-strong-inline-redefinition-warning` DEFERRED to B1. Combined: 28 APPLIED / 39 pending /
 9 deferrals across 76 stable IDs.
 
-Your first action is S2 source-step rollback: freeze its exact ten-assertion scripted case against
-unchanged `574cfaf`, land only the registered diagnostics snapshot/restore, and make the solution,
-diagnostics, and warm-flag restore mutations independently red. Then every remaining survivor batch
+**S2's failing-test-first boundary is frozen at `4a9d29a`/`d94a0ba`:** unchanged production
+reaches 9/10 assertions and prints hidden-step `residual_norm := 2.5`; solution and cold warm-state
+restoration pass. Your first action is the registered local POD diagnostics snapshot/restore, with
+no header/allocation/success-path change, followed by independent solution/diagnostics/warm-flag
+mutations and the three retained configuration gates. Then every remaining survivor batch
 until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
 supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
 six named landmines and MQ.1's build-policy findings included. Then →
