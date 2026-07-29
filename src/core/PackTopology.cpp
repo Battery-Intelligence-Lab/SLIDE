@@ -192,11 +192,11 @@ namespace {
     std::span<const CompiledElectricalBranch> branches,
     std::uint32_t node_count)
   {
-    assert(std::all_of(branches.begin(), branches.end(),
-                       [node_count](const auto &branch) {
-                         return branch.node_positive < node_count
-                                && branch.node_negative < node_count;
-                       }));
+    assert(std::all_of(
+      branches.begin(), branches.end(), [node_count](const auto &branch) {
+        return branch.node_positive < node_count
+               && branch.node_negative < node_count;
+      }));
     BranchGraph graph;
     graph.adjacency.resize(node_count);
     static_assert(sizeof(CompiledElectricalBranch) > 3,
