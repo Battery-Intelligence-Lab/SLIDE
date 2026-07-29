@@ -125,6 +125,16 @@
 > rebuilds. Fourteen mutations turn red and exact hashes are restored. Original census:
 > 34 APPLIED / 29 pending / 8 deferrals; combined 76-ID registry:
 > 38 APPLIED / 29 pending / 9 deferrals. Next is R1 recording common/core.
+>
+> **2026-07-29 — MQ.2 R1 recording common/core landed.** Implementation `5a462b6`,
+> ownership hardening `a7a4236`, and Linux-coverage hardening `7b8b1f8` give CRC/endian/
+> allocation facts, eager snapshot indexing, schema order, and row addressing one owner each.
+> Recorder 275/9, AsyncRecorder 471/12, allocations 33/3 and 60/4, both structural gates, and
+> 58/58 pass in Debug, fast-math Release/IPO-off, host-C++ CUDA, and WSL Clang 18 coverage.
+> Fourteen R1 plus three coverage-hardening mutations turn red; exact coverage is 359 lexical /
+> 329 active with zero uncovered/unmapped. Original census: 40 APPLIED / 23 pending /
+> 8 deferrals; combined 84-ID registry: 51 APPLIED / 23 pending / 10 deferrals. Next is R2
+> recording semantics/tests.
 
 ---
 

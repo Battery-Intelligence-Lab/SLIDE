@@ -22,7 +22,7 @@ MQ.2's original baseline has **71 decisions**:
 The final disposition table must contain all 68 JSON IDs exactly once and all
 three original supplemental IDs exactly once. Post-baseline discoveries are
 tracked in the append-only stable-ID registry added below; the current combined
-set has 76 IDs without rewriting the original 71-ID baseline. Each row has exactly one state:
+set has 84 IDs without rewriting the original 71-ID baseline. Each row has exactly one state:
 `APPLIED`, `REFUTED`, or `DEFERRED — <named ladder owner>`. A row is not
 `APPLIED` merely because prose was changed: its registered runtime, structural,
 or documentation gate must pass. A deferral names the existing PLAN box that
@@ -500,13 +500,13 @@ changing count:
 | `thermal-assembly-placement-oracle-gap` | structural placement had no heterogeneous numerical cadence oracle | APPLIED test-only by S1.1; analytic recurrence mutation red |
 | `prefix-duplicate-adjacency-oracle-gap` | prefix fixtures covered only adjacent duplicates | APPLIED test-only by S1.1; non-adjacent/OOB mutation red |
 | `eigen-strong-inline-redefinition-warning` | a fresh Debug build reports the pre-existing Eigen macro-redefinition diagnostic | DEFERRED with explicit owner MQ.2 B1 build diagnostics |
-| `recorder-schema-default-vector-debug-oom-terminates` | R1's initially frozen bare schema-vector constructor allocates a Debug iterator proxy inside a `noexcept` constructor | OPEN — owned by R1 acceptance; corrected implementation is committed at `5a462b6` |
-| `recording-owner-contract-comments-stale` | R1 moved CRC ownership but two leading production comments still attribute all CRC ownership/co-location to `RecordingFormat.cpp` | OPEN — owned by R1 adversarial closeout |
-| `r1-self-containment-gate-overclaim` | 9C-5 compiler evidence was described as proving every direct standard include rather than only load-bearing standalone dependencies | OPEN — owned by R1 adversarial closeout |
-| `r1-helper-internal-linkage-gate-gap` | exact helper bodies were pinned but their required anonymous-namespace linkage was not | OPEN — owned by R1 adversarial closeout |
-| `r1-linux-debug-byte-oracle-unregistered` | R1's complete byte oracle treated every non-Release build as the registered Windows Debug fixture, so the fresh Linux/Clang 18 coverage build selected the wrong exact tuple | OPEN — owned by R1 coverage acceptance and the old-production proof below |
-| `p9c5-script-policy-unset` | the aggregate `cmake -P` gate uses `IN_LIST` without setting CMP0057, which the fresh retained Linux CMake 3.31.10 invocation rejects before 9C-5 evaluation | OPEN — owned by R1 coverage acceptance |
-| `status-exception-manifest-stale-after-packsolver-split` | the exact Status exception manifest retains six pre-S1.1/S2 PackSolver/SpectralModel source identities, so the authoritative reporter refuses to evaluate complete fresh profiles | OPEN — owned by R1 coverage acceptance |
+| `recorder-schema-default-vector-debug-oom-terminates` | R1's initially frozen bare schema-vector constructor allocates a Debug iterator proxy inside a `noexcept` constructor | APPLIED at `5a462b6`; RecorderAllocation 33/3 is green without an escaped exception |
+| `recording-owner-contract-comments-stale` | R1 moved CRC ownership but two leading production comments still attribute all CRC ownership/co-location to `RecordingFormat.cpp` | APPLIED at `a7a4236`; the leading comments name the split owners truthfully |
+| `r1-self-containment-gate-overclaim` | 9C-5 compiler evidence was described as proving every direct standard include rather than only load-bearing standalone dependencies | APPLIED at `a7a4236`; claim narrowed and lexical/compiler roles separated |
+| `r1-helper-internal-linkage-gate-gap` | exact helper bodies were pinned but their required anonymous-namespace linkage was not | APPLIED at `a7a4236`; mutation 14 makes the linkage assertion red |
+| `r1-linux-debug-byte-oracle-unregistered` | R1's complete byte oracle treated every non-Release build as the registered Windows Debug fixture, so the fresh Linux/Clang 18 coverage build selected the wrong exact tuple | APPLIED at `7b8b1f8` after exact `ad700ca` old-production reproduction |
+| `p9c5-script-policy-unset` | the aggregate `cmake -P` gate uses `IN_LIST` without setting CMP0057, which the fresh retained Linux CMake 3.31.10 invocation rejects before 9C-5 evaluation | APPLIED at `7b8b1f8`; direct and aggregate 9C-5 entry paths pass |
+| `status-exception-manifest-stale-after-packsolver-split` | the exact Status exception manifest retains six pre-S1.1/S2 PackSolver/SpectralModel source identities, so the authoritative reporter refuses to evaluate complete fresh profiles | APPLIED at `7b8b1f8`; six identities relocated one-for-one and exact coverage passes |
 | `instrumented-workflow-test-count-stale` | both hosted instrumented workflows still require 57 discovered test commands after the committed suite reached 58 | DEFERRED with explicit owner MQ.2 B1 build diagnostics; hosted workflows are not claimed run |
 
 This post-baseline registry is append-only during MQ.2. A new finding must
@@ -2186,10 +2186,10 @@ is also mandatory after implementation. Its registered census is:
 Numerical_failure 63; every other Status count unchanged
 ```
 
-Only after those gates are green do the six original R1 IDs, the four
+Those gates are green at `7b8b1f8`, so the six original R1 IDs, the four
 earlier R1 supplemental findings, and the three local coverage-hardening IDs
-become APPLIED. That would
-move the original census from 34 APPLIED / 0 REFUTED / 8 named deferrals /
+are APPLIED. This moves the original census from
+34 APPLIED / 0 REFUTED / 8 named deferrals /
 29 pending to 40 / 0 / 8 / 23, and the combined 76-ID census from
 38 / 0 / 9 / 29 through the prerepair 84-ID census
 38 / 0 / 10 / 36 to the closeout census 51 / 0 / 10 / 23. The fourth new

@@ -27,6 +27,10 @@
 > `bd1c2ed` plus gate hardening `6ef3f33`: exact grammar/diagnostics pass
 > 886/10, all companion gates and 58/58 pass in all three retained
 > configurations, and fourteen ownership/grammar/diagnostic mutations turn red.
+> R1 recording ownership landed at `5a462b6` plus `a7a4236`/`7b8b1f8`:
+> exact focused gates and 58/58 pass in the three native configurations and
+> fresh WSL coverage, 17 mutation families turn red, and Status coverage is
+> 359 lexical / 329 active with zero uncovered/unmapped.
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
@@ -1531,25 +1535,30 @@ debt.
       pass 58/58 and no-op rebuilds. Fourteen limit/message/grammar/status/
       diagnostic-contract mutations turn red and exact hashes are restored.
       Original census: 34 APPLIED / 29 pending / 8 deferrals; combined registry:
-      38 APPLIED / 29 pending / 9 deferrals. R1's two deterministic
-      whole-file/schema/eager-index cases (+53 assertions / +2 cases in the
-      existing Recorder binary), separate format-fact and snapshot-index
-      owners, exact structural censuses, fourteen mutation families, three-lane
-      gates, and 359/329 Status-coverage target are registered at clean
-      `1b40b84` before any R1 edit or binary run. The first implementation-WIP
-      Debug allocation run additionally exposed and preregistered the
-      `recorder-schema-default-vector-debug-oom-terminates` supplemental
-      finding: the final schema owner must use a throwing initializer-list
-      constructor, retain RecorderAllocation 33/3, and add both new internal
-      headers to a separate 9C-5 standalone-compilation list without
-      reclassifying them as public. Post-mutation adversarial review also
-      registered stale CRC-owner comments, an overbroad standalone-include
-      claim, and missing anonymous-namespace enforcement for correction before
-      final acceptance. Freeze the old-production byte
-      fingerprints, then continue every remaining survivor batch until
-      all 68 + 3 original
-      supplemental findings plus every new
-      supplemental finding carry a disposition.
+      38 APPLIED / 29 pending / 9 deferrals. R1 PASSED locally at
+      `5a462b6` plus adversarial hardening `a7a4236` and Linux-coverage
+      hardening `7b8b1f8`: one shared CRC/endian/allocation owner, one eager
+      snapshot-index owner, one canonical CSV/optional-Parquet schema owner,
+      widened row addressing, and only the registered dead dependencies.
+      Recorder 275/9, AsyncRecorder 471/12, RecorderAllocation 33/3,
+      AsyncRecorderAllocation 60/4, aggregate structural 1/1, and 9C-5
+      self-containment 1/1 pass in Debug, fast-math Release/IPO-off,
+      host-C++ CUDA, and WSL Clang 18 coverage; all four configurations pass
+      58/58, CUDA executes the real 433,671/4 test, and every native tree
+      no-op rebuilds. Fourteen R1 mutations plus three acceptance-hardening
+      mutations turn red and exact hashes are restored. The fresh coverage
+      artifact passes exactly 359 lexical / 329 active =
+      323 measured + 6 exceptions, 30 inactive, zero uncovered/unmapped.
+      The six R1 survivors and seven R1 supplemental findings are APPLIED;
+      the stale 57-test hosted-workflow pin is DEFERRED to B1. Original
+      census: 40 APPLIED / 23 pending / 8 deferrals; combined 84-ID registry:
+      51 APPLIED / 23 pending / 10 deferrals.
+      **Next is R2 recording semantics/tests:** preregister an exact
+      old-production-red zero-CRC fixture, independent per-field CSV parsing,
+      and the enqueueSnapshot CUDA mutation before any R2 edit/run; retain the
+      already-applied shuffle oracle and every killed design. Then continue
+      every remaining survivor batch until all original 68 + 3 findings plus
+      every append-only supplemental finding carry a disposition.
 - [ ] MQ.3 Repo hygiene sweep: audit the tracked tree (670 files at this writing) — stale or
       contradictory docs (develop/TODO.md header vs PLAN §8, README claims, CONTRIBUTING,
       LESSONS.md), dead scripts, anything tracked that should be ignored; fix `.gitignore` gaps.
@@ -2040,4 +2049,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-29 | MQ.2 C1 netlist parsing ownership | PASSED locally at `bd1c2ed` plus gate hardening `6ef3f33` — four compile-time limit-message owners remain tied to the unchanged numeric bounds, one locale-independent ASCII scanner preserves the strict value grammar, all eight semantic failures directly return their Status owner, and the public offset contract distinguishes reader-cursor failures from zero-without-cursor diagnostics. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree focused gates each pass NetlistCsv 886/10, ParserAllocation 1143/13, PackTopology 170/12, PackSolver 994/33, PackStepper 333/13, allocation 14/2, and structural 1/1; all three restored trees pass 58/58, including real CUDA, then no-op rebuild. Fourteen limit/message/scanner/grammar/status/offset/contract mutations turn red and exact hashes are restored. The three C1 IDs are APPLIED: original census 34 APPLIED / 29 pending / 8 deferrals; combined census 38 APPLIED / 29 pending / 9 deferrals across 76 IDs. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-29 | MQ.2 R1 recording-common executable contract | REGISTERED at clean `1b40b84` before any R1 test/CMake/gate/source edit or binary run — a dedicated second Recorder test source adds exactly 53 assertions / 2 cases without growing the oversized AsyncRecorder test or the 58-test CTest census. Opaque complete two-row CSV bytes execute the row-index path without taking R2's independent field-semantic owner; deterministic complete `.slrec`/`.slcmp` fingerprints, independent header/data CRCs (including distinct shuffled-payload versus raw CRCs), and direct eager-snapshot values freeze old production at Recorder 275/9 and AsyncRecorder 471/12. A pre-freeze audit additionally registers three unchanged-production sentinel captures to detect fast-math/configuration-specific bytes before constants are frozen. Separate `RecordingFormatCommon.hpp` and `SnapshotIndexing.hpp` owners, exact per-file format-fact plus schema/row-index/caller/dead-using structural censuses, eleven mutation families, retained three-lane focused/full gates, and the 359 lexical / 329 active Status-coverage target are frozen in `.claude/reports/mq2-quality-backlog-preregistration-2026-07-23.md`. R2's zero-CRC, independently parsed CSV-value, and enqueueSnapshot semantics remain untouched. | REGISTERED; R1 remains open |
 | 2026-07-29 | MQ.2 R1 frozen old-production boundary | FROZEN at oracle `ad700ca` plus structural `3d61dcc` / `8b30a2a` — all five production hashes remain exact. Recorder passes the configuration-specific frozen bytes at 275/9 in Debug, Release/IPO-off, and Release/IPO-on CUDA-host builds; Debug also passes AsyncRecorder 471/12, RecorderAllocation 33/3, and AsyncRecorderAllocation 60/4. The aggregate structural test passes all preceding suites and fails only at the absent common endian owner 0/1. Three independent reviews closed row-execution, fast-math fixture, per-file role, endian, CRC-order, schema/cursor/argument, leading-contract, include-map, and decoy-consumer escapes before freeze. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | FROZEN; implementation required |
-| — | NEXT | **MQ.2 R1 implementation:** add the two frozen internal owners, consolidate format/CRC/allocation facts, share eager indexing and schema/row addressing, and remove only the registered dead AsyncRecorder dependencies. Preserve all frozen bytes and R2 boundaries; make the full structural gate green, run all fourteen mutation families, exact 359/329 Status coverage, three-lane focused gates and 58/58 suites, then close the six R1 survivors plus four R1 supplemental findings. Continue through every remaining survivor batch to complete original 68+3 plus post-baseline registry disposition, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then M1.0 toward v6.0.0. |
+| 2026-07-29 | MQ.2 R1 recording-common ownership | PASSED locally at implementation `5a462b6`, ownership hardening `a7a4236`, and coverage hardening `7b8b1f8` — CRC/endian/allocation facts, eager SoA indexing, schema order, and widened row addressing each have one owner; the synchronous zero-CRC and distinct minor-version policies remain unchanged for R2. Recorder 275/9, AsyncRecorder 471/12, allocations 33/3 and 60/4, aggregate structural 1/1, and 9C-5 self-containment 1/1 pass in Debug, fast-math Release/IPO-off, host-C++ CUDA, and WSL Clang 18 coverage. Every configuration passes 58/58; CUDA executes 433,671/4; native rebuilds are no-op. Fourteen R1 plus three coverage-hardening mutations turn red and exact hashes are restored. The authoritative fresh coverage artifact passes 359 lexical / 329 active = 323 measured + 6 exact exceptions, 30 inactive, zero uncovered/unmapped. A missing Linux tuple was proven against separately linked old `ad700ca` production before registration; CMP0057 is now owned by direct 9C-5; six stale exception identities moved one-for-one without reclassification. Six original and seven supplemental R1 IDs are APPLIED; `instrumented-workflow-test-count-stale` is DEFERRED to B1. Original census 40 APPLIED / 0 REFUTED / 8 deferrals / 23 pending; combined 84-ID census 51 / 0 / 10 / 23. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
+| — | NEXT | **MQ.2 R2 evidence-first registration:** freeze exact old-production-red legal-zero-CRC behavior and old-production-green independent CSV semantics before any production edit; prove all three CSV rows field by field, keep CRC recomputation live with a corrupted-header witness, and disposition `enqueuesnapshot-success-untested` using the real CUDA path plus a `true→false` density mutation. `shuffle-oracle-gap` is already APPLIED and must not be reimplemented; brute-force CRC search, forged snapshots, first-row-only CSV, NaN-skip, round-trip-only shuffle, and minor-version changes stay killed. Then continue every remaining survivor batch to complete original 68+3 plus the append-only registry, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then M1.0 toward v6.0.0. |

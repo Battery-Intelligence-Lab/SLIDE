@@ -1800,3 +1800,202 @@ Status-coverage, timing, sanitizer, hosted-CI, installed-package, Linux,
 macOS, or device-kernel claim is made at this boundary. All six R1 survivor
 IDs remain pending until implementation, registered mutations, three-lane
 acceptance, and exact Status coverage are complete.
+
+## R1 recording-common implementation and acceptance
+
+### Implementation boundary
+
+Commit `5a462b6` applies the registered ownership change. It introduces:
+
+- `detail/RecordingFormatCommon.hpp` as the single endian, CRC32,
+  header-CRC, and recording allocation-failure owner;
+- `detail/SnapshotIndexing.hpp` as the single eager SoA snapshot-view owner;
+- one anonymous-namespace `recorderColumnNames` owner consumed by CSV and
+  optional Parquet in the same order;
+- one widened `snapshotRow` owner whose offset arithmetic converts operands
+  before multiplication; and
+- only the registered dead AsyncRecorder dependency removal.
+
+The two format-version owners and their intentionally distinct minor-version
+comparisons remain separate. The synchronous zero-header-CRC rejection is
+unchanged for R2. `BinaryRecording::snapshot` retains its mapped interleaved
+reader. No file-format byte, schema spelling, payload, eager value, successful
+Status, or allocation-free hot path was changed.
+
+The first implementation-WIP Debug allocation run exposed a real supplemental
+defect before the implementation commit. The first two RecorderAllocation
+cases passed separately at 5/1 and 15/1; the third reached a hidden MSVC
+Debug CRT abort rather than the registered Catch boundary. A disposable
+allocation-free diagnostic isolated the 16-byte iterator proxy allocated by
+the `noexcept` default constructor of `std::vector<std::string>`. The
+diagnostic test was restored exactly to
+`D8FA21C68BA93468F1194C15E5F1AD40167898BF0A9354BF0F724F226639AC01`.
+The final owner starts with
+`std::vector<std::string> names{ "accepted_step", "time_s" };`; its throwing
+initializer-list constructor lets `bad_alloc` reach the existing public
+catch. RecorderAllocation then passes 33/3, including the exact
+`Numerical_failure` result.
+
+Commits `9ceeb7a` and `a7a4236` close the adversarial review: the two leading
+CRC-owner comments now describe the split ownership truthfully, the
+self-containment claim is narrowed to load-bearing project dependencies,
+the two new internal headers are compiler-checked separately from the
+unchanged 28 api/support headers, and the two Recorder helpers are pinned
+inside their anonymous namespace.
+
+The final production and primary gate anchors are:
+
+```text
+10CEA3E821121549879670A4BE8D42D231D2BB16A8D753A88F9297D073F600DB  323  src/core/Recorder.cpp
+24E0B5FA53E0F4AC9D61F612DA549C0BDA2C47F52FD1E9CA9E7A7840D9730A03  436  src/core/RecordingFormat.cpp
+D60BD14655C6E6321B26602305FB406E2344F54D73FD7317DE2D1542A080E1FB  391  src/core/AsyncRecorder.cpp
+7B4FF6256041E030782D77A8F841453C1E60FA74CFE2036697FBAA084A5B82ED  452  src/core/AsyncRecordingCodec.cpp
+A088F803B86F0A2E5E6C0BA2E4674E36CB00C524A15FA20DC51034092BAB3344   86  src/core/detail/AsyncRecordingFormat.hpp
+EB42947E20B3EBEF6E72CC72BDF4B96B3242E9B695370F50B74AF135862B6258   47  src/core/detail/RecordingFormatCommon.hpp
+6817A1CCAD9CA983C7FE5591EAE171E14F21ED4146DDA9FF7A23A88EC632ED50   36  src/core/detail/SnapshotIndexing.hpp
+B33516A8166D6F8164653E8F8E9E96268591FD4F9EDDCF197BD42506C46148F8  423  tests/unit/core_RecordingFormatCommon_test.cpp
+6A4438E3E4BC7C772D5F015DA15AF0EEF8A6F85A2D9E5266AE41896F4EFAEC20 1791  tests/structural/p9c_architecture.cmake
+196360DAD12FE2BC52B8F02F77A30D17F2F33A4C521972C76608B38CD756B0E5   53  tests/structural/p9c5_header_selfcontained.cmake
+5FA27F7415203F2392925004FCA088D55D549DE90111EC099D88BFC70C9F09D4  379  tests/structural/p9c5_public_surface.cmake
+2D803208D3D4AA5012C48C19C069C08FD26500315AD9BDF320EE0A80767A9943   47  tests/coverage/status_failure_exceptions.json
+```
+
+### Registered R1 mutation campaign
+
+All fourteen registered mutation families turned a gate red independently
+from a clean committed boundary:
+
+| Family | Controlled mutation | Red evidence |
+|---:|---|---|
+| 1 | change the shared CRC polynomial | the exact common CRC-owner body failed |
+| 2 | bypass `headerCrc` at the synchronous writer | the global and per-file header-CRC census failed |
+| 3 | alter the shared endian marker | the common endian owner failed |
+| 4 | map allocation failure to `Invalid_parameters` | structure failed; RecorderAllocation reached 30/33 with exactly three wrong-Status assertions |
+| 5 | swap the two schema-prefix names | structure failed; Recorder reached 273/275, with direct CSV and whole-file fingerprint assertions red |
+| 6 | multiply `snapshotRow` by `lanes` rather than `stride` | the exact row-owner body failed |
+| 7 | offset eager current by `state_values` | the exact `snapshotView` owner failed |
+| 8 | swap same-typed eager caller arguments | the ordered seven-argument call assertion failed |
+| 9 | restore the dead CheckedArithmetic dependency in AsyncRecorder | the dead-include/using gate failed |
+| 10 | compute async raw CRC from the shuffled payload | the per-role gate failed and five AsyncRecorder reader cases rejected the file |
+| 11 | remove the synchronous zero-CRC guard, then separately change `minor >` to `minor !=` | each unchanged-policy assertion failed; no R2 behavior was reclassified |
+| 12 | replace the schema initializer-list with a bare default vector | the schema-constructor gate failed; the known interactive Windows CRT-abort path was not executed |
+| 13 | remove `Recorder.hpp` from `SnapshotIndexing.hpp` | the internal self-containment compiler gate failed with `unknown type name 'SnapshotView'` |
+| 14 | remove the helpers' anonymous namespace | the linkage opening/closing assertion failed |
+
+Every mutation was inverse-patched before the next. The applicable raw
+SHA-256 anchor returned exactly, `git diff --exit-code HEAD -- <files>`
+returned zero, and porcelain status was empty before final acceptance. No
+fingerprint, CRC, schema byte, Status, test count, or source hash was
+reblessed.
+
+### Fresh Linux coverage findings and hardening
+
+The mandatory WSL coverage lane used Ubuntu Clang/LLVM 18.1.3, Debug,
+IPO off, optional features off, and a fresh `build-r1-coverage` tree. Ubuntu's
+packaged CMake 3.28 could not configure the repository's declared 3.31
+minimum; the retained `/home/vk/.cache/slide-cmake/bin/cmake` 3.31.10
+completed generation. The fresh build completed 272/272 actions and an
+immediate dry build reported no work.
+
+The first CTest was correctly rejected at 56/58:
+
+- Recorder reached 268/275 because the oracle's generic Debug branch selected
+  the Windows tuple. File sizes and every independent format/eager check were
+  green; exactly seven tuple assertions were red.
+- the aggregate structural test passed 9C-2/3/4, then
+  `p9c5_public_surface.cmake:104` failed because direct CMake script mode had
+  no CMP0057 policy for `IN_LIST`;
+- all 55 expected nonempty profile groups existed, but the reporter refused
+  the six-row exception manifest at stale
+  `src/core/PackSolver.cpp:351:27:Invalid_parameters`; and
+- read-only inspection found both hosted instrumented workflows still pin
+  57 discovered tests although the suite contains 58.
+
+The Linux tuple was not accepted from R1 output. A separate executable was
+linked from the current Recorder test objects and a copied core archive whose
+four recording members were compiled from exact `ad700ca` Git blobs. No
+other fixture-producing production source differs between `ad700ca` and the
+R1 boundary. That old-production binary reproduced exactly 268/275 and the
+same thirteen values:
+
+```text
+CSV    (4072,   580175175469508733,  8482670618437841473)
+SLREC  (3904, 16236475239795828522, 17177906431584795385)
+SLCMP  (3936, 17797356430432497358, 14598319551377944930)
+block CRCs (raw,payload):
+  (4273982167, 2835542638), (2456069782, 2077085578)
+```
+
+Commit `7b8b1f8` therefore adds an explicit Linux/Clang-18/Debug branch while
+retaining three explicit Windows branches and rejecting unknown
+platform/toolchain/configuration combinations at compilation. It sets
+CMP0057 NEW inside independently runnable `p9c5_public_surface.cmake`.
+It also relocates the six exception identities one-for-one: four retain
+their exact context hashes, the two PackSolver-to-PackSolverIterative moves
+take their current context hashes, and all six classes, reasons, statement
+hashes, and the count of six remain unchanged.
+
+Three additional controlled mutations were red and restored:
+
+1. restoring the old generic Debug oracle reproduced exactly 268/275 and
+   the same seven tuple failures;
+2. removing the local CMP0057 policy made both direct 9C-5 and the aggregate
+   fail at `Unknown arguments specified`; and
+3. restoring the first stale manifest identity made the reporter stop
+   exactly at
+   `stale exception site:
+   src/core/PackSolver.cpp:351:27:Invalid_parameters`.
+
+After restoration, the scanner self-test passed and the census was exact:
+
+```text
+359 lexical = 343 direct + 16 conditional
+329 active = 323 measured + 6 structural exceptions
+30 inactive; zero uncovered and zero unmapped
+Invalid_parameters 236, Invalid_states 50,
+NotImplementedYet 10, Numerical_failure 63
+```
+
+A newly prepared 55-test profile session ran the unfiltered CTest suite at
+58/58. The completed authoritative artifacts
+`build-r1-coverage/coverage/status-failure-coverage.{json,md}` report PASS,
+323 covered, six excepted, and zero failures. Their SHA-256 values are
+`FC26CDC940823C51C59D356031A7EB0C030CFACB1C15CA1FEB6834E53690CDE4`
+and
+`8382B38DACD55B2A1F284E3454853BB384B18DAB769231125E6775B83FC9DD77`,
+respectively. The first, red session was not reused.
+
+The workflow count mismatch is
+`instrumented-workflow-test-count-stale`, explicitly DEFERRED to B1. No
+hosted workflow is claimed run.
+
+### Final retained acceptance
+
+All final reruns used clean `7b8b1f8`:
+
+| Configuration | Recorder | AsyncRecorder | Recorder allocation | Async allocation | Aggregate | 9C-5 self-contained | Full suite |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Windows Debug, Clang 21.1.8 | 275/9 | 471/12 | 33/3 | 60/4 | 1/1 | 1/1 | 58/58 |
+| Windows fast-math Release, IPO off | 275/9 | 471/12 | 33/3 | 60/4 | 1/1 | 1/1 | 58/58 |
+| Windows Release/ThinLTO CUDA host | 275/9 | 471/12 | 33/3 | 60/4 | 1/1 | 1/1 | 58/58 |
+| WSL Clang 18 exact coverage | 275/9 | 471/12 | 33/3 | 60/4 | 1/1 | 1/1 | 58/58 |
+
+The CUDA lane inherited the complete VS 18 x64 developer environment
+(MSVC 14.50.35717, SDK 10.0.26100), used Clang 21.1.8, nvcc 13.0.48,
+`sm_89`, and an RTX 4000 Ada (compute capability 8.9). Its real
+`unit_test_core_CudaSpmBatch` passed 433,671 assertions / 4 cases. Each
+native tree then reported `ninja: no work to do.` Direct 9C-5 script mode
+also passes without a CMP0057 warning.
+
+The only final diagnostics were the already registered Release/CUDA
+`-Ofast` deprecation warnings; B1 remains their owner. No sanitizer, timing,
+hosted-CI, installed-package, macOS, or device-LTO claim is made.
+
+`crc32-twice`, `header-crc-helper`, `csv-parquet-schema-twice`,
+`state-index-int-arith`, `snapshotview-twice`, and
+`dead-usings-copy-pasted` are APPLIED. The seven R1 supplemental IDs are
+also APPLIED; `instrumented-workflow-test-count-stale` is deferred to B1.
+The original 71-ID census is now 40 APPLIED / 0 REFUTED /
+8 named deferrals / 23 pending. The combined 84-ID census is
+51 APPLIED / 0 REFUTED / 10 named deferrals / 23 pending. MQ.2 remains
+open; R2 recording semantics/tests is next.

@@ -184,10 +184,22 @@ Fourteen mutations turn red and exact hashes are restored. Original census:
 34 APPLIED / 29 pending / 8 deferrals; combined 76-ID registry:
 38 APPLIED / 29 pending / 9 deferrals.
 
-Your first action is R1 recording common/core: preregister the exact byte-identical fixtures,
-structural owner delta, mutations, and restoration bands for its six named findings before any
-R1 test/source/gate edit or decisive run. Then freeze old production, apply R1, and continue
-through every remaining survivor batch
+**R1 PASSED locally at `5a462b6` plus `a7a4236`/`7b8b1f8` (2026-07-29):** shared
+recording-format facts, eager indexing, schema order, and widened row addressing pass Recorder
+275/9, AsyncRecorder 471/12, allocations 33/3 and 60/4, aggregate structural 1/1, and 9C-5
+self-containment 1/1 in Debug, fast-math Release/IPO-off, host-C++ CUDA, and WSL Clang 18
+coverage. All four pass 58/58; CUDA executes 433,671/4; native rebuilds are no-op. Fourteen R1
+plus three coverage-hardening mutations turn red. Exact Status coverage is 359 lexical /
+329 active = 323 measured + 6 exceptions, with 30 inactive and zero uncovered/unmapped. The six
+R1 survivors plus seven supplemental findings are APPLIED; the stale hosted 57-test pin is
+DEFERRED to B1. Original census: 40 APPLIED / 23 pending / 8 deferrals; combined 84-ID registry:
+51 APPLIED / 23 pending / 10 deferrals.
+
+Your first action is R2 evidence-first registration: freeze the old-production-red legal-zero-CRC
+fixture, old-production-green independent per-field CSV oracle, and real-CUDA
+`enqueueSnapshot(true→false)` discriminator before any R2 edit or decisive run. Preserve the
+already-applied shuffle oracle and the preregistered killed alternatives. Then continue through
+every remaining survivor batch
 until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
 supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
 six named landmines and MQ.1's build-policy findings included. Then →
