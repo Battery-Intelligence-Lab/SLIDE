@@ -840,6 +840,16 @@ require_token_count("MQ.2 T1 negative adjacency owner"
   mq2_pack_topology
   "graph.adjacency[branch.node_negative].push_back(branch.node_positive);"
   1)
+require_token_count("MQ.2 T1 global positive adjacency census"
+  mq2_pack_topology
+  "adjacency[branch.node_positive].push_back(branch.node_negative);"
+  1)
+require_token_count("MQ.2 T1 global negative adjacency census"
+  mq2_pack_topology
+  "adjacency[branch.node_negative].push_back(branch.node_positive);"
+  1)
+require_token_count("MQ.2 T1 global sparsity-contribution census"
+  mq2_pack_topology "sparsity.emplace_back(" 3)
 require_token_count("MQ.2 T1 one graph traversal queue"
   mq2_pack_topology "std::queue<std::uint32_t>pending;" 1)
 require_token_count("MQ.2 T1 one sparsity overflow proof"
