@@ -26,8 +26,19 @@ namespace {
   constexpr std::size_t max_csv_columns = 32;
   constexpr std::size_t max_csv_field_bytes = 65'536;
   constexpr std::size_t max_descriptor_bytes = 127;
+  constexpr std::string_view msg_too_large =
+    "liionpack CSV exceeds 4194304 bytes";
+  constexpr std::string_view msg_too_wide = "CSV row exceeds 32 columns";
+  constexpr std::string_view msg_field_large =
+    "CSV field exceeds 65536 bytes";
+  constexpr std::string_view msg_too_many_rows =
+    "liionpack CSV exceeds 100000 rows";
+  static_assert(max_csv_bytes == 4194304U && max_csv_rows == 100000U
+                  && max_csv_columns == 32U
+                  && max_csv_field_bytes == 65536U,
+                "diagnostic message text quotes these limits verbatim");
   static_assert(max_csv_rows
-                <= std::numeric_limits<std::uint32_t>::max() / 2U,
+                  <= std::numeric_limits<std::uint32_t>::max() / 2U,
                 "two node labels per bounded CSV row must fit uint32_t");
 
   void assignDiagnosticNoThrow(std::string &target,
@@ -64,7 +75,7 @@ namespace {
         return true;
       while (true) {
         if (fields.size() >= max_csv_columns)
-          return fail("CSV row exceeds 32 columns");
+          return fail(msg_too_wide);
         std::string field;
         if (source_[cursor_] == '"') {
           ++cursor_;
@@ -83,7 +94,7 @@ namespace {
               field.push_back(value);
             }
             if (field.size() > max_csv_field_bytes)
-              return fail("CSV field exceeds 65536 bytes");
+              return fail(msg_field_large);
           }
           if (!closed)
             return fail("unterminated quoted CSV field");
@@ -97,7 +108,7 @@ namespace {
               return fail("quote inside unquoted CSV field");
             field.push_back(source_[cursor_++]);
             if (field.size() > max_csv_field_bytes)
-              return fail("CSV field exceeds 65536 bytes");
+              return fail(msg_field_large);
           }
         }
         fields.push_back(std::move(field));
@@ -156,6 +167,21 @@ namespace {
            && parsed.ptr == text.data() + text.size();
   }
 
+  // std::isdigit is locale-sensitive and requires an unsigned-char domain.
+  [[nodiscard]] constexpr bool isAsciiDigit(char value) noexcept
+  {
+    return value >= '0' && value <= '9';
+  }
+
+  constexpr std::size_t scanDigits(
+    std::string_view text, std::size_t &cursor) noexcept
+  {
+    const std::size_t begin = cursor;
+    while (cursor < text.size() && isAsciiDigit(text[cursor]))
+      ++cursor;
+    return cursor - begin;
+  }
+
   bool parseValue(std::string_view text, real_t &value)
   {
     if (text.empty())
@@ -165,21 +191,16 @@ namespace {
       return false;
     if (text[cursor] == '0') {
       ++cursor;
-      if (cursor < text.size() && text[cursor] >= '0' && text[cursor] <= '9')
+      if (cursor < text.size() && isAsciiDigit(text[cursor]))
         return false;
     } else if (text[cursor] >= '1' && text[cursor] <= '9') {
-      while (cursor < text.size() && text[cursor] >= '0'
-             && text[cursor] <= '9')
-        ++cursor;
+      scanDigits(text, cursor);
     } else {
       return false;
     }
     if (cursor < text.size() && text[cursor] == '.') {
-      const std::size_t fraction = ++cursor;
-      while (cursor < text.size() && text[cursor] >= '0'
-             && text[cursor] <= '9')
-        ++cursor;
-      if (cursor == fraction)
+      ++cursor;
+      if (scanDigits(text, cursor) == 0)
         return false;
     }
     if (cursor < text.size()
@@ -188,11 +209,7 @@ namespace {
       if (cursor < text.size()
           && (text[cursor] == '+' || text[cursor] == '-'))
         ++cursor;
-      const std::size_t exponent = cursor;
-      while (cursor < text.size() && text[cursor] >= '0'
-             && text[cursor] <= '9')
-        ++cursor;
-      if (cursor == exponent)
+      if (scanDigits(text, cursor) == 0)
         return false;
     }
     if (cursor != text.size())
@@ -210,18 +227,20 @@ namespace {
     for (const unsigned char value : descriptor)
       if (!((value >= 'a' && value <= 'z')
             || (value >= 'A' && value <= 'Z')
-            || (value >= '0' && value <= '9') || value == '_'
+            || isAsciiDigit(static_cast<char>(value)) || value == '_'
             || value == '-' || value == '.'))
         return false;
     return true;
   }
 
-  bool failSemantic(NetlistCsvDiagnostic &diagnostic, std::size_t row,
-                    std::string_view message)
+  [[nodiscard]] slide::Status failSemantic(
+    NetlistCsvDiagnostic &diagnostic,
+    std::size_t row,
+    std::string_view message)
   {
     diagnostic.row = row;
     diagnostic.message.assign(message);
-    return false;
+    return slide::Status::Invalid_parameters;
   }
 
   struct ParsedElement
@@ -285,7 +304,7 @@ try {
     return slide::Status::Invalid_parameters;
   }
   if (csv.size() > max_csv_bytes) {
-    diagnostic.message = "liionpack CSV exceeds 4194304 bytes";
+    diagnostic.message = msg_too_large;
     return slide::Status::Invalid_parameters;
   }
   if (csv.find('\0') != std::string_view::npos) {
@@ -348,44 +367,36 @@ try {
     ++data_rows;
     if (data_rows > max_csv_rows) {
       diagnostic.row = reader.row() - 1;
-      diagnostic.message = "liionpack CSV exceeds 100000 rows";
+      diagnostic.message = msg_too_many_rows;
       return slide::Status::Invalid_parameters;
     }
     const std::size_t row = reader.row() - 1;
-    if (fields.size() != column_count) {
-      failSemantic(diagnostic, row, "liionpack CSV row width differs from header");
-      return slide::Status::Invalid_parameters;
-    }
+    if (fields.size() != column_count)
+      return failSemantic(
+        diagnostic, row, "liionpack CSV row width differs from header");
     const auto &descriptor = fields[required[0]];
     ParsedElement element{ .descriptor = descriptor, .row = row };
     if (!validDescriptor(descriptor)
         || !(descriptor[0] == 'V' || descriptor[0] == 'R'
-             || descriptor[0] == 'I')) {
-      failSemantic(diagnostic, row, "unsupported liionpack descriptor");
-      return slide::Status::Invalid_parameters;
-    }
-    if (!descriptors.emplace(descriptor).second) {
-      failSemantic(diagnostic, row, "duplicate liionpack descriptor");
-      return slide::Status::Invalid_parameters;
-    }
+             || descriptor[0] == 'I'))
+      return failSemantic(
+        diagnostic, row, "unsupported liionpack descriptor");
+    if (!descriptors.emplace(descriptor).second)
+      return failSemantic(
+        diagnostic, row, "duplicate liionpack descriptor");
     if (!parseNode(fields[required[1]], element.node_positive)
-        || !parseNode(fields[required[2]], element.node_negative)) {
-      failSemantic(diagnostic, row, "invalid liionpack node label");
-      return slide::Status::Invalid_parameters;
-    }
-    if (element.node_positive == element.node_negative) {
-      failSemantic(diagnostic, row, "liionpack element has identical endpoints");
-      return slide::Status::Invalid_parameters;
-    }
-    if (!parseValue(fields[required[3]], element.value)) {
-      failSemantic(diagnostic, row, "invalid liionpack element value");
-      return slide::Status::Invalid_parameters;
-    }
+        || !parseNode(fields[required[2]], element.node_negative))
+      return failSemantic(diagnostic, row, "invalid liionpack node label");
+    if (element.node_positive == element.node_negative)
+      return failSemantic(
+        diagnostic, row, "liionpack element has identical endpoints");
+    if (!parseValue(fields[required[3]], element.value))
+      return failSemantic(
+        diagnostic, row, "invalid liionpack element value");
     element.kind = descriptor[0];
-    if (element.kind == 'R' && element.value < 0.0) {
-      failSemantic(diagnostic, row, "liionpack resistance must be non-negative");
-      return slide::Status::Invalid_parameters;
-    }
+    if (element.kind == 'R' && element.value < 0.0)
+      return failSemantic(
+        diagnostic, row, "liionpack resistance must be non-negative");
     cell_count += element.kind == 'V';
     current_count += element.kind == 'I';
     labels.push_back(element.node_positive);
@@ -439,10 +450,11 @@ try {
     const auto negative = denseNode(element.node_negative);
     if (element.kind == 'R' && element.value == 0.0)
       continue;
-    if (positive == negative) {
-      failSemantic(diagnostic, element.row, "liionpack ideal wire shorts an element or terminal source");
-      return slide::Status::Invalid_parameters;
-    }
+    if (positive == negative)
+      return failSemantic(
+        diagnostic,
+        element.row,
+        "liionpack ideal wire shorts an element or terminal source");
     if (element.kind == 'V') {
       const auto cell = static_cast<std::uint32_t>(candidate.cells.size());
       candidate.cells.push_back({ .path = element.descriptor,
@@ -493,7 +505,7 @@ try {
     if (read == detail::BoundedFileRead::open_failed)
       diagnostic = { .message = "could not open liionpack CSV file" };
     else if (read == detail::BoundedFileRead::too_large)
-      diagnostic = { .message = "liionpack CSV exceeds 4194304 bytes" };
+      diagnostic = { .message = std::string{ msg_too_large } };
     else
       diagnostic = { .message = "could not read complete liionpack CSV file" };
     return detail::boundedFileStatus(read);

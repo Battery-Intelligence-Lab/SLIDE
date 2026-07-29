@@ -23,7 +23,8 @@ struct NetlistCsvOptions
 struct NetlistCsvDiagnostic
 {
   std::size_t row{};    //!< one-based logical CSV row, zero before row parsing
-  std::size_t offset{}; //!< source byte at or immediately after the failure
+  std::size_t offset{}; //!< source cursor at/immediately after a reader-detected
+                        //!< syntax/limit failure; zero when unavailable
   std::string message{};
 };
 
