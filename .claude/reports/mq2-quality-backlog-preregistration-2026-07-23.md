@@ -1041,3 +1041,155 @@ After all MQ.2 batches:
    counts and name every deferred owner; and
 8. no timing, sanitizer, coverage, hosted-CI, installed-package, Linux, macOS,
    or device-LTO claim is inferred from these gates.
+
+## T2 thermal-topology amendment (registered 2026-07-29)
+
+This amendment is registered before the first T2 production, unit-test, or
+structural-gate edit and before any T2 binary run. The prior-art audit found no
+FALSIFIED, REFUTED, killed, or deferred record for either
+`assemble-noexcept-and-stale-cold-brief` or `test-gap-isothermal-zero`. This
+batch owns exactly those two original survivor IDs.
+
+### Executable isothermal oracle
+
+Add one always-on test named
+`isothermal thermal graph assembles exact zero heat` with tags
+`[core][pack][thermal][oracle][MQ.2][T2]`. It compiles three thermal cells in
+parallel, boundaries `a` and `b`, and exactly these five links:
+
+```text
+p00 --1.50 W/K-- p01
+p01 --2.50 W/K-- p02
+p00 --0.50 W/K-- p02
+p00 --0.75 W/K-- a
+p02 --3.25 W/K-- b
+```
+
+The canonical endpoint degrees are `{3,2,3,1,1}` and the exact incident
+offsets are `{0,3,5,8,9,10}`. The case has exactly six executed assertions:
+
+1. `compilePackDescription` returns `Success`;
+2. one grouped shape assertion requires exactly five edges and those exact
+   offsets;
+3. `assemble` returns `Success`;
+4. every cell `q_ext` value compares exactly equal to `0.0`;
+5. every boundary-heat value compares exactly equal to `0.0`; and
+6. every published `edge_flux` value compares exactly equal to `0.0`.
+
+Before assembly, the test poisons all three output cells, both boundary
+outputs, every published and trial edge-flux slot, every trial endpoint-heat
+slot, and every incidence byte with distinct nonzero sentinels. Thus a
+pre-zeroed compile result or omitted calculation/reset/publication cannot
+make the oracle pass vacuously. Every cell and boundary temperature is the
+same finite `300.0 K`. `tests/unit/core_PackTopology_test.cpp` adds its direct
+`<algorithm>` include for `std::ranges::all_of`; it must not depend on a
+transitive include.
+
+The exact-equality band is analytic and unit-checked:
+
+```text
+Delta T = 300 K - 300 K = exactly 0 K
+q_edge = G [W/K] * Delta T [K] = exactly 0 W
+```
+
+For finite positive conductance, the subtraction and multiplication produce
+zero exactly; either signed zero compares equal to `0.0`, and fixed-order
+endpoint accumulation of only signed zeros remains zero. This does not
+authorize an exact general non-isothermal conservation sum: separately
+rounded endpoint totals can prevent exact cancellation.
+
+The current PackTopology floor is 164 assertions / 11 cases. This addition is
+exactly +6 assertions / +1 case, so the frozen T2 floor is **170 / 12**. No
+extreme-temperature repeat and no extra Catch assertion is included.
+
+At the oracle-only boundary, old production must pass PackTopology 170/12.
+The future structural gate described below must be red, with its first
+diagnostic reporting that the exact declaration token occurs 0 times rather
+than 1. This deliberately separates the old-production numerical oracle from
+the future signature/comment contract. No `static_assert(noexcept(...))` is
+added at that boundary because it would prevent the old-production numerical
+oracle from compiling; the exact structural signature gate is the executable
+owner of that guarantee.
+
+### Signature and leading-header contract
+
+The production change is restricted to the exception specification and the
+leading contract comment:
+
+- add `noexcept` to both the `CompiledThermalGraph::assemble` declaration and
+  definition, with no body, arithmetic, ordering, storage, or status change;
+- replace the stale all-cold brief with a leading MC-3 contract of six lines
+  or fewer that names ownership, `PLAN.md` section 3.4 with D-19/D-21, and the
+  hot/cold split; and
+- state specifically that description authoring and
+  `compilePackDescription()` are cold, while
+  `CompiledThermalGraph::assemble()` is hot once per PackStepper step attempt.
+
+The full current body has been inspected: it performs span/vector
+`operator[]` access, finite/shape guards, arithmetic on `real_t = double`,
+`std::fill`, and `std::copy` over pre-sized storage, then returns a
+`slide::Status`. It neither allocates nor calls a throwing user operation.
+Adding `noexcept` therefore documents and enforces the PC-4 no-throw boundary
+at the type level without changing any successful or rejected numerical
+path. It does **not** enforce PC-1: `noexcept` cannot observe a successful
+allocation. The independent P2-G1 coupled-thermal allocation test remains the
+owner of the zero-allocation claim.
+
+`tests/structural/p9c_architecture.cmake` loads compacted
+`src/core/PackTopology.hpp` and requires exactly one complete declaration
+token ending:
+
+```text
+std::span<real_t>boundary_heat)noexcept;
+```
+
+It requires exactly one complete definition token in compacted
+`src/core/PackTopology.cpp` ending:
+
+```text
+std::span<real_t>boundary_heat)noexcept{
+```
+
+The gate separately reads the raw header, removes whitespace while retaining
+comments, requires exactly one each of the new brief, owner, PLAN-section,
+cold, and hot fragments, and requires zero copies of the former
+`cold-compiled electrical/thermal topology` brief. This T2 edit fixes only
+PackTopology's stale comment; it does not claim to close the repo-wide MC-3
+debt owned by MQ.3.
+
+### Registered mutations and acceptance
+
+At the clean implementation boundary, at least these independent mutations
+must turn red before final acceptance:
+
+1. remove both exception specifications so production still compiles:
+   behavior remains green but the exact declaration/definition structural
+   counts are red;
+2. remove `noexcept` from only one side: the declaration/definition mismatch
+   must fail to compile, while the structural gate also rejects the missing
+   token;
+3. restore or damage any one owner/PLAN/hot/cold comment fragment: the
+   raw-header structural gate is red;
+4. bias the edge temperature difference by `+1.0`: at least the exact-zero
+   edge-flux assertion is red;
+5. omit publication from trial edge flux to `edge_flux`: the poisoned
+   published-flux sentinel makes assertion 6 red while cell and boundary
+   zeros remain green;
+6. omit cell-heat publication: the poisoned `q_ext` values make assertion 4
+   red; and
+7. omit boundary-heat publication: the poisoned boundary values make
+   assertion 5 red.
+
+Every touched header/source/test/gate file is SHA-256 anchored at the clean
+implementation commit before mutations. Each mutation is inverse-patched
+individually; the exact hashes, `git diff --exit-code HEAD -- <touched-files>`,
+and an empty porcelain status are required before the next mutation and
+before final acceptance. No oracle value may be reblessed to fit production.
+
+The final focused acceptance set in Debug, fast-math Release/IPO-off, and the
+retained host-C++ CUDA tree is PackTopology 170/12, PackSolver 994/33,
+PackStepper 333/13, P2-G1 allocation 14/2, and aggregate structural 1/1.
+Each lane then runs the unfiltered 58/58 suite, including the real CUDA test
+only in the CUDA tree, followed by a no-op rebuild. `CHANGELOG.md`, PLAN
+section 8, the validation report, and `develop/TODO.md` receive the final
+applied census only after all gates and mutations are green.
