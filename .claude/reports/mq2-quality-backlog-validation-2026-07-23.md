@@ -1729,3 +1729,74 @@ anchors before and after each run. These runs are discovery, not evidence;
 the applicable exact tuple is now selected by the existing recorded-fixture
 `SLIDE_TEST_RELEASE` / `SLIDE_TEST_IPO` configuration definitions. The next
 run is the first decisive frozen old-production oracle.
+
+## R1 frozen old-production boundary
+
+Oracle commit `ad700ca` and structural commits `3d61dcc` / `8b30a2a`
+freeze R1 before any production edit. The oracle changes only the new second
+Recorder test source, the existing target's source/configuration edges, and
+the preregistration/validation records. The structural commits append only
+the future R1 gate. Frozen test/gate anchors are:
+
+```text
+65332EB0372D05F6735FD50D178BA5E6214242F4B1325610722C4C29FEEBB4F9  412  tests/unit/core_RecordingFormatCommon_test.cpp
+F4C5B82767BE2F5D6BAEB96FA029B8751BA0091377D5A88C315DF439733B05C2  247  tests/unit/CMakeLists.txt
+9D8E3C2B2303BBF7632C2304721732D09455B24AB767B9A7988AE82218A3876B 1782  tests/structural/p9c_architecture.cmake
+```
+
+The five production anchors remain exactly the preregistered old source:
+
+```text
+651C7F81FDE8C0274167DBD503001B5182E5372D93B0AE40071F18A4E1757756 293 src/core/Recorder.cpp
+F5107C41F0841964DB13D2393D7B643C87B37A9557D1A66471BABEC4537DEBDE 451 src/core/RecordingFormat.cpp
+E8A52D4319FD5198C343AFD3783FE8856F0035B39EB51E76F2D7B54E88CA0F8F 396 src/core/AsyncRecorder.cpp
+10620233E09B29588859C01ECC295024EB69216192E2F96EEFE17FC1AEDF58BA 452 src/core/AsyncRecordingCodec.cpp
+73A0EB170C4ADDB08816062D86FF1005036C99A89566C2B60C36068894F1C2FC 116 src/core/detail/AsyncRecordingFormat.hpp
+```
+
+The committed exact tuples pass the unchanged production Recorder in all
+three retained configurations:
+
+| Configuration | Recorder |
+|---|---:|
+| Debug | 275 assertions / 9 cases |
+| fast-math Release, IPO off | 275 / 9 |
+| Release/IPO-on CUDA tree, host C++ | 275 / 9 |
+
+The remaining registered old-boundary Debug binaries also pass exactly:
+AsyncRecorder 471/12, RecorderAllocation 33/3, and
+AsyncRecorderAllocation 60/4. The aggregate structural test passes every
+preceding suite:
+
+```text
+-- 9C-2 shared ageing-kernel structural gate passed
+-- 9C-3 cold-file split structural gate passed
+-- 9C-4 shared test harness structural gate passed
+-- 9C-5 public-surface gate passed
+```
+
+It then stops only at the registered absent owner:
+
+```text
+9C-2 MQ.2 R1 RecordingFormatCommon owner: expected 1 occurrences of
+inlineconstexprstd::uint32_tendian_marker=0x01020304U;, found 0
+```
+
+Three independent static reviews hardened the future gate before it was
+frozen: exact per-file format-fact ownership and endian roles; leading
+self-contained header contracts; payload-read/payload-CRC/unshuffle/raw-CRC
+order; contextual block/file header CRCs and allocation catches; exact eager
+caller arguments and returned use; canonical schema loop bounds,
+name-to-data associations, and cursor lifecycle; complete CSV/Parquet row
+consumption; include-map/dead-using ownership; and the distinct synchronous
+versus compressed minor-version comparisons and synchronous zero-CRC guard.
+The empty-CSV design was rejected before capture because it did not execute
+the row helper; the final opaque two-row CSV closes that hole while R2 keeps
+independent field-semantic ownership.
+
+`clang-format --dry-run --Werror` passes the 412-line unit oracle and
+`git diff --check` passes. No production, full-suite, allocation-change,
+Status-coverage, timing, sanitizer, hosted-CI, installed-package, Linux,
+macOS, or device-kernel claim is made at this boundary. All six R1 survivor
+IDs remain pending until implementation, registered mutations, three-lane
+acceptance, and exact Status coverage are complete.
