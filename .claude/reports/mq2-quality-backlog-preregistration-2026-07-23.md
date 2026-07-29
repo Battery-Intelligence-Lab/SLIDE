@@ -1589,9 +1589,13 @@ green.
 
 The byte fingerprint records the exact byte count plus:
 
-- conventional byte-wise FNV-1a; and
-- a second full-width rotate/multiply recurrence structurally different from
-  FNV.
+- conventional byte-wise 64-bit FNV-1a, seeded with
+  `14695981039346656037`, applying XOR with each unsigned byte and then
+  multiplying by `1099511628211`; and
+- a second full-width recurrence seeded with `0x6a09e667f3bcc909`,
+  applying
+  `rotl(mixed ^ (byte + 0x9e3779b97f4a7c15), 17)` and then multiplying by
+  `0xbf58476d1ce4e5b9` for each unsigned byte. Unsigned wrap is intentional.
 
 An initial run with deliberately impossible digest sentinels is explicitly
 **exploration**, not evidence. It may only print the old-production byte
@@ -1661,6 +1665,31 @@ allocationFailureStatus( 13 = one definition, twelve catch consumers
 headerCrc(                7 = one definition, six header consumers
 fileHeaderCrc( / blockHeaderCrc(  0 / 0
 ```
+
+The compact per-file matrix is also frozen so the same global counts cannot
+pass after moving a call to the wrong format or raw/payload role. Columns are
+`crc32(` / `endian_marker` / `allocationFailureStatus(` / `headerCrc(`:
+
+```text
+detail/RecordingFormatCommon.hpp  2 / 1 / 1 / 1
+RecordingFormat.cpp               0 / 3 / 2 / 2
+Recorder.cpp                      0 / 0 / 6 / 0
+detail/AsyncRecordingFormat.hpp   0 / 0 / 0 / 0
+AsyncRecorder.cpp                 2 / 2 / 2 / 2
+AsyncRecordingCodec.cpp           2 / 2 / 2 / 2
+detail/SnapshotIndexing.hpp       0 / 0 / 0 / 0
+```
+
+`RecordingFormat.cpp`, `Recorder.cpp`, and
+`detail/AsyncRecordingFormat.hpp` directly include the common header.
+`Recorder.cpp` and `AsyncRecordingCodec.cpp` directly include the snapshot
+header. Every other matrix entry is pinned to zero as well as every positive
+entry being pinned to its exact consumer. In particular, the async writer
+contains exactly one ordered pair
+`.raw_crc32 = crc32(raw)` / `.payload_crc32 = crc32(payload)`. The reader
+checks `block.payload_crc32 != crc32(payload_view)` before unshuffle and
+`block.raw_crc32 != crc32(raw)` after unshuffle. The structural gate pins
+that payload-read -> payload-CRC -> unshuffle -> raw-CRC order.
 
 The common header contains zero `format_major` and `format_minor` tokens.
 `RecordingFormat.cpp` and `AsyncRecordingFormat.hpp` each retain exactly one
@@ -1806,7 +1835,14 @@ these mutation families:
    the helper;
 9. reintroduce one dead AsyncRecorder using/include or remove the live codec
    counterpart; and
-10. remove or weaken the synchronous zero-CRC guard or alter either minor
+10. alias the async writer's raw CRC to the shuffled payload, make either
+    reader comparison use the wrong field/bytes, or pair a writer/reader
+    raw-payload swap. For both deterministic codec-none blocks, the test
+    independently hashes the retained unshuffled current-plus-padded-state
+    bytes and the exact on-disk shuffled payload; each one grouped assertion
+    requires a valid block-header CRC, both stored data CRCs, and
+    `raw_crc32 != payload_crc32`, preserving the registered +28 case count.
+11. remove or weaken the synchronous zero-CRC guard or alter either minor
     comparison. This mutation is structural-red; R1 must not execute or
     reclassify R2's behavior change.
 
