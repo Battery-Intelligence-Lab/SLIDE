@@ -1503,6 +1503,266 @@ move the original census from 31 APPLIED / 0 REFUTED / 8 named deferrals /
 validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
 census only at closeout.
 
+## R2 recording-semantics amendment (2026-07-29)
+
+This amendment is registered at clean HEAD `ac2cf03` before the first R2
+production, unit-test, or structural-gate edit and before any R2 binary run.
+It specializes the already-registered behavior gate 5 without changing its
+decision: a correctly computed zero-valued synchronous header CRC is legal.
+The prior-art audit searched PLAN sections 2, 4, and 8, this report, the
+validation report, the survivor census, and the recording tests. It found no
+later FALSIFIED, BLOCKED, REFUTED, or deferred record for
+`crc-zero-rejected` or `csv-values-untested`.
+
+R2 owns exactly these remaining decisions:
+
+- `crc-zero-rejected`: APPLIED only after the frozen correct-zero fixture
+  changes from `Invalid_parameters` to `Success`;
+- `csv-values-untested`: APPLIED only after every field of all three
+  nondegenerate CSV rows is parsed independently and reproduced bitwise; and
+- `enqueuesnapshot-success-untested`: attempted REFUTATION through the
+  existing real-CUDA P8-G3 path and the registered density-flag mutation.
+
+`shuffle-oracle-gap` is already APPLIED at `cf64d074`; R2 does not add,
+rewrite, or reclassify its independent 3-by-4 shuffle and inverse oracle.
+Runtime CRC brute force, a forged snapshot count, a first-row-only CSV check,
+NaN skipping, a round-trip-only shuffle check, and either minor-version
+operator change remain killed. No format version, schema spelling, current or
+state representation, successful nonzero-CRC behavior, or allocation
+contract changes in R2.
+
+The clean pre-edit anchors are:
+
+```text
+24E0B5FA53E0F4AC9D61F612DA549C0BDA2C47F52FD1E9CA9E7A7840D9730A03  436  src/core/RecordingFormat.cpp
+10CEA3E821121549879670A4BE8D42D231D2BB16A8D753A88F9297D073F600DB  323  src/core/Recorder.cpp
+D60BD14655C6E6321B26602305FB406E2344F54D73FD7317DE2D1542A080E1FB  391  src/core/AsyncRecorder.cpp
+79BABE5E9E7E0EB8E322BB670105C5E48A42838DC10A4895D24EAE0635846D3D  619  src/core/CudaSpmBatch.cpp
+E69ABFBFAA3454585DD435138CCB1FD485DD2300732A1442C149445DC70FC313  551  tests/unit/core_Recorder_test.cpp
+3358FAE048F211E23E71FD220F519CC0FA27A0F5565C63FA7918A9D98E97FE79  352  tests/unit/core_CudaSpmBatch_test.cpp
+6A4438E3E4BC7C772D5F015DA15AF0EEF8A6F85A2D9E5266AE41896F4EFAEC20 1791  tests/structural/p9c_architecture.cmake
+```
+
+### Correct-zero and corrupted-header oracle
+
+The already-registered deterministic fixture remains the oracle; it is not
+replaced by a newly searched or post-output value. It is a 3,584-byte zero
+vector with this exact 64-byte header at offset zero:
+
+```text
+534c4944455245430100000004030201400000000000000070000000c700000087030000000000004000000000000000000e000000000000000e000000000000
+```
+
+The fields are little-endian `SLIDEREC`, major 1, minor 0, endian marker
+`0x01020304`, header size 64, stored CRC 0, rows 112, lanes 199, stride 903,
+snapshots 0, offset-table position 64, data offset 3,584, and file size 3,584.
+The sole table entry at offset 64 is little-endian `uint64_t{3584}`. The test
+builds those committed bytes directly and independently requires the
+test-side CRC-32/ISO-HDLC result to equal zero; it performs no search.
+
+The empty layout is fully legal: rows and lanes are positive, stride is at
+least lanes, dimensions fit `int`, the one-entry table ends at byte 72,
+3,584 is 64-byte aligned, `table[0] == data_offset`, and with zero snapshots
+the first and final offset are both the file size. Successful
+`BinaryRecording::open` must therefore publish `valid()==true`, `size()==0`,
+`n_rows()==112`, `n_lanes()==199`, and `stride()==903`.
+
+The recomputation witness changes only the stored CRC field from zero to one.
+An independent header-CRC helper zeros that field and still obtains exactly
+zero, while the stored value is exactly one. All magic, version, endian,
+dimension, offset, table, and file-size facts remain legal, so
+`Invalid_parameters` can come only from
+`headerCrc(header) != header.header_crc32`. Opening this corrupt copy after
+the valid fixture must fail atomically while the valid mapping and metadata
+remain published. A rows-byte mutation is not used: changing only the stored
+CRC gives the recomputation oracle no downstream alternate rejection.
+
+The new zero-CRC case has exactly 14 assertions: two independent CRC facts,
+two calls to the existing `writeBytes` helper at two assertions each, the
+valid-open requirement, five valid metadata assertions, corrupt-open
+rejection, and post-failure validity. Both files are constructed and written
+before the valid-open requirement. Thus unchanged production reaches the
+seventh new assertion and fails exactly there; fixed production reaches all
+14.
+
+The only allowed production delta is deletion of
+`|| header.header_crc32 == 0` from `BinaryRecording::open`. The generic
+writer assignment, reader recomputation, `minor > format_minor`, and every
+later layout check remain exact. The R1 architecture assertion at the former
+zero guard is expressly superseded: it is renamed for R2 and changes its
+expected count from one to zero. The gate retains exactly one
+`headerCrc(header) != header.header_crc32`, exactly one writer assignment,
+and exactly one synchronous minor comparison, and forbids a replacement
+`headerCrc(header) == 0` or `headerCrc(header) != 0` special case.
+
+### Independent all-row CSV semantics
+
+The existing `P6-G1 CSV and mmap recordings preserve snapshots` case retains
+its three snapshots but changes accepted steps from the degenerate loop
+indices to the exact sequence `{7, 11, 19}`. Simulation times remain
+`{0, 1, 2}` seconds and currents remain `{8, -4}` A. This is test-fixture
+hardening, not a production-output reblessing: R1's opaque platform-specific
+CSV fingerprints live in `core_RecordingFormatCommon_test.cpp` and are
+unchanged. The nondegenerate steps are required because serializing the CSV
+loop index instead of `recorded.accepted_step` would otherwise remain green.
+
+Before each `Recorder::record`, the test independently retains one typed
+expected row from the live batch:
+
+- the named accepted step and literal simulation time;
+- both current densities computed once from current divided by electrode
+  area;
+- all 58 live state values, read as 29 `StateArena::row(row)[lane]` pairs,
+  never through `Recorder::snapshot`, `snapshotRow`, or padded raw indexing;
+  and
+- both voltages from the shared test harness's production-observation call on
+  that live state and density at the `0.0` observation time used by
+  `SpmBatch::terminalVoltageAt`.
+
+One grouped assertion freezes the fixture geometry at 29 rows, two lanes,
+and stride eight. The arena therefore owns 232 padded values per snapshot,
+but each CSV row must expose only the 58 live state values. The two density
+lanes differ at every row, and rows after the first have lane-distinct states;
+the first row alone is deliberately insufficient.
+
+A file-local parser uses `std::string_view` slicing and
+`std::from_chars`, not `std::stod`, streams, Recorder schema helpers, snapshot
+accessors, or terminal-voltage accessors. It requires exactly one header and
+three newline-terminated data rows with no trailing bytes, exactly 64
+nonempty fields per data row, complete base-10 integer consumption for field
+zero, and complete finite scientific-double consumption for fields 1 through
+63. One assertion requires the complete parse. The three typed rows then
+make exactly 192 comparisons:
+
+```text
+3 rows * (1 accepted step + 1 time + 2 currents
+          + 29*2 live states + 2 terminal voltages) = 192
+```
+
+Every parsed real is compared by `std::bit_cast<uint64_t>`, not tolerance.
+`Recorder.cpp` emits scientific format with `max_digits10` digits after the
+decimal point, i.e. 18 significant digits for `double`, so exact recovery is
+the intended contract. Reducing precision to `digits10` or at least
+`max_digits10 - 2` must turn this oracle red; `max_digits10 - 1` is not a
+registered mutation because 17 significant digits may still round-trip.
+
+The CSV delta is exactly 227 assertions and zero cases: one grouped geometry
+assertion, three 11-assertion independent voltage observations, one complete
+parser assertion, and the 192 comparisons above. The existing case therefore
+passes exactly 257 assertions / 1 case, and Recorder rises from 275/9 to
+502/9 before the zero-CRC case. With that 14/1 case included, final Recorder
+is exactly **516 assertions / 10 cases**.
+
+### Existing CUDA seam and attempted refutation
+
+The current call graph is sufficient only if the registered mutation proves
+it dynamically. `CudaAsyncRecorder::enqueue` records the device current
+density and state into pinned storage. Its drain worker obtains those spans
+and calls the sole production caller of
+`AsyncRecorder::enqueueSnapshot`; that function delegates to
+`enqueueValues(..., true)`, whose distinguishing expression divides by one
+rather than electrode area. Worker failure propagates through
+`CudaAsyncRecorder::finish`.
+
+The existing real-CUDA P8-G3 case supplies two nonzero densities for six
+snapshots. Chen2020's electrode area is 0.1027, not one. The case requires
+enqueue and finish success, decodes all six blocks, and compares both current
+densities plus complete state exactly. R1's retained CUDA evidence executed
+this real test at 433,671 assertions / 4 cases on the RTX 4000 Ada; it was
+not the optional-off `CudaDisabled` binary.
+
+At a clean R2 implementation boundary, change only the literal `true` passed
+by `enqueueSnapshot` to `false`, rebuild the real CUDA target under the full
+VS 18 x64 environment, and run exactly that test. The registered result is
+six failed dynamic density checks:
+
+```text
+test cases:       4 |       3 passed | 1 failed
+assertions: 433671 | 433665 passed | 6 failed
+```
+
+Accepted steps, states, counts, and statuses stay green. If and only if that
+mutation is unexpectedly green after proving the correct CUDA tree and rebuilt
+source were used, `enqueuesnapshot-success-untested` becomes APPLIED with the
+already-reviewed CPU fallback: paired codec-none recorders compare
+`enqueue(current_A)` against
+`enqueueSnapshot(current_A/area)` bitwise, plus the finite-density/tiny-area
+quotient-overflow discriminator. When the six CUDA assertions turn red, the
+finding is REFUTED as a stale test inventory and no duplicate CPU round-trip
+test is added.
+
+### Frozen boundary, mutations, and acceptance bands
+
+The oracle-only boundary may change only
+`tests/unit/core_Recorder_test.cpp`,
+`tests/structural/p9c_architecture.cmake`, and evidence records. All production
+hashes above remain exact. Unchanged production must report:
+
+```text
+CSV case:       257 assertions / 1 case, all pass
+Recorder:       509 reached assertions / 10 cases,
+                508 pass / 1 fail; 9 cases pass / 1 fails
+zero-CRC case:  7 reached assertions, the valid-open requirement alone fails
+AsyncRecorder:  471 / 12, all pass
+Recorder alloc: 33 / 3, all pass
+Async alloc:    60 / 4, all pass
+```
+
+The aggregate structural gate passes every preceding suite and then fails at
+the superseded zero-guard policy: expected zero occurrences, found one. This
+is the frozen old-production-red behavior boundary; no source edit is allowed
+before it is committed.
+
+After the one-line implementation, independently execute these mutations from
+a clean committed boundary and restore exact SHA-256 anchors between them:
+
+1. restore `header.header_crc32 == 0`;
+2. replace it with a computed-CRC zero special case;
+3. delete or bypass `headerCrc(header) != header.header_crc32`;
+4. serialize CSV loop index instead of accepted step, and separately force
+   all serialized times to zero;
+5. duplicate or reverse current lanes;
+6. use lanes rather than stride in state selection, and separately reverse
+   live state lanes;
+7. duplicate or reverse voltage lanes;
+8. reduce precision to `digits10` or `max_digits10 - 2`;
+9. change `enqueueSnapshot`'s density flag from `true` to `false` in the real
+   CUDA lane; and
+10. weaken the test-side three-row bound or omit a field family. The exact
+    516/10 count and structural test-source assertions must turn red rather
+    than silently accepting a smaller oracle.
+
+Changing the fixture's stored CRC away from zero, changing snapshots from
+zero, changing `table[0]`, resealing the corrupt fixture, or changing either
+minor-version operator is not an alternate implementation. Those mutations
+either make the self-check/layout oracle red or violate a killed boundary.
+
+Final focused gates in Debug, fast-math Release/IPO-off, and host-C++ CUDA are:
+
+```text
+Recorder               516 / 10
+AsyncRecorder           471 / 12
+RecorderAllocation       33 / 3
+AsyncRecorderAllocation  60 / 4
+aggregate structural      1 / 1
+```
+
+The retained CUDA tree additionally passes the restored real
+`CudaSpmBatch` 433,671/4. Each configuration then passes unfiltered 58/58
+and a no-op rebuild. `clang-format --dry-run --Werror`, `git diff --check`,
+and an adversarial gate review are mandatory. Removing one boolean clause
+adds or removes no Status-returning statement, so the registered WSL Clang 18
+coverage census remains 359 lexical / 329 active = 323 measured + 6 exact
+exceptions, 30 inactive, and zero uncovered/unmapped; it is rerun rather than
+assumed.
+
+If all registered gates pass, R2 closes two pending findings as APPLIED and
+one as REFUTED, with no new supplemental ID. The original 71-ID census moves
+from 40 APPLIED / 0 REFUTED / 8 deferrals / 23 pending to
+**42 / 1 / 8 / 20**. The combined 84-ID census moves from
+51 / 0 / 10 / 23 to **53 / 1 / 10 / 20**. `shuffle-oracle-gap` remains in its
+existing APPLIED count and is not counted again.
+
 ## R1 post-native-acceptance Linux coverage hardening (registered 2026-07-29)
 
 This amendment is registered at clean `a7a4236` after all fourteen R1
