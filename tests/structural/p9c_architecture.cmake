@@ -1036,6 +1036,10 @@ require_token_count("MQ.2 C1 load too-large consumer"
   mq2_netlist_csv
   "diagnostic={.message=std::string{msg_too_large}};"
   1)
+require_token_count("MQ.2 C1 bounded-file byte limit"
+  mq2_netlist_csv
+  "detail::readBoundedFile(path,max_csv_bytes,contents)"
+  1)
 require_token_count("MQ.2 C1 too-wide consumer"
   mq2_netlist_csv "returnfail(msg_too_wide);" 1)
 require_token_count("MQ.2 C1 quoted and unquoted field consumers"
@@ -1249,6 +1253,10 @@ require_token_count("MQ.2 C1 direct Invalid-parameters census"
 require_token_count("MQ.2 C1 offset-member contract"
   mq2_netlist_csv_header_with_comments
   "std::size_toffset{};//!<sourcecursorat/immediatelyafterareader-detected//!<syntax/limitfailure;zerowhenunavailablestd::stringmessage{};"
+  1)
+require_token_count("MQ.2 C1 public limit contract"
+  mq2_netlist_csv_header_with_comments
+  "Inputisboundedto4MiB,100,000rows,32columns,and65,536bytes/field."
   1)
 require_token_count("MQ.2 C1 stale unrestricted offset removed"
   mq2_netlist_csv_header_with_comments
