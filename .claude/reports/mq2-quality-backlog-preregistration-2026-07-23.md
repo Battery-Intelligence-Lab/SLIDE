@@ -1486,3 +1486,358 @@ move the original census from 31 APPLIED / 0 REFUTED / 8 named deferrals /
 35 / 0 / 9 / 32 to 38 / 0 / 9 / 29. `CHANGELOG.md`, PLAN section 8, the
 validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
 census only at closeout.
+
+## R1 recording-common amendment (registered 2026-07-29)
+
+This amendment is registered at clean HEAD `1b40b84` before the first R1
+unit-test, CMake-list, structural-gate, production, or CHANGELOG edit and
+before any R1 binary run. The prior-art audit found no FALSIFIED, REFUTED, or
+deferred record for:
+
+- `crc32-twice`;
+- `header-crc-helper`;
+- `csv-parquet-schema-twice`;
+- `state-index-int-arith`;
+- `snapshotview-twice`; or
+- `dead-usings-copy-pasted`.
+
+The frozen batch table classifies all six as byte-identical recording
+refactors. R1 does not change a file-format version, CRC acceptance policy,
+schema byte, payload byte, state/current selection, Status, or allocation
+contract. In particular:
+
+- the synchronous reader's `header_crc32 == 0` rejection remains; the
+  `crc-zero-rejected` behavior decision belongs to R2;
+- synchronous `minor > format_minor` and compressed
+  `minor != format_minor` remain distinct and unchanged;
+- `format_major` and `format_minor` remain independently owned by the two
+  formats;
+- the independent test-side CRC implementations remain test oracles;
+- `ParameterSet.cpp` and `CyclerV2.cpp` keep their structurally pinned
+  allocation-failure owners;
+- `BinaryRecording::snapshot`, which indexes mapped interleaved records,
+  remains separate from the two eager SoA readers; and
+- R2 still owns CSV data-value coverage and the disposition of
+  `enqueuesnapshot-success-untested`. R1 adds no data row to its CSV fixture
+  and does not call `enqueueSnapshot`.
+
+The old-source anchors are:
+
+```text
+651C7F81FDE8C0274167DBD503001B5182E5372D93B0AE40071F18A4E1757756  293  src/core/Recorder.cpp
+F5107C41F0841964DB13D2393D7B643C87B37A9557D1A66471BABEC4537DEBDE  451  src/core/RecordingFormat.cpp
+E8A52D4319FD5198C343AFD3783FE8856F0035B39EB51E76F2D7B54E88CA0F8F  396  src/core/AsyncRecorder.cpp
+10620233E09B29588859C01ECC295024EB69216192E2F96EEFE17FC1AEDF58BA  452  src/core/AsyncRecordingCodec.cpp
+73A0EB170C4ADDB08816062D86FF1005036C99A89566C2B60C36068894F1C2FC  116  src/core/detail/AsyncRecordingFormat.hpp
+E69ABFBFAA3454585DD435138CCB1FD485DD2300732A1442C149445DC70FC313  551  tests/unit/core_Recorder_test.cpp
+17C04C42F70A77A111C262EFB6E6B668BF94D8B011E497DA3A4A5E3EDF145D04 1188  tests/unit/core_AsyncRecorder_test.cpp
+407417B23C675ED6885D2C03ED4DFC50AAF856C7F7EA427EFB7C5E33BA63672B  245  tests/unit/CMakeLists.txt
+B0C595C7BB0F9080C54420AD08BB491BC4CD604966949B7210D5A115F8A55143 1265  tests/structural/p9c_architecture.cmake
+86532D4C48AC8367D6428766B44670996CB944444DD9D2BA32E2882954E5299E  326  CHANGELOG.md
+```
+
+The current lexical Status census is independently reproduced before edits:
+
+```text
+total 361 = 345 direct + 16 conditional
+active 331, inactive 30
+Invalid_parameters 236, Invalid_states 50,
+NotImplementedYet 10, Numerical_failure 65
+```
+
+The active classification is from WSL Clang 18 against the retained coverage
+tree. Consolidating exactly three recording-local
+`allocationFailureStatus` definitions into one removes exactly two active,
+direct `Numerical_failure` arms. No exception row moves.
+
+### Frozen byte and eager-index oracle
+
+Add `tests/unit/core_RecordingFormatCommon_test.cpp` as a second source of
+the existing `unit_test_core_Recorder` target. This keeps the CTest census at
+58, mirrors the new recording-common owner, and does not grow the already
+1,188-line AsyncRecorder test. The file adds exactly two cases and 53
+assertions, taking Recorder **222/7 -> 275/9**. AsyncRecorder remains
+**471/12**, RecorderAllocation remains **33/3**, and
+AsyncRecorderAllocation remains **60/4**.
+
+The first case adds exactly 25 assertions:
+
+1. configure a two-lane Recorder of capacity two;
+2. before recording any row, write CSV and compare every byte with an
+   independent test-side construction of the canonical header. The fixture
+   deliberately contains no data row, so it freezes R1 schema text/order
+   without taking R2's CSV-value owner;
+3. for two snapshots, fill every padded arena value with exact finite integer
+   doubles, set distinct exact-quarter elapsed times, and use total currents
+   equal to `{1,-2}` then `{3,-4}` times the exact electrode area;
+4. directly require each public snapshot's accepted step, time, current
+   density, and complete padded state against the independently retained
+   inputs; and
+5. write the synchronous binary file, require its exact byte count and two
+   independent whole-file 64-bit recurrences, require the literal endian
+   marker, and recompute the stored header CRC with the test-side CRC owner.
+
+The second case adds exactly 28 assertions. It writes the same two
+deterministic snapshots through `AsyncRecorder::enqueue` with codec `none`
+and blocking backpressure, freezes the exact complete `.slcmp` byte count and
+the same two whole-file recurrences, independently verifies the file header
+and both block-header CRCs plus the endian marker, opens the file, and
+requires both eager snapshots' metadata/current/state directly against the
+retained inputs. It does not compare against `Recorder::snapshot`, so a
+paired mutation of both eager readers cannot remain self-consistent and
+green.
+
+The byte fingerprint records the exact byte count plus:
+
+- conventional byte-wise FNV-1a; and
+- a second full-width rotate/multiply recurrence structurally different from
+  FNV.
+
+An initial run with deliberately impossible digest sentinels is explicitly
+**exploration**, not evidence. It may only print the old-production byte
+count and recurrences. Those six values are then written into this amendment
+and the test, committed test-only, and rerun against unchanged production.
+No production or structural-gate edit may begin until the frozen
+old-production run passes exactly 275/9 and both production source hashes
+still match the anchors above.
+
+### One format-fact owner
+
+The already frozen filename `src/core/detail/RecordingFormatCommon.hpp`
+wins over the survivor prose's earlier `RecordingCommon.hpp` spelling. Its
+leading MC-3 contract names ownership of `endian_marker`, `crc32`,
+`headerCrc`, and `allocationFailureStatus`, PLAN §3.7, and its cold
+file-format/allocation-translation role. It is `@surface internal`,
+self-contained through `types/Status.hpp`, and contains exactly:
+
+```cpp
+inline constexpr std::uint32_t endian_marker = 0x01020304U;
+
+inline std::uint32_t crc32(std::span<const std::byte> bytes)
+{
+  std::uint32_t crc = 0xffffffffU;
+  for (const auto byte : bytes) {
+    crc ^= std::to_integer<std::uint8_t>(byte);
+    for (int bit = 0; bit < 8; ++bit)
+      crc = (crc >> 1U) ^ (0xedb88320U & (0U - (crc & 1U)));
+  }
+  return ~crc;
+}
+
+template <class Header>
+[[nodiscard]] inline std::uint32_t headerCrc(Header header)
+{
+  static_assert(std::is_trivially_copyable_v<Header>);
+  header.header_crc32 = 0;
+  return crc32(std::as_bytes(std::span{ &header, 1 }));
+}
+
+inline slide::Status allocationFailureStatus() noexcept
+{
+  return slide::Status::Numerical_failure;
+}
+```
+
+No `[[nodiscard]]` or `noexcept` is added to the moved `crc32`; its signature
+and body remain the existing async spelling. `headerCrc` is the one generic
+by-value zero-then-hash owner. The three packed headers are already
+trivially copyable and exactly 64 bytes.
+
+`RecordingFormat.cpp`, `Recorder.cpp`, and
+`detail/AsyncRecordingFormat.hpp` include the common header and contain zero
+definitions of the three moved facts. `RecordingFormat.cpp` directly calls
+`headerCrc` in its writer and reader. The reader retains the explicit
+`header.header_crc32 == 0` guard and compares
+`headerCrc(header) != header.header_crc32`; no `std::exchange` spelling
+remains. The async header's two type-specific CRC wrappers are removed, and
+the async writer/reader directly call the one `headerCrc` owner for file and
+block headers. Across the five production files plus the common header, the
+exact compact token censuses are:
+
+```text
+crc32(                    6 = one definition, one headerCrc call, four payload calls
+endian_marker             8 = one definition, three using declarations, four header consumers
+allocationFailureStatus( 13 = one definition, twelve catch consumers
+headerCrc(                7 = one definition, six header consumers
+fileHeaderCrc( / blockHeaderCrc(  0 / 0
+```
+
+The common header contains zero `format_major` and `format_minor` tokens.
+`RecordingFormat.cpp` and `AsyncRecordingFormat.hpp` each retain exactly one
+independent `format_major = 1` and `format_minor = 0` definition and their
+existing distinct reader comparisons.
+
+### One eager-snapshot owner
+
+`src/core/detail/SnapshotIndexing.hpp` is separate from the format-fact
+header: combining unrelated file-format and reader-indexing concepts would
+violate MC-1. Its leading contract names `snapshotView`, PLAN §3.7, and cold
+allocation-free eager-reader indexing, and carries `@surface internal`. It
+includes `Recorder.hpp` in the permitted internal-to-api direction and owns
+exactly:
+
+```cpp
+[[nodiscard]] inline SnapshotView snapshotView(
+  std::size_t index,
+  std::size_t lanes,
+  std::size_t state_values,
+  std::span<const std::uint64_t> steps,
+  std::span<const real_t> times,
+  std::span<const real_t> currents,
+  std::span<const real_t> states) noexcept
+{
+  return { .accepted_step = steps[index],
+           .time = times[index],
+           .current_density = currents.subspan(index * lanes, lanes),
+           .state = states.subspan(
+             index * state_values, state_values) };
+}
+```
+
+Only `Recorder.cpp` and `AsyncRecordingCodec.cpp` include it. Each eager
+member retains its distinct caller-side assertion and directly returns
+`snapshotView` with the same seven logical arguments. Thus the exact global
+`snapshotView(` census is three: one owner and two consumers.
+`BinaryRecording::snapshot` retains its mapped-byte implementation and does
+not include or call this helper.
+
+### One schema order and widened row index
+
+The anonymous namespace in `Recorder.cpp` owns one
+`recorderColumnNames(int rows, int lanes)` function. It returns the canonical
+order:
+
+```text
+accepted_step, time_s,
+current_density_lane{lane}_A_m2 for every lane,
+state_r{row}_lane{lane} in row-major/live-lane order,
+terminal_voltage_lane{lane}_V for every lane
+```
+
+Each of the eight quoted schema fragments occurs exactly once, inside that
+owner. The CSV sink joins the returned names with commas. The Arrow-only
+Parquet branch obtains the same vector once and consumes it monotonically
+with one `std::size_t column{}` cursor across its five append sites, then
+asserts `column == names.size()`. The exact
+`recorderColumnNames(` census is three: owner, CSV, Parquet. No Arrow-enabled
+runtime is available in the retained configurations, so R1 claims exact CSV
+runtime bytes and structurally proves Parquet name/order consumption; it
+does not claim a Parquet runtime.
+
+The same anonymous namespace owns one:
+
+```cpp
+[[nodiscard]] std::span<const real_t> snapshotRow(
+  const SnapshotView &snapshot,
+  int row,
+  int rows,
+  int stride,
+  int lanes) noexcept;
+```
+
+It asserts `0 <= row && row < rows && 0 < lanes && lanes <= stride`, then
+returns a live-lane subspan beginning at
+`static_cast<std::size_t>(row) * static_cast<std::size_t>(stride)`.
+CSV iterates that span; Parquet indexes its live lane after the helper.
+The exact `snapshotRow(` census is three, and Recorder.cpp contains zero
+instances of a cast applied after `row * stride_` or `row * stride_ + lane`.
+
+### Dead-using boundary and future structural gate
+
+`AsyncRecorder.cpp` removes only its dead
+`detail/CheckedArithmetic.hpp` include and `checkedAdd`,
+`checkedMultiply`, and `compressionBound` using-declarations.
+`AsyncRecordingCodec.cpp` retains all four because its layout code consumes
+them. The common-header migration replaces the two async CRC-wrapper usings
+with the live `headerCrc` using; every other live format name remains.
+
+Append R1 after C1 in `tests/structural/p9c_architecture.cmake`. It loads
+compacted versions of the five production files and both future headers,
+while preserving raw leading comments for the MC-3 checks. Before detailed
+checks, it treats a missing future header as an empty string and must fail
+old production first at:
+
+```text
+9C-2 MQ.2 R1 RecordingFormatCommon owner: expected 1 occurrences ..., found 0
+```
+
+The final gate pins:
+
+- the exact common-header bodies and 6/8/13/7/0/0 combined censuses above;
+- zero moved definitions in all old files;
+- independent version ownership and both unchanged reader comparisons,
+  including the zero-CRC guard;
+- the exact `snapshotView` body, two includes, two caller assertions, two
+  ordered seven-argument calls, and the untouched mapped reader;
+- one schema owner, once-only literals, 3 owner/caller tokens, exact CSV join,
+  monotonically consumed Parquet cursor, and final size assertion;
+- one widened `snapshotRow` owner, two consumers, and zero late-cast old
+  index spellings; and
+- absence of the three dead AsyncRecorder usings/include while the
+  corresponding AsyncRecordingCodec dependencies remain.
+
+At the oracle-only boundary, only
+`tests/unit/core_RecordingFormatCommon_test.cpp`,
+`tests/unit/CMakeLists.txt`, and
+`tests/structural/p9c_architecture.cmake` may differ. Old production must pass
+Recorder exactly **275/9**, AsyncRecorder **471/12**, RecorderAllocation
+**33/3**, and AsyncRecorderAllocation **60/4**, while the aggregate
+structural test passes every preceding suite and then fails only at the
+registered common-owner 0/1 boundary. Production hashes must still equal the
+anchors above. No Release, CUDA, full-suite, or production claim is made at
+that boundary.
+
+### Registered mutations and final acceptance
+
+At a clean committed implementation boundary, independently run at least
+these mutation families:
+
+1. alter the shared CRC polynomial/body or reintroduce a private CRC owner;
+2. make `headerCrc` zero a wrong byte/field or bypass it at one synchronous
+   or compressed header consumer;
+3. change the shared endian marker or merge either format-version owner;
+4. make the shared allocation mapper return a different Status;
+5. change one schema fragment/order or make either sink bypass the common
+   names/cursor;
+6. change `snapshotRow` to multiply in `int`, use `lanes` as its stride, or
+   reintroduce either old late-cast index;
+7. damage the shared `snapshotView` offset/extent body;
+8. swap one same-typed eager-reader argument or make either caller bypass
+   the helper;
+9. reintroduce one dead AsyncRecorder using/include or remove the live codec
+   counterpart; and
+10. remove or weaken the synchronous zero-CRC guard or alter either minor
+    comparison. This mutation is structural-red; R1 must not execute or
+    reclassify R2's behavior change.
+
+Every touched source/header/test/gate file is SHA-256 anchored at the clean
+implementation commit. Each mutation is inverse-patched individually; exact
+hashes, `git diff --exit-code HEAD -- <touched-files>`, and an empty porcelain
+status are required before the next mutation and before final acceptance.
+No byte fingerprint, schema spelling, CRC, Status, output value, count, or
+hash may be reblessed.
+
+The final focused set in Debug, fast-math Release/IPO-off, and the retained
+host-C++ CUDA tree is Recorder 275/9, AsyncRecorder 471/12,
+RecorderAllocation 33/3, AsyncRecorderAllocation 60/4, and aggregate
+structural 1/1. Every lane then runs the unfiltered 58/58 suite, including
+the real CUDA test only in the CUDA tree, followed by a no-op rebuild.
+`clang-format --dry-run --Werror`, `git diff --check`, header self-containment,
+and an adversarial gate review precede disposition.
+
+Because the Status owner moves, the WSL Clang 18 exact Status-coverage lane
+is also mandatory after implementation. Its registered census is:
+
+```text
+359 lexical = 343 direct + 16 conditional
+329 active = 323 measured + 6 unchanged structural exceptions
+30 inactive; zero uncovered and zero unmapped
+Numerical_failure 63; every other Status count unchanged
+```
+
+Only after those gates are green do the six R1 IDs become APPLIED. That would
+move the original census from 34 APPLIED / 0 REFUTED / 8 named deferrals /
+29 pending to 40 / 0 / 8 / 23, and the combined 76-ID census from
+38 / 0 / 9 / 29 to 44 / 0 / 9 / 23. `CHANGELOG.md`, PLAN section 8, the
+validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
+census only at closeout.
