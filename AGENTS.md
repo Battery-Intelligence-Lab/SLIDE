@@ -142,12 +142,12 @@ in all three trees; nine controlled mutations turn red and exact source hashes a
 The original exact-current comparator remains FALSIFIED at 13/16; the frozen
 EulerLegacy-direct comparator at `1c74630` was not reblessed.
 
-**S1.1 is preregistered; your first action is its failing-test-first boundary:** implement and
-freeze the four moved-from `PackSolver`/`PackStepper` rejection and destination-continuity cases
-plus independent checkpoint-layout, analytic heterogeneous-thermal frozen-assembly, and
-non-adjacent prefix oracles. Run them against unchanged production and record both constructor and
-assignment failures before the explicit move fix. Then S2 source-step rollback and every remaining
-survivor batch
+**S1.1's failing-test-first boundary is frozen and red at `a747cc1`/`b468cd7`:** both constructor
+and assignment forms fail safely for `PackSolver` and `PackStepper` against unchanged production;
+the independent checkpoint-layout and analytic frozen-thermal cases pass. Your first action is the
+explicit exhaustive no-throw move implementation without changing those oracles, followed by the
+registered Debug/Release/host-C++ CUDA gates and mutations. Then S2 source-step rollback and every
+remaining survivor batch
 until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
 supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
 six named landmines and MQ.1's build-policy findings included. Then →

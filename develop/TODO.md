@@ -79,8 +79,9 @@
 > structural 1/1; all three restored trees also pass the full 58/58 suite. Nine mutations turn
 > red and exact hashes were restored. Census: 24 APPLIED, 0 REFUTED, 8 named deferrals, 39 pending
 > among the original 71. S1.1's moved-owner and independent-oracle contract is now preregistered
-> at final focused floors PackSolver 984/32 and PackStepper 333/13. Next is its test-only frozen
-> boundary and safe pre-fix red run, then the explicit move fix and S2 source-step rollback.
+> at final focused floors PackSolver 984/32 and PackStepper 333/13. Its test-only boundary is
+> frozen at `a747cc1`/`b468cd7`: both move forms are safely red in both owners while the independent
+> cases pass. Next is the explicit move fix and registered mutations, then S2 source-step rollback.
 
 ---
 

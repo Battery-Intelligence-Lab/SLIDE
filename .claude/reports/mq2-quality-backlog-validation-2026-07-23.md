@@ -906,3 +906,80 @@ performance claim is made for S1. MQ.2 remains open; the three S1 survivor
 IDs are APPLIED, taking the running census from 21 to 24 APPLIED and leaving
 39 of the original 71 decisions pending before newly discovered supplemental
 work.
+
+## S1.1 — moved-owner and independent-oracle hardening
+
+### Frozen pre-production RED
+
+The complete S1.1 contract was registered at `b622272` before a test or
+production edit. Commit `a747cc1` then froze four independent move cases, the
+independent checkpoint and analytic frozen-thermal cases, non-adjacent prefix
+fixtures, compile-time move traits, and the future public-surface gate.
+The first build found only a test-syntax defect: five grouped Catch2
+conjunctions lacked the extra parentheses required by Catch's decomposer.
+Test-only commit `b468cd7` corrected that grouping without changing an
+assertion, expected value, or production file.
+
+Production remained byte-identical to the restored S1 boundary:
+
+```text
+D41F0B7E2E823B9729E7517069AA37925724CBD43D1A790652B595093E317586  src/core/PackSolver.hpp
+A870C40AA4043E82AA30A0A3CA1969C38DD68AB0E470E9FEFC2A2B536D31DD22  src/core/PackSolver.cpp
+DBAB230FE124ECE13967A21B56861CF1996EEB3D2BA7E3FCBC45D2EB6EC9B553  src/core/PackStepper.hpp
+A9B72A22A7E723C3A17AAC7FDC8B386313EFF396C8472F44CE7292E6F8F916B3  src/core/PackStepper.cpp
+```
+
+`git diff --exit-code 80fba19 -- src/core` returned zero. The corrected
+Debug test targets then built, and the tag-filtered old-production run was
+red without executing a null dereference:
+
+```text
+PackSolver [S1.1]
+test cases:  2 |  0 passed | 2 failed
+assertions: 19 | 17 passed | 2 failed
+
+move-constructed ... line 566:
+REQUIRE(source.setRelaxationGain(0.5) == Status::Invalid_parameters)
+with expansion: 0 == 'x'
+
+move-assigned ... line 627:
+REQUIRE(source.setRelaxationGain(0.5) == Status::Invalid_parameters)
+with expansion: 0 == 'x'
+```
+
+Here `0` is `Status::Success`; both constructor and assignment therefore
+reproduce the copied-`configured_` bug independently. Their fatal assertions
+precede the moved-from sparse `solve` call that could reach the null
+workspace implementation.
+
+```text
+PackStepper [S1.1]
+test cases:  4 |  2 passed | 2 failed
+assertions: 80 | 70 passed | 10 failed
+```
+
+The independent checkpoint-layout and frozen-thermal cases are the two
+passing cases. Both move forms fail only safe observations before their
+fatal checkpoint discriminator: solution and diagnostics remain stale,
+workspace age/symbolic-factorisation counters remain `1`, and
+`checkpoint(empty)` returns `Status::Success` rather than
+`Invalid_parameters`. The fatal assertion again prevents the later
+`solveElectrical`/`step` calls from reaching the null moved-from solver.
+
+The direct prefix compile/runtime boundary independently remains green:
+
+```text
+unit_test_core_PackTopology
+All tests passed (148 assertions in 9 test cases)
+```
+
+The aggregate structural gate is independently red before source edits:
+
+```text
+9C-5 R4: PackSolver.hpp declares 83 member-level entities, the pinned
+surface has 88.
+```
+
+This is the intended future rule-of-five boundary, not a reblessed surface.
+No Release/CUDA/full-suite, mutation, sanitizer, coverage, timing, or
+performance claim is made by this pre-fix run.
