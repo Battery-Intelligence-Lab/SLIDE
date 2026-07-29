@@ -10,8 +10,11 @@
 
 #include "Recorder.hpp"
 #include "detail/CheckedArithmetic.hpp"
+#include "detail/RecordingFormatCommon.hpp"
+#include "detail/SnapshotIndexing.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -29,14 +32,41 @@
 
 namespace slide::core {
 
+using detail::allocationFailureStatus;
 using detail::checkedAdd;
 using detail::checkedMultiply;
 
 namespace {
 
-  slide::Status allocationFailureStatus() noexcept
+  [[nodiscard]] std::vector<std::string> recorderColumnNames(int rows,
+                                                             int lanes)
   {
-    return slide::Status::Numerical_failure;
+    std::vector<std::string> names{ "accepted_step", "time_s" };
+    for (int lane = 0; lane < lanes; ++lane)
+      names.push_back(
+        "current_density_lane" + std::to_string(lane) + "_A_m2");
+    for (int row = 0; row < rows; ++row)
+      for (int lane = 0; lane < lanes; ++lane)
+        names.push_back(
+          "state_r" + std::to_string(row) + "_lane"
+          + std::to_string(lane));
+    for (int lane = 0; lane < lanes; ++lane)
+      names.push_back(
+        "terminal_voltage_lane" + std::to_string(lane) + "_V");
+    return names;
+  }
+
+  [[nodiscard]] std::span<const real_t> snapshotRow(
+    const SnapshotView &snapshot,
+    int row,
+    int rows,
+    int stride,
+    int lanes) noexcept
+  {
+    assert(0 <= row && row < rows && 0 < lanes && lanes <= stride);
+    return snapshot.state.subspan(
+      static_cast<std::size_t>(row) * static_cast<std::size_t>(stride),
+      static_cast<std::size_t>(lanes));
   }
 
 } // namespace
@@ -126,13 +156,13 @@ slide::Status Recorder::record(std::uint64_t accepted_step,
 SnapshotView Recorder::snapshot(std::size_t index) const
 {
   assert(index < count_);
-  return { .accepted_step = accepted_steps_[index],
-           .time = times_[index],
-           .current_density = std::span<const real_t>{ current_density_ }.subspan(
-             index * static_cast<std::size_t>(lanes_),
-             static_cast<std::size_t>(lanes_)),
-           .state = std::span<const real_t>{ states_ }.subspan(
-             index * state_values_, state_values_) };
+  return detail::snapshotView(index,
+                              static_cast<std::size_t>(lanes_),
+                              state_values_,
+                              accepted_steps_,
+                              times_,
+                              current_density_,
+                              states_);
 }
 
 void Recorder::clear()
@@ -170,14 +200,9 @@ try {
 
 slide::Status Recorder::writeCsvStream(std::ostream &output)
 {
-  output << "accepted_step,time_s";
-  for (int lane = 0; lane < lanes_; ++lane)
-    output << ",current_density_lane" << lane << "_A_m2";
-  for (int row = 0; row < rows_; ++row)
-    for (int lane = 0; lane < lanes_; ++lane)
-      output << ",state_r" << row << "_lane" << lane;
-  for (int lane = 0; lane < lanes_; ++lane)
-    output << ",terminal_voltage_lane" << lane << "_V";
+  const auto names = recorderColumnNames(rows_, lanes_);
+  for (std::size_t index = 0; index < names.size(); ++index)
+    output << (index == 0 ? "" : ",") << names[index];
   output << '\n'
          << std::setprecision(std::numeric_limits<real_t>::max_digits10)
          << std::scientific;
@@ -191,8 +216,9 @@ slide::Status Recorder::writeCsvStream(std::ostream &output)
     for (const real_t current : recorded.current_density)
       output << ',' << current;
     for (int row = 0; row < rows_; ++row)
-      for (int lane = 0; lane < lanes_; ++lane)
-        output << ',' << recorded.state[static_cast<std::size_t>(row * stride_ + lane)];
+      for (const real_t value :
+           snapshotRow(recorded, row, rows_, stride_, lanes_))
+        output << ',' << value;
     for (const real_t value : voltage)
       output << ',' << value;
     output << '\n';
@@ -210,6 +236,8 @@ slide::Status Recorder::writeParquet(const std::filesystem::path &path)
   try {
     if (!configured())
       return slide::Status::Invalid_parameters;
+    const auto names = recorderColumnNames(rows_, lanes_);
+    std::size_t column{};
     std::vector<std::shared_ptr<arrow::Field>> fields;
     std::vector<std::shared_ptr<arrow::Array>> columns;
     auto append_uint64 = [&](const std::string &name, auto value) {
@@ -236,11 +264,11 @@ slide::Status Recorder::writeParquet(const std::filesystem::path &path)
       columns.push_back(std::move(array));
       return true;
     };
-    if (!append_uint64("accepted_step", [&](std::size_t i) { return accepted_steps_[i]; })
-        || !append_double("time_s", [&](std::size_t i) { return times_[i]; }))
+    if (!append_uint64(names[column++], [&](std::size_t i) { return accepted_steps_[i]; })
+        || !append_double(names[column++], [&](std::size_t i) { return times_[i]; }))
       return slide::Status::Numerical_failure;
     for (int lane = 0; lane < lanes_; ++lane) {
-      if (!append_double("current_density_lane" + std::to_string(lane) + "_A_m2",
+      if (!append_double(names[column++],
                          [&](std::size_t i) {
                            return snapshot(i).current_density[static_cast<std::size_t>(lane)];
                          }))
@@ -248,11 +276,11 @@ slide::Status Recorder::writeParquet(const std::filesystem::path &path)
     }
     for (int row = 0; row < rows_; ++row)
       for (int lane = 0; lane < lanes_; ++lane)
-        if (!append_double("state_r" + std::to_string(row) + "_lane"
-                             + std::to_string(lane),
+        if (!append_double(names[column++],
                            [&](std::size_t i) {
-                             return snapshot(i).state[static_cast<std::size_t>(
-                               row * stride_ + lane)];
+                             return snapshotRow(
+                               snapshot(i), row, rows_, stride_, lanes_)
+                               [static_cast<std::size_t>(lane)];
                            }))
           return slide::Status::Numerical_failure;
     std::vector<std::vector<real_t>> voltage(
@@ -265,12 +293,13 @@ slide::Status Recorder::writeParquet(const std::filesystem::path &path)
         voltage[static_cast<std::size_t>(lane)][index] = one_voltage[static_cast<std::size_t>(lane)];
     }
     for (int lane = 0; lane < lanes_; ++lane)
-      if (!append_double("terminal_voltage_lane" + std::to_string(lane) + "_V",
+      if (!append_double(names[column++],
                          [&](std::size_t i) {
                            return voltage[static_cast<std::size_t>(lane)][i];
                          }))
         return slide::Status::Numerical_failure;
 
+    assert(column == names.size());
     const auto table = arrow::Table::Make(arrow::schema(std::move(fields)),
                                           std::move(columns));
     auto output_result = arrow::io::FileOutputStream::Open(path.string());

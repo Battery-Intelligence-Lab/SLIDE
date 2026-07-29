@@ -11,7 +11,6 @@
 
 #include "AsyncRecorder.hpp"
 #include "detail/AsyncRecordingFormat.hpp"
-#include "detail/CheckedArithmetic.hpp"
 
 #include <algorithm>
 #include <array>
@@ -25,19 +24,15 @@
 namespace slide::core {
 
 using detail::allocationFailureStatus;
-using detail::blockHeaderCrc;
 using detail::block_magic;
-using detail::checkedAdd;
-using detail::checkedMultiply;
 using detail::compressed_magic;
-using detail::compressionBound;
 using detail::CompressedBlockHeader;
 using detail::CompressedFileHeader;
 using detail::crc32;
 using detail::endian_marker;
-using detail::fileHeaderCrc;
 using detail::format_major;
 using detail::format_minor;
+using detail::headerCrc;
 
 AsyncRecorder::~AsyncRecorder()
 {
@@ -288,7 +283,7 @@ slide::Status AsyncRecorder::drainSlot(Slot &slot)
     .raw_crc32 = crc32(raw),
     .payload_crc32 = crc32(payload),
   };
-  header.header_crc32 = blockHeaderCrc(header);
+  header.header_crc32 = headerCrc(header);
   before_block_write_(output_);
   output_.write(reinterpret_cast<const char *>(&header), sizeof(header));
   output_.write(reinterpret_cast<const char *>(payload.data()),
@@ -352,7 +347,7 @@ slide::Status AsyncRecorder::finalizeFile()
                                .codec = static_cast<std::uint32_t>(config_.codec),
                                .snapshots = snapshotsWritten(),
                                .file_size = file_size };
-  header.header_crc32 = fileHeaderCrc(header);
+  header.header_crc32 = headerCrc(header);
   before_finalize_write_(output_);
   output_.seekp(0);
   output_.write(reinterpret_cast<const char *>(&header), sizeof(header));

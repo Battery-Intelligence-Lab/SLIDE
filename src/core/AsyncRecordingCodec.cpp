@@ -12,6 +12,7 @@
 #include "AsyncRecorder.hpp"
 #include "detail/AsyncRecordingFormat.hpp"
 #include "detail/CheckedArithmetic.hpp"
+#include "detail/SnapshotIndexing.hpp"
 
 #include <algorithm>
 #include <array>
@@ -25,7 +26,6 @@
 namespace slide::core {
 
 using detail::allocationFailureStatus;
-using detail::blockHeaderCrc;
 using detail::block_magic;
 using detail::checkedAdd;
 using detail::checkedMultiply;
@@ -35,9 +35,9 @@ using detail::CompressedBlockHeader;
 using detail::CompressedFileHeader;
 using detail::crc32;
 using detail::endian_marker;
-using detail::fileHeaderCrc;
 using detail::format_major;
 using detail::format_minor;
+using detail::headerCrc;
 
 bool compressionCodecAvailable(CompressionCodec codec)
 {
@@ -272,7 +272,7 @@ try {
   if (header.magic != compressed_magic || header.major != format_major
       || header.minor != format_minor || header.endian != endian_marker
       || header.header_size != sizeof(CompressedFileHeader)
-      || header.header_crc32 != fileHeaderCrc(header)
+      || header.header_crc32 != headerCrc(header)
       || header.file_size != static_cast<std::uint64_t>(length)
       || header.rows == 0 || header.lanes == 0 || header.stride < header.lanes
       || header.rows > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
@@ -343,7 +343,7 @@ try {
         return block_status;
       if (block.magic != block_magic
           || block.header_size != sizeof(CompressedBlockHeader)
-          || block.header_crc32 != blockHeaderCrc(block)
+          || block.header_crc32 != headerCrc(block)
           || block.codec != header.codec || block.flags != 1U
           || block.raw_bytes != raw_bytes || block.payload_bytes > remaining
           || block.payload_bytes > std::numeric_limits<std::size_t>::max()
@@ -439,13 +439,13 @@ void CompressedRecording::close()
 SnapshotView CompressedRecording::snapshot(std::size_t index) const
 {
   assert(valid_ && index < steps_.size());
-  return { .accepted_step = steps_[index],
-           .time = times_[index],
-           .current_density = std::span<const real_t>{ currents_ }.subspan(
-             index * static_cast<std::size_t>(lanes_),
-             static_cast<std::size_t>(lanes_)),
-           .state = std::span<const real_t>{ states_ }.subspan(
-             index * state_values_, state_values_) };
+  return detail::snapshotView(index,
+                              static_cast<std::size_t>(lanes_),
+                              state_values_,
+                              steps_,
+                              times_,
+                              currents_,
+                              states_);
 }
 
 

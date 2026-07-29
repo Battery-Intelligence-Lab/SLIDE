@@ -2,7 +2,7 @@
  * @file RecordingFormat.cpp
  * @brief The CRC-hardened binary recording format: layout, mmap, writer, and reader.
  *
- * Owns: `detail::binaryRecordingLayout`, the on-disk header and its CRC, the platform mmap
+ * Owns: `detail::binaryRecordingLayout`, the on-disk header, the platform mmap
  * boundary, `Recorder::writeBinary`, and every `BinaryRecording` member. Implements PLAN.md §3.7.
  * Cold: file I/O only. Writer and reader live together because they share one format -- splitting
  * them would put the header struct, the CRC, and the checked arithmetic behind a seam that exists
@@ -12,6 +12,7 @@
 
 #include "Recorder.hpp"
 #include "detail/CheckedArithmetic.hpp"
+#include "detail/RecordingFormatCommon.hpp"
 
 #include <algorithm>
 #include <array>
@@ -38,14 +39,16 @@
 
 namespace slide::core {
 
+using detail::allocationFailureStatus;
 using detail::checkedAdd;
 using detail::checkedMultiply;
 using detail::align64;
+using detail::endian_marker;
+using detail::headerCrc;
 
 namespace {
 
   constexpr std::array<char, 8> recording_magic{ 'S', 'L', 'I', 'D', 'E', 'R', 'E', 'C' };
-  constexpr std::uint32_t endian_marker = 0x01020304U;
   constexpr std::uint16_t format_major = 1;
   constexpr std::uint16_t format_minor = 0;
   constexpr std::size_t header_bytes = 64;
@@ -69,22 +72,6 @@ namespace {
   };
 #pragma pack(pop)
   static_assert(sizeof(RecordingHeader) == header_bytes);
-
-  std::uint32_t crc32(std::span<const std::byte> bytes)
-  {
-    std::uint32_t crc = 0xffffffffU;
-    for (const auto byte : bytes) {
-      crc ^= std::to_integer<std::uint8_t>(byte);
-      for (int bit = 0; bit < 8; ++bit)
-        crc = (crc >> 1U) ^ (0xedb88320U & (0U - (crc & 1U)));
-    }
-    return ~crc;
-  }
-
-  slide::Status allocationFailureStatus() noexcept
-  {
-    return slide::Status::Numerical_failure;
-  }
 
   template <class T>
   void store(std::byte *destination, const T &value)
@@ -334,7 +321,7 @@ slide::Status Recorder::writeBinary(const std::filesystem::path &path) const
                           .offset_table = header_bytes,
                           .data_offset = layout.data_offset,
                           .file_size = layout.file_size };
-  header.header_crc32 = crc32(std::as_bytes(std::span{ &header, 1 }));
+  header.header_crc32 = headerCrc(header);
   store(mapping.data, header);
   return mapping_flush_(&mapping) ? slide::Status::Success
                                   : slide::Status::Numerical_failure;
@@ -365,12 +352,10 @@ try {
   if (!mapReadOnly(path, *candidate) || candidate->size < header_bytes)
     return slide::Status::Invalid_parameters;
   const RecordingHeader header = load<RecordingHeader>(candidate->data);
-  RecordingHeader crc_header = header;
-  const std::uint32_t expected_crc = std::exchange(crc_header.header_crc32, 0U);
   if (header.magic != recording_magic || header.major != format_major
       || header.minor > format_minor || header.endian != endian_marker
-      || header.header_size != header_bytes || expected_crc == 0
-      || crc32(std::as_bytes(std::span{ &crc_header, 1 })) != expected_crc
+      || header.header_size != header_bytes || header.header_crc32 == 0
+      || headerCrc(header) != header.header_crc32
       || header.rows == 0 || header.lanes == 0 || header.stride < header.lanes
       || header.rows > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
       || header.lanes > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
