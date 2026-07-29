@@ -1262,4 +1262,513 @@ require_token_count("MQ.2 C1 stale unrestricted offset removed"
   mq2_netlist_csv_header_with_comments
   "sourcebyteatorimmediatelyafterthefailure" 0)
 
+# MQ.2 R1: recording format facts, eager-reader indexing, schema order, and
+# widened row addressing each have one explicit owner. Missing future headers
+# are treated as empty only so old production reaches the registered first-red
+# common-owner boundary instead of failing inside file(READ).
+load_compact("src/core/Recorder.cpp" mq2_r1_recorder)
+load_compact("src/core/RecordingFormat.cpp" mq2_r1_recording_format)
+load_compact("src/core/AsyncRecorder.cpp" mq2_r1_async_recorder)
+load_compact("src/core/AsyncRecordingCodec.cpp" mq2_r1_async_codec)
+load_compact("src/core/detail/AsyncRecordingFormat.hpp"
+  mq2_r1_async_format)
+
+set(mq2_r1_common_path
+  "${SLIDE_SOURCE_DIR}/src/core/detail/RecordingFormatCommon.hpp")
+if(EXISTS "${mq2_r1_common_path}")
+  load_compact("src/core/detail/RecordingFormatCommon.hpp" mq2_r1_common)
+  file(READ "${mq2_r1_common_path}" mq2_r1_common_with_comments)
+  string(REGEX REPLACE "[ \t\r\n]" ""
+    mq2_r1_common_with_comments "${mq2_r1_common_with_comments}")
+else()
+  set(mq2_r1_common "")
+  set(mq2_r1_common_with_comments "")
+endif()
+
+set(mq2_r1_snapshot_path
+  "${SLIDE_SOURCE_DIR}/src/core/detail/SnapshotIndexing.hpp")
+if(EXISTS "${mq2_r1_snapshot_path}")
+  load_compact("src/core/detail/SnapshotIndexing.hpp" mq2_r1_snapshot)
+  file(READ "${mq2_r1_snapshot_path}" mq2_r1_snapshot_with_comments)
+  string(REGEX REPLACE "[ \t\r\n]" ""
+    mq2_r1_snapshot_with_comments "${mq2_r1_snapshot_with_comments}")
+else()
+  set(mq2_r1_snapshot "")
+  set(mq2_r1_snapshot_with_comments "")
+endif()
+
+# This is deliberately the first R1 assertion: old production must stop here
+# at 0/1, after every preceding structural suite has passed.
+require_token_count("MQ.2 R1 RecordingFormatCommon owner"
+  mq2_r1_common
+  "inlineconstexprstd::uint32_tendian_marker=0x01020304U;"
+  1)
+require_token_count("MQ.2 R1 exact CRC owner"
+  mq2_r1_common
+  "inlinestd::uint32_tcrc32(std::span<conststd::byte>bytes){std::uint32_tcrc=0xffffffffU;for(constautobyte:bytes){crc^=std::to_integer<std::uint8_t>(byte);for(intbit=0;bit<8;++bit)crc=(crc>>1U)^(0xedb88320U&(0U-(crc&1U)));}return~crc;}"
+  1)
+require_token_count("MQ.2 R1 generic header CRC owner"
+  mq2_r1_common
+  "template<classHeader>[[nodiscard]]inlinestd::uint32_theaderCrc(Headerheader){static_assert(std::is_trivially_copyable_v<Header>);header.header_crc32=0;returncrc32(std::as_bytes(std::span{&header,1}));}"
+  1)
+require_token_count("MQ.2 R1 allocation-failure owner"
+  mq2_r1_common
+  "inlineslide::StatusallocationFailureStatus()noexcept{returnslide::Status::Numerical_failure;}"
+  1)
+require_token_count("MQ.2 R1 common Status include"
+  mq2_r1_common "#include\"../../types/Status.hpp\"" 1)
+require_token_count("MQ.2 R1 common byte include"
+  mq2_r1_common "#include<cstddef>" 1)
+require_token_count("MQ.2 R1 common integer include"
+  mq2_r1_common "#include<cstdint>" 1)
+require_token_count("MQ.2 R1 common span include"
+  mq2_r1_common "#include<span>" 1)
+require_token_count("MQ.2 R1 common type-trait include"
+  mq2_r1_common "#include<type_traits>" 1)
+require_token_count("MQ.2 R1 common owns no major version"
+  mq2_r1_common "format_major" 0)
+require_token_count("MQ.2 R1 common owns no minor version"
+  mq2_r1_common "format_minor" 0)
+string(FIND "${mq2_r1_common_with_comments}"
+  "/***@fileRecordingFormatCommon.hpp" mq2_r1_common_leading_position)
+string(FIND "${mq2_r1_common_with_comments}"
+  "#pragmaonce" mq2_r1_common_pragma_position)
+if(NOT mq2_r1_common_leading_position EQUAL 0
+   OR mq2_r1_common_pragma_position EQUAL -1)
+  message(FATAL_ERROR
+    "MQ.2 R1 RecordingFormatCommon contract is not the leading file contract")
+endif()
+string(SUBSTRING "${mq2_r1_common_with_comments}"
+  0 ${mq2_r1_common_pragma_position} mq2_r1_common_leading_contract)
+require_ordered_tokens("MQ.2 R1 common leading contract"
+  mq2_r1_common_leading_contract
+  "/***@fileRecordingFormatCommon.hpp"
+  "@briefSharedchecksum,byte-order,andallocation-failurefactsforrecording."
+  "Owns:`endian_marker`,`crc32`,`headerCrc`,and`allocationFailureStatus`."
+  "ImplementsPLAN.mdsection3.7.Cold:file-formatchecksandallocationtranslationonly."
+  "@surfaceinternal*/")
+
+set(mq2_r1_format_sources
+  "${mq2_r1_common}${mq2_r1_recording_format}${mq2_r1_recorder}${mq2_r1_async_format}${mq2_r1_async_recorder}${mq2_r1_async_codec}${mq2_r1_snapshot}")
+require_token_count("MQ.2 R1 global crc32 census"
+  mq2_r1_format_sources "crc32(" 6)
+require_token_count("MQ.2 R1 global endian census"
+  mq2_r1_format_sources "endian_marker" 8)
+require_token_count("MQ.2 R1 global allocation mapper census"
+  mq2_r1_format_sources "allocationFailureStatus(" 13)
+require_token_count("MQ.2 R1 global header CRC census"
+  mq2_r1_format_sources "headerCrc(" 7)
+require_token_count("MQ.2 R1 file-header wrapper removed"
+  mq2_r1_format_sources "fileHeaderCrc(" 0)
+require_token_count("MQ.2 R1 block-header wrapper removed"
+  mq2_r1_format_sources "blockHeaderCrc(" 0)
+require_token_count("MQ.2 R1 direct common include census"
+  mq2_r1_format_sources "RecordingFormatCommon.hpp" 3)
+require_token_count("MQ.2 R1 direct snapshot include census"
+  mq2_r1_format_sources "SnapshotIndexing.hpp" 2)
+
+# Per-file counts prevent a globally balanced migration from moving a format
+# fact to the wrong reader/writer or allocation boundary.
+require_token_count("MQ.2 R1 common crc32 census"
+  mq2_r1_common "crc32(" 2)
+require_token_count("MQ.2 R1 common endian census"
+  mq2_r1_common "endian_marker" 1)
+require_token_count("MQ.2 R1 common allocation census"
+  mq2_r1_common "allocationFailureStatus(" 1)
+require_token_count("MQ.2 R1 common header CRC census"
+  mq2_r1_common "headerCrc(" 1)
+
+require_token_count("MQ.2 R1 synchronous crc32 census"
+  mq2_r1_recording_format "crc32(" 0)
+require_token_count("MQ.2 R1 synchronous endian census"
+  mq2_r1_recording_format "endian_marker" 3)
+require_token_count("MQ.2 R1 synchronous allocation census"
+  mq2_r1_recording_format "allocationFailureStatus(" 2)
+require_token_count("MQ.2 R1 synchronous header CRC census"
+  mq2_r1_recording_format "headerCrc(" 2)
+
+require_token_count("MQ.2 R1 Recorder crc32 census"
+  mq2_r1_recorder "crc32(" 0)
+require_token_count("MQ.2 R1 Recorder endian census"
+  mq2_r1_recorder "endian_marker" 0)
+require_token_count("MQ.2 R1 Recorder allocation census"
+  mq2_r1_recorder "allocationFailureStatus(" 6)
+require_token_count("MQ.2 R1 Recorder header CRC census"
+  mq2_r1_recorder "headerCrc(" 0)
+
+foreach(token IN ITEMS "crc32(" "endian_marker"
+    "allocationFailureStatus(" "headerCrc(")
+  require_token_count("MQ.2 R1 async format has no common fact"
+    mq2_r1_async_format "${token}" 0)
+endforeach()
+
+require_token_count("MQ.2 R1 async writer crc32 census"
+  mq2_r1_async_recorder "crc32(" 2)
+require_token_count("MQ.2 R1 async writer endian census"
+  mq2_r1_async_recorder "endian_marker" 2)
+require_token_count("MQ.2 R1 async writer allocation census"
+  mq2_r1_async_recorder "allocationFailureStatus(" 2)
+require_token_count("MQ.2 R1 async writer header CRC census"
+  mq2_r1_async_recorder "headerCrc(" 2)
+
+require_token_count("MQ.2 R1 async reader crc32 census"
+  mq2_r1_async_codec "crc32(" 2)
+require_token_count("MQ.2 R1 async reader endian census"
+  mq2_r1_async_codec "endian_marker" 2)
+require_token_count("MQ.2 R1 async reader allocation census"
+  mq2_r1_async_codec "allocationFailureStatus(" 2)
+require_token_count("MQ.2 R1 async reader header CRC census"
+  mq2_r1_async_codec "headerCrc(" 2)
+
+foreach(token IN ITEMS "crc32(" "endian_marker"
+    "allocationFailureStatus(" "headerCrc(")
+  require_token_count("MQ.2 R1 snapshot header has no format fact"
+    mq2_r1_snapshot "${token}" 0)
+endforeach()
+
+require_token_count("MQ.2 R1 Recorder direct common include"
+  mq2_r1_recorder
+  "#include\"detail/RecordingFormatCommon.hpp\"" 1)
+require_token_count("MQ.2 R1 synchronous direct common include"
+  mq2_r1_recording_format
+  "#include\"detail/RecordingFormatCommon.hpp\"" 1)
+require_token_count("MQ.2 R1 async format direct common include"
+  mq2_r1_async_format
+  "#include\"RecordingFormatCommon.hpp\"" 1)
+require_token_count("MQ.2 R1 async writer no direct common include"
+  mq2_r1_async_recorder "RecordingFormatCommon.hpp" 0)
+require_token_count("MQ.2 R1 async reader no direct common include"
+  mq2_r1_async_codec "RecordingFormatCommon.hpp" 0)
+
+require_token_count("MQ.2 R1 synchronous major owner"
+  mq2_r1_recording_format
+  "constexprstd::uint16_tformat_major=1;" 1)
+require_token_count("MQ.2 R1 synchronous minor owner"
+  mq2_r1_recording_format
+  "constexprstd::uint16_tformat_minor=0;" 1)
+require_token_count("MQ.2 R1 async major owner"
+  mq2_r1_async_format
+  "constexprstd::uint16_tformat_major=1;" 1)
+require_token_count("MQ.2 R1 async minor owner"
+  mq2_r1_async_format
+  "constexprstd::uint16_tformat_minor=0;" 1)
+require_token_count("MQ.2 R1 synchronous minor comparison"
+  mq2_r1_recording_format "header.minor>format_minor" 1)
+require_token_count("MQ.2 R1 async minor comparison"
+  mq2_r1_async_codec "header.minor!=format_minor" 1)
+require_token_count("MQ.2 R1 synchronous zero-CRC guard"
+  mq2_r1_recording_format "header.header_crc32==0" 1)
+require_token_count("MQ.2 R1 synchronous writer header CRC"
+  mq2_r1_recording_format
+  "header.header_crc32=headerCrc(header);" 1)
+require_token_count("MQ.2 R1 synchronous reader header CRC"
+  mq2_r1_recording_format
+  "headerCrc(header)!=header.header_crc32" 1)
+require_token_count("MQ.2 R1 synchronous exchange removed"
+  mq2_r1_recording_format "std::exchange(" 0)
+require_token_count("MQ.2 R1 async block writer header CRC"
+  mq2_r1_async_recorder
+  "header.header_crc32=headerCrc(header);" 2)
+require_token_count("MQ.2 R1 async file reader header CRC"
+  mq2_r1_async_codec
+  "header.header_crc32!=headerCrc(header)" 1)
+require_token_count("MQ.2 R1 async block reader header CRC"
+  mq2_r1_async_codec
+  "block.header_crc32!=headerCrc(block)" 1)
+
+require_token_count("MQ.2 R1 raw and payload writer roles"
+  mq2_r1_async_recorder
+  ".raw_crc32=crc32(raw),.payload_crc32=crc32(payload)," 1)
+require_ordered_tokens("MQ.2 R1 raw and payload reader roles"
+  mq2_r1_async_codec
+  "autopayload_view=std::span<std::byte>{payload}.first("
+  "constautopayload_status=readExact(input,payload_view,remaining)"
+  "if(payload_status!=slide::Status::Success)"
+  "returnpayload_status"
+  "if(block.payload_crc32!=crc32(payload_view))"
+  "constautounshuffle_status=byteUnshuffle(shuffled,raw,sizeof(real_t))"
+  "if(block.raw_crc32!=crc32(raw))")
+
+set(mq2_r1_drain_begin
+  "slide::StatusAsyncRecorder::drainSlot(Slot&slot){")
+set(mq2_r1_drain_end "voidAsyncRecorder::drainLoop(){")
+string(FIND "${mq2_r1_async_recorder}" "${mq2_r1_drain_begin}"
+  mq2_r1_drain_begin_position)
+string(FIND "${mq2_r1_async_recorder}" "${mq2_r1_drain_end}"
+  mq2_r1_drain_end_position)
+if(mq2_r1_drain_begin_position EQUAL -1
+   OR mq2_r1_drain_end_position EQUAL -1
+   OR mq2_r1_drain_end_position LESS_EQUAL mq2_r1_drain_begin_position)
+  message(FATAL_ERROR "MQ.2 R1 async block-writer slice is missing")
+endif()
+math(EXPR mq2_r1_drain_length
+  "${mq2_r1_drain_end_position} - ${mq2_r1_drain_begin_position}")
+string(SUBSTRING "${mq2_r1_async_recorder}"
+  ${mq2_r1_drain_begin_position} ${mq2_r1_drain_length}
+  mq2_r1_drain_slice)
+require_token_count("MQ.2 R1 block-writer header CRC role"
+  mq2_r1_drain_slice "header.header_crc32=headerCrc(header);" 1)
+require_token_count("MQ.2 R1 block-writer one header CRC"
+  mq2_r1_drain_slice "headerCrc(" 1)
+
+set(mq2_r1_finalize_begin
+  "slide::StatusAsyncRecorder::finalizeFile(){")
+set(mq2_r1_finalize_end "slide::StatusAsyncRecorder::finish(){")
+string(FIND "${mq2_r1_async_recorder}" "${mq2_r1_finalize_begin}"
+  mq2_r1_finalize_begin_position)
+string(FIND "${mq2_r1_async_recorder}" "${mq2_r1_finalize_end}"
+  mq2_r1_finalize_end_position)
+if(mq2_r1_finalize_begin_position EQUAL -1
+   OR mq2_r1_finalize_end_position EQUAL -1
+   OR mq2_r1_finalize_end_position
+      LESS_EQUAL mq2_r1_finalize_begin_position)
+  message(FATAL_ERROR "MQ.2 R1 async file-writer slice is missing")
+endif()
+math(EXPR mq2_r1_finalize_length
+  "${mq2_r1_finalize_end_position} - ${mq2_r1_finalize_begin_position}")
+string(SUBSTRING "${mq2_r1_async_recorder}"
+  ${mq2_r1_finalize_begin_position} ${mq2_r1_finalize_length}
+  mq2_r1_finalize_slice)
+require_token_count("MQ.2 R1 file-writer header CRC role"
+  mq2_r1_finalize_slice "header.header_crc32=headerCrc(header);" 1)
+require_token_count("MQ.2 R1 file-writer one header CRC"
+  mq2_r1_finalize_slice "headerCrc(" 1)
+
+# The eager SoA readers share one indexing body, retain their caller-specific
+# assertions, and pass every same-typed argument in the frozen order.
+require_token_count("MQ.2 R1 exact eager snapshot owner"
+  mq2_r1_snapshot
+  "[[nodiscard]]inlineSnapshotViewsnapshotView(std::size_tindex,std::size_tlanes,std::size_tstate_values,std::span<conststd::uint64_t>steps,std::span<constreal_t>times,std::span<constreal_t>currents,std::span<constreal_t>states)noexcept{return{.accepted_step=steps[index],.time=times[index],.current_density=currents.subspan(index*lanes,lanes),.state=states.subspan(index*state_values,state_values)};}"
+  1)
+require_token_count("MQ.2 R1 eager snapshot global census"
+  mq2_r1_format_sources "snapshotView(" 3)
+require_token_count("MQ.2 R1 Recorder snapshot include"
+  mq2_r1_recorder "#include\"detail/SnapshotIndexing.hpp\"" 1)
+require_token_count("MQ.2 R1 compressed snapshot include"
+  mq2_r1_async_codec "#include\"detail/SnapshotIndexing.hpp\"" 1)
+require_token_count("MQ.2 R1 synchronous mapped reader has no eager include"
+  mq2_r1_recording_format "SnapshotIndexing.hpp" 0)
+require_token_count("MQ.2 R1 eager owner includes public view"
+  mq2_r1_snapshot "#include\"../Recorder.hpp\"" 1)
+require_token_count("MQ.2 R1 eager owner cstddef include"
+  mq2_r1_snapshot "#include<cstddef>" 1)
+require_token_count("MQ.2 R1 eager owner cstdint include"
+  mq2_r1_snapshot "#include<cstdint>" 1)
+require_token_count("MQ.2 R1 eager owner span include"
+  mq2_r1_snapshot "#include<span>" 1)
+require_token_count("MQ.2 R1 Recorder assert include"
+  mq2_r1_recorder "#include<cassert>" 1)
+require_token_count("MQ.2 R1 Recorder caller assertion"
+  mq2_r1_recorder "assert(index<count_);" 1)
+require_token_count("MQ.2 R1 compressed caller assertion"
+  mq2_r1_async_codec "assert(valid_&&index<steps_.size());" 1)
+require_token_count("MQ.2 R1 Recorder ordered eager call"
+  mq2_r1_recorder
+  "returndetail::snapshotView(index,static_cast<std::size_t>(lanes_),state_values_,accepted_steps_,times_,current_density_,states_);"
+  1)
+require_token_count("MQ.2 R1 compressed ordered eager call"
+  mq2_r1_async_codec
+  "returndetail::snapshotView(index,static_cast<std::size_t>(lanes_),state_values_,steps_,times_,currents_,states_);"
+  1)
+require_token_count("MQ.2 R1 mapped snapshot owner retained"
+  mq2_r1_recording_format
+  "SnapshotViewBinaryRecording::snapshot(std::size_tindex)const" 1)
+require_token_count("MQ.2 R1 mapped snapshot table retained"
+  mq2_r1_recording_format
+  "constauto*table=mapping_->data+table_offset_;" 1)
+require_token_count("MQ.2 R1 mapped snapshot typed views retained"
+  mq2_r1_recording_format
+  "reinterpret_cast<constreal_t*>(cursor)" 2)
+
+# The schema has one canonical order. CSV joins it directly; the optional
+# Parquet branch advances one monotone cursor through the same five append
+# families and proves that every name was consumed.
+require_token_count("MQ.2 R1 schema owner"
+  mq2_r1_recorder
+  "[[nodiscard]]std::vector<std::string>recorderColumnNames(introws,intlanes)"
+  1)
+require_token_count("MQ.2 R1 exact canonical schema owner"
+  mq2_r1_recorder
+  "[[nodiscard]]std::vector<std::string>recorderColumnNames(introws,intlanes){std::vector<std::string>names;names.emplace_back(\"accepted_step\");names.emplace_back(\"time_s\");for(intlane=0;lane<lanes;++lane)names.push_back(\"current_density_lane\"+std::to_string(lane)+\"_A_m2\");for(introw=0;row<rows;++row)for(intlane=0;lane<lanes;++lane)names.push_back(\"state_r\"+std::to_string(row)+\"_lane\"+std::to_string(lane));for(intlane=0;lane<lanes;++lane)names.push_back(\"terminal_voltage_lane\"+std::to_string(lane)+\"_V\");returnnames;}"
+  1)
+require_token_count("MQ.2 R1 schema owner and consumers"
+  mq2_r1_recorder "recorderColumnNames(" 3)
+require_token_count("MQ.2 R1 exact schema call arguments"
+  mq2_r1_recorder "recorderColumnNames(rows_,lanes_)" 2)
+foreach(token IN ITEMS
+    "\"accepted_step\"" "\"time_s\"" "\"current_density_lane\""
+    "\"_A_m2\"" "\"state_r\"" "\"_lane\""
+    "\"terminal_voltage_lane\"" "\"_V\"")
+  require_token_count("MQ.2 R1 once-only schema fragment"
+    mq2_r1_recorder "${token}" 1)
+endforeach()
+require_ordered_tokens("MQ.2 R1 canonical schema order"
+  mq2_r1_recorder
+  "names.emplace_back(\"accepted_step\")"
+  "names.emplace_back(\"time_s\")"
+  "\"current_density_lane\"+std::to_string(lane)+\"_A_m2\""
+  "\"state_r\"+std::to_string(row)+\"_lane\"+std::to_string(lane)"
+  "\"terminal_voltage_lane\"+std::to_string(lane)+\"_V\"")
+require_token_count("MQ.2 R1 exact CSV schema join"
+  mq2_r1_recorder
+  "constautonames=recorderColumnNames(rows_,lanes_);for(std::size_tindex=0;index<names.size();++index)output<<(index==0?\"\":\",\")<<names[index];"
+  1)
+require_token_count("MQ.2 R1 one Parquet column cursor"
+  mq2_r1_recorder "std::size_tcolumn{};" 1)
+require_token_count("MQ.2 R1 Parquet schema precedes cursor"
+  mq2_r1_recorder
+  "constautonames=recorderColumnNames(rows_,lanes_);std::size_tcolumn{};"
+  1)
+require_token_count("MQ.2 R1 Parquet name consumption"
+  mq2_r1_recorder "names[column++]" 5)
+require_token_count("MQ.2 R1 only five cursor advances"
+  mq2_r1_recorder "column++" 5)
+require_token_count("MQ.2 R1 Parquet uint64 name consumption"
+  mq2_r1_recorder "append_uint64(names[column++]" 1)
+require_token_count("MQ.2 R1 Parquet double name consumption"
+  mq2_r1_recorder "append_double(names[column++]" 4)
+require_token_count("MQ.2 R1 complete Parquet schema consumption"
+  mq2_r1_recorder "assert(column==names.size());" 1)
+require_ordered_tokens("MQ.2 R1 Parquet name-to-data associations"
+  mq2_r1_recorder
+  "std::size_tcolumn{}"
+  "append_uint64(names[column++],[&](std::size_ti){returnaccepted_steps_[i]"
+  "append_double(names[column++],[&](std::size_ti){returntimes_[i]"
+  "append_double(names[column++],[&](std::size_ti){returnsnapshot(i).current_density[static_cast<std::size_t>(lane)]"
+  "append_double(names[column++],[&](std::size_ti){returnsnapshotRow(snapshot(i),row,rows_,stride_,lanes_)[static_cast<std::size_t>(lane)]"
+  "append_double(names[column++],[&](std::size_ti){returnvoltage[static_cast<std::size_t>(lane)][i]"
+  "assert(column==names.size())"
+  "constautotable=arrow::Table::Make(")
+require_token_count("MQ.2 R1 Parquet step association"
+  mq2_r1_recorder
+  "append_uint64(names[column++],[&](std::size_ti){returnaccepted_steps_[i];})"
+  1)
+require_token_count("MQ.2 R1 Parquet time association"
+  mq2_r1_recorder
+  "append_double(names[column++],[&](std::size_ti){returntimes_[i];})"
+  1)
+require_token_count("MQ.2 R1 Parquet current loop and association"
+  mq2_r1_recorder
+  "for(intlane=0;lane<lanes_;++lane){if(!append_double(names[column++],[&](std::size_ti){returnsnapshot(i).current_density[static_cast<std::size_t>(lane)];}))returnslide::Status::Numerical_failure;}"
+  1)
+require_token_count("MQ.2 R1 Parquet state loops and association"
+  mq2_r1_recorder
+  "for(introw=0;row<rows_;++row)for(intlane=0;lane<lanes_;++lane)if(!append_double(names[column++],[&](std::size_ti){returnsnapshotRow(snapshot(i),row,rows_,stride_,lanes_)[static_cast<std::size_t>(lane)];}))returnslide::Status::Numerical_failure;"
+  1)
+require_token_count("MQ.2 R1 Parquet voltage loop and association"
+  mq2_r1_recorder
+  "for(intlane=0;lane<lanes_;++lane)if(!append_double(names[column++],[&](std::size_ti){returnvoltage[static_cast<std::size_t>(lane)][i];}))returnslide::Status::Numerical_failure;"
+  1)
+forbid_tokens("MQ.2 R1 no alternate Parquet cursor mutation"
+  mq2_r1_recorder
+  "++column" "--column" "column--"
+  "column+=" "column-=" "column*=" "column/=" "column%="
+  "column^=" "column|=" "column&=" "column<<=" "column>>=")
+require_token_count("MQ.2 R1 only cursor equality spelling"
+  mq2_r1_recorder "column=" 1)
+require_token_count("MQ.2 R1 stale CSV schema literal removed"
+  mq2_r1_recorder "output<<\"accepted_step,time_s\"" 0)
+require_token_count("MQ.2 R1 stale Parquet schema literal removed"
+  mq2_r1_recorder "append_uint64(\"accepted_step\"" 0)
+
+# Cast both multiplicands before row addressing. The exact consumer calls pin
+# rows/stride/lanes against same-typed argument swaps.
+require_token_count("MQ.2 R1 exact widened row owner"
+  mq2_r1_recorder
+  "[[nodiscard]]std::span<constreal_t>snapshotRow(constSnapshotView&snapshot,introw,introws,intstride,intlanes)noexcept{assert(0<=row&&row<rows&&0<lanes&&lanes<=stride);returnsnapshot.state.subspan(static_cast<std::size_t>(row)*static_cast<std::size_t>(stride),static_cast<std::size_t>(lanes));}"
+  1)
+require_token_count("MQ.2 R1 row owner and consumers"
+  mq2_r1_recorder "snapshotRow(" 3)
+require_token_count("MQ.2 R1 CSV ordered row call"
+  mq2_r1_recorder
+  "snapshotRow(recorded,row,rows_,stride_,lanes_)" 1)
+require_token_count("MQ.2 R1 Parquet ordered row call"
+  mq2_r1_recorder
+  "snapshotRow(snapshot(i),row,rows_,stride_,lanes_)" 1)
+require_token_count("MQ.2 R1 CSV row result is consumed"
+  mq2_r1_recorder
+  "for(introw=0;row<rows_;++row)for(constreal_tvalue:snapshotRow(recorded,row,rows_,stride_,lanes_))output<<','<<value;"
+  1)
+require_token_count("MQ.2 R1 Parquet row result is consumed"
+  mq2_r1_recorder
+  "returnsnapshotRow(snapshot(i),row,rows_,stride_,lanes_)[static_cast<std::size_t>(lane)];"
+  1)
+require_token_count("MQ.2 R1 late row-stride cast removed"
+  mq2_r1_recorder "static_cast<std::size_t>(row*stride_" 0)
+require_token_count("MQ.2 R1 raw row-stride-lane arithmetic removed"
+  mq2_r1_recorder "row*stride_+lane" 0)
+
+# AsyncRecorder never consumed these checked-arithmetic names. The codec
+# retains its live layout dependencies at their exact old-production counts.
+require_token_count("MQ.2 R1 dead async checked include removed"
+  mq2_r1_async_recorder "detail/CheckedArithmetic.hpp" 0)
+require_token_count("MQ.2 R1 dead async checkedAdd removed"
+  mq2_r1_async_recorder "checkedAdd" 0)
+require_token_count("MQ.2 R1 dead async checkedMultiply removed"
+  mq2_r1_async_recorder "checkedMultiply" 0)
+require_token_count("MQ.2 R1 dead async compressionBound removed"
+  mq2_r1_async_recorder "compressionBound" 0)
+require_token_count("MQ.2 R1 live codec checkedAdd retained"
+  mq2_r1_async_codec "checkedAdd" 10)
+require_token_count("MQ.2 R1 live codec checkedMultiply retained"
+  mq2_r1_async_codec "checkedMultiply" 14)
+require_token_count("MQ.2 R1 live codec compressionBound retained"
+  mq2_r1_async_codec "compressionBound" 2)
+require_token_count("MQ.2 R1 live codec checked include retained"
+  mq2_r1_async_codec "#include\"detail/CheckedArithmetic.hpp\"" 1)
+require_token_count("MQ.2 R1 mapped move include retained"
+  mq2_r1_recording_format "#include<utility>" 1)
+
+require_token_count("MQ.2 R1 synchronous endian import"
+  mq2_r1_recording_format "usingdetail::endian_marker;" 1)
+require_token_count("MQ.2 R1 async writer endian import"
+  mq2_r1_async_recorder "usingdetail::endian_marker;" 1)
+require_token_count("MQ.2 R1 async reader endian import"
+  mq2_r1_async_codec "usingdetail::endian_marker;" 1)
+require_token_count("MQ.2 R1 no synchronous private endian owner"
+  mq2_r1_recording_format
+  "constexprstd::uint32_tendian_marker=" 0)
+require_token_count("MQ.2 R1 no async-writer private endian owner"
+  mq2_r1_async_recorder
+  "constexprstd::uint32_tendian_marker=" 0)
+require_token_count("MQ.2 R1 no async-reader private endian owner"
+  mq2_r1_async_codec
+  "constexprstd::uint32_tendian_marker=" 0)
+require_token_count("MQ.2 R1 exactly two major-version owners"
+  mq2_r1_format_sources
+  "constexprstd::uint16_tformat_major=" 2)
+require_token_count("MQ.2 R1 exactly two minor-version owners"
+  mq2_r1_format_sources
+  "constexprstd::uint16_tformat_minor=" 2)
+
+set(mq2_r1_allocation_catch_pair
+  "catch(conststd::bad_alloc&){returnallocationFailureStatus();}catch(conststd::length_error&){returnallocationFailureStatus();}")
+require_token_count("MQ.2 R1 Recorder allocation catch delegation"
+  mq2_r1_recorder "${mq2_r1_allocation_catch_pair}" 3)
+require_token_count("MQ.2 R1 synchronous allocation catch delegation"
+  mq2_r1_recording_format "${mq2_r1_allocation_catch_pair}" 1)
+require_token_count("MQ.2 R1 async writer allocation catch delegation"
+  mq2_r1_async_recorder "${mq2_r1_allocation_catch_pair}" 1)
+require_token_count("MQ.2 R1 async reader allocation catch delegation"
+  mq2_r1_async_codec "${mq2_r1_allocation_catch_pair}" 1)
+
+string(FIND "${mq2_r1_snapshot_with_comments}"
+  "/***@fileSnapshotIndexing.hpp" mq2_r1_snapshot_leading_position)
+string(FIND "${mq2_r1_snapshot_with_comments}"
+  "#pragmaonce" mq2_r1_snapshot_pragma_position)
+if(NOT mq2_r1_snapshot_leading_position EQUAL 0
+   OR mq2_r1_snapshot_pragma_position EQUAL -1)
+  message(FATAL_ERROR
+    "MQ.2 R1 SnapshotIndexing contract is not the leading file contract")
+endif()
+string(SUBSTRING "${mq2_r1_snapshot_with_comments}"
+  0 ${mq2_r1_snapshot_pragma_position} mq2_r1_snapshot_leading_contract)
+require_ordered_tokens("MQ.2 R1 snapshot leading contract"
+  mq2_r1_snapshot_leading_contract
+  "/***@fileSnapshotIndexing.hpp"
+  "@briefSharedSoA-to-SnapshotViewindexingforeagerrecordingreaders."
+  "Owns:`snapshotView`.ImplementsPLAN.mdsection3.7."
+  "Cold:allocation-freeeager-readerindexingonly."
+  "@surfaceinternal*/")
+
 message(STATUS "9C architecture aggregate structural gate passed")
