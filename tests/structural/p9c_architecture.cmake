@@ -1829,6 +1829,14 @@ require_token_count("MQ.2 R2 all expected rows compared"
 require_token_count("MQ.2 R2 all real fields compared"
   mq2_r2_recorder_test
   "value<expected_csv[index].values.size()" 1)
+require_token_count("MQ.2 R2 accepted-step comparison direction"
+  mq2_r2_recorder_test
+  "CHECK((*parsed_csv)[index].accepted_step==expected_csv[index].accepted_step);"
+  1)
+require_token_count("MQ.2 R2 real-field comparison direction"
+  mq2_r2_recorder_test
+  "CHECK(std::bit_cast<std::uint64_t>((*parsed_csv)[index].values[value])==std::bit_cast<std::uint64_t>(expected_csv[index].values[value]));"
+  1)
 require_token_count("MQ.2 R2 exact zero-CRC header owner"
   mq2_r2_recorder_test "zero_crc_header_hex=" 1)
 require_token_count("MQ.2 R2 frozen zero-CRC header prefix"

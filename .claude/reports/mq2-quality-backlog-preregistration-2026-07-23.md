@@ -1745,7 +1745,7 @@ a clean committed boundary and restore exact SHA-256 anchors between them:
     516/10 count and structural test-source assertions must turn red rather
     than silently accepting a smaller oracle.
 
-The mandatory adversarial review after the first nine production/serializer
+The mandatory adversarial review after the first ten production/serializer
 mutations found a distinct same-count escape before it was executed:
 replace the parsed operand in either the accepted-step comparison or the
 63-real comparison with the corresponding expected operand. Correct
@@ -1761,6 +1761,13 @@ gate turns red at its corresponding missing comparison expression. Restore
 the exact test/gate hashes between runs. This augments item 10; it changes no
 production behavior, assertion count, survivor disposition, or acceptance
 band.
+
+The word “nine” in the registration commit was a transcription error,
+corrected after the two preregistered false-green executions: the already
+completed sequence was three CRC-policy mutations plus seven CSV mutations
+(step, time, current, stride, state lane, voltage, and precision), hence ten.
+Their identities, order, and outcomes were already fixed and are unchanged;
+the correction does not add or remove a mutation or move any band.
 
 Changing the fixture's stored CRC away from zero, changing snapshots from
 zero, changing `table[0]`, resealing the corrupt fixture, or changing either

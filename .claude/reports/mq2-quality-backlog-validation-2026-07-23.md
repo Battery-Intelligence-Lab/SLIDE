@@ -2110,3 +2110,74 @@ installed-package, or production-fix claim is made at this boundary.
 `crc-zero-rejected`, `csv-values-untested`, and
 `enqueuesnapshot-success-untested` remain pending until implementation,
 mutations, and final acceptance.
+
+## R2 Debug implementation and mutation evidence
+
+The oracle-only boundary was committed as `aae42dc`. Production then changed
+only the registered synchronous decoder clause:
+
+```diff
+-      || header.header_size != header_bytes || header.header_crc32 == 0
++      || header.header_size != header_bytes
+```
+
+At `612d841`, the complete Debug focused bands are green:
+
+```text
+Recorder               516 assertions / 10 cases
+AsyncRecorder           471 assertions / 12 cases
+RecorderAllocation       33 assertions / 3 cases
+AsyncRecorderAllocation  60 assertions / 4 cases
+aggregate structural      1 test / 1 pass
+```
+
+Each mutation below was applied alone, rebuilt, executed, and removed with
+the exact committed source hash restored before the next:
+
+| mutation | dynamic discriminator | structural discriminator |
+|---|---:|---|
+| restore stored-zero guard | zero case 6 pass / 1 fail of 7 | stored guard 1 versus 0 |
+| add computed-zero guard | zero case 6/1 of 7 | global `headerCrc` count 8 versus 7 |
+| bypass recomputation | zero case 13/1 of 14 at corrupt open | global `headerCrc` count 6 versus 7 |
+| serialize loop index | CSV 255 pass / 3 fail of 258 | not required |
+| serialize typed zero time | CSV 256/2 of 258 | not required |
+| duplicate current lane 0 | CSV 255/3 of 258 | not required |
+| state offset stride→lanes | CSV 114/144 of 258 | exact widened-row owner absent |
+| reverse live state lanes | CSV 210/48 of 258 | CSV row consumer absent |
+| duplicate voltage lane 0 | CSV 255/3 of 258 | not required |
+| precision `max_digits10`→`digits10` | CSV 216/42 of 258 | not required |
+
+The registration commit for the subsequent comparison-direction adversary
+said “nine” completed mutations. That was a transcription error: the table
+above contains the already executed three CRC and seven CSV mutations, hence
+ten. No identity, outcome, or band changed.
+
+### Gate mutation caught during the adversarial pass
+
+Before hardening, replacing either parsed comparison operand by its expected
+operand made the test compare expected values with themselves. Each
+preregistered mutation reproduced the predicted false green:
+
+```text
+Recorder               516 / 10, pass
+aggregate structural     1 / 1, pass
+```
+
+The structural gate now pins each complete compact actual-versus-expected
+expression. Its new hash is:
+
+```text
+DCB34F09E6BDAC367B9DC772313ADA7BE712D2069B85277013E8C21E7EFD9729 1859 tests/structural/p9c_architecture.cmake
+```
+
+With that hardening present, both self-comparison mutations still pass the
+unchanged 516/10 runtime count but fail structure at the corresponding
+accepted-step or real-field comparison-direction pin. Separately weakening
+the three-row comparison bound to two rows stays unit-green at only 452/10
+and fails structure at the complete-row-loop pin. After restoration,
+Recorder is 516/10 and aggregate structure is 1/1. The test source is again
+the frozen 697-line
+`098BA33A05FEBC1A97652C100B848343BE20D33B3F720865C5AE46F47EB12445`.
+
+No Release, CUDA, full-suite, coverage, sanitizer, hosted-CI, or R2 closeout
+claim is made yet.
