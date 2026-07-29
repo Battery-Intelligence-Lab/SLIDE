@@ -1523,3 +1523,67 @@ APPLIED. The original census is now 31 APPLIED, 0 REFUTED, 8 named
 deferrals, and 32 pending. With the unchanged post-baseline registry, the
 combined 76-ID census is 35 APPLIED, 0 REFUTED, 9 named deferrals, and
 32 pending. MQ.2 remains open; C1 netlist parsing is next.
+
+## C1 frozen old-production boundary
+
+The exact C1 grammar/diagnostic and future structural contracts were
+registered at `f1c52d8` before any C1 test, gate, source, or binary action.
+Oracle-only commit `35a43ce` changes exactly:
+
+```text
+EA2667A57F5F603622B3EF416C351B24179A1AA300BBF6E24F76A672DD349316  539  tests/unit/core_NetlistCsv_test.cpp
+218532D905F177E8A94431846303BFC3F934AA5D93108FE6F1ED1344D4F3C161 1257  tests/structural/p9c_architecture.cmake
+```
+
+The production anchors remain byte-identical to the preregistration:
+
+```text
+516DFCD1141304D5B858F5A24404E9179F57997F2D63E29452D3CDE870E2BE5A  510  src/core/NetlistCsv.cpp
+55D8B05F8BFA9A065C39746B22195D31B4F6283E04F38DCA2B4C76E24A6E2B11   54  src/core/NetlistCsv.hpp
+```
+
+The Debug oracle produced the exact registered result:
+
+```text
+All tests passed (886 assertions in 10 test cases)
+```
+
+This is exactly 65 assertions / one case above the frozen 821/9 floor:
+12 strict-value assertions, 48 poisoned exact-diagnostic assertions, three
+oversized-file diagnostic assertions, and two row-limit diagnostic
+assertions. All eight semantic exits retain offset zero from poisoned state;
+the independent reader offsets are 64, 65,537, 65,538, and 31. Existing
+sentinel topology and unpublished-output checks remain live.
+
+The aggregate structural test passed every previously included suite:
+
+```text
+-- 9C-2 shared ageing-kernel structural gate passed
+-- 9C-3 cold-file split structural gate passed
+-- 9C-4 shared test harness structural gate passed
+-- 9C-5 public-surface gate passed
+```
+
+It then stopped at the registered first future owner:
+
+```text
+9C-2 MQ.2 C1 msg_too_large owner: expected 1 occurrences of
+constexprstd::string_viewmsg_too_large="liionpackCSVexceeds4194304bytes";,
+found 0
+```
+
+Before freezing, adversarial source review found and closed structural
+relocation escapes without changing the registered behavior or production:
+comment checks now preserve comments and pin them adjacent to their owner;
+the allocation-failure zero-offset body is exact; quoted and unquoted field
+guards are sliced independently; the descriptor digit consumer is pinned
+inside `validDescriptor`; and the parseValue slice permits exactly one `+`
+character literal, the exponent sign. The final old-production rerun retained
+the same 886/10 green and first 0/1 structural red.
+
+`clang-format --dry-run --Werror` passes the frozen unit test and
+`git diff --check` passes. No production, Release, CUDA, full-suite,
+allocation, timing, sanitizer, coverage, hosted-CI, installed-package,
+Linux, or macOS claim is made at this boundary. All three C1 survivor IDs
+remain pending until the production implementation, registered mutations,
+and three-lane acceptance are complete.
