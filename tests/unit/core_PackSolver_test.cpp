@@ -1205,6 +1205,57 @@ TEST_CASE("source stepping scales before multiplying an extreme finite current",
   CHECK(batch.calls == 10);
 }
 
+TEST_CASE("failed source stepping restores caller-attempt diagnostics",
+          "[core][pack][solver][source-stepping][rollback][MQ.2][S2]")
+{
+  const auto topology = compile(core::parallel(
+    2, core::cell({ .archetype = "affine" })));
+  ScriptedAffineBatch batch{
+    .ocv_by_call = { { 2.0, 0.0 },
+                     { 2.0, 0.0 },
+                     { 0.0, 0.0 },
+                     { 0.0, 0.0 },
+                     { 0.0, 0.0 },
+                     { 4.0, 0.0 },
+                     { 0.0, 0.0 } },
+    .resistance_by_call = { { 1.0, 1.0 } }
+  };
+  const std::array views{ core::TheveninBatchView::bind(batch, 2) };
+  core::PackSolver solver;
+  REQUIRE(solver.configure(topology, views) == Status::Success);
+
+  REQUIRE(solver.solve(0.0, core::PackSolveMode::ladder, 0.5, 2)
+          == Status::Success);
+  const core::PackSolution accepted{
+    .cell_current = { 1.0, -1.0 },
+    .node_voltage = { 1.0, 0.0 },
+    .terminal_voltage = 1.0
+  };
+  CHECK(haveSameSolutionBits(solver.solution(), accepted));
+
+  solver.invalidate();
+  REQUIRE(solver.solve(8.0, core::PackSolveMode::ladder, 0.5, 1)
+          == Status::Numerical_failure);
+  CHECK(batch.calls == 6);
+  CHECK(haveSameSolutionBits(solver.solution(), accepted));
+
+  const core::PackSolveDiagnostics failed_attempt{
+    .iterations = 1,
+    .numeric_factorizations = 0,
+    .symbolic_factorizations = 0,
+    .jacobian_refreshes = 0,
+    .source_steps = 0,
+    .residual_norm = 4.0,
+    .constraint_drift = 0.0,
+    .constraint_bound = 0.0,
+    .relaxation_gain = 0.0
+  };
+  CHECK(haveSameDiagnostics(solver.diagnostics(), failed_attempt));
+  CHECK(solver.solve(0.0, core::PackSolveMode::ladder, 0.5, 1)
+        == Status::Success);
+  CHECK(batch.calls == 7);
+}
+
 TEST_CASE("finite trial currents with an unrepresentable delta are rejected atomically",
           "[core][pack][solver][finite][coverage]")
 {
