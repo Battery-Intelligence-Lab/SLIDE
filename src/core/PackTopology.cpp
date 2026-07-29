@@ -561,7 +561,7 @@ slide::Status CompiledThermalGraph::assemble(std::span<const real_t> cell_temper
                                              std::span<real_t>
                                                q_ext,
                                              std::span<real_t>
-                                               boundary_heat)
+                                               boundary_heat) noexcept
 {
   if (cell_temperature.size() != cell_count || q_ext.size() != cell_count
       || boundary_temperature.size() != boundary_count || boundary_heat.size() != boundary_count)

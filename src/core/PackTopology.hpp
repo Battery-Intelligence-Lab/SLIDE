@@ -1,6 +1,10 @@
 /**
  * @file PackTopology.hpp
- * @brief Value-semantic pack combinators and cold-compiled electrical/thermal topology.
+ * @brief Value-semantic pack combinators and compiled electrical/thermal topology.
+ * Owns D-19 pack authoring/compilation plus canonical electrical and D-21 thermal outputs.
+ * Implements PLAN.md section 3.4 (D-19 and D-21).
+ * Cold: description authoring and compilePackDescription().
+ * Hot: CompiledThermalGraph::assemble(), once per PackStepper step attempt.
  * @surface api
  */
 
@@ -135,7 +139,7 @@ struct CompiledThermalGraph
   [[nodiscard]] slide::Status assemble(std::span<const real_t> cell_temperature,
                                        std::span<const real_t> boundary_temperature,
                                        std::span<real_t> q_ext,
-                                       std::span<real_t> boundary_heat);
+                                       std::span<real_t> boundary_heat) noexcept;
 };
 
 struct CompiledPackTopology
