@@ -239,8 +239,8 @@ TEST_CASE("PackStepper move construction resets the source and preserves continu
   CHECK(source.stepper.batchWorkerCount() == 0);
   CHECK(defaultSolution(source.stepper.solution()));
   CHECK(sameDiagnostics(source.stepper.diagnostics(), {}));
-  CHECK(source.stepper.cellExternalHeat().empty()
-        && source.stepper.boundaryHeat().empty());
+  CHECK((source.stepper.cellExternalHeat().empty()
+         && source.stepper.boundaryHeat().empty()));
   CHECK_FALSE(source.stepper.solver().workspace().valid());
   CHECK(source.stepper.solver().workspace().age() == 0);
   CHECK(source.stepper.solver().workspace().numericFactorizations() == 0);
@@ -311,8 +311,8 @@ TEST_CASE("PackStepper move assignment replaces ownership without touching old a
   CHECK(source.stepper.batchWorkerCount() == 0);
   CHECK(defaultSolution(source.stepper.solution()));
   CHECK(sameDiagnostics(source.stepper.diagnostics(), {}));
-  CHECK(source.stepper.cellExternalHeat().empty()
-        && source.stepper.boundaryHeat().empty());
+  CHECK((source.stepper.cellExternalHeat().empty()
+         && source.stepper.boundaryHeat().empty()));
   CHECK_FALSE(source.stepper.solver().workspace().valid());
   CHECK(source.stepper.solver().workspace().age() == 0);
   CHECK(source.stepper.solver().workspace().numericFactorizations() == 0);
@@ -566,16 +566,16 @@ TEST_CASE("heterogeneous thermal substeps hold the initial assembly frozen",
                        substeps)
           == Status::Success);
 
-  CHECK(stepper.solution().cell_current[0] == 0.0
-        && stepper.solution().cell_current[1] == 0.0);
-  CHECK(stepper.cellExternalHeat()[0] == heat
-        && stepper.cellExternalHeat()[1] == -heat);
-  CHECK(batch.state().at(
-          batch.layout().thermal.generated_heat_energy, 0, 0)
-          == 0.0
-        && batch.state().at(
-             batch.layout().thermal.generated_heat_energy, 0, 1)
-             == 0.0);
+  CHECK((stepper.solution().cell_current[0] == 0.0
+         && stepper.solution().cell_current[1] == 0.0));
+  CHECK((stepper.cellExternalHeat()[0] == heat
+         && stepper.cellExternalHeat()[1] == -heat));
+  CHECK((batch.state().at(
+           batch.layout().thermal.generated_heat_energy, 0, 0)
+           == 0.0
+         && batch.state().at(
+              batch.layout().thermal.generated_heat_energy, 0, 1)
+              == 0.0));
   CHECK(std::abs(batch.state().at(
                    batch.layout().spm.temperature, 0, 0)
                  - (cold_initial + temperature_change))
