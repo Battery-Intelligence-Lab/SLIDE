@@ -1250,6 +1250,7 @@ TEST_CASE("failed source stepping restores caller-attempt diagnostics",
     .constraint_bound = 0.0,
     .relaxation_gain = 0.0
   };
+  CAPTURE(solver.diagnostics().residual_norm);
   CHECK(haveSameDiagnostics(solver.diagnostics(), failed_attempt));
   CHECK(solver.solve(0.0, core::PackSolveMode::ladder, 0.5, 1)
         == Status::Success);
