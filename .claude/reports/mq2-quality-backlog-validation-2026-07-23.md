@@ -1686,3 +1686,46 @@ installed-package, Linux, macOS, or device-LTO claim is made.
 post-baseline registry, the combined 76-ID census is 38 APPLIED, 0 REFUTED,
 9 named deferrals, and 29 pending. MQ.2 remains open; R1 recording
 common/core is next.
+
+## R1 pre-freeze byte capture (exploration only)
+
+The R1 format/index oracle was added only to the existing Recorder target;
+all five registered production hashes remained byte-identical. The first
+Debug sentinel run exposed the nine planned byte values. An independent
+adversarial review then identified that the complete CSV's production
+terminal-voltage text, and the retained factory state copied into all three
+formats, can legitimately differ under fast-math/IPO. Before freezing any
+constant, the preregistration was tightened and the impossible-sentinel
+capture was run once in each retained configuration.
+
+Every capture produced the exact registered exploratory outcome:
+
+```text
+test cases:   9 | 7 passed | 2 failed
+assertions: 275 | 268 passed | 7 failed
+```
+
+The seven failures were solely the one grouped CSV and six binary zero
+sentinels. Endian, independent file/block/header/raw/payload CRCs, distinct
+raw-versus-shuffled CRCs, direct eager metadata/current/complete-padded-state
+checks, reader open, and dimensions were green. The captured tuples were:
+
+| Configuration | CSV `(bytes,fnv,mixed)` | SLREC `(bytes,fnv,mixed)` | SLCMP `(bytes,fnv,mixed)` |
+|---|---|---|---|
+| Debug | `(4072,9687440020754251757,4395482851448939133)` | `(3904,5616759404010358714,2046236715092195141)` | `(3936,674564965144750450,6807551341330539846)` |
+| Release / IPO off | `(4072,9836986554487851297,10195804735363157979)` | `(3904,7644568223896275882,9507010167800238048)` | `(3936,12852073895150042970,2881486469091071908)` |
+| Release / IPO on / CUDA host | `(4072,113020753288656565,1220644351662519581)` | `(3904,4980822913020495434,5810136181434859582)` | `(3936,15459230203036584454,6543818133775003568)` |
+
+The corresponding `(raw,payload)` block CRC pairs were:
+
+```text
+Debug:                    (4136208346,118461792), (2589125531,3586173060)
+Release / IPO off:        (1129188246,4052193948), (798320599,591966072)
+Release / IPO on / CUDA:  (1528093825,3638640079), (936358080,170786859)
+```
+
+Every pair is unequal. The five production hashes matched the preregistered
+anchors before and after each run. These runs are discovery, not evidence;
+the applicable exact tuple is now selected by the existing recorded-fixture
+`SLIDE_TEST_RELEASE` / `SLIDE_TEST_IPO` configuration definitions. The next
+run is the first decisive frozen old-production oracle.

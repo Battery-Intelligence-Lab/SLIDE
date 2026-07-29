@@ -1617,10 +1617,47 @@ one grouped CSV and six binary fingerprint sentinels, and leave both block
 CRC/data-CRC checks green. It also prints each block's independently checked
 stored raw/payload CRC pair, which must be unequal. If any of the nine
 fingerprint values differ between configurations, the test freezes one exact
-tuple for each active `NDEBUG`/`SLIDE_WITH_CUDA` configuration branch; it
-must not accept an unordered set of known values. A non-asserting CRC
-`CAPTURE` addition and these repeated sentinel runs remain exploration, not
-evidence.
+tuple for each active recorded-fixture configuration branch; it must not
+accept an unordered set of known values. The existing
+`slide_configure_recorded_scalar_fixture` helper is applied to the Recorder
+target so `SLIDE_TEST_RELEASE` and `SLIDE_TEST_IPO` name those branches
+without inferring configuration from fast-math. A non-asserting CRC `CAPTURE`
+addition and these repeated sentinel runs remain exploration, not evidence.
+
+The three captures met that band exactly: each reached 275 assertions / 9
+cases, with 268 assertions green and exactly the seven impossible digest
+sentinels red; every other assertion passed. All five production hashes
+remained equal to the anchors above before and after every capture. The
+frozen values are `(bytes, FNV-1a, mixed)`:
+
+```text
+Debug:
+  CSV    (4072, 9687440020754251757, 4395482851448939133)
+  SLREC  (3904, 5616759404010358714, 2046236715092195141)
+  SLCMP  (3936,  674564965144750450, 6807551341330539846)
+  block CRCs (raw,payload):
+    (4136208346, 118461792), (2589125531, 3586173060)
+
+Release, IPO off:
+  CSV    (4072,  9836986554487851297, 10195804735363157979)
+  SLREC  (3904,  7644568223896275882,  9507010167800238048)
+  SLCMP  (3936, 12852073895150042970,  2881486469091071908)
+  block CRCs (raw,payload):
+    (1129188246, 4052193948), (798320599, 591966072)
+
+Release, IPO on, host-C++ CUDA tree:
+  CSV    (4072,   113020753288656565, 1220644351662519581)
+  SLREC  (3904,  4980822913020495434, 5810136181434859582)
+  SLCMP  (3936, 15459230203036584454, 6543818133775003568)
+  block CRCs (raw,payload):
+    (1528093825, 3638640079), (936358080, 170786859)
+```
+
+The differing raw CRCs prove that fast-math/IPO changed factory-state bytes;
+this is a toolchain fixture distinction, not a format difference. In every
+configuration each raw CRC differs from its payload CRC. The two block
+assertions freeze the applicable exact pairs while continuing to recompute
+raw and payload CRCs independently.
 
 No production or structural-gate edit may begin until the frozen
 old-production run passes exactly 275/9 and all five production source hashes

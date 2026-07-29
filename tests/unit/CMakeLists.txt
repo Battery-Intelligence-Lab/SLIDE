@@ -188,6 +188,8 @@ slide_configure_recorded_scalar_fixture(unit_test_core_Experiment)
 # Phase 6: lazy snapshot recording, CSV, and hardened mmap binary I/O
 add_executable_with_coverage_and_test(unit_test_core_Recorder core_Recorder_test.cpp)
 target_link_libraries(unit_test_core_Recorder PRIVATE slide_core)
+target_sources(unit_test_core_Recorder PRIVATE core_RecordingFormatCommon_test.cpp)
+slide_configure_recorded_scalar_fixture(unit_test_core_Recorder)
 
 add_executable_with_coverage_and_test(unit_test_core_RecorderAllocation core_RecorderAllocation_test.cpp)
 target_link_libraries(unit_test_core_RecorderAllocation PRIVATE slide_core)
