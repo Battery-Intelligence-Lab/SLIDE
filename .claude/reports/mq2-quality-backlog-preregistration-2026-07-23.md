@@ -8,7 +8,7 @@ three-lane baseline`). MQ.1 established 58/58 in fresh Debug, fast-math Release,
 and CUDA lanes at source commit `a49224e`; `940716b` changes evidence and standing
 documentation only.
 
-MQ.2 has **71 decisions**:
+MQ.2's original baseline has **71 decisions**:
 
 - the 68 unique IDs in
   `.claude/reports/code-quality-pass-2026-07-21-survivors.json`;
@@ -20,7 +20,9 @@ MQ.2 has **71 decisions**:
   `size_t`-to-`int` narrowing diagnostic.
 
 The final disposition table must contain all 68 JSON IDs exactly once and all
-three supplemental IDs exactly once. Each row has exactly one state:
+three original supplemental IDs exactly once. Post-baseline discoveries are
+tracked in the append-only stable-ID registry added below; the current combined
+set has 76 IDs without rewriting the original 71-ID baseline. Each row has exactly one state:
 `APPLIED`, `REFUTED`, or `DEFERRED — <named ladder owner>`. A row is not
 `APPLIED` merely because prose was changed: its registered runtime, structural,
 or documentation gate must pass. A deferral names the existing PLAN box that
@@ -483,6 +485,27 @@ edit and before any S1.1 binary is run. It owns one newly discovered
 high-severity bug and the three test-strength gaps recorded by S1. None is
 retroactively attributed to S1.
 
+#### Post-baseline supplemental registry
+
+The following stable IDs were assigned on 2026-07-29 after S1.1 acceptance.
+This is a census-only amendment: it changes no frozen oracle, expected value,
+pass band, implementation, or prior disposition. It prevents findings
+discovered after the original 68+3 baseline from disappearing behind a
+changing count:
+
+| Stable ID | Finding | Disposition / owner |
+|---|---|---|
+| `moved-owner-validity-after-defaulted-move` | moved `PackSolver`/`PackStepper` sources retain validity after their owners move away | APPLIED by S1.1 at `574cfaf` |
+| `checkpoint-roundtrip-oracle-symmetry-gap` | the prior checkpoint round trip could accept paired wrong layouts | APPLIED test-only by S1.1; independent layout mutation red |
+| `thermal-assembly-placement-oracle-gap` | structural placement had no heterogeneous numerical cadence oracle | APPLIED test-only by S1.1; analytic recurrence mutation red |
+| `prefix-duplicate-adjacency-oracle-gap` | prefix fixtures covered only adjacent duplicates | APPLIED test-only by S1.1; non-adjacent/OOB mutation red |
+| `eigen-strong-inline-redefinition-warning` | a fresh Debug build reports the pre-existing Eigen macro-redefinition diagnostic | DEFERRED with explicit owner MQ.2 B1 build diagnostics |
+
+This post-baseline registry is append-only during MQ.2. A new finding must
+receive a stable ID here before any disposition claim. At wave closeout, the
+disposition table must match both the original baseline sets and this
+post-baseline set exactly.
+
 #### Explicit move contract and failing-test-first boundary
 
 `PackSolver` and `PackStepper` currently rely on compiler-generated moves.
@@ -755,9 +778,16 @@ or behavior contract. It is registered before the first macro build/run.
   ID count = 68, and the table matches that set exactly. Its supplemental set
   must equal exactly
   `{surfacecrack-arrhenius-association, clang-ofast-deprecated,
-  benchmark-lp-size-narrowing}`—not merely have size three. Every state parses
-  as one of the three allowed forms and every deferral names its registered
-  PLAN owner.
+  benchmark-lp-size-narrowing}`—not merely have size three. A separate
+  post-baseline set must equal exactly
+  `{moved-owner-validity-after-defaulted-move,
+  checkpoint-roundtrip-oracle-symmetry-gap,
+  thermal-assembly-placement-oracle-gap,
+  prefix-duplicate-adjacency-oracle-gap,
+  eigen-strong-inline-redefinition-warning}` at this boundary and must grow by
+  explicit registry amendment, never by count alone. Every state parses as
+  one of the three allowed forms and every deferral names its registered PLAN
+  owner.
 
 ## Build-policy gate
 

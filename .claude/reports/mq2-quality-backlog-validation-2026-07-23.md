@@ -983,3 +983,125 @@ surface has 88.
 This is the intended future rule-of-five boundary, not a reblessed surface.
 No Release/CUDA/full-suite, mutation, sanitizer, coverage, timing, or
 performance claim is made by this pre-fix run.
+
+### S1.1 implementation and restored acceptance
+
+Commit `574cfaf` implements the frozen contract without changing any S1.1
+oracle. `SolverWorkspace` now transfers its implementation and factorisation
+storage while exchanging its validity, age, and factorisation counters to
+their default values. `PackSolver` and `PackStepper` now expose explicit
+non-copyable, no-throw move boundaries, transfer every owner in declaration
+order, guard self-assignment, and leave the source observably unconfigured.
+Member-level compile-time proofs cover both move operations and the default
+construction of the `PackSolution`/`PackSolveDiagnostics` reset temporaries.
+
+The `PackSolver` ownership implementation was split into the new
+`src/core/PackSolverOwnership.cpp` rather than growing the sparse solver past
+MC-1's 700-line boundary. Physical line counts at the accepted commit are
+642 for `PackSolver.cpp`, 100 for `PackSolverOwnership.cpp`, and 401 for
+`PackStepper.cpp`. `cmake/SlideCoreTarget.cmake` owns the new source exactly
+once, and the aggregate structural gate pins that source wiring, all public
+special-member declarations, all complete move bodies, the source-reset
+exchanges, and the no-throw reset-temporary proof. The frozen P9C5 public
+member anchors pass at PackSolver 88 and PackStepper 40; no surface count was
+reblessed after implementation.
+
+The restored focused gate passed at the exact registered floors:
+
+| Configuration | PackTopology | PackSolver | PackStepper | P2-G1 allocation | Structural aggregate |
+|---|---:|---:|---:|---:|---:|
+| Debug/ThinLTO | 148 assertions / 9 cases | 984 / 32 | 333 / 13 | 14 / 2 | 1 / 1 |
+| fast-math Release, IPO off | 148 / 9 | 984 / 32 | 333 / 13 | 14 / 2 | 1 / 1 |
+| Release/ThinLTO CUDA tree, host C++ | 148 / 9 | 984 / 32 | 333 / 13 | 14 / 2 | 1 / 1 |
+
+The exact commands, all from the repository root, were:
+
+```powershell
+# Debug/ThinLTO
+cmake --build build-mq1-debug --parallel 2
+ctest --test-dir build-mq1-debug --verbose -R "PackSolver|PackStepper|PackTopology|P2G1_allocation|structural_test_core_9C2AgeingKernel"
+ctest --test-dir build-mq1-debug --output-on-failure -j1
+
+# fast-math Release, IPO off
+cmake --build build-mq1-release --parallel 2
+ctest --test-dir build-mq1-release -V --no-tests=error -j1 -R '^(unit_test_core_PackSolver|unit_test_core_PackStepper|unit_test_core_PackTopology|unit_test_core_P2G1_allocation|structural_test_core_9C2AgeingKernel)$'
+ctest --test-dir build-mq1-release --output-on-failure -j1
+
+# Release/ThinLTO CUDA tree, host C++; each command used this full VS wrapper
+cmd.exe /d /s /c 'call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && cmake --build build-mq1-cuda-vsenv --config Release'
+cmd.exe /d /s /c 'call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && ctest --test-dir build-mq1-cuda-vsenv -R "PackSolver|PackStepper|PackTopology|P2G1_allocation|structural_test_core_9C2AgeingKernel" -V -j1'
+cmd.exe /d /s /c 'call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && ctest --test-dir build-mq1-cuda-vsenv --output-on-failure -j1'
+```
+
+The unfiltered CTest suite then passed **58/58** in every tree. The CUDA lane
+ran under the complete VS 18 Community `vcvars64.bat` environment, retained
+Clang as the host C++ compiler, had `SLIDE_WITH_CUDA=ON`, and passed the real
+`unit_test_core_CudaSpmBatch`. The Debug full build completed 61/61 steps
+and that incremental build output contained no warning or error. This does
+not close B1's separately registered pre-existing
+`EIGEN_STRONG_INLINE` warning. No wall-clock or performance claim is made.
+
+Two command-wrapper incidents are recorded so they cannot be mistaken for
+product evidence. In Release and CUDA, an initial five-second tool wrapper
+expired while its child build continued. A concurrent Release retry reported
+`ninja: error: failed recompaction: Permission denied`; process inspection
+showed the first build still owned that tree. After each child exited, the
+identical authoritative build command returned exit zero with
+`ninja: no work to do.`, the focused and full gates above passed, and both
+tracked and staged diffs remained empty. The transient Release regeneration
+also reported optional JNI, Java, and SWIG packages absent. None of these
+preliminary wrapper observations is counted as a compiler or test result.
+
+### S1.1 adversarial mutation sensitivity
+
+Eight independent Debug mutations ran only after `574cfaf` was a clean
+committed boundary:
+
+| Registered mutation | Red evidence |
+|---|---|
+| copy rather than exchange move-constructed `PackSolver::configured_` | PackSolver `[S1.1]`: 27/28 reached assertions; moved-source `setRelaxationGain(0.5)` returned `Success` |
+| copy rather than exchange move-constructed `SolverWorkspace::valid_` | PackSolver `[S1.1]`: 34/35; `isDefaultWorkspace(source.workspace())` was false |
+| copy rather than exchange move-constructed `PackStepper::configured_` | PackStepper `[S1.1]`: 92/93; moved-source empty `checkpoint` returned `Success` |
+| remove the `PackStepper` assignment self guard | exact structural move-body owner found 0/1 instead of 1/1 |
+| omit the move-constructed destination `SolverWorkspace` owner | exact structural PackSolver move-body owner found 0/1 instead of 1/1 |
+| pair a reverse batch-segment order in both checkpoint gather and scatter | independent layout case: 8/11; serialized bytes and both independent restore slices failed |
+| reassemble and republish thermal coupling inside every Euler substep | analytic thermal case: 6/9; heat changed and each final temperature missed by `0.0020062352608079 K`, versus `1e-10 K` |
+| accept the last non-adjacent duplicate and out-of-range prefix index | PackTopology compilation stopped at the constexpr `{7,11,7}` `static_assert` |
+
+The self-guard mutation is adjudicated by its registered structural gate. An
+over-broad exploratory runtime invocation was also allowed to reach the
+deliberately corrupted self-move and exited with Windows access-violation
+status `-1073741819` (`0xC0000005`) after 73/74 reached assertions; Catch2
+rendered this as `SIGSEGV - Segmentation violation signal`. That termination
+is not used as evidence and was not repeated. The omitted-workspace mutation's
+behavioral command produced no verdict before its 64-second wrapper timeout
+and left its test child alive. Its executable path was verified as this
+workspace's mutation binary and the process was stopped; only the safe,
+immediate structural failure is counted.
+
+Every mutation was reversed with an inverse patch before the next one. The
+final restoration hashes are:
+
+```text
+470B50C0E6BFBCDD0970C615236AA5B95E0C4A99957E10B3B1185BE3DAFA1F7E  src/core/PackSolver.cpp
+9A44E2BBE3BE1AE413212761BBA0511C7541E13E9F1B0146971A6BB812EF63F5  src/core/PackSolverOwnership.cpp
+2E228259545DC875E73D3562C088A456EDD04251621C2B8567DEA9659088D01E  src/core/PackStepper.cpp
+473E690A73D3575B683FB424223236A2B51FDE05C3C615E28C98FB8C16677A07  src/core/PackTopologyInternal.hpp
+3E970FBB935BD6BD715F3F84E6ADB6999A641B522BBB4154ECD2B21B77B1F724  tests/structural/p9c_architecture.cmake
+```
+
+Immediately before these evidence-only edits,
+`git diff --exit-code HEAD` and the final per-lane clean checks all returned
+zero. The original 71-decision census is unchanged by this supplemental
+boundary: 24 APPLIED, 0 REFUTED, 8 named deferrals, and 39 pending.
+
+The exact post-baseline registry separately records
+`moved-owner-validity-after-defaulted-move`,
+`checkpoint-roundtrip-oracle-symmetry-gap`,
+`thermal-assembly-placement-oracle-gap`, and
+`prefix-duplicate-adjacency-oracle-gap` as APPLIED by S1.1.
+`eigen-strong-inline-redefinition-warning` is DEFERRED with owner B1. The
+combined working census is therefore 76 stable IDs: 28 APPLIED, 0 REFUTED,
+9 named deferrals, and 39 pending. The closeout gate compares the original
+and post-baseline ID sets independently. MQ.2 remains open; S2 source-step
+rollback is next.

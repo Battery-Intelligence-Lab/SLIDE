@@ -14,9 +14,9 @@
 > preregistration state — gate `404eb79`, exact-current comparator FALSIFIED and replaced at
 > `1c74630`, and oracles frozen test-only at `81c1ed1`; reconciled 2026-07-29 by landing the S1
 > ownership/full-`dt` implementation at `62f1587` after three-lane focused and 58/58 full-suite
-> gates plus nine red mutations. S1.1's explicit moved-owner and independent-oracle contract is
-> preregistered at `b622272` and frozen test-only at `a747cc1`/`b468cd7`; both move forms are
-> safely red against unchanged production. Its explicit move implementation is next, then S2 rollback.
+> gates plus nine red mutations. S1.1's explicit moved-owner and independent-oracle contract then
+> landed at `574cfaf`: its frozen 984/32 and 333/13 gates pass in all three retained configurations,
+> all three restored trees pass 58/58, and eight ownership/oracle mutations turn red. S2 rollback is next.
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
@@ -1483,13 +1483,13 @@ debt.
       restored; no oracle was reblessed. Evidence:
       `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`.
       S1's adversarial review discovered a separate moved-from `PackSolver`/`PackStepper` validity
-      bug and three behavioral-oracle gaps. Their SHORT S1.1 contract is now preregistered:
-      explicit no-throw rule-of-five ownership, four independently red move cases, independent
-      checkpoint-layout and analytic frozen-thermal cases, and non-adjacent prefix probes, with
-      final focused floors PackSolver 984/32 and PackStepper 333/13. The test-only boundary is
-      frozen at `a747cc1`/`b468cd7`: both constructor and assignment fail safely in both owners
-      against unchanged production, while the two independent behavior cases pass. Implement the
-      explicit moves without changing those oracles; B1 also owns the newly observed
+      bug and three behavioral-oracle gaps. S1.1 PASSED locally at `574cfaf`: explicit no-throw
+      rule-of-five ownership leaves moved sources safely unconfigured while preserving exact
+      destination continuation; the independent checkpoint-layout, analytic frozen-thermal, and
+      non-adjacent prefix oracles remain frozen. Debug, fast-math Release/IPO-off, and host-C++ CUDA
+      each pass PackSolver 984/32, PackStepper 333/13, PackTopology 148/9, allocation 14/2, and
+      structural 1/1; all three restored trees pass 58/58. Eight controlled ownership/oracle
+      mutations turn red and exact hashes are restored. B1 still owns the observed
       `EIGEN_STRONG_INLINE` redefinition warning. Then S2 source-step rollback and every remaining
       survivor batch continue until all 68 + 3 original supplemental findings plus every new
       supplemental finding carry a disposition.
@@ -1544,8 +1544,8 @@ Derive before running: identifiability and noise floors computed analytically FI
 the derivation, not from a trial fit.
 
 - [ ] M1.0 Pay the MC-1 TEST-file debt owed by M0.8/M0.10 (explicit owner box — do not inherit again):
-      split `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,510 after
-      MQ.2's registered P0 pack-algebra oracles and still growing through the S-batches —
+      split `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,728 after
+      MQ.2's registered P0/S1.1 pack-solver oracles and still growing through the S-batches —
       re-measure at this box),
       `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118),
       `core_ParameterSet_test.cpp` (1,007) along fixture/subsystem boundaries; the SUM of
@@ -1968,4 +1968,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-29 | MQ.2 S1 PackStepper ownership and full-`dt` contract | PASSED locally at `62f1587` — `packstepper-gather-scatter`, `unique-in-prefix-three-spellings`, and `substeps-name-contradicts-code` are APPLIED. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree focused gates each pass PackStepper 230/9, PackSolver 949/30, P2-G1 allocation 14/2, and structural 1/1; restored commit `62f1587` also passes the unfiltered 58/58 suite in all three trees. Nine controlled mutations make the amended S1 oracle, duplicate/alias oracles, checkpoint oracle, or structural placement gate red; all touched SHA-256 anchors and the clean committed tree were restored. No oracle/hash was reblessed. Adversarial review found no S1 blocker but discovered a separate moved-from validity bug, three behavioral-oracle gaps, and an `EIGEN_STRONG_INLINE` build warning; they receive explicit S1.1/B1 owners rather than silent deferral. Running original census: 24 APPLIED, 0 REFUTED, 8 named deferrals, 39 pending. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-29 | MQ.2 S1.1 moved-owner/oracle contract | REGISTERED before any S1.1 test/source edit or binary run — compiler-generated `PackSolver`/`PackStepper` moves can leave valid-looking sources after ownership moves away, including a null sparse workspace. The explicit default-unconfigured source contract, exhaustive no-throw destination transfer, self-move/reuse requirements, four independently red move tests (PackSolver +35/2, PackStepper +82/2), independent checkpoint + analytic thermal cases (+20/2), and non-adjacent prefix probes (+1 PackStepper assertion) are frozen in `.claude/reports/mq2-quality-backlog-preregistration-2026-07-23.md`. Final focused floors are PackSolver 984/32, PackStepper 333/13, allocation 14/2, structural 1/1; public member anchors are registered 83→88 and 35→40. No production or test file changed at this boundary. | REGISTERED; S1.1 remains open |
 | 2026-07-29 | MQ.2 S1.1 frozen pre-production boundary | RED as registered at `a747cc1` plus test-syntax-only `b468cd7` — all four production source hashes exactly match S1, and both PackSolver move cases fail safely because moved-from `setRelaxationGain(0.5)` returns `Success` (17/19 reached assertions). Both PackStepper move cases retain stale solution/diagnostics and workspace counters and fatally accept an empty checkpoint; the independent checkpoint-layout and analytic frozen-thermal cases pass (70/80 reached assertions across 4 cases). The fatal checks precede all null-workspace calls. PackTopology passes 148/9 including the constexpr non-adjacent/out-of-range probe; structural is red at the expected PackSolver 83-vs-88 public-member boundary. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | RED; implementation required |
-| — | NEXT | **MQ.2 S1.1 explicit move implementation:** add exhaustive no-throw, self-guarded moves for `SolverWorkspace`, `PackSolver`, and `PackStepper` without changing frozen oracles; pass PackSolver 984/32, PackStepper 333/13, allocation 14/2, structural 1/1 in Debug/Release/host-C++ CUDA, then run controlled mutations. Proceed to S2 source-step rollback, the remaining survivor batches to complete original 68+3 plus new-supplemental disposition, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then M1.0 toward v6.0.0. |
+| 2026-07-29 | MQ.2 S1.1 explicit moved-owner implementation | PASSED locally at `574cfaf` — exhaustive no-throw, self-guarded moves for `SolverWorkspace`, `PackSolver`, and `PackStepper` leave every moved source observably default-unconfigured and preserve exact destination solution, diagnostics, factorisation counters, workers, checkpoint bytes, heat publication, and continuation. The ownership body is split into the 100-line `PackSolverOwnership.cpp`, keeping `PackSolver.cpp` at 642 physical lines. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree focused gates each pass PackTopology 148/9, PackSolver 984/32, PackStepper 333/13, allocation 14/2, and structural 1/1; restored commit `574cfaf` passes unfiltered 58/58 in all three trees, including the real CUDA test. Eight controlled source-state, self-guard, missing-owner, paired-layout, thermal-cadence, and prefix mutations turn their registered behavioral, compile-time, or structural gates red; all five touched SHA-256 anchors and the clean committed tree were restored. Original census remains 24 APPLIED, 0 REFUTED, 8 named deferrals, 39 pending. The append-only post-baseline registry has four APPLIED S1.1 IDs plus `eigen-strong-inline-redefinition-warning` DEFERRED to B1, so the combined census is 28 APPLIED, 0 REFUTED, 9 named deferrals, and 39 pending across 76 stable IDs. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
+| — | NEXT | **MQ.2 S2 source-step rollback:** freeze the exact ten-assertion scripted rollback case against unchanged `574cfaf`, require the failed caller attempt's diagnostics (`residual_norm=4`) rather than the abandoned hidden step (`2.5`), then add only the registered local diagnostics snapshot/restore. Mutate solution, diagnostics, and warm-flag restoration independently before the three retained configuration gates. Proceed through every remaining survivor batch to complete original 68+3 plus new-supplemental disposition, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then M1.0 toward v6.0.0. |

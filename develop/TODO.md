@@ -78,10 +78,16 @@
 > host-C++/CUDA-tree gates pass PackStepper 230/9, PackSolver 949/30, allocation 14/2, and
 > structural 1/1; all three restored trees also pass the full 58/58 suite. Nine mutations turn
 > red and exact hashes were restored. Census: 24 APPLIED, 0 REFUTED, 8 named deferrals, 39 pending
-> among the original 71. S1.1's moved-owner and independent-oracle contract is now preregistered
-> at final focused floors PackSolver 984/32 and PackStepper 333/13. Its test-only boundary is
-> frozen at `a747cc1`/`b468cd7`: both move forms are safely red in both owners while the independent
-> cases pass. Next is the explicit move fix and registered mutations, then S2 source-step rollback.
+> among the original 71.
+>
+> **2026-07-29 — MQ.2 S1.1 moved-owner hardening landed.** Commit `574cfaf` adds exhaustive
+> no-throw, self-guarded ownership transfer for `SolverWorkspace`, `PackSolver`, and `PackStepper`.
+> Focused floors PackTopology 148/9, PackSolver 984/32, PackStepper 333/13, allocation 14/2, and
+> structural 1/1 pass in Debug, fast-math Release/IPO-off, and host-C++ CUDA; all three restored
+> trees pass 58/58. Eight mutations turn red and exact hashes were restored. The original census
+> remains 24 APPLIED / 39 pending / 8 deferrals. The post-baseline registry has four S1.1 IDs
+> APPLIED and the Eigen warning DEFERRED to B1; combined: 28 APPLIED / 39 pending / 9 deferrals
+> across 76 stable IDs. Next is S2 source-step rollback.
 
 ---
 
@@ -107,7 +113,7 @@
 ## Short-Term (This Quarter)
 
 ### Code Quality
-- [ ] **MC-1 test-file line debt — explicitly owned by M1.0.** M0.8 shared the test *mechanics* (MC-4) but grew the files; M0.10 swept the production side and did not touch the test side. Still oversized: `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,510 after MQ.2 P0), `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118), `core_ParameterSet_test.cpp` (1,007). Any split must preserve assertion counts and exact-site coverage.
+- [ ] **MC-1 test-file line debt — explicitly owned by M1.0.** M0.8 shared the test *mechanics* (MC-4) but grew the files; M0.10 swept the production side and did not touch the test side. Still oversized: `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,728 after MQ.2 S1.1), `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118), `core_ParameterSet_test.cpp` (1,007). Any split must preserve assertion counts and exact-site coverage.
 - [x] M0.10 production-side line debt: done. `SpmFactory.cpp` 713 → 494 + `SpmBatch.cpp`; `PackSolver.cpp` 910 → 610 + `PackSolverIterative.cpp`; `AsyncRecorder.cpp` 890 → 396 + `AsyncRecordingCodec.cpp` + `detail/AsyncRecordingFormat.hpp`; `Recorder.cpp` 721 → 293 + `RecordingFormat.cpp`; `SpmPipeline.hpp` 783 → 745 + `SpmDiffusionRhs.hpp`; the 1,281-line coverage reporter → the `slide_coverage` package. `checkedAdd`/`checkedMultiply` were duplicated and now have one definition. Only `SpmPipeline.hpp` (745) and `CyclerV2.cpp` (771) exceed 700, both with written justifications. Core lines grew 17,363 → 17,595 (+1.3%) — predicted before the work; there was no dead code to delete.
 - [ ] Replace `assert()` with Catch2 `REQUIRE()` in tests
 - [ ] Convert `#define DATASTORE_BATT` to constexpr (settings.hpp)

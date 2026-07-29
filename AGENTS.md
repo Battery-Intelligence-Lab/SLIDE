@@ -142,12 +142,19 @@ in all three trees; nine controlled mutations turn red and exact source hashes a
 The original exact-current comparator remains FALSIFIED at 13/16; the frozen
 EulerLegacy-direct comparator at `1c74630` was not reblessed.
 
-**S1.1's failing-test-first boundary is frozen and red at `a747cc1`/`b468cd7`:** both constructor
-and assignment forms fail safely for `PackSolver` and `PackStepper` against unchanged production;
-the independent checkpoint-layout and analytic frozen-thermal cases pass. Your first action is the
-explicit exhaustive no-throw move implementation without changing those oracles, followed by the
-registered Debug/Release/host-C++ CUDA gates and mutations. Then S2 source-step rollback and every
-remaining survivor batch
+**S1.1 PASSED locally at `574cfaf` (2026-07-29):** exhaustive no-throw, self-guarded moves for
+`SolverWorkspace`, `PackSolver`, and `PackStepper` leave moved sources safely unconfigured and
+preserve exact destination continuation. PackTopology 148/9, PackSolver 984/32, PackStepper
+333/13, allocation 14/2, and structural 1/1 pass in Debug, fast-math Release/IPO-off, and the
+host-C++ CUDA tree; all three restored trees pass 58/58. Eight controlled mutations turn red and
+exact hashes are restored. The original census remains 24 APPLIED / 39 pending / 8 deferrals;
+the append-only post-baseline registry has four S1.1 IDs APPLIED and
+`eigen-strong-inline-redefinition-warning` DEFERRED to B1. Combined: 28 APPLIED / 39 pending /
+9 deferrals across 76 stable IDs.
+
+Your first action is S2 source-step rollback: freeze its exact ten-assertion scripted case against
+unchanged `574cfaf`, land only the registered diagnostics snapshot/restore, and make the solution,
+diagnostics, and warm-flag restore mutations independently red. Then every remaining survivor batch
 until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
 supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
 six named landmines and MQ.1's build-policy findings included. Then →
