@@ -76,6 +76,8 @@ private:
                                        real_t current_tolerance,
                                        int substeps,
                                        bool exponential);
+  void gatherStates(std::span<real_t> destination) const;
+  void scatterStates(std::span<const real_t> source);
   void saveCheckpoint();
   void restoreCheckpoint();
 

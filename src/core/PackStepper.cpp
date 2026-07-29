@@ -4,8 +4,10 @@
  */
 
 #include "PackStepper.hpp"
+#include "PackTopologyInternal.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 #include <type_traits>
 
@@ -63,10 +65,7 @@ slide::Status PackStepper::configure(
   for (std::size_t batch = 0; batch < batches.size(); ++batch) {
     const auto *ptr = batches[batch];
     if (ptr == nullptr || !ptr->valid() || ptr->n_lanes() != required_lanes[batch]
-        || std::find(batches.begin(),
-                     batches.begin() + static_cast<std::ptrdiff_t>(batch),
-                     ptr)
-             != batches.begin() + static_cast<std::ptrdiff_t>(batch))
+        || !detail::firstOccurrence(batches, batch))
       return slide::Status::Invalid_parameters;
     const bool pipeline_thermal = ptr->composition() == SpmComposition::thermal
                                   || ptr->composition() == SpmComposition::thermal_ageing;
@@ -142,12 +141,31 @@ slide::Status PackStepper::configure(
   return slide::Status::Success;
 }
 
-void PackStepper::saveCheckpoint()
+void PackStepper::gatherStates(std::span<real_t> destination) const
 {
+  assert(destination.size() == checkpoint_.size());
   for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
     const auto state = batches_[batch]->state().raw();
-    std::memcpy(checkpoint_.data() + checkpoint_offsets_[batch], state.data(), state.size_bytes());
+    std::memcpy(destination.data() + checkpoint_offsets_[batch],
+                state.data(),
+                state.size_bytes());
   }
+}
+
+void PackStepper::scatterStates(std::span<const real_t> source)
+{
+  assert(source.size() == checkpoint_.size());
+  for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
+    auto state = batches_[batch]->state().raw();
+    std::memcpy(state.data(),
+                source.data() + checkpoint_offsets_[batch],
+                state.size_bytes());
+  }
+}
+
+void PackStepper::saveCheckpoint()
+{
+  gatherStates(checkpoint_);
   solver_checkpoint_solution_.cell_current = solver_.solution_.cell_current;
   solver_checkpoint_solution_.node_voltage = solver_.solution_.node_voltage;
   solver_checkpoint_solution_.terminal_voltage = solver_.solution_.terminal_voltage;
@@ -163,10 +181,7 @@ void PackStepper::saveCheckpoint()
 
 void PackStepper::restoreCheckpoint()
 {
-  for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
-    auto state = batches_[batch]->state().raw();
-    std::memcpy(state.data(), checkpoint_.data() + checkpoint_offsets_[batch], state.size_bytes());
-  }
+  scatterStates(checkpoint_);
   solver_.solution_.cell_current = solver_checkpoint_solution_.cell_current;
   solver_.solution_.node_voltage = solver_checkpoint_solution_.node_voltage;
   solver_.solution_.terminal_voltage = solver_checkpoint_solution_.terminal_voltage;
@@ -185,10 +200,7 @@ slide::Status PackStepper::checkpoint(std::span<real_t> destination) const
 {
   if (!configured_ || destination.size() != checkpoint_.size())
     return slide::Status::Invalid_parameters;
-  for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
-    const auto state = batches_[batch]->state().raw();
-    std::memcpy(destination.data() + checkpoint_offsets_[batch], state.data(), state.size_bytes());
-  }
+  gatherStates(destination);
   return slide::Status::Success;
 }
 
@@ -196,10 +208,7 @@ slide::Status PackStepper::restore(std::span<const real_t> source)
 {
   if (!configured_ || source.size() != checkpoint_.size())
     return slide::Status::Invalid_parameters;
-  for (std::size_t batch = 0; batch < batches_.size(); ++batch) {
-    auto state = batches_[batch]->state().raw();
-    std::memcpy(state.data(), source.data() + checkpoint_offsets_[batch], state.size_bytes());
-  }
+  scatterStates(source);
   solver_.invalidate();
   return slide::Status::Success;
 }

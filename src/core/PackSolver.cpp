@@ -75,10 +75,7 @@ slide::Status PackTheveninSystem::configure(
     return slide::Status::Invalid_parameters;
   for (std::size_t batch = 0; batch < batch_archetypes.size(); ++batch) {
     if (batch_archetypes[batch].empty()
-        || std::find(batch_archetypes.begin(),
-                     batch_archetypes.begin() + static_cast<std::ptrdiff_t>(batch),
-                     batch_archetypes[batch])
-             != batch_archetypes.begin() + static_cast<std::ptrdiff_t>(batch))
+        || !detail::firstOccurrence(batch_archetypes, batch))
       return slide::Status::Invalid_parameters;
   }
   std::vector<int> required_lanes(batches.size());
@@ -108,11 +105,10 @@ slide::Status PackTheveninSystem::configure(
   std::vector<BatchScratch> scratch(batches.size());
   for (std::size_t batch = 0; batch < batches.size(); ++batch) {
     if (!batches[batch].valid()
-        || batches[batch].n_lanes() != required_lanes[batch])
+        || batches[batch].n_lanes() != required_lanes[batch]
+        || !detail::firstOccurrence(
+          batches, batch, &TheveninBatchView::identity))
       return slide::Status::Invalid_parameters;
-    for (std::size_t prior = 0; prior < batch; ++prior)
-      if (batches[batch].identity() == batches[prior].identity())
-        return slide::Status::Invalid_parameters;
     scratch[batch].view = batches[batch];
     scratch[batch].current.resize(static_cast<std::size_t>(required_lanes[batch]));
     scratch[batch].ocv.resize(static_cast<std::size_t>(required_lanes[batch]));

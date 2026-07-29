@@ -527,4 +527,201 @@ require_token_count("MQ.2 P2 residual diagnostic reads residual owner"
   "constreal_tresidual=relaxation_.residual[node];"
   1)
 
+# MQ.2 S1: one cold prefix-uniqueness owner, two exact arena-copy
+# directions, and the public N*dt/frozen-solve semantics are executable.
+load_compact("src/core/PackTopologyInternal.hpp" mq2_pack_topology_internal)
+load_compact("src/core/PackStepper.hpp" mq2_pack_stepper_header)
+load_compact("src/core/PackStepper.cpp" mq2_pack_stepper)
+
+require_token_count("MQ.2 S1 exact prefix-uniqueness owner"
+  mq2_pack_topology_internal
+  "template<classRange,classProjection=std::identity>requiresstd::ranges::random_access_range<constRange>&&std::ranges::sized_range<constRange>[[nodiscard]]constexprboolfirstOccurrence(constRange&range,std::size_tindex,Projectionprojection={}){if(index>=std::ranges::size(range))returnfalse;constautofirst=std::ranges::begin(range);constautocurrent=first+static_cast<std::ranges::range_difference_t<constRange>>(index);returnstd::ranges::find(first,current,std::invoke(projection,*current),projection)==current;}"
+  1)
+foreach(mq2_prefix_owner_include IN ITEMS
+        "#include<algorithm>"
+        "#include<functional>"
+        "#include<ranges>")
+  require_token_count("MQ.2 S1 direct prefix-owner include"
+    mq2_pack_topology_internal "${mq2_prefix_owner_include}" 1)
+endforeach()
+require_token_count("MQ.2 S1 prefix owner count"
+  mq2_pack_topology_internal "firstOccurrence(" 1)
+require_token_count("MQ.2 S1 prefix PackSolver consumers"
+  mq2_pack_sparse "firstOccurrence(" 2)
+require_token_count("MQ.2 S1 prefix PackStepper consumer"
+  mq2_pack_stepper "firstOccurrence(" 1)
+require_token_count("MQ.2 S1 archetype-prefix rejection"
+  mq2_pack_sparse
+  "batch_archetypes[batch].empty()||!detail::firstOccurrence(batch_archetypes,batch)"
+  1)
+require_token_count("MQ.2 S1 identity-prefix rejection"
+  mq2_pack_sparse
+  "!detail::firstOccurrence(batches,batch,&TheveninBatchView::identity)"
+  1)
+require_token_count("MQ.2 S1 pointer-prefix rejection"
+  mq2_pack_stepper
+  "!detail::firstOccurrence(batches,batch)"
+  1)
+require_token_count("MQ.2 S1 old archetype prefix search removed"
+  mq2_pack_sparse "std::find(batch_archetypes.begin()" 0)
+require_token_count("MQ.2 S1 old identity prefix loop removed"
+  mq2_pack_sparse "for(std::size_tprior=0;prior<batch;++prior)" 0)
+require_token_count("MQ.2 S1 old pointer prefix search removed"
+  mq2_pack_stepper "std::find(batches.begin()" 0)
+
+set(mq2_pack_stepper_private_begin
+  "private:[[nodiscard]]slide::StatusstepImpl(")
+set(mq2_pack_stepper_private_end "boolconfigured_{};};")
+require_token_count("MQ.2 S1 PackStepper private-slice begin"
+  mq2_pack_stepper_header "${mq2_pack_stepper_private_begin}" 1)
+require_token_count("MQ.2 S1 PackStepper private-slice end"
+  mq2_pack_stepper_header "${mq2_pack_stepper_private_end}" 1)
+string(FIND "${mq2_pack_stepper_header}" "${mq2_pack_stepper_private_begin}"
+  mq2_pack_stepper_private_begin_position)
+string(FIND "${mq2_pack_stepper_header}" "${mq2_pack_stepper_private_end}"
+  mq2_pack_stepper_private_end_position)
+if(mq2_pack_stepper_private_begin_position EQUAL -1
+   OR mq2_pack_stepper_private_end_position EQUAL -1
+   OR mq2_pack_stepper_private_end_position
+      LESS_EQUAL mq2_pack_stepper_private_begin_position)
+  message(FATAL_ERROR "MQ.2 S1 PackStepper private slice is missing")
+endif()
+string(LENGTH "${mq2_pack_stepper_private_end}"
+  mq2_pack_stepper_private_end_length)
+math(EXPR mq2_pack_stepper_private_length
+  "${mq2_pack_stepper_private_end_position} - ${mq2_pack_stepper_private_begin_position} + ${mq2_pack_stepper_private_end_length}")
+string(SUBSTRING "${mq2_pack_stepper_header}"
+  ${mq2_pack_stepper_private_begin_position}
+  ${mq2_pack_stepper_private_length}
+  mq2_pack_stepper_private)
+require_token_count("MQ.2 S1 private gather declaration"
+  mq2_pack_stepper_private
+  "voidgatherStates(std::span<real_t>destination)const;"
+  1)
+require_token_count("MQ.2 S1 private scatter declaration"
+  mq2_pack_stepper_private
+  "voidscatterStates(std::span<constreal_t>source);"
+  1)
+require_token_count("MQ.2 S1 exact gather owner"
+  mq2_pack_stepper
+  "voidPackStepper::gatherStates(std::span<real_t>destination)const{assert(destination.size()==checkpoint_.size());for(std::size_tbatch=0;batch<batches_.size();++batch){constautostate=batches_[batch]->state().raw();std::memcpy(destination.data()+checkpoint_offsets_[batch],state.data(),state.size_bytes());}}"
+  1)
+require_token_count("MQ.2 S1 exact scatter owner"
+  mq2_pack_stepper
+  "voidPackStepper::scatterStates(std::span<constreal_t>source){assert(source.size()==checkpoint_.size());for(std::size_tbatch=0;batch<batches_.size();++batch){autostate=batches_[batch]->state().raw();std::memcpy(state.data(),source.data()+checkpoint_offsets_[batch],state.size_bytes());}}"
+  1)
+require_token_count("MQ.2 S1 gather owner and callers"
+  mq2_pack_stepper "gatherStates(" 3)
+require_token_count("MQ.2 S1 scatter owner and callers"
+  mq2_pack_stepper "scatterStates(" 3)
+require_token_count("MQ.2 S1 exact arena-copy directions"
+  mq2_pack_stepper "std::memcpy(" 2)
+require_token_count("MQ.2 S1 internal gather call"
+  mq2_pack_stepper "gatherStates(checkpoint_);" 1)
+require_token_count("MQ.2 S1 public gather call"
+  mq2_pack_stepper "gatherStates(destination);" 1)
+require_token_count("MQ.2 S1 internal scatter call"
+  mq2_pack_stepper "scatterStates(checkpoint_);" 1)
+require_token_count("MQ.2 S1 public scatter call"
+  mq2_pack_stepper "scatterStates(source);" 1)
+require_token_count("MQ.2 S1 internal gather placement"
+  mq2_pack_stepper
+  "voidPackStepper::saveCheckpoint(){gatherStates(checkpoint_);solver_checkpoint_solution_.cell_current="
+  1)
+require_token_count("MQ.2 S1 internal scatter placement"
+  mq2_pack_stepper
+  "voidPackStepper::restoreCheckpoint(){scatterStates(checkpoint_);solver_.solution_.cell_current="
+  1)
+require_token_count("MQ.2 S1 exact public gather transaction"
+  mq2_pack_stepper
+  "slide::StatusPackStepper::checkpoint(std::span<real_t>destination)const{if(!configured_||destination.size()!=checkpoint_.size())returnslide::Status::Invalid_parameters;gatherStates(destination);returnslide::Status::Success;}"
+  1)
+require_token_count("MQ.2 S1 exact public scatter transaction"
+  mq2_pack_stepper
+  "slide::StatusPackStepper::restore(std::span<constreal_t>source){if(!configured_||source.size()!=checkpoint_.size())returnslide::Status::Invalid_parameters;scatterStates(source);solver_.invalidate();returnslide::Status::Success;}"
+  1)
+
+file(READ "${SLIDE_SOURCE_DIR}/src/core/PackStepper.hpp"
+  mq2_pack_stepper_header_with_comments)
+string(REGEX REPLACE "[ \t\r\n]" ""
+  mq2_pack_stepper_header_with_comments
+  "${mq2_pack_stepper_header_with_comments}")
+require_token_count("MQ.2 S1 public N*dt contract"
+  mq2_pack_stepper_header_with_comments
+  "Advancesthepackby`substeps*dt`,NOTby`dt`."
+  1)
+require_token_count("MQ.2 S1 public frozen-current contract"
+  mq2_pack_stepper_header_with_comments
+  "electricalcurrentisre-solvedonce,thenheldfrozenacrossthem"
+  1)
+
+set(mq2_pack_step_impl_begin
+  "slide::StatusPackStepper::stepImpl(")
+set(mq2_pack_step_impl_end
+  "if(status!=slide::Status::Success)returnfail(status);}returnslide::Status::Success;}")
+require_token_count("MQ.2 S1 PackStepper stepImpl owner"
+  mq2_pack_stepper "${mq2_pack_step_impl_begin}" 1)
+require_token_count("MQ.2 S1 PackStepper stepImpl tail"
+  mq2_pack_stepper "${mq2_pack_step_impl_end}" 1)
+string(FIND "${mq2_pack_stepper}" "${mq2_pack_step_impl_begin}"
+  mq2_pack_step_impl_begin_position)
+string(FIND "${mq2_pack_stepper}" "${mq2_pack_step_impl_end}"
+  mq2_pack_step_impl_end_position)
+if(mq2_pack_step_impl_begin_position EQUAL -1
+   OR mq2_pack_step_impl_end_position EQUAL -1
+   OR mq2_pack_step_impl_end_position LESS_EQUAL mq2_pack_step_impl_begin_position)
+  message(FATAL_ERROR "MQ.2 S1 PackStepper stepImpl slice is missing")
+endif()
+string(LENGTH "${mq2_pack_step_impl_end}" mq2_pack_step_impl_end_length)
+math(EXPR mq2_pack_step_impl_length
+  "${mq2_pack_step_impl_end_position} - ${mq2_pack_step_impl_begin_position} + ${mq2_pack_step_impl_end_length}")
+string(SUBSTRING "${mq2_pack_stepper}"
+  ${mq2_pack_step_impl_begin_position}
+  ${mq2_pack_step_impl_length}
+  mq2_pack_step_impl)
+
+set(mq2_substeps_loop_begin
+  "for(intsubstep=0;substep<substeps;++substep){")
+set(mq2_substeps_loop_end
+  "if(status!=slide::Status::Success)returnfail(status);}")
+require_token_count("MQ.2 S1 exact substeps loop"
+  mq2_pack_step_impl "${mq2_substeps_loop_begin}" 1)
+require_token_count("MQ.2 S1 exact substeps loop tail"
+  mq2_pack_step_impl "${mq2_substeps_loop_end}" 1)
+string(FIND "${mq2_pack_step_impl}" "${mq2_substeps_loop_begin}"
+  mq2_substeps_loop_begin_position)
+string(FIND "${mq2_pack_step_impl}" "${mq2_substeps_loop_end}"
+  mq2_substeps_loop_end_position)
+if(mq2_substeps_loop_begin_position EQUAL -1
+   OR mq2_substeps_loop_end_position EQUAL -1
+   OR mq2_substeps_loop_end_position LESS_EQUAL mq2_substeps_loop_begin_position)
+  message(FATAL_ERROR "MQ.2 S1 PackStepper substeps-loop slice is missing")
+endif()
+string(LENGTH "${mq2_substeps_loop_end}" mq2_substeps_loop_end_length)
+math(EXPR mq2_substeps_loop_length
+  "${mq2_substeps_loop_end_position} - ${mq2_substeps_loop_begin_position} + ${mq2_substeps_loop_end_length}")
+string(SUBSTRING "${mq2_pack_step_impl}"
+  ${mq2_substeps_loop_begin_position}
+  ${mq2_substeps_loop_length}
+  mq2_substeps_loop)
+string(SUBSTRING "${mq2_pack_step_impl}"
+  0 ${mq2_substeps_loop_begin_position} mq2_pack_step_preloop)
+
+require_token_count("MQ.2 S1 one frozen electrical solve"
+  mq2_pack_step_impl "solver_.solve(" 1)
+require_token_count("MQ.2 S1 electrical solve precedes substeps"
+  mq2_pack_step_preloop "solver_.solve(" 1)
+require_token_count("MQ.2 S1 no electrical solve inside substeps"
+  mq2_substeps_loop "solver_.solve(" 0)
+require_token_count("MQ.2 S1 one frozen thermal assembly"
+  mq2_pack_step_impl "topology_.thermal.assemble(" 1)
+require_token_count("MQ.2 S1 thermal assembly precedes substeps"
+  mq2_pack_step_preloop "topology_.thermal.assemble(" 1)
+require_token_count("MQ.2 S1 no thermal assembly inside substeps"
+  mq2_substeps_loop "topology_.thermal.assemble(" 0)
+require_token_count("MQ.2 S1 full-dt substep calls"
+  mq2_substeps_loop
+  "time+static_cast<real_t>(substep)*dt,dt)"
+  2)
+
 message(STATUS "9C architecture aggregate structural gate passed")
