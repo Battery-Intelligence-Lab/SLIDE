@@ -431,6 +431,7 @@ slide::Status PackSolver::solveImpl(real_t applied_current,
     std::copy(solution_.cell_current.begin(), solution_.cell_current.end(), rollback_cell_current_.begin());
     std::copy(solution_.node_voltage.begin(), solution_.node_voltage.end(), rollback_node_voltage_.begin());
     const real_t rollback_terminal_voltage = solution_.terminal_voltage;
+    const auto rollback_diagnostics = diagnostics_;
     has_solution_ = false;
 
     constexpr int source_steps = 8;
@@ -451,6 +452,7 @@ slide::Status PackSolver::solveImpl(real_t applied_current,
     std::copy(rollback_cell_current_.begin(), rollback_cell_current_.end(), solution_.cell_current.begin());
     std::copy(rollback_node_voltage_.begin(), rollback_node_voltage_.end(), solution_.node_voltage.begin());
     solution_.terminal_voltage = rollback_terminal_voltage;
+    diagnostics_ = rollback_diagnostics;
     has_solution_ = rollback_has_solution;
     workspace_.invalidate();
   }
