@@ -935,6 +935,14 @@ file(READ "${SLIDE_SOURCE_DIR}/src/core/PackTopology.hpp"
 string(REGEX REPLACE "[ \t\r\n]" ""
   mq2_pack_topology_header_with_comments
   "${mq2_pack_topology_header_with_comments}")
+string(FIND "${mq2_pack_topology_header_with_comments}" "#pragmaonce"
+  mq2_pack_topology_pragma_position)
+if(mq2_pack_topology_pragma_position EQUAL -1)
+  message(FATAL_ERROR "MQ.2 T2 PackTopology #pragma once is missing")
+endif()
+string(SUBSTRING "${mq2_pack_topology_header_with_comments}"
+  0 ${mq2_pack_topology_pragma_position}
+  mq2_pack_topology_leading_contract)
 require_token_count("MQ.2 T2 substantive topology brief"
   mq2_pack_topology_header_with_comments
   "@briefValue-semanticpackcombinatorsandcompiledelectrical/thermaltopology."
@@ -959,5 +967,12 @@ require_token_count("MQ.2 T2 stale all-cold brief removed"
   mq2_pack_topology_header_with_comments
   "@briefValue-semanticpackcombinatorsandcold-compiledelectrical/thermaltopology."
   0)
+require_ordered_tokens("MQ.2 T2 leading contract placement"
+  mq2_pack_topology_leading_contract
+  "@briefValue-semanticpackcombinatorsandcompiledelectrical/thermaltopology."
+  "OwnsD-19packauthoring/compilationpluscanonicalelectricalandD-21thermaloutputs."
+  "ImplementsPLAN.mdsection3.4(D-19andD-21)."
+  "Cold:descriptionauthoringandcompilePackDescription()."
+  "Hot:CompiledThermalGraph::assemble(),onceperPackStepperstepattempt.")
 
 message(STATUS "9C architecture aggregate structural gate passed")
