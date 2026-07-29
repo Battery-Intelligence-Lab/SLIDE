@@ -35,6 +35,7 @@ function(slide_add_core_library target)
     "${PROJECT_SOURCE_DIR}/src/core/NetlistCsv.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackSolver.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackSolverIterative.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/PackSolverOwnership.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackSolverValidation.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackStepper.cpp"
     "${PROJECT_SOURCE_DIR}/src/core/PackTopology.cpp"

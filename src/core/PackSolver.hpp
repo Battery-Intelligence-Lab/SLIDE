@@ -128,6 +128,12 @@ private:
 class PackSolver
 {
 public:
+  PackSolver() = default;
+  PackSolver(const PackSolver &) = delete;
+  PackSolver &operator=(const PackSolver &) = delete;
+  PackSolver(PackSolver &&other) noexcept;
+  PackSolver &operator=(PackSolver &&other) noexcept;
+
   [[nodiscard]] slide::Status configure(const CompiledPackTopology &topology,
                                         std::span<const TheveninBatchView> batches,
                                         unsigned workers = 0);

@@ -18,6 +18,12 @@ namespace slide::core {
 class PackStepper
 {
 public:
+  PackStepper() = default;
+  PackStepper(const PackStepper &) = delete;
+  PackStepper &operator=(const PackStepper &) = delete;
+  PackStepper(PackStepper &&other) noexcept;
+  PackStepper &operator=(PackStepper &&other) noexcept;
+
   [[nodiscard]] slide::Status configure(
     const CompiledPackTopology &topology,
     std::span<SpmBatch *const> batches,

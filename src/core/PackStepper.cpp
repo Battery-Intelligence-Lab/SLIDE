@@ -10,8 +10,97 @@
 #include <cassert>
 #include <cstring>
 #include <type_traits>
+#include <utility>
 
 namespace slide::core {
+
+static_assert(std::is_nothrow_move_constructible_v<CompiledPackTopology>
+              && std::is_nothrow_move_assignable_v<CompiledPackTopology>);
+static_assert(std::is_nothrow_move_constructible_v<std::vector<SpmBatch *>>
+              && std::is_nothrow_move_assignable_v<std::vector<SpmBatch *>>);
+static_assert(std::is_nothrow_move_constructible_v<std::vector<EulerLegacy>>
+              && std::is_nothrow_move_assignable_v<std::vector<EulerLegacy>>);
+static_assert(
+  std::is_nothrow_move_constructible_v<std::vector<ExponentialModal>>
+  && std::is_nothrow_move_assignable_v<std::vector<ExponentialModal>>);
+static_assert(std::is_nothrow_move_constructible_v<PackSolver>
+              && std::is_nothrow_move_assignable_v<PackSolver>);
+static_assert(
+  std::is_nothrow_move_constructible_v<std::vector<std::vector<real_t>>>
+  && std::is_nothrow_move_assignable_v<std::vector<std::vector<real_t>>>);
+static_assert(std::is_nothrow_move_constructible_v<std::vector<std::size_t>>
+              && std::is_nothrow_move_assignable_v<std::vector<std::size_t>>);
+static_assert(std::is_nothrow_move_constructible_v<std::vector<real_t>>
+              && std::is_nothrow_move_assignable_v<std::vector<real_t>>);
+static_assert(std::is_nothrow_move_constructible_v<PackSolution>
+              && std::is_nothrow_move_assignable_v<PackSolution>);
+static_assert(std::is_nothrow_move_constructible_v<PackSolveDiagnostics>
+              && std::is_nothrow_move_assignable_v<PackSolveDiagnostics>);
+static_assert(std::is_nothrow_move_constructible_v<bool>
+              && std::is_nothrow_move_assignable_v<bool>);
+
+PackStepper::PackStepper(PackStepper &&other) noexcept
+  : topology_{ std::move(other.topology_) },
+    batches_{ std::move(other.batches_) },
+    steppers_{ std::move(other.steppers_) },
+    exponential_steppers_{ std::move(other.exponential_steppers_) },
+    solver_{ std::move(other.solver_) },
+    current_density_{ std::move(other.current_density_) },
+    checkpoint_offsets_{ std::move(other.checkpoint_offsets_) },
+    checkpoint_{ std::move(other.checkpoint_) },
+    cell_temperature_{ std::move(other.cell_temperature_) },
+    cell_external_heat_{ std::move(other.cell_external_heat_) },
+    boundary_heat_{ std::move(other.boundary_heat_) },
+    solver_checkpoint_solution_{ std::move(other.solver_checkpoint_solution_) },
+    solver_checkpoint_diagnostics_{
+      std::move(other.solver_checkpoint_diagnostics_)
+    },
+    cell_external_heat_checkpoint_{
+      std::move(other.cell_external_heat_checkpoint_)
+    },
+    boundary_heat_checkpoint_{ std::move(other.boundary_heat_checkpoint_) },
+    solver_checkpoint_has_solution_{
+      std::exchange(other.solver_checkpoint_has_solution_, false)
+    },
+    configured_{ std::exchange(other.configured_, false) }
+{
+  other.checkpoint_.clear();
+  other.cell_external_heat_.clear();
+  other.boundary_heat_.clear();
+}
+
+PackStepper &PackStepper::operator=(PackStepper &&other) noexcept
+{
+  if (this != &other) {
+    topology_ = std::move(other.topology_);
+    batches_ = std::move(other.batches_);
+    steppers_ = std::move(other.steppers_);
+    exponential_steppers_ = std::move(other.exponential_steppers_);
+    solver_ = std::move(other.solver_);
+    current_density_ = std::move(other.current_density_);
+    checkpoint_offsets_ = std::move(other.checkpoint_offsets_);
+    checkpoint_ = std::move(other.checkpoint_);
+    cell_temperature_ = std::move(other.cell_temperature_);
+    cell_external_heat_ = std::move(other.cell_external_heat_);
+    boundary_heat_ = std::move(other.boundary_heat_);
+    solver_checkpoint_solution_ =
+      std::move(other.solver_checkpoint_solution_);
+    solver_checkpoint_diagnostics_ =
+      std::move(other.solver_checkpoint_diagnostics_);
+    cell_external_heat_checkpoint_ =
+      std::move(other.cell_external_heat_checkpoint_);
+    boundary_heat_checkpoint_ =
+      std::move(other.boundary_heat_checkpoint_);
+    solver_checkpoint_has_solution_ =
+      std::exchange(other.solver_checkpoint_has_solution_, false);
+    configured_ = std::exchange(other.configured_, false);
+
+    other.checkpoint_.clear();
+    other.cell_external_heat_.clear();
+    other.boundary_heat_.clear();
+  }
+  return *this;
+}
 
 slide::Status PackStepper::configure(
   const CompiledPackTopology &topology,

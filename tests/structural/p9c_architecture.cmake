@@ -532,6 +532,8 @@ require_token_count("MQ.2 P2 residual diagnostic reads residual owner"
 load_compact("src/core/PackTopologyInternal.hpp" mq2_pack_topology_internal)
 load_compact("src/core/PackStepper.hpp" mq2_pack_stepper_header)
 load_compact("src/core/PackStepper.cpp" mq2_pack_stepper)
+load_compact("src/core/PackSolverOwnership.cpp" mq2_pack_ownership)
+load_compact("cmake/SlideCoreTarget.cmake" mq2_core_target)
 
 require_token_count("MQ.2 S1.1 PackSolver explicit move contract"
   mq2_pack_header
@@ -543,8 +545,30 @@ require_token_count("MQ.2 S1.1 PackStepper explicit move contract"
   1)
 require_token_count("MQ.2 S1.1 PackSolver direct utility include"
   mq2_pack_sparse "#include<utility>" 1)
+require_token_count("MQ.2 S1.1 PackSolver ownership utility include"
+  mq2_pack_ownership "#include<utility>" 1)
+require_token_count("MQ.2 S1.1 PackSolver reset temporaries stay no-throw"
+  mq2_pack_ownership
+  "static_assert(std::is_nothrow_default_constructible_v<PackSolution>&&std::is_nothrow_default_constructible_v<PackSolveDiagnostics>);"
+  1)
 require_token_count("MQ.2 S1.1 PackStepper direct utility include"
   mq2_pack_stepper "#include<utility>" 1)
+require_token_count("MQ.2 S1.1 PackSolver ownership source"
+  mq2_core_target
+  "\"\${PROJECT_SOURCE_DIR}/src/core/PackSolverOwnership.cpp\""
+  1)
+require_token_count("MQ.2 S1.1 exact SolverWorkspace moves"
+  mq2_pack_sparse
+  "SolverWorkspace::SolverWorkspace(SolverWorkspace&&other)noexcept:impl_{std::move(other.impl_)},factorized_resistance_{std::move(other.factorized_resistance_)},valid_{std::exchange(other.valid_,false)},age_{std::exchange(other.age_,0)},numeric_factorizations_{std::exchange(other.numeric_factorizations_,0)},symbolic_factorizations_{std::exchange(other.symbolic_factorizations_,0)}{static_assert(detail::nothrow_movable<std::unique_ptr<Impl>,std::vector<real_t>,bool,int>);}SolverWorkspace&SolverWorkspace::operator=(SolverWorkspace&&other)noexcept{if(this!=&other){impl_=std::move(other.impl_);factorized_resistance_=std::move(other.factorized_resistance_);valid_=std::exchange(other.valid_,false);age_=std::exchange(other.age_,0);numeric_factorizations_=std::exchange(other.numeric_factorizations_,0);symbolic_factorizations_=std::exchange(other.symbolic_factorizations_,0);}return*this;}"
+  1)
+require_token_count("MQ.2 S1.1 exact PackSolver moves"
+  mq2_pack_ownership
+  "PackSolver::PackSolver(PackSolver&&other)noexcept:topology_{std::move(other.topology_)},thevenin_{std::move(other.thevenin_)},batch_executor_{std::move(other.batch_executor_)},workspace_{std::move(other.workspace_)},solution_{std::exchange(other.solution_,PackSolution{})},diagnostics_{std::exchange(other.diagnostics_,PackSolveDiagnostics{})},current_guess_{std::move(other.current_guess_)},candidate_current_{std::move(other.candidate_current_)},ocv_{std::move(other.ocv_)},resistance_{std::move(other.resistance_)},candidate_node_voltage_{std::move(other.candidate_node_voltage_)},layer_voltage_{std::move(other.layer_voltage_)},rollback_cell_current_{std::move(other.rollback_cell_current_)},rollback_node_voltage_{std::move(other.rollback_node_voltage_)},relaxation_{std::move(other.relaxation_)},candidate_terminal_voltage_{std::exchange(other.candidate_terminal_voltage_,real_t{})},residual_norm_{std::exchange(other.residual_norm_,real_t{})},relaxation_alpha_{std::exchange(other.relaxation_alpha_,real_t{2.0/3.0})},configured_{std::exchange(other.configured_,false)},has_solution_{std::exchange(other.has_solution_,false)}{static_assert(nothrow_movable<CompiledPackTopology,PackTheveninSystem,BatchExecutor,SolverWorkspace,PackSolution,PackSolveDiagnostics,std::vector<real_t>,RelaxationScratch,real_t,bool>);}PackSolver&PackSolver::operator=(PackSolver&&other)noexcept{if(this!=&other){topology_=std::move(other.topology_);thevenin_=std::move(other.thevenin_);batch_executor_=std::move(other.batch_executor_);workspace_=std::move(other.workspace_);solution_=std::exchange(other.solution_,PackSolution{});diagnostics_=std::exchange(other.diagnostics_,PackSolveDiagnostics{});current_guess_=std::move(other.current_guess_);candidate_current_=std::move(other.candidate_current_);ocv_=std::move(other.ocv_);resistance_=std::move(other.resistance_);candidate_node_voltage_=std::move(other.candidate_node_voltage_);layer_voltage_=std::move(other.layer_voltage_);rollback_cell_current_=std::move(other.rollback_cell_current_);rollback_node_voltage_=std::move(other.rollback_node_voltage_);relaxation_=std::move(other.relaxation_);candidate_terminal_voltage_=std::exchange(other.candidate_terminal_voltage_,real_t{});residual_norm_=std::exchange(other.residual_norm_,real_t{});relaxation_alpha_=std::exchange(other.relaxation_alpha_,real_t{2.0/3.0});configured_=std::exchange(other.configured_,false);has_solution_=std::exchange(other.has_solution_,false);}return*this;}"
+  1)
+require_token_count("MQ.2 S1.1 exact PackStepper moves"
+  mq2_pack_stepper
+  "PackStepper::PackStepper(PackStepper&&other)noexcept:topology_{std::move(other.topology_)},batches_{std::move(other.batches_)},steppers_{std::move(other.steppers_)},exponential_steppers_{std::move(other.exponential_steppers_)},solver_{std::move(other.solver_)},current_density_{std::move(other.current_density_)},checkpoint_offsets_{std::move(other.checkpoint_offsets_)},checkpoint_{std::move(other.checkpoint_)},cell_temperature_{std::move(other.cell_temperature_)},cell_external_heat_{std::move(other.cell_external_heat_)},boundary_heat_{std::move(other.boundary_heat_)},solver_checkpoint_solution_{std::move(other.solver_checkpoint_solution_)},solver_checkpoint_diagnostics_{std::move(other.solver_checkpoint_diagnostics_)},cell_external_heat_checkpoint_{std::move(other.cell_external_heat_checkpoint_)},boundary_heat_checkpoint_{std::move(other.boundary_heat_checkpoint_)},solver_checkpoint_has_solution_{std::exchange(other.solver_checkpoint_has_solution_,false)},configured_{std::exchange(other.configured_,false)}{other.checkpoint_.clear();other.cell_external_heat_.clear();other.boundary_heat_.clear();}PackStepper&PackStepper::operator=(PackStepper&&other)noexcept{if(this!=&other){topology_=std::move(other.topology_);batches_=std::move(other.batches_);steppers_=std::move(other.steppers_);exponential_steppers_=std::move(other.exponential_steppers_);solver_=std::move(other.solver_);current_density_=std::move(other.current_density_);checkpoint_offsets_=std::move(other.checkpoint_offsets_);checkpoint_=std::move(other.checkpoint_);cell_temperature_=std::move(other.cell_temperature_);cell_external_heat_=std::move(other.cell_external_heat_);boundary_heat_=std::move(other.boundary_heat_);solver_checkpoint_solution_=std::move(other.solver_checkpoint_solution_);solver_checkpoint_diagnostics_=std::move(other.solver_checkpoint_diagnostics_);cell_external_heat_checkpoint_=std::move(other.cell_external_heat_checkpoint_);boundary_heat_checkpoint_=std::move(other.boundary_heat_checkpoint_);solver_checkpoint_has_solution_=std::exchange(other.solver_checkpoint_has_solution_,false);configured_=std::exchange(other.configured_,false);other.checkpoint_.clear();other.cell_external_heat_.clear();other.boundary_heat_.clear();}return*this;}"
+  1)
 
 require_token_count("MQ.2 S1 exact prefix-uniqueness owner"
   mq2_pack_topology_internal

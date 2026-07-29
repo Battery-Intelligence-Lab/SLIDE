@@ -17,6 +17,7 @@
 #include <new>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 namespace slide::core {
 using detail::addFinite;
@@ -30,6 +31,11 @@ using detail::knownSolveMode;
 
 
 namespace detail {
+
+  template <class... Types>
+  inline constexpr bool nothrow_movable =
+    (std::is_nothrow_move_constructible_v<Types> && ...)
+    && (std::is_nothrow_move_assignable_v<Types> && ...);
 
   real_t conservativePackRoundoffBound(real_t accumulation_ratio,
                                        real_t current_scale,
@@ -165,8 +171,39 @@ struct SolverWorkspace::Impl
 
 SolverWorkspace::SolverWorkspace() : impl_{ std::make_unique<Impl>() } {}
 SolverWorkspace::~SolverWorkspace() = default;
-SolverWorkspace::SolverWorkspace(SolverWorkspace &&) noexcept = default;
-SolverWorkspace &SolverWorkspace::operator=(SolverWorkspace &&) noexcept = default;
+SolverWorkspace::SolverWorkspace(SolverWorkspace &&other) noexcept
+  : impl_{ std::move(other.impl_) },
+    factorized_resistance_{ std::move(other.factorized_resistance_) },
+    valid_{ std::exchange(other.valid_, false) },
+    age_{ std::exchange(other.age_, 0) },
+    numeric_factorizations_{
+      std::exchange(other.numeric_factorizations_, 0)
+    },
+    symbolic_factorizations_{
+      std::exchange(other.symbolic_factorizations_, 0)
+    }
+{
+  static_assert(detail::nothrow_movable<
+                std::unique_ptr<Impl>,
+                std::vector<real_t>,
+                bool,
+                int>);
+}
+
+SolverWorkspace &SolverWorkspace::operator=(SolverWorkspace &&other) noexcept
+{
+  if (this != &other) {
+    impl_ = std::move(other.impl_);
+    factorized_resistance_ = std::move(other.factorized_resistance_);
+    valid_ = std::exchange(other.valid_, false);
+    age_ = std::exchange(other.age_, 0);
+    numeric_factorizations_ =
+      std::exchange(other.numeric_factorizations_, 0);
+    symbolic_factorizations_ =
+      std::exchange(other.symbolic_factorizations_, 0);
+  }
+  return *this;
+}
 
 slide::Status SolverWorkspace::configure(const CompiledElectricalNetlist &netlist,
                                          std::size_t cell_count)
