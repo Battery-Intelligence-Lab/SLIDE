@@ -475,6 +475,176 @@ assertions become size and KCL-band assertions, so the registered count stays
 inner full `dt` by `substeps` must still turn elapsed time and arena identity
 red.
 
+### S1.1 moved-owner and independent-oracle hardening addendum
+
+This addendum is registered after S1's read-only adversarial review and three
+independent read-only design audits, before the first S1.1 test or production
+edit and before any S1.1 binary is run. It owns one newly discovered
+high-severity bug and the three test-strength gaps recorded by S1. None is
+retroactively attributed to S1.
+
+#### Explicit move contract and failing-test-first boundary
+
+`PackSolver` and `PackStepper` currently rely on compiler-generated moves.
+Their owning vectors and `SolverWorkspace::impl_` move away, but plain scalar
+validity flags remain true. A moved-from sparse solver can therefore pass
+`solveImpl`'s configured gate and dereference a null `workspace_.impl_`;
+`PackStepper::solveElectrical` and `step` can reach the same invalid owner.
+`SolverWorkspace` also continues to report its copied validity and
+factorisation counters after its implementation pointer has moved. This is
+the same invalid-owner class excluded at the public mutation seam by P9-B17,
+not a previously dispositioned survivor.
+
+The fix is an explicit, public rule-of-five boundary:
+
+- `PackSolver` and `PackStepper` each declare a default constructor, delete
+  copy construction/assignment, and declare no-throw move
+  construction/assignment;
+- `SolverWorkspace` retains its existing public declarations but replaces
+  both defaulted moves with self-guarded memberwise moves;
+- every owned member is transferred in declaration order, assignment accepts
+  `x = std::move(x)` as an exact no-op, and all validity flags are transferred
+  with `std::exchange(..., false)`;
+- a moved-from solver reports an invalid, zero-counter workspace, zero
+  workers, empty/zero solution and diagnostics, and rejects `solve` and
+  `setRelaxationGain` with `Invalid_parameters`;
+- a moved-from stepper reports zero checkpoint size/workers, empty
+  solution/diagnostics/heat spans, and rejects `checkpoint`, `restore`,
+  `solveElectrical`, `step`, and `stepExponential` with
+  `Invalid_parameters`;
+- the destination retains exact solution, diagnostics, workspace counters,
+  worker count, checkpoint bytes, thermal publications, relaxation gain, and
+  all state needed for the next solve/step; a moved-from source remains
+  destructible and reconfigurable; and
+- concurrent move versus `solve`/`step` remains outside the thread-safety
+  contract. Only quiescent ownership transfer is registered.
+
+Compile-time tests require `SolverWorkspace`, `PackSolver`, and `PackStepper`
+to remain no-throw move-constructible and move-assignable; both outer owners
+must remain non-copyable. Member-level no-throw proofs cover the complete
+container/owner sets so the outer `noexcept` spelling cannot conceal future
+throwing member drift. Five explicit public special-member declarations raise
+the P9C5 two-space member anchors `PackSolver` 83 -> 88 and `PackStepper`
+35 -> 40; namespace/API anchors remain 16 and 4.
+
+Four separate SHORT cases make constructor and assignment failures
+independent:
+
+1. PackSolver move construction, 15 assertions / 1 case: configure and
+   sparse-solve one affine cell, snapshot every public result and workspace
+   counter, move-construct, prove exact destination continuity, then require
+   the source's `setRelaxationGain(0.5)` to reject before probing the
+   crash-prone `solve` path. The destination solves again to identical bits.
+2. PackSolver move assignment, 20 / 1: move the same source into an already
+   configured, differently shaped two-cell destination. In addition to the
+   source/destination invariants, the old affine callback count must stay
+   fixed while the transferred callback advances exactly once on the next
+   warm solve.
+3. PackStepper move construction, 38 / 1: advance a heterogeneous two-batch
+   thermal pack beside an independent control, snapshot checkpoint bytes,
+   solution, diagnostics, heat, workspace counters, and workers, then
+   move-construct. The moved-from checkpoint uses its own reported size and
+   must reject before any crash-prone call; the destination's next step must
+   remain bit-identical to the control.
+4. PackStepper move assignment, 44 / 1: move the same fixture into an already
+   configured one-cell destination, prove the old external arena remains
+   untouched, apply all moved-from checks independently, and advance beside
+   the control with exact checkpoint and observable equality.
+
+The fatal pre-fix discriminators are deliberately non-UB:
+`PackSolver::setRelaxationGain(0.5)` currently returns `Success` because
+`configured_` was copied; zero-sized `PackStepper::checkpoint` currently
+returns `Success` for the same reason. Each appears before a moved-from
+`solve`/`step` probe. Both constructor and assignment live in separate test
+cases so Catch2 continues to the second red boundary after the first fatal
+assertion. No signal/SEH crash is treated as evidence.
+
+The move-only deltas are therefore PackSolver +35 assertions / +2 cases and
+PackStepper +82 / +2. Starting from the S1 floors, their intermediate
+move-oracle floors are 984/32 and 312/11.
+
+#### Independent checkpoint, thermal, and prefix oracles
+
+The checkpoint-layout case is not a round trip. It builds two one-lane
+archetypes with different raw arena sizes (isothermal NCH=5 and thermal
+NCH=12), fills them with distinct exact-integer sentinels, and requires the
+public checkpoint to equal an independently concatenated
+`batch0.raw || batch1.raw`. It then restores a separately generated wire
+vector and independently compares each batch with its correct slice. The
+case is exactly 11 assertions / 1 case and makes paired wrong
+gather/scatter permutations red.
+
+The frozen-thermal case is analytic and unit-checked. A two-lane NCH=5
+thermal batch begins at `T0={300,310} K` in two series cells joined by
+`G=2 W K^-1`, with zero applied current, no boundary, and zero convective
+surface term. Both electrode OCV curves are replaced by the same constant
+zero curve and both entropic curves are empty. The ladder solution therefore
+has bit-exact zero current, while reaction, reversible, ohmic, and
+environmental heat are all bit-exact zero; the test also checks that both
+generated-heat-energy states remain zero. The initial link heat is
+
+```text
+q0 = G (310 - 300) = 20 W
+Ccell = rho cp V = 1626 kg m^-3 * 750 J kg^-1 K^-1 * 1e-4 m^3
+      = 121.95 J K^-1
+```
+
+One `substeps=4`, `dt=0.25 s` PackStepper call must publish
+`cellExternalHeat={+20,-20} W`, bit-exact zero cell currents and generated
+heat energies, and final temperatures within `1e-10 K` of
+`{300 + 4*dt*q0/Ccell, 310 - 4*dt*q0/Ccell}`. This is exactly 9 assertions /
+1 case. Reassembling after each Euler substep instead follows a contracting
+temperature-difference recurrence and differs by about `2e-3 K`, far outside
+the registered band.
+
+Prefix coverage becomes non-adjacent:
+
+- a compile-time `{7,11,7}` probe requires `firstOccurrence` true at indices
+  0 and 1, false at duplicate index 2, and false out of range at 3;
+- the duplicate-archetype and Thevenin-identity fixtures become valid
+  three-entry `[a,b,a]` / `[shared,middle,shared]` inputs without changing
+  PackSolver's assertion count; and
+- the PackStepper pointer-alias fixture becomes
+  `[shared,middle,shared]`, adding only the middle batch's successful build
+  assertion.
+
+The independent-oracle delta is therefore PackStepper +21 assertions / +2
+cases and zero PackSolver or PackTopology runtime-count change. The complete
+S1.1 focused acceptance floors, in Debug, fast-math Release/IPO-off, and the
+host-C++ CUDA tree, are:
+
+```text
+PackSolver       984 assertions / 32 cases
+PackStepper      333 assertions / 13 cases
+P2-G1 allocation  14 assertions /  2 cases
+structural         1 assertion  /  1 case
+```
+
+No existing pack trace or factory/ageing hash may be reblessed. The aggregate
+structural gate pins all public declarations, source-reset exchanges,
+self-move guards, independent prefix consumers, and the frozen
+solve/assembly placement. The old exact S1 gather/scatter owners remain
+unchanged.
+
+#### S1.1 controlled mutations
+
+At a clean committed test/implementation boundary, at minimum:
+
+1. copy rather than exchange `PackSolver::configured_`;
+2. default-move or copy `SolverWorkspace::valid_`;
+3. copy rather than exchange `PackStepper::configured_`;
+4. remove one move-assignment self guard;
+5. omit one destination-critical owner (`thevenin_`/workspace/executor or a
+   PackStepper checkpoint/stepper owner);
+6. pair the wrong checkpoint gather and scatter order;
+7. reassemble and republish thermal heat inside every substep; and
+8. make `firstOccurrence` accept the non-adjacent duplicate or out-of-range
+   index
+
+must each turn its registered behavioral, compile-time, or structural gate
+red. Every mutation is reversed to exact pre-mutation hashes before the
+three-configuration acceptance run.
+
 ### S2 source-step rollback exact fixture
 
 The following analytic fixture is fixed before its first test implementation

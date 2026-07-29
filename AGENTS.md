@@ -142,10 +142,12 @@ in all three trees; nine controlled mutations turn red and exact source hashes a
 The original exact-current comparator remains FALSIFIED at 13/16; the frozen
 EulerLegacy-direct comparator at `1c74630` was not reblessed.
 
-**Your first action is S1.1 adversarial ownership hardening:** preregister and implement SHORT
-moved-from `PackSolver`/`PackStepper` rejection and destination-continuity tests plus independent
-checkpoint-layout, heterogeneous-thermal frozen-assembly, and non-adjacent prefix oracles. The
-move bug must fail before its fix. Then S2 source-step rollback and every remaining survivor batch
+**S1.1 is preregistered; your first action is its failing-test-first boundary:** implement and
+freeze the four moved-from `PackSolver`/`PackStepper` rejection and destination-continuity cases
+plus independent checkpoint-layout, analytic heterogeneous-thermal frozen-assembly, and
+non-adjacent prefix oracles. Run them against unchanged production and record both constructor and
+assignment failures before the explicit move fix. Then S2 source-step rollback and every remaining
+survivor batch
 until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
 supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
 six named landmines and MQ.1's build-policy findings included. Then →

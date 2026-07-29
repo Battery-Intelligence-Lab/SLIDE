@@ -78,8 +78,9 @@
 > host-C++/CUDA-tree gates pass PackStepper 230/9, PackSolver 949/30, allocation 14/2, and
 > structural 1/1; all three restored trees also pass the full 58/58 suite. Nine mutations turn
 > red and exact hashes were restored. Census: 24 APPLIED, 0 REFUTED, 8 named deferrals, 39 pending
-> among the original 71. Next is S1.1 failing-test-first moved-from ownership and independent
-> behavioral-oracle hardening, then S2 source-step rollback.
+> among the original 71. S1.1's moved-owner and independent-oracle contract is now preregistered
+> at final focused floors PackSolver 984/32 and PackStepper 333/13. Next is its test-only frozen
+> boundary and safe pre-fix red run, then the explicit move fix and S2 source-step rollback.
 
 ---
 
