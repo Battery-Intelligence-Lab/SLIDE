@@ -1725,6 +1725,14 @@ require_token_count("MQ.2 R1 async writer endian import"
   mq2_r1_async_recorder "usingdetail::endian_marker;" 1)
 require_token_count("MQ.2 R1 async reader endian import"
   mq2_r1_async_codec "usingdetail::endian_marker;" 1)
+require_token_count("MQ.2 R1 synchronous writer endian consumer"
+  mq2_r1_recording_format ".endian=endian_marker," 1)
+require_token_count("MQ.2 R1 synchronous reader endian consumer"
+  mq2_r1_recording_format "header.endian!=endian_marker" 1)
+require_token_count("MQ.2 R1 async writer endian consumer"
+  mq2_r1_async_recorder ".endian=endian_marker," 1)
+require_token_count("MQ.2 R1 async reader endian consumer"
+  mq2_r1_async_codec "header.endian!=endian_marker" 1)
 require_token_count("MQ.2 R1 no synchronous private endian owner"
   mq2_r1_recording_format
   "constexprstd::uint32_tendian_marker=" 0)
