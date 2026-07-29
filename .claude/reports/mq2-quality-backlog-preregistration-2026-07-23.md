@@ -1193,3 +1193,296 @@ Each lane then runs the unfiltered 58/58 suite, including the real CUDA test
 only in the CUDA tree, followed by a no-op rebuild. `CHANGELOG.md`, PLAN
 section 8, the validation report, and `develop/TODO.md` receive the final
 applied census only after all gates and mutations are green.
+
+## C1 netlist-parsing amendment (registered 2026-07-29)
+
+This amendment is registered at clean HEAD `e5e0b9d` before the first C1
+unit-test, structural-gate, source, or header edit and before any C1 binary
+run. The prior-art and survivor-ledger audit found no FALSIFIED, REFUTED,
+killed, applied, or deferred record for:
+
+- `csv-limits-restated-in-prose`;
+- `ascii-digit-scan-helper`; and
+- `failsemantic-returns-unused-bool`.
+
+These are original survivor rows 32--34. Each verifier verdict is REAL,
+behavior-preserving, low-risk, and contract-compatible. C1 owns exactly these
+three IDs. It does not absorb the analogous BPX/Experiment message
+duplication, change the public import limits, broaden the liionpack grammar,
+or reopen the killed sparse-label, zero-ohm-row, or dense-index-overflow
+candidates.
+
+The clean pre-C1 anchors are:
+
+```text
+516DFCD1141304D5B858F5A24404E9179F57997F2D63E29452D3CDE870E2BE5A  510  src/core/NetlistCsv.cpp
+55D8B05F8BFA9A065C39746B22195D31B4F6283E04F38DCA2B4C76E24A6E2B11   54  src/core/NetlistCsv.hpp
+D2F79313FD54AA321B89C57DC5B296F1219682EC5DFD79AD55BD83C8090F5B57  405  tests/unit/core_NetlistCsv_test.cpp
+07B30AF084297B59DA1952699CD4F79F0A27452AE87E20654313A89CD7AC0004  978  tests/structural/p9c_architecture.cmake
+```
+
+The final T2 three-lane logs independently record the unchanged pre-C1
+NetlistCsv floor as 821 assertions / 9 cases and ParserAllocation as
+1143/13. No executable was invoked to establish this registration.
+
+### Frozen grammar and exact diagnostic oracle
+
+The accepted number grammar is an invariant, not an implementation choice:
+
+```text
+value    := "-"? integer fraction? exponent?
+integer  := "0" | [1-9][0-9]*
+fraction := "." [0-9]+
+exponent := ("e" | "E") ("+" | "-")? [0-9]+
+```
+
+The complete spelling must be consumed and the subsequent finite
+`std::from_chars(..., std::chars_format::general)` conversion must succeed.
+A leading `+`, a leading zero followed by another digit, a missing integer,
+an empty fraction, and an empty exponent remain rejected. Existing accepted
+scientific-notation values remain exactly `1e-05`, `250.0`, and `1500.0`.
+
+The existing exponent-rejection case adds `+4.2`, `01`, `.5`, and `1.` and
+changes its predicate from non-Success to exact `Invalid_parameters`. Each
+new spelling executes the two existing unpublished-output checks plus the
+outer status check: exactly 12 new assertions and no new case. The already
+present `1e`, `1e+`, `1e-`, `1e+x`, and `1.e5e5` probes remain.
+
+Add one always-on test named
+`liionpack CSV reports exact first-failure diagnostics`, tagged
+`[core][pack][netlist][csv][diagnostic][MQ.2][C1]`. It contains exactly
+twelve fixtures. Before every parse, `row`, `offset`, and `message` are
+independently poisoned with nonzero/nonmatching values. Every fixture then
+executes exactly four assertions: exact `Invalid_parameters`, logical row,
+absolute byte offset, and byte-exact message.
+
+| Triggering input/path | Row | Offset | Exact message |
+|---|---:|---:|---|
+| data row has three fields under a four-field header | 2 | 0 | `liionpack CSV row width differs from header` |
+| descriptor `X0` | 2 | 0 | `unsupported liionpack descriptor` |
+| a second `V0` descriptor | 3 | 0 | `duplicate liionpack descriptor` |
+| node label `+1` | 2 | 0 | `invalid liionpack node label` |
+| `V0` has identical endpoints | 2 | 0 | `liionpack element has identical endpoints` |
+| value `+4.2` | 2 | 0 | `invalid liionpack element value` |
+| row-3 resistor has value `-0.1` | 3 | 0 | `liionpack resistance must be non-negative` |
+| a row-3 zero-ohm wire contracts the row-4 current-source endpoints | 4 | 0 | `liionpack ideal wire shorts an element or terminal source` |
+| a header has 33 one-byte fields | 1 | 64 | `CSV row exceeds 32 columns` |
+| a 65,537-byte unquoted first field | 1 | 65537 | `CSV field exceeds 65536 bytes` |
+| a quoted first field contains 65,537 payload bytes | 1 | 65538 | `CSV field exceeds 65536 bytes` |
+| `V0,1,0,4"2` under the canonical 23-byte header | 2 | 31 | `quote inside unquoted CSV field` |
+
+The last four offsets are derived from the reader cursor, not copied from
+production expectations. The 33rd one-byte field begins after 32
+`field,` pairs, at absolute byte 64. An unquoted oversized field has consumed
+65,537 bytes when its limit guard fires; the quoted version has additionally
+consumed the opening quote. The canonical header occupies bytes `[0,23)`;
+the offending quote is row-relative byte 8 and therefore absolute byte 31.
+It is rejected before cursor advancement.
+
+The existing oversized-file path poisons its diagnostic immediately before
+the 4 MiB + 1 load and gains exact row 0, offset 0, and
+`liionpack CSV exceeds 4194304 bytes` assertions: +3. The existing
+100,001-data-row path likewise starts poisoned, replaces its message
+substring check with exact equality, and adds exact logical row 100002 and
+offset 0: +2. Its row follows from one header plus the first disallowed data
+row.
+
+The new exact arithmetic is therefore:
+
+```text
+821 + (4 spellings * 3) + (12 diagnostics * 4) + 3 + 2 = 886 assertions
+9 + 1 = 10 test cases
+```
+
+No assertion is added to the already complete accepted-topology and
+scientific-value fixtures, and no poison-output assertion is removed.
+`parallel_fixture`, the exact scientific values, sentinel topology
+atomicity, the independent imported-topology validator, P9-G2 deterministic
+fuzz behavior, and P9-B38's `sizeof(array)-1` embedded-NUL extent remain live
+owners. At the oracle-only boundary, unchanged production must pass
+NetlistCsv exactly **886/10**.
+
+### One message owner, one ASCII grammar owner, one semantic-status owner
+
+The production change is restricted to `src/core/NetlistCsv.cpp`,
+`src/core/NetlistCsv.hpp`, and `CHANGELOG.md`.
+
+Four adjacent file-local `constexpr std::string_view` values own the four
+limit diagnostics next to the existing numeric limits:
+
+```text
+msg_too_large     = "liionpack CSV exceeds 4194304 bytes"
+msg_too_wide      = "CSV row exceeds 32 columns"
+msg_field_large   = "CSV field exceeds 65536 bytes"
+msg_too_many_rows = "liionpack CSV exceeds 100000 rows"
+```
+
+One numeric `static_assert` pins 4,194,304 bytes, 100,000 rows, 32 columns,
+and 65,536 bytes/field to those literal spellings. Each literal occurs
+exactly once in the translation unit. Complete owner-plus-consumer token
+counts are respectively 3, 2, 3, and 2. Consumers remain exact:
+
+- direct input assigns `msg_too_large`;
+- the bounded-file aggregate explicitly constructs
+  `std::string{msg_too_large}`;
+- the 33-column path calls `fail(msg_too_wide)`;
+- both quoted and unquoted field paths call `fail(msg_field_large)`; and
+- the first disallowed data row assigns `msg_too_many_rows`.
+
+The public header's readable `4 MiB, 100,000 rows, 32 columns, and
+65,536 bytes/field` prose deliberately remains; it is a public contract, not
+a replaceable C++ owner. Analogous strings in BPX and Experiment remain
+outside C1.
+
+Two file-local `constexpr` helpers transcribe, without widening, the current
+ASCII grammar:
+
+```cpp
+[[nodiscard]] constexpr bool isAsciiDigit(char value) noexcept;
+constexpr std::size_t scanDigits(
+  std::string_view text, std::size_t &cursor) noexcept;
+```
+
+`isAsciiDigit` has the exact inclusive `'0'`/`'9'` bounds and a comment
+explaining why locale-sensitive `std::isdigit` is not substituted.
+`scanDigits` advances while that predicate holds and returns exactly
+`cursor - begin`. It is deliberately **not** `[[nodiscard]]`: the
+already-proven nonzero integer branch legitimately discards its count.
+
+The compact translation-unit census is exactly four `isAsciiDigit(` tokens
+(definition, scanner, parseValue leading-zero guard, descriptor consumer)
+and four `scanDigits(` tokens (definition plus three parseValue consumers).
+The descriptor call explicitly converts its `unsigned char` loop value with
+`static_cast<char>(value)`.
+
+Within a sliced `parseValue`, the structural gate requires exactly three
+scanner calls, one direct digit-predicate call, the unchanged `'-'`-only
+leading-sign token, the unchanged `'0'` special case, the unchanged
+`'1'..'9'` branch, two zero-count checks for fraction/exponent, and the final
+full-consumption check. The old raw
+`text[cursor] >= '0' && text[cursor] <= '9'` spelling has zero occurrences.
+This pins helper extraction and grammar simultaneously; replacing the
+`'1'..'9'` branch with a generic digit predicate is not accepted as proof of
+the no-leading-zero contract.
+
+`failSemantic` becomes exactly:
+
+```cpp
+[[nodiscard]] slide::Status failSemantic(
+  NetlistCsvDiagnostic &diagnostic,
+  std::size_t row,
+  std::string_view message)
+{
+  diagnostic.row = row;
+  diagnostic.message.assign(message);
+  return slide::Status::Invalid_parameters;
+}
+```
+
+All eight consumers directly return the helper: seven pass `row`, and the
+post-contraction check passes `element.row`. Thus the exact census is nine
+`failSemantic(` tokens, eight `return failSemantic(` tokens, split 7/1.
+There are exactly 12 remaining compact
+`return slide::Status::Invalid_parameters;` tokens (the helper plus eleven
+unrelated direct exits), down from 19; together with the unchanged allocation
+failure return, the explicit failure-return census is 13 rather than 20.
+`CsvReader::fail` remains a bool because `CsvReader::next` consumes it as a
+bool.
+
+The public `offset` comment is corrected without changing outputs: it states
+that the value is the source cursor at or immediately after a
+reader-detected syntax/limit failure and is zero when no cursor position is
+available. The structural gate requires the new compact comment and forbids
+the stale unrestricted `source byte at or immediately after the failure`
+wording. It also pins the existing exact `CsvReader::fail` body.
+
+Semantic, direct-bound, archetype, and allocation failures retain offset
+zero. No synthetic row-start offset is introduced. The unit matrix makes
+that zero executable from poisoned state, while the reader cases make
+nonzero cursor offsets executable.
+
+### Future structural gate and old-production boundary
+
+Append C1 to `tests/structural/p9c_architecture.cmake`, after loading compact
+`NetlistCsv.cpp` and `.hpp`. The gate requires:
+
+- the four exact message-owner declarations, numeric pin, once-only literals,
+  3/2/3/2 reference counts, and exact five consumer forms above;
+- exact `>` guards for input bytes, data rows, and both field paths, plus the
+  pre-field `fields.size() >= max_csv_columns` column guard;
+- an ordered parse-entry slice containing `diagnostic = {}` before
+  `csv.size() > max_csv_bytes` and the direct `msg_too_large` publication;
+- exactly one `diagnostic.offset` token (the allocation-failure reset) and
+  one `diagnostic_.offset` token in the exact `CsvReader::fail` body, so a
+  new semantic/direct-limit offset write is structural-red;
+- exact helper bodies, the 4/4 global helper census, absence of
+  `[[nodiscard]]` on `scanDigits`, and the sliced parseValue/descriptor
+  grammar constraints above;
+- the exact Status-returning `failSemantic` body and 9/8/7/1 ownership
+  census;
+- the 12 direct Invalid-parameters returns; and
+- the new truthful header offset comment with the stale wording absent.
+
+Against unchanged production, this future gate must fail first at the first
+message owner: expected one exact `msg_too_large` declaration, found zero.
+All preceding included structural suites must remain green. No future
+structural expectation may be weakened or reblessed to accommodate an
+implementation.
+
+The oracle-only commit may change only
+`tests/unit/core_NetlistCsv_test.cpp` and
+`tests/structural/p9c_architecture.cmake`. In Debug it must produce:
+
+```text
+unit_test_core_NetlistCsv                  886 assertions / 10 cases, PASS
+structural_test_core_9C2AgeingKernel       RED only at C1 msg_too_large 0/1
+```
+
+The production source/header hashes must still equal the anchors above.
+Release, CUDA, and full-suite claims are withheld at the oracle-only
+boundary.
+
+### Registered mutations and final acceptance
+
+At a clean committed implementation boundary, independently run at least
+these mutation families:
+
+1. drift any one numeric limit or change its registered `>`/`>=` guard;
+2. alter one limit-message byte or route a consumer through the wrong owner;
+3. remove the quoted or unquoted field-limit consumer independently;
+4. change either inclusive ASCII digit bound or reintroduce one raw digit
+   loop;
+5. break `scanDigits` advancement or its returned count;
+6. admit a leading `+`, a leading zero, an empty fraction, or an empty
+   exponent (structural-red is required even where `from_chars` also rejects
+   the broadened spelling);
+7. make `failSemantic` return `Success`;
+8. change its row/message behavior, synthesize a nonzero offset, or move the
+   entry diagnostic reset after the direct-size guard;
+9. reintroduce one discarded two-line
+   `failSemantic(...); return Invalid_parameters;` consumer;
+10. damage the header offset contract or restore its stale unrestricted
+    wording; and
+11. change the quote guard or the independently derived byte-31 expectation.
+
+Every touched source/header/test/gate file is SHA-256 anchored at the clean
+implementation commit. Each mutation is inverse-patched individually; exact
+hashes, `git diff --exit-code HEAD -- <touched-files>`, and an empty porcelain
+status are required before the next mutation and before final acceptance. No
+oracle count, status, row, offset, message, or accepted value may be reblessed
+to fit production.
+
+The final focused set in Debug, fast-math Release/IPO-off, and the retained
+host-C++ CUDA tree is NetlistCsv 886/10, ParserAllocation 1143/13,
+PackTopology 170/12, PackSolver 994/33, PackStepper 333/13, P2-G1 allocation
+14/2, and aggregate structural 1/1. Every lane then runs the unfiltered
+58/58 suite, including the real CUDA test only in the CUDA tree, followed by
+a no-op rebuild. `clang-format --dry-run --Werror`, `git diff --check`, and an
+adversarial gate review precede disposition.
+
+Only after those gates are green do the three IDs become APPLIED. That would
+move the original census from 31 APPLIED / 0 REFUTED / 8 named deferrals /
+32 pending to 34 / 0 / 8 / 29, and the combined 76-ID census from
+35 / 0 / 9 / 32 to 38 / 0 / 9 / 29. `CHANGELOG.md`, PLAN section 8, the
+validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
+census only at closeout.
