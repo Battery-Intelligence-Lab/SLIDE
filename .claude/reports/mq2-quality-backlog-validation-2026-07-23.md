@@ -1232,3 +1232,56 @@ dispositions `diagnostics-not-rolled-back` and
 post-baseline registry, the combined 76-ID census is 30 APPLIED, 0 REFUTED,
 9 named deferrals, and 37 pending. MQ.2 remains open; T1 topology derivation
 is next.
+
+### T1 frozen old-production boundary
+
+The exact T1 behavior/structure contract was registered at `4dd9226` before
+any T1 test/source edit or binary run. Oracle-only commit `17538de` adds the
+registered +16 assertions / +2 cases and the future ownership gate while
+leaving production byte-identical:
+
+```text
+C06F37CD36844AB3388BBDBB54C79BFD601ECE9ADE540BAED248DDE02B20B626  src/core/PackTopology.cpp
+35DA8CCFE0EA1C01CD83FDF2CCDA3FB0EC7AD9D60A0FFF72714525C22852B3E0  tests/unit/core_PackTopology_test.cpp
+658EEC8DF814A988A01B906B18BC797B9E84A21C548FFC5C43C514ED5414DADD  tests/structural/p9c_architecture.cmake
+```
+
+The first compilation stopped before linking or running because Catch2
+requires parenthesized compound predicates. Its diagnostic was:
+
+```text
+static assertion failed due to requirement 'always_false<bool>::value':
+chained comparisons are not supported inside assertions, wrap the expression
+inside parentheses, or decompose it
+```
+
+Wrapping the five registered compound predicates changed neither their
+expressions nor the assertion count. The repeated command then built:
+
+```powershell
+cmake --build build-mq1-debug --target unit_test_core_PackTopology
+```
+
+The exact old-production behavior gate was green:
+
+```text
+ctest --test-dir build-mq1-debug -V -R "^unit_test_core_PackTopology$"
+All tests passed (164 assertions in 11 test cases)
+```
+
+The future structural gate was red only at its first absent T1 owner, after
+all four included pre-existing structural suites reported passed:
+
+```text
+ctest --test-dir build-mq1-debug -V -R "^structural_test_core_9C2AgeingKernel$"
+9C-2 MQ.2 T1 one BatchSlot record: expected 1 occurrences of
+structBatchSlot{std::uint32_tbatch{};std::uint32_tnext_lane{};boolthermal{};};,
+found 0
+```
+
+Thus the complete cell/batch/branch/sparsity/ladder/thermal snapshot, direct
+hostile endpoint rejection, and all-three-vector orientation rollback are
+confirmed against the pre-extraction implementation. No expected value was
+derived from the future owner, and no production file changed. No Release,
+CUDA, full-suite, mutation, sanitizer, coverage, timing, allocation-attempt,
+or performance claim is made by this test-only boundary.
