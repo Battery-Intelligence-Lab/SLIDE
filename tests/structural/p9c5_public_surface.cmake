@@ -7,6 +7,8 @@
 # kernel. The api set and each api header's declaration count are pinned, so a new public
 # entity cannot appear without a deliberate edit to this file.
 
+cmake_policy(SET CMP0057 NEW)
+
 if(NOT DEFINED SLIDE_SOURCE_DIR)
   message(FATAL_ERROR "SLIDE_SOURCE_DIR is required")
 endif()

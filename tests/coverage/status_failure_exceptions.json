@@ -4,42 +4,42 @@
       "class": "defensive-only",
       "context_sha256": "215bb8c2487f580339122a7a96ed28ef29412c9c6d747f3d906f6296aeae2dad",
       "reason": "All dimensions come from already-materialized validated vectors and node_count is bounded by INT_MAX. Deterministic allocation exhaustion reaches bad_alloc; this catch is retained for standard-library or allocator implementations that report an exhausted representability limit with length_error.",
-      "site_id": "src/core/PackSolver.cpp:351:27:Invalid_parameters",
+      "site_id": "src/core/PackSolver.cpp:329:27:Invalid_parameters",
       "source_sha256": "e72e05103f69fed7b36c2ee0245b366832aaa2cc6898333e5444e5951957f0d5"
     },
     {
       "class": "defensive-only",
       "context_sha256": "0cc7f1c80c9e9913d7107f679f2e5d282c3feaa26439693f41673b4e5d3d9895",
       "reason": "After successful SparseLU factorization and a finite right-hand side, a solve-info failure requires an Eigen backend failure or internal corruption. Public rounded-singular inputs exercise the preceding factorization-failure boundary instead.",
-      "site_id": "src/core/PackSolver.cpp:588:27:Numerical_failure",
+      "site_id": "src/core/PackSolver.cpp:563:27:Numerical_failure",
       "source_sha256": "f347cdc59f4298bba2636f54a711f513c4d56eee66b0e958a87f3f6c00fbeb21"
     },
     {
       "class": "defensive-only",
       "context_sha256": "416c77acddac8f8c300231faf5d627b4f84f60798884c4abc97406df318e21be",
       "reason": "The damped state is a convex interpolation between finite pre-correction and full-correction affine states, so its node and cell values remain finite. The combined runtime guard is retained to preserve atomicity against staged floating-point rounding anomalies.",
-      "site_id": "src/core/PackSolver.cpp:652:29:Invalid_states",
+      "site_id": "src/core/PackSolver.cpp:625:29:Invalid_states",
       "source_sha256": "af3d26fd57d0715c2191290b23a94003c745dc832d7273dfcaa66388a6f29472"
     },
     {
       "class": "platform-specific",
-      "context_sha256": "bb60124ac3183d29d6093f8a91a986777fdf716f2738c48221ad5655dade867e",
+      "context_sha256": "9f4768e915b52c3effd0107d19fe39c049b73777a1ee98fab992b23dd1c9fdec",
       "reason": "Every reciprocal conductance is first required to be finite and positive, and connectedness supplies an incident branch for every non-reference node. This guard remains for FP environments that accept a positive subnormal comparison but flush it during compensated diagonal accumulation.",
-      "site_id": "src/core/PackSolver.cpp:796:29:Numerical_failure",
+      "site_id": "src/core/PackSolverIterative.cpp:153:29:Numerical_failure",
       "source_sha256": "f347cdc59f4298bba2636f54a711f513c4d56eee66b0e958a87f3f6c00fbeb21"
     },
     {
       "class": "defensive-only",
-      "context_sha256": "9264d718a9a3135b59d29d40c289783c81f777c8072e60a192684a8918c0d34e",
+      "context_sha256": "f081f954b131b5760033986c39739261085f98c12700a9d1a0c5c5f06096fe66",
       "reason": "All relaxed branch currents and earlier compensated KCL additions are finite before the final terminal injection. Failure here requires a representability-limit cancellation pattern not constructible by the bounded validated pack witnesses, so the atomicity guard is retained.",
-      "site_id": "src/core/PackSolver.cpp:887:27:Invalid_states",
+      "site_id": "src/core/PackSolverIterative.cpp:233:27:Invalid_states",
       "source_sha256": "af3d26fd57d0715c2191290b23a94003c745dc832d7273dfcaa66388a6f29472"
     },
     {
       "class": "platform-specific",
       "context_sha256": "0eaa6d606b31329409eab58d719eb32ecc1738a70071dbc217b26fe1141313d1",
       "reason": "The registered fixed-order matrices have a validated distinct real spectrum, which implies an independent exact eigenbasis. This guard preserves atomic output if a finite-precision Eigen backend nevertheless returns a numerically rank-deficient approximate basis.",
-      "site_id": "src/core/SpectralModel.hpp:314:29:Numerical_failure",
+      "site_id": "src/core/SpectralModel.hpp:315:29:Numerical_failure",
       "source_sha256": "f347cdc59f4298bba2636f54a711f513c4d56eee66b0e958a87f3f6c00fbeb21"
     }
   ],

@@ -63,7 +63,7 @@ struct RecordingOracle
   BlockCrcPair second_block{};
 };
 
-#if defined(SLIDE_TEST_IPO)
+#if defined(_WIN32) && defined(SLIDE_TEST_IPO)
 constexpr RecordingOracle expected_oracle{
   .csv = { 4072, UINT64_C(113020753288656565), UINT64_C(1220644351662519581) },
   .binary = { 3904, UINT64_C(4980822913020495434), UINT64_C(5810136181434859582) },
@@ -71,7 +71,7 @@ constexpr RecordingOracle expected_oracle{
   .first_block = { 1528093825U, 3638640079U },
   .second_block = { 936358080U, 170786859U },
 };
-#elif defined(SLIDE_TEST_RELEASE)
+#elif defined(_WIN32) && defined(SLIDE_TEST_RELEASE)
 constexpr RecordingOracle expected_oracle{
   .csv = { 4072, UINT64_C(9836986554487851297), UINT64_C(10195804735363157979) },
   .binary = { 3904, UINT64_C(7644568223896275882), UINT64_C(9507010167800238048) },
@@ -79,7 +79,16 @@ constexpr RecordingOracle expected_oracle{
   .first_block = { 1129188246U, 4052193948U },
   .second_block = { 798320599U, 591966072U },
 };
-#else
+#elif defined(__linux__) && defined(__clang__) && __clang_major__ == 18 \
+  && !defined(SLIDE_TEST_RELEASE)
+constexpr RecordingOracle expected_oracle{
+  .csv = { 4072, UINT64_C(580175175469508733), UINT64_C(8482670618437841473) },
+  .binary = { 3904, UINT64_C(16236475239795828522), UINT64_C(17177906431584795385) },
+  .async = { 3936, UINT64_C(17797356430432497358), UINT64_C(14598319551377944930) },
+  .first_block = { 4273982167U, 2835542638U },
+  .second_block = { 2456069782U, 2077085578U },
+};
+#elif defined(_WIN32) && !defined(SLIDE_TEST_RELEASE)
 constexpr RecordingOracle expected_oracle{
   .csv = { 4072, UINT64_C(9687440020754251757), UINT64_C(4395482851448939133) },
   .binary = { 3904, UINT64_C(5616759404010358714), UINT64_C(2046236715092195141) },
@@ -87,6 +96,8 @@ constexpr RecordingOracle expected_oracle{
   .first_block = { 4136208346U, 118461792U },
   .second_block = { 2589125531U, 3586173060U },
 };
+#else
+#error "Register this platform/toolchain/configuration recording-byte oracle before running it"
 #endif
 
 static_assert(expected_oracle.first_block.raw
