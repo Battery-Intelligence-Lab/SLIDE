@@ -1147,3 +1147,88 @@ of describing the caller-requested direct attempt at residual `4`.
 
 No Release, CUDA, full-suite, mutation, sanitizer, coverage, timing, or
 performance claim is made by this failing-test-first boundary.
+
+### S2 implementation, mutation sensitivity, and acceptance
+
+Commit `7b3fd14` adds exactly the registered local
+`PackSolveDiagnostics` snapshot and failure-only restore. The snapshot occurs
+after the direct caller attempt exhausts its iteration budget and before the
+first recursive source step. Both the direct-success and completed-continuation
+paths return before the restore. `PackSolveDiagnostics` contains only scalar
+fields, so the change adds no allocation, owner, header member, numerical
+operation, or accepted-path publication. The user-visible diagnostics change
+is recorded in `CHANGELOG.md`.
+
+The named S2 case and complete PackSolver binary passed immediately:
+
+```text
+failed source stepping restores caller-attempt diagnostics
+All tests passed (10 assertions in 1 test case)
+
+unit_test_core_PackSolver
+All tests passed (994 assertions in 33 test cases)
+```
+
+Three independent Debug mutations then made exactly their registered
+assertions red:
+
+| Mutation | Result |
+|---|---|
+| remove only the three solution-field restores | 9/10; assertion 7 `haveSameSolutionBits(solver.solution(), accepted)` was false |
+| remove only `diagnostics_ = rollback_diagnostics` | 9/10; assertion 8 was false and captured `residual_norm := 2.5` |
+| remove only `has_solution_ = rollback_has_solution` | 9/10; assertion 9's final zero-current one-iteration solve failed while the capture remained `residual_norm := 4.0` |
+
+Each mutation-only build emitted one corresponding unused-local warning
+(`rollback_terminal_voltage`, `rollback_diagnostics`, or
+`rollback_has_solution`). These warnings are expected consequences of
+deleting the sole consumer and are not present at the restored boundary.
+Every mutation was inverted before the next. The final anchors were:
+
+```text
+9EA5A112805F9A4B031E023F220FEAB8BFFE488D683C10B87C2D105B1F3D42C1  src/core/PackSolver.cpp
+5B33D2A0A7CBB43D1559E45E808947F4E306CE6D6496D42D6BE19F4B4E70B713  tests/unit/core_PackSolver_test.cpp
+```
+
+The exact final commands, all from the repository root, were:
+
+```powershell
+# Debug/ThinLTO
+cmake --build build-mq1-debug --parallel 2
+ctest --test-dir build-mq1-debug --verbose -R "PackSolver|PackStepper|PackTopology|P2G1_allocation|structural_test_core_9C2AgeingKernel"
+ctest --test-dir build-mq1-debug --output-on-failure -j1
+
+# fast-math Release, IPO off
+cmake --build build-mq1-release --parallel 2
+ctest --test-dir build-mq1-release -V --no-tests=error -j1 -R '^(unit_test_core_PackSolver|unit_test_core_PackStepper|unit_test_core_PackTopology|unit_test_core_P2G1_allocation|structural_test_core_9C2AgeingKernel)$'
+ctest --test-dir build-mq1-release --output-on-failure -j1
+
+# Release/ThinLTO CUDA tree, host C++; each command used this full VS wrapper
+cmd.exe /d /s /c 'call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && cmake --build build-mq1-cuda-vsenv --config Release'
+cmd.exe /d /s /c 'call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && ctest --test-dir build-mq1-cuda-vsenv -R "PackSolver|PackStepper|PackTopology|P2G1_allocation|structural_test_core_9C2AgeingKernel" -V -j1'
+cmd.exe /d /s /c 'call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul && ctest --test-dir build-mq1-cuda-vsenv --output-on-failure -j1'
+```
+
+The focused results were exact:
+
+| Configuration | PackTopology | PackSolver | PackStepper | P2-G1 allocation | Structural aggregate |
+|---|---:|---:|---:|---:|---:|
+| Debug/ThinLTO | 148 assertions / 9 cases | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+| fast-math Release, IPO off | 148 / 9 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+| Release/ThinLTO CUDA tree, host C++ | 148 / 9 | 994 / 33 | 333 / 13 | 14 / 2 | 1 / 1 |
+
+All three unfiltered suites passed **58/58**; the CUDA lane passed the real
+`unit_test_core_CudaSpmBatch`. The restored Debug build emitted no warning or
+error. Release and CUDA each emitted exactly two copies of the already
+registered
+`clang++: warning: argument '-Ofast' is deprecated; use '-O3 -ffast-math' for the same behavior, or '-O3' to enable only conforming optimizations [-Wdeprecated-ofast]`
+diagnostic, while compiling `PackSolver.cpp` and
+`core_PackSolver_test.cpp`; B1 remains its owner. No new build finding and no
+performance claim is made.
+
+`git diff --exit-code HEAD` was zero before and after every final lane. S2
+dispositions `diagnostics-not-rolled-back` and
+`untested-rollback-and-advance` are APPLIED. The original census is now
+26 APPLIED, 0 REFUTED, 8 named deferrals, and 37 pending. With the unchanged
+post-baseline registry, the combined 76-ID census is 30 APPLIED, 0 REFUTED,
+9 named deferrals, and 37 pending. MQ.2 remains open; T1 topology derivation
+is next.

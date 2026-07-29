@@ -16,7 +16,9 @@
 > ownership/full-`dt` implementation at `62f1587` after three-lane focused and 58/58 full-suite
 > gates plus nine red mutations. S1.1's explicit moved-owner and independent-oracle contract then
 > landed at `574cfaf`: its frozen 984/32 and 333/13 gates pass in all three retained configurations,
-> all three restored trees pass 58/58, and eight ownership/oracle mutations turn red. S2 rollback is next.
+> all three restored trees pass 58/58, and eight ownership/oracle mutations turn red. S2 source-step
+> rollback landed at `7b3fd14`: PackSolver 994/33 plus all companion gates and 58/58 pass in all
+> three retained configurations, and three restoration mutations turn red. T1 topology is next.
 > The v4 core is COMPLETE through Phase 9A; Phase 9B was in progress at rewrite time and is carried into M0.
 > Everything before this rewrite is archived VERBATIM at
 > `.claude/summaries/plan-archive-2026-07-11-v4-phase9b.md` (and the older
@@ -1490,7 +1492,13 @@ debt.
       each pass PackSolver 984/32, PackStepper 333/13, PackTopology 148/9, allocation 14/2, and
       structural 1/1; all three restored trees pass 58/58. Eight controlled ownership/oracle
       mutations turn red and exact hashes are restored. B1 still owns the observed
-      `EIGEN_STRONG_INLINE` redefinition warning. Then S2 source-step rollback and every remaining
+      `EIGEN_STRONG_INLINE` redefinition warning. S2 PASSED locally at `7b3fd14`: the failed
+      caller attempt's diagnostics are snapshotted and restored if hidden source stepping later
+      fails, while solution and warm-state rollback remain exact. PackSolver 994/33 and all
+      companion focused gates pass in Debug, fast-math Release/IPO-off, and host-C++ CUDA; all
+      three trees pass 58/58, and independent solution/diagnostics/warm-flag mutations turn red.
+      Original census: 26 APPLIED / 37 pending / 8 deferrals; combined append-only registry:
+      30 APPLIED / 37 pending / 9 deferrals across 76 stable IDs. Then T1 topology and every remaining
       survivor batch continue until all 68 + 3 original supplemental findings plus every new
       supplemental finding carry a disposition.
 - [ ] MQ.3 Repo hygiene sweep: audit the tracked tree (670 files at this writing) — stale or
@@ -1544,7 +1552,7 @@ Derive before running: identifiability and noise floors computed analytically FI
 the derivation, not from a trial fit.
 
 - [ ] M1.0 Pay the MC-1 TEST-file debt owed by M0.8/M0.10 (explicit owner box — do not inherit again):
-      split `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,728 after
+      split `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,780 after
       MQ.2's registered P0/S1.1 pack-solver oracles and still growing through the S-batches —
       re-measure at this box),
       `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118),
@@ -1971,4 +1979,5 @@ Q1–Q10 are DECIDED/RESOLVED — one-line records below; full reasoning in the 
 | 2026-07-29 | MQ.2 S1.1 explicit moved-owner implementation | PASSED locally at `574cfaf` — exhaustive no-throw, self-guarded moves for `SolverWorkspace`, `PackSolver`, and `PackStepper` leave every moved source observably default-unconfigured and preserve exact destination solution, diagnostics, factorisation counters, workers, checkpoint bytes, heat publication, and continuation. The ownership body is split into the 100-line `PackSolverOwnership.cpp`, keeping `PackSolver.cpp` at 642 physical lines. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree focused gates each pass PackTopology 148/9, PackSolver 984/32, PackStepper 333/13, allocation 14/2, and structural 1/1; restored commit `574cfaf` passes unfiltered 58/58 in all three trees, including the real CUDA test. Eight controlled source-state, self-guard, missing-owner, paired-layout, thermal-cadence, and prefix mutations turn their registered behavioral, compile-time, or structural gates red; all five touched SHA-256 anchors and the clean committed tree were restored. Original census remains 24 APPLIED, 0 REFUTED, 8 named deferrals, 39 pending. The append-only post-baseline registry has four APPLIED S1.1 IDs plus `eigen-strong-inline-redefinition-warning` DEFERRED to B1, so the combined census is 28 APPLIED, 0 REFUTED, 9 named deferrals, and 39 pending across 76 stable IDs. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
 | 2026-07-29 | MQ.2 S2 executable rollback count | REGISTERED before the first S2 test edit or binary run — the already-derived seven-callback affine fixture is frozen at exactly 10 assertions / 1 case, taking PackSolver 984/32→994/33. It independently checks accepted solution bits, failed direct-attempt diagnostics (`residual_norm=4`, not hidden-step `2.5`), and cold warm-state restoration via the seventh one-iteration solve. Final focused floors in all three retained configurations are PackTopology 148/9, PackSolver 994/33, PackStepper 333/13, allocation 14/2, and structural 1/1, followed by unfiltered 58/58. Removing solution, diagnostics, or warm-flag restoration must make separate assertions red. Artifact: `.claude/reports/mq2-quality-backlog-preregistration-2026-07-23.md`. | REGISTERED; S2 remains open |
 | 2026-07-29 | MQ.2 S2 frozen old-production boundary | RED exactly as registered at `4a9d29a` plus zero-assertion capture `d94a0ba` — unchanged `PackSolver.cpp` reaches 9/10 assertions and prints `solver.diagnostics().residual_norm := 2.5`; accepted/restored solution bits, six callbacks, the final one-iteration cold solve, and callback seven all pass. The only failure is the expected direct-attempt diagnostics value `4`, proving the abandoned hidden solve leaks its `2.5` residual while solution and warm-state rollback already work. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | RED; implementation required |
-| — | NEXT | **MQ.2 S2 local diagnostics rollback:** snapshot the direct-attempt POD diagnostics beside the existing solution snapshot and restore it before workspace invalidation; change no header, allocation, success path, or frozen oracle. Pass PackSolver 994/33, then remove solution, diagnostics, and warm-flag restoration independently before the retained three-configuration focused and 58/58 gates. Proceed through every remaining survivor batch to complete original 68+3 plus post-baseline registry disposition, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then M1.0 toward v6.0.0. |
+| 2026-07-29 | MQ.2 S2 source-step atomicity | PASSED locally at `7b3fd14` — a POD diagnostics snapshot preserves the failed caller-requested direct attempt (`iterations=1`, `residual_norm=4`) when a later hidden continuation stage fails, without changing headers, allocation, accepted outputs/success semantics, or numerical expressions. Debug, fast-math Release/IPO-off, and host-C++/CUDA-tree focused gates each pass PackTopology 148/9, PackSolver 994/33, PackStepper 333/13, allocation 14/2, and structural 1/1; all three restored trees pass 58/58, including the real CUDA test. Removing solution, diagnostics, or warm-flag restoration makes a distinct numbered S2 assertion red at 9/10, and the exact PackSolver hash is restored. `diagnostics-not-rolled-back` and `untested-rollback-and-advance` are APPLIED: original census 26 APPLIED / 37 pending / 8 deferrals; combined 76-ID census 30 APPLIED / 37 pending / 9 deferrals. Artifact: `.claude/reports/mq2-quality-backlog-validation-2026-07-23.md`. | PASSED locally; MQ.2 remains open |
+| — | NEXT | **MQ.2 T1 topology derivation:** preregister the exact deterministic rollback and hostile-endpoint test deltas plus digit-identical compiled-topology fixtures before source edits. Then apply `branch-graph-derived-twice`, `three-parallel-archetype-maps`, and `test-gap-ladder-rollback` with the registered one-owner structural count, preserving endpoint validation before graph construction and exact batch/lane ordering. Proceed through every remaining survivor batch to complete original 68+3 plus post-baseline registry disposition, MQ.3 hygiene → MQ.4 inventory → MQ.5 re-derivation → MQ.6 logic hunt → MQ.7 performance hunt → MQ.8 closeout, then M1.0 toward v6.0.0. |

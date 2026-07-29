@@ -91,8 +91,13 @@
 >
 > **2026-07-29 — MQ.2 S2 old-production boundary frozen.** The exact ten-assertion scripted case
 > at `4a9d29a` plus capture `d94a0ba` reaches 9/10 against unchanged production and prints the
-> abandoned hidden-step residual `2.5`; solution and warm-state restoration pass. Next is only the
-> registered local diagnostics snapshot/restore, then three mutations and the retained lane gates.
+> abandoned hidden-step residual `2.5`; solution and warm-state restoration pass.
+>
+> **2026-07-29 — MQ.2 S2 source-step rollback landed.** Commit `7b3fd14` passes PackSolver
+> 994/33 and all companion focused gates in Debug, fast-math Release/IPO-off, and host-C++ CUDA;
+> every restored tree passes 58/58. Three independent restore mutations turn separate assertions
+> red at 9/10. Original census: 26 APPLIED / 37 pending / 8 deferrals; combined 76-ID registry:
+> 30 APPLIED / 37 pending / 9 deferrals. Next is T1 topology derivation.
 
 ---
 
@@ -118,7 +123,7 @@
 ## Short-Term (This Quarter)
 
 ### Code Quality
-- [ ] **MC-1 test-file line debt — explicitly owned by M1.0.** M0.8 shared the test *mechanics* (MC-4) but grew the files; M0.10 swept the production side and did not touch the test side. Still oversized: `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,728 after MQ.2 S1.1), `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118), `core_ParameterSet_test.cpp` (1,007). Any split must preserve assertion counts and exact-site coverage.
+- [ ] **MC-1 test-file line debt — explicitly owned by M1.0.** M0.8 shared the test *mechanics* (MC-4) but grew the files; M0.10 swept the production side and did not touch the test side. Still oversized: `core_ParserAllocation_test.cpp` (1,229), `core_PackSolver_test.cpp` (1,780 after MQ.2 S2), `core_Experiment_test.cpp` (1,168), `core_AsyncRecorder_test.cpp` (1,118), `core_ParameterSet_test.cpp` (1,007). Any split must preserve assertion counts and exact-site coverage.
 - [x] M0.10 production-side line debt: done. `SpmFactory.cpp` 713 → 494 + `SpmBatch.cpp`; `PackSolver.cpp` 910 → 610 + `PackSolverIterative.cpp`; `AsyncRecorder.cpp` 890 → 396 + `AsyncRecordingCodec.cpp` + `detail/AsyncRecordingFormat.hpp`; `Recorder.cpp` 721 → 293 + `RecordingFormat.cpp`; `SpmPipeline.hpp` 783 → 745 + `SpmDiffusionRhs.hpp`; the 1,281-line coverage reporter → the `slide_coverage` package. `checkedAdd`/`checkedMultiply` were duplicated and now have one definition. Only `SpmPipeline.hpp` (745) and `CyclerV2.cpp` (771) exceed 700, both with written justifications. Core lines grew 17,363 → 17,595 (+1.3%) — predicted before the work; there was no dead code to delete.
 - [ ] Replace `assert()` with Catch2 `REQUIRE()` in tests
 - [ ] Convert `#define DATASTORE_BATT` to constexpr (settings.hpp)

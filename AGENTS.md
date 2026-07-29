@@ -152,11 +152,16 @@ the append-only post-baseline registry has four S1.1 IDs APPLIED and
 `eigen-strong-inline-redefinition-warning` DEFERRED to B1. Combined: 28 APPLIED / 39 pending /
 9 deferrals across 76 stable IDs.
 
-**S2's failing-test-first boundary is frozen at `4a9d29a`/`d94a0ba`:** unchanged production
-reaches 9/10 assertions and prints hidden-step `residual_norm := 2.5`; solution and cold warm-state
-restoration pass. Your first action is the registered local POD diagnostics snapshot/restore, with
-no header/allocation/success-path change, followed by independent solution/diagnostics/warm-flag
-mutations and the three retained configuration gates. Then every remaining survivor batch
+**S2 PASSED locally at `7b3fd14` (2026-07-29):** the local POD diagnostics snapshot/restore
+passes PackSolver 994/33 and all companion focused gates in Debug, fast-math Release/IPO-off,
+and host-C++ CUDA; all three trees pass 58/58. Independent solution/diagnostics/warm-flag
+mutations turn separate assertions red at 9/10 and exact hashes are restored. Original census:
+26 APPLIED / 37 pending / 8 deferrals; combined 76-ID registry: 30 APPLIED / 37 pending /
+9 deferrals.
+
+Your first action is T1 topology derivation: preregister exact deterministic rollback,
+hostile-endpoint, and digit-identical topology fixtures before applying the one branch-graph owner,
+one archetype-slot map, and always-gated ladder rollback oracle. Then every remaining survivor batch
 until MQ.2 closes with all original 68 + 3 supplemental findings plus every newly discovered
 supplemental finding dispositioned applied / REFUTED / deferred-with-owner — no silent drops; the
 six named landmines and MQ.1's build-policy findings included. Then →
