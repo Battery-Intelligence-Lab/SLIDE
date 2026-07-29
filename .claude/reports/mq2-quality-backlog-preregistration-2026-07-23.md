@@ -1745,6 +1745,23 @@ a clean committed boundary and restore exact SHA-256 anchors between them:
     516/10 count and structural test-source assertions must turn red rather
     than silently accepting a smaller oracle.
 
+The mandatory adversarial review after the first nine production/serializer
+mutations found a distinct same-count escape before it was executed:
+replace the parsed operand in either the accepted-step comparison or the
+63-real comparison with the corresponding expected operand. Correct
+production would still report 516/10, and the current structural gate is
+predicted to remain 1/1 because it pins only both loop bounds, not either
+actual-versus-expected comparison direction. Register both one-token
+self-comparison mutations at the clean `612d841` implementation boundary.
+Before hardening, each must demonstrate that exact false-green pair. Then pin
+the two complete compact comparison expressions in
+`p9c_architecture.cmake`; with that hardening applied, rerun each mutation
+alone and require Recorder to remain 516/10 while the aggregate structural
+gate turns red at its corresponding missing comparison expression. Restore
+the exact test/gate hashes between runs. This augments item 10; it changes no
+production behavior, assertion count, survivor disposition, or acceptance
+band.
+
 Changing the fixture's stored CRC away from zero, changing snapshots from
 zero, changing `table[0]`, resealing the corrupt fixture, or changing either
 minor-version operator is not an alternate implementation. Those mutations
