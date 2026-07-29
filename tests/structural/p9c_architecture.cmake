@@ -530,6 +530,7 @@ require_token_count("MQ.2 P2 residual diagnostic reads residual owner"
 # MQ.2 S1: one cold prefix-uniqueness owner, two exact arena-copy
 # directions, and the public N*dt/frozen-solve semantics are executable.
 load_compact("src/core/PackTopologyInternal.hpp" mq2_pack_topology_internal)
+load_compact("src/core/PackTopology.hpp" mq2_pack_topology_header)
 load_compact("src/core/PackTopology.cpp" mq2_pack_topology)
 load_compact("src/core/PackStepper.hpp" mq2_pack_stepper_header)
 load_compact("src/core/PackStepper.cpp" mq2_pack_stepper)
@@ -917,5 +918,46 @@ require_ordered_tokens("MQ.2 T1 guarded validator graph construction"
   "constautograph=buildBranchGraph(netlist.branches,netlist.node_count);"
   "if(netlist.nodal_sparsity!=graph.sparsity)"
   "if(!isConnectedFrom(graph.adjacency,netlist.terminal_positive))")
+
+# MQ.2 T2: the per-step thermal assembly is explicitly no-throw and the
+# leading PackTopology contract names its owner plus the hot/cold boundary.
+require_token_count("MQ.2 T2 noexcept declaration"
+  mq2_pack_topology_header
+  "[[nodiscard]]slide::Statusassemble(std::span<constreal_t>cell_temperature,std::span<constreal_t>boundary_temperature,std::span<real_t>q_ext,std::span<real_t>boundary_heat)noexcept;"
+  1)
+require_token_count("MQ.2 T2 noexcept definition"
+  mq2_pack_topology
+  "slide::StatusCompiledThermalGraph::assemble(std::span<constreal_t>cell_temperature,std::span<constreal_t>boundary_temperature,std::span<real_t>q_ext,std::span<real_t>boundary_heat)noexcept{"
+  1)
+
+file(READ "${SLIDE_SOURCE_DIR}/src/core/PackTopology.hpp"
+  mq2_pack_topology_header_with_comments)
+string(REGEX REPLACE "[ \t\r\n]" ""
+  mq2_pack_topology_header_with_comments
+  "${mq2_pack_topology_header_with_comments}")
+require_token_count("MQ.2 T2 substantive topology brief"
+  mq2_pack_topology_header_with_comments
+  "@briefValue-semanticpackcombinatorsandcompiledelectrical/thermaltopology."
+  1)
+require_token_count("MQ.2 T2 topology ownership"
+  mq2_pack_topology_header_with_comments
+  "OwnsD-19packauthoring/compilationpluscanonicalelectricalandD-21thermaloutputs."
+  1)
+require_token_count("MQ.2 T2 exact PLAN owner"
+  mq2_pack_topology_header_with_comments
+  "ImplementsPLAN.mdsection3.4(D-19andD-21)."
+  1)
+require_token_count("MQ.2 T2 cold boundary"
+  mq2_pack_topology_header_with_comments
+  "Cold:descriptionauthoringandcompilePackDescription()."
+  1)
+require_token_count("MQ.2 T2 hot boundary"
+  mq2_pack_topology_header_with_comments
+  "Hot:CompiledThermalGraph::assemble(),onceperPackStepperstepattempt."
+  1)
+require_token_count("MQ.2 T2 stale all-cold brief removed"
+  mq2_pack_topology_header_with_comments
+  "@briefValue-semanticpackcombinatorsandcold-compiledelectrical/thermaltopology."
+  0)
 
 message(STATUS "9C architecture aggregate structural gate passed")

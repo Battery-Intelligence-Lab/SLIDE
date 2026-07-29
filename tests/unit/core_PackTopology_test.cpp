@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cstdint>
@@ -182,6 +183,50 @@ TEST_CASE("D-21 thermal compile is canonical and assemble conserves pair energy"
   REQUIRE(q_ext[1] == -70.0);
   REQUIRE(boundary_heat[0] == 40.0);
   REQUIRE(q_ext[0] + q_ext[1] + boundary_heat[0] == 0.0);
+}
+
+TEST_CASE("isothermal thermal graph assembles exact zero heat",
+          "[core][pack][thermal][oracle][MQ.2][T2]")
+{
+  const auto root = core::parallel(
+    3, core::cell({ .archetype = "thermal", .thermal = true }));
+  core::CompiledPackTopology pack;
+  REQUIRE(core::compilePackDescription(
+            { .root = root,
+              .thermal_boundaries = { { "a" }, { "b" } },
+              .thermal_links = { { "p00", "p01", 1.5 },
+                                 { "p01", "p02", 2.5 },
+                                 { "p00", "p02", 0.5 },
+                                 { "p00", "a", 0.75 },
+                                 { "p02", "b", 3.25 } } },
+            pack)
+          == Status::Success);
+  REQUIRE((pack.thermal.edges.size() == 5
+           && pack.thermal.offsets
+                == std::vector<std::uint32_t>{ 0, 3, 5, 8, 9, 10 }));
+
+  std::fill(pack.thermal.edge_flux.begin(), pack.thermal.edge_flux.end(), 37.0);
+  std::fill(
+    pack.thermal.trial_edge_flux.begin(), pack.thermal.trial_edge_flux.end(), 41.0);
+  std::fill(pack.thermal.trial_endpoint_heat.begin(),
+            pack.thermal.trial_endpoint_heat.end(),
+            43.0);
+  std::fill(pack.thermal.trial_edge_incidence.begin(),
+            pack.thermal.trial_edge_incidence.end(),
+            static_cast<unsigned char>(0xFF));
+  constexpr std::array cell_temperature{ 300.0, 300.0, 300.0 };
+  constexpr std::array boundary_temperature{ 300.0, 300.0 };
+  std::array q_ext{ 17.0, 19.0, 23.0 };
+  std::array boundary_heat{ 29.0, 31.0 };
+
+  REQUIRE(pack.thermal.assemble(
+            cell_temperature, boundary_temperature, q_ext, boundary_heat)
+          == Status::Success);
+  CHECK(std::ranges::all_of(q_ext, [](double heat) { return heat == 0.0; }));
+  CHECK(std::ranges::all_of(
+    boundary_heat, [](double heat) { return heat == 0.0; }));
+  CHECK(std::ranges::all_of(
+    pack.thermal.edge_flux, [](double flux) { return flux == 0.0; }));
 }
 
 TEST_CASE("thermal assembly rejects finite derived overflow atomically",
