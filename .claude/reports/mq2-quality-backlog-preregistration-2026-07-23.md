@@ -1503,7 +1503,7 @@ move the original census from 31 APPLIED / 0 REFUTED / 8 named deferrals /
 validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
 census only at closeout.
 
-## R1 post-acceptance Linux coverage hardening (registered 2026-07-29)
+## R1 post-native-acceptance Linux coverage hardening (registered 2026-07-29)
 
 This amendment is registered at clean `a7a4236` after all fourteen R1
 mutation families and all three retained native acceptance lanes passed, but
@@ -1557,20 +1557,31 @@ no other fixture-producing production source changed during R1. The
 old-production sentinel must reach exactly 268/275 and fail only the same
 seven tuple assertions while printing every candidate value above. Any
 different byte, CRC, assertion count, or failure site falsifies the proposed
-Linux branch; do not bless the current output.
+Linux branch; do not bless the current output. In that fork,
+`r1-linux-debug-byte-oracle-unregistered` remains OPEN and a second,
+production-regression stable ID is appended before any source fix. Restore
+current production to all thirteen old-source values first; only then may
+the platform branch be added.
 
-Only after that proof, add a compile-time Linux Debug tuple branch before the
-existing Windows Debug fallback. Release and IPO branches remain first and
-unchanged. The branch must select exactly the old-production tuple above and
-restore Recorder to 275/9 under WSL Clang 18 without changing its count or
-any native result. Restoring the prior all-Debug fallback is a registered
-mutation and must reproduce 268/275 with the same seven failures.
+Only after that proof, split the compile-time oracle explicitly: Windows
+Release/IPO-on, Windows Release/IPO-off, Linux Clang 18 Debug, and Windows
+Debug. The three existing Windows tuples remain byte-for-byte unchanged, the
+new branch selects exactly the old-production Linux tuple above, and an
+unknown platform/toolchain/configuration must stop at compilation rather
+than silently reuse another branch. WSL Recorder must return to 275/9
+without changing its count or any native result. Restoring the prior generic
+all-Debug fallback is a registered mutation and must reproduce 268/275 with
+the same seven failures.
 
-The aggregate script must establish its policy contract with
-`cmake_minimum_required(VERSION 3.31)` before including 9C-5. The focused WSL
-aggregate must then pass 1/1; removing that line must reproduce the CMP0057
-red result. The minimum matches the repository's existing top-level minimum
-and does not weaken a structural assertion.
+The `IN_LIST` spelling entered 9C-5 at `d0e82e6` without a local policy; the
+failure therefore precedes the appended MQ.2 R1 block and is not caused by
+its tokens. Because 9C-5 is also independently runnable, establish CMP0057
+NEW inside `p9c5_public_surface.cmake`, not transitively in the aggregate.
+Both direct `cmake -P tests/structural/p9c5_public_surface.cmake` with
+`SLIDE_SOURCE_DIR` and the focused WSL aggregate CTest must pass; removing
+the policy line must reproduce the CMP0057 red result in both entry paths.
+The policy is already implied by the repository's CMake 3.31 minimum and
+does not weaken a structural assertion.
 
 Refresh the six exception identities without changing their classes,
 reasons, statement hashes, or exception count:
@@ -1592,6 +1603,12 @@ and
 Restoring any stale identity must make the reporter refuse the manifest,
 rather than silently reducing coverage.
 
+The manifest was last validated at `93e75d1`. Its refresh is a one-to-one
+identity relocation: the six classes/reasons and six statement hashes stay
+exact, four context hashes stay exact, and only the two cross-file context
+hashes change as listed. No exception is added, removed, merged, or
+reclassified.
+
 After the three local corrections, rebuild the complete coverage target,
 require an immediate no-work dry run, rerun the scanner self-test and exact
 359/329 census, prepare a new session, run unfiltered CTest at 58/58, and
@@ -1610,8 +1627,15 @@ off, and retained host-C++ CUDA focused gates plus 58/58 are rerun after the
 test/gate change. The three new local IDs become APPLIED only after all of
 those gates are green. With the workflow ID deferred to B1, R1 closeout then
 has the unchanged original census 40 APPLIED / 0 REFUTED / 8 named deferrals
-/ 23 pending and a combined 84-ID census of 51 APPLIED / 0 REFUTED /
-10 named deferrals / 23 pending.
+/ 23 pending. The combined prerepair census is 84 IDs: 38 APPLIED /
+0 REFUTED / 10 named deferrals / 36 pending. Closing the thirteen R1 IDs
+makes it 51 / 0 / 10 / 23.
+
+B1 must later change both hosted instrumented-workflow discovery pins from
+57 to 58. Each instrumented configuration must freshly discover exactly 58
+CTest commands; coverage must still classify 55 measured tests plus one
+anchor. A controlled 58-to-57 mutation must make each workflow assertion
+red. No hosted result is claimed unless an observed Actions run supplies it.
 
 ## R1 recording-common amendment (registered 2026-07-29)
 
@@ -2167,7 +2191,8 @@ earlier R1 supplemental findings, and the three local coverage-hardening IDs
 become APPLIED. That would
 move the original census from 34 APPLIED / 0 REFUTED / 8 named deferrals /
 29 pending to 40 / 0 / 8 / 23, and the combined 76-ID census from
-38 / 0 / 9 / 29 to an 84-ID census of 51 / 0 / 10 / 23. The fourth new
+38 / 0 / 9 / 29 through the prerepair 84-ID census
+38 / 0 / 10 / 36 to the closeout census 51 / 0 / 10 / 23. The fourth new
 coverage-audit ID remains explicitly deferred to B1. `CHANGELOG.md`,
 PLAN section 8, the
 validation report, `AGENTS.md`, and `develop/TODO.md` receive that final
