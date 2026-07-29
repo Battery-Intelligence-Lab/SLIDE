@@ -354,7 +354,7 @@ try {
   const RecordingHeader header = load<RecordingHeader>(candidate->data);
   if (header.magic != recording_magic || header.major != format_major
       || header.minor > format_minor || header.endian != endian_marker
-      || header.header_size != header_bytes || header.header_crc32 == 0
+      || header.header_size != header_bytes
       || headerCrc(header) != header.header_crc32
       || header.rows == 0 || header.lanes == 0 || header.stride < header.lanes
       || header.rows > static_cast<std::uint32_t>(std::numeric_limits<int>::max())
